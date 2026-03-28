@@ -1,0 +1,223 @@
+Starting project at /Users/hkfiles/Desktop/hk app/movieApp
+React Compiler enabled
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 74.4% (769/892)
+Android Bundled 6358ms node_modules/expo-router/entry.js (1520 modules)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 71ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 65ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 291ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 243ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 94ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 73ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/AuthScreen.tsx: Expected corresponding JSX closing tag for <Animated.View>. (341:14)
+
+  339 |
+  340 |                 </View>
+> 341 |               </View>
+      |               ^
+  342 |             </Animated.View>
+  343 |
+  344 |             <View style={styles.footer}>
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4727:16)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4749:17)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4759:19)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:39
+    at TypeScriptParserMixin.tryParse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6907:20)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:18)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12493:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11675:28)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at TypeScriptParserMixin.parseExpressionBase (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10784:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:17)
+    at TypeScriptParserMixin.parseReturnStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13142:28)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12798:21)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:61)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseBlock (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13297:10)
+    at TypeScriptParserMixin.parseFunctionBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12100:24)
+    at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12086:10)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/AuthScreen.tsx: Expected corresponding JSX closing tag for <Animated.View>. (341:14)
+
+  339 |
+  340 |                 </View>
+> 341 |               </View>
+      |               ^
+  342 |             </Animated.View>
+  343 |
+  344 |             <View style={styles.footer}>
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4727:16)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4749:17)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4759:19)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:39
+    at TypeScriptParserMixin.tryParse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6907:20)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:18)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12493:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11675:28)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at TypeScriptParserMixin.parseExpressionBase (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10784:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:17)
+    at TypeScriptParserMixin.parseReturnStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13142:28)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12798:21)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:61)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseBlock (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13297:10)
+    at TypeScriptParserMixin.parseFunctionBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12100:24)
+    at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12086:10)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 67ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 63ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 67ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 267ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 572ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 63ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 318ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 287ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 71ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 361ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 77ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 66ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 69ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 67ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 68ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context

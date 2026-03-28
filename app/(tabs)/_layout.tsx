@@ -1,0 +1,4088 @@
+import { Tabs } from "expo-router";
+import React from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  DeviceEventEmitter,
+  Modal,
+  TextInput,
+  FlatList,
+  KeyboardAvoidingView,
+  Image,
+  Dimensions,
+  StatusBar,
+  ScrollView,
+  Animated,
+  Keyboard,
+  Linking,
+  BackHandler,
+} from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { usePathname, useRouter } from "expo-router";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  ALL_ROWS,
+  Movie,
+  Series,
+  ALL_SERIES,
+  MOST_DOWNLOADED,
+  TRENDING,
+  shortenGenre,
+  ALL_VJS,
+  ALL_GENRES,
+} from "@/constants/movieData";
+import { GridModal, GridCard } from "../../components/GridComponents";
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const HERO_H = SCREEN_H * 0.55;
+const ALL_MOVIES = Array.from(
+  new Map(ALL_ROWS.flatMap((r) => r.data).map((m) => [m.id, m])).values(),
+);
+const ALL_ITEMS = [...ALL_MOVIES, ...ALL_SERIES];
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const TABS: {
+  name: string;
+  route: string;
+  icon: IoniconsName;
+  iconActive: IoniconsName;
+  label: string;
+}[] = [
+  {
+    name: "index",
+    route: "/(tabs)",
+    icon: "home-outline",
+    iconActive: "home",
+    label: "Home",
+  },
+  {
+    name: "saved",
+    route: "/(tabs)/saved",
+    icon: "tv-outline",
+    iconActive: "tv",
+    label: "Series",
+  },
+  {
+    name: "category",
+    route: "/(tabs)/category",
+    icon: "grid-outline",
+    iconActive: "grid",
+    label: "Category",
+  },
+  {
+    name: "menu",
+    route: "/(tabs)/menu",
+    icon: "person-outline",
+    iconActive: "person",
+    label: "Profile",
+  },
+];
+
+const SEARCH_OPTIONS = [
+  "By Movies",
+  "By Series",
+  "By Genres",
+  "By VJ's",
+  "By Sections",
+  "By Year",
+];
+
+const DISCOVERY_GENRES = [
+  { name: "By VJ", color: "rgba(251,146,60,0.15)", border: "#fb923c" },
+  { name: "By Year", color: "rgba(129,140,248,0.15)", border: "#818cf8" },
+  { name: "By Series", color: "rgba(52,211,153,0.15)", border: "#34d399" },
+  { name: "By Section", color: "rgba(250,204,21,0.15)", border: "#facc15" },
+  { name: "By Trending", color: "rgba(239,68,68,0.15)", border: "#ef4444" },
+  { name: "By Suggestions", color: "rgba(56,189,248,0.15)", border: "#38bdf8" },
+  { name: "Series", color: "rgba(239,68,68,0.15)", border: "#ef4444" },
+  { name: "Action", color: "rgba(245,158,11,0.15)", border: "#f59e0b" },
+  { name: "Sci-Fi", color: "rgba(16,185,129,0.15)", border: "#10b981" },
+  { name: "Romance", color: "rgba(236,72,153,0.15)", border: "#ec4899" },
+  { name: "Horror", color: "rgba(99,102,241,0.15)", border: "#6366f1" },
+  { name: "Drama", color: "rgba(168,85,247,0.15)", border: "#a855f7" },
+  { name: "Indian Movies", color: "rgba(14,165,233,0.15)", border: "#0ea5e9" },
+  { name: "Thriller", color: "rgba(244,63,94,0.15)", border: "#f43f5e" },
+  { name: "Mystery", color: "rgba(139,92,246,0.15)", border: "#8b5cf6" },
+];
+
+const DISCOVERY_SECTIONS = [
+  "New Releases",
+  "Trending Now",
+  "Most Downloaded",
+  "Latest",
+  "Continue Watching",
+  "Favourites",
+  "My List",
+  "Watch Later",
+  "You May Also Like",
+  "Last Watched",
+  "Action",
+  "Sci-Fi",
+  "Romance",
+  "Horror",
+  "Drama",
+  "Indian Movies",
+];
+
+const PEOPLE_ALSO_SEARCH = [
+  "Orbital",
+  "Inception 2",
+  "The Last of Us",
+  "Dark Matter",
+  "Neon Horizon",
+  "Severance",
+  "True Detective",
+  "Succession",
+  "The Reckoning",
+  "Mirzapur",
+];
+
+const YOU_MAY_ALSO_SEARCH_TOPICS = [
+  "by section",
+  "by movies",
+  "by series",
+  "by genres",
+  "by vjs",
+  "by year",
+];
+
+const BY_VJ_LIST = [
+  "Vj Junior",
+  "Vj Ice P",
+  "Vj Emmy",
+  "Vj Kevo",
+  "Vj Jingo",
+  "Vj Ulio",
+  "Vj HD",
+  "Vj Mk",
+  "Vj Little T",
+];
+const BY_YEAR_LIST = [
+  "2025",
+  "2024",
+  "2023",
+  "2022",
+  "2021",
+  "2020",
+  "2019",
+  "2018",
+];
+const BY_SERIES_LIST = [
+  "Action Series",
+  "Thriller Series",
+  "Drama Series",
+  "Korean Series",
+  "Hollywood Series",
+  "Indian Movies",
+];
+const BY_TRENDING_LIST = [
+  "Trending Movies",
+  "Newly Released",
+  "Most Viewed Movies",
+  "Trending Series",
+  "Trending VJs",
+  "Trending This Week",
+  "Most Downloaded",
+];
+
+interface Notification {
+  id: string;
+  type: "movie" | "update" | "suggestion" | "trending" | "rating";
+  icon: IoniconsName;
+  title: string;
+  message: string;
+  time: string;
+  image?: string;
+  isNew?: boolean;
+  movieId?: string;
+  sectionTitle?: string;
+  route?: string;
+  count?: number;
+  vjs?: { name: string; count: number }[];
+  moviesCount?: number;
+  seriesCount?: number;
+  moviesList?: { id: string; title: string }[];
+  seriesList?: { id: string; title: string }[];
+  vjsDetailed?: { id: string; name: string; count: number }[];
+}
+
+const MOCK_NOTIFICATIONS: Notification[] = [
+  {
+    id: "n1",
+    type: "movie",
+    icon: "film",
+    title: "New Release",
+    message: '🎬 "Neon Horizon" and "Dark Tide" are now available!',
+    time: "2h ago",
+    image:
+      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&q=80",
+    isNew: true,
+    movieId: "nr1",
+    sectionTitle: "New Releases",
+    count: 15,
+    moviesCount: 8,
+    seriesCount: 7,
+    moviesList: [
+      { id: "nr1", title: "Neon Horizon" },
+      { id: "nr2", title: "Dark Tide" },
+      { id: "nr3", title: "Solar Wind" },
+      { id: "nr4", title: "After Hours" },
+      { id: "nr5", title: "Ice Fortress" },
+      { id: "nr6", title: "The Quiet Room" },
+      { id: "lt1", title: "Override" },
+      { id: "lt2", title: "Cascade Point" },
+    ],
+    seriesList: [
+      { id: "s1", title: "Dark Matter" },
+      { id: "s2", title: "Severance" },
+      { id: "s3", title: "Westworld" },
+      { id: "s4", title: "The Expanse" },
+      { id: "s5", title: "Slow Horses" },
+      { id: "s6", title: "True Detective" },
+      { id: "s11", title: "The Last of Us" },
+    ],
+    vjsDetailed: [
+      { id: "v1", name: "Junior", count: 6 },
+      { id: "v2", name: "Emmy", count: 5 },
+      { id: "v3", name: "Mark", count: 4 },
+    ],
+  },
+  {
+    id: "n2",
+    type: "update",
+    icon: "rocket",
+    title: "App Update",
+    message: "🚀 Version 2.4.1 is live with improved streaming performance.",
+    time: "5h ago",
+    isNew: true,
+    route: "/(tabs)/menu?showAbout=true",
+  },
+  {
+    id: "n3",
+    type: "suggestion",
+    icon: "sparkles",
+    title: "For You",
+    message: '✨ Based on "Orbital", we think you\'ll love "Inception 2".',
+    time: "1d ago",
+    movieId: "md1",
+    sectionTitle: "You May Also Like",
+    moviesCount: 6,
+    moviesList: [
+      { id: "md1", title: "Inception 2" },
+      { id: "mv2", title: "Wildfire" },
+      { id: "mv3", title: "The Reckoning" },
+      { id: "mv4", title: "Orbital" },
+      { id: "mv5", title: "Inception 2" },
+      { id: "mv6", title: "After Hours" },
+    ],
+  },
+  {
+    id: "n4",
+    type: "trending",
+    icon: "flame",
+    title: "Trending Now",
+    message: '🔥 "Orbital" is the #1 movie today, followed by "Wildfire"!',
+    time: "2d ago",
+    movieId: "tr1",
+    sectionTitle: "Trending Now",
+    count: 5,
+    moviesCount: 3,
+    seriesCount: 2,
+    moviesList: [
+      { id: "tr1", title: "Orbital" },
+      { id: "md1", title: "Inception 2" },
+      { id: "tr2", title: "Wildfire" },
+    ],
+    seriesList: [
+      { id: "s1", title: "Dark Matter" },
+      { id: "s6", title: "True Detective" },
+    ],
+  },
+  {
+    id: "n6",
+    title: "Trending VJs",
+    message: "Check out new releases from Vj Junior, Vj Emmy and Vj Mark! 🎬",
+    type: "trending",
+    icon: "people",
+    time: "3d ago",
+    isNew: true,
+    movieId: "nr1",
+    sectionTitle: "Trending VJs",
+    count: 10,
+    vjsDetailed: [
+      { id: "v1", name: "Junior", count: 4 },
+      { id: "v2", name: "Emmy", count: 3 },
+      { id: "v3", name: "Mark", count: 3 },
+    ],
+  },
+  {
+    id: "n5",
+    title: "Enjoying the App?",
+    message: "Rate us on the Play Store to support our work! ⭐",
+    type: "rating",
+    icon: "star",
+    time: "2d ago",
+    isNew: true,
+  },
+];
+
+// ─── Notification Overlay ───────────────────────────────────────────────────
+function NotificationOverlay({
+  visible,
+  onClose,
+  onSelect,
+  showRatingModal,
+  setShowRatingModal,
+  selectedRating,
+  setSelectedRating,
+  submitRating,
+  isRatingSubmitted,
+  readIds,
+  markRead,
+  checkedItemIds,
+  toggleCheckedItem,
+  expandedType,
+  setExpandedType,
+  expandedNotificationId,
+  setExpandedNotificationId,
+  setReopenOnBack,
+  setLastViewedItemId,
+  isUpdateLocked,
+  isUpdateApplied,
+  isRatingPermanentlyRemoved,
+  setGlobalGridTitle,
+  setGlobalGridData,
+  setGlobalGridVisible,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (item: Notification) => void;
+  showRatingModal: boolean;
+  setShowRatingModal: (visible: boolean) => void;
+  selectedRating: number;
+  setSelectedRating: (rating: number) => void;
+  submitRating: (rating: number) => void;
+  isRatingSubmitted: boolean;
+  readIds: Set<string>;
+  markRead: (id: string) => void;
+  checkedItemIds: Set<string>;
+  toggleCheckedItem: (id: string) => void;
+  expandedType: "movies" | "series" | "vjs" | null;
+  setExpandedType: (type: "movies" | "series" | "vjs" | null) => void;
+  expandedNotificationId: string | null;
+  setExpandedNotificationId: (id: string | null) => void;
+  setReopenOnBack: (val: boolean) => void;
+  setLastViewedItemId: (id: string | null) => void;
+  isUpdateLocked: boolean;
+  isUpdateApplied: boolean;
+  isRatingPermanentlyRemoved: boolean;
+  setGlobalGridTitle: (title: string) => void;
+  setGlobalGridData: (data: (Movie | Series)[]) => void;
+  setGlobalGridVisible: (visible: boolean) => void;
+}) {
+
+  const getFilteredItems = (item: Notification) => {
+    const movies = item.moviesList || [];
+    const series = item.seriesList || [];
+    const vjs = item.vjsDetailed || [];
+    const unreadMovies = movies.filter(m => !checkedItemIds.has(m.id));
+    const unreadSeries = series.filter(s => !checkedItemIds.has(s.id));
+    const unreadVjs = vjs.filter(v => !checkedItemIds.has(v.id));
+    return { 
+      movies, 
+      series, 
+      vjs, 
+      unreadTotal: unreadMovies.length + unreadSeries.length,
+      unreadMoviesCount: unreadMovies.length,
+      unreadSeriesCount: unreadSeries.length,
+      unreadVjsCount: unreadVjs.length
+    };
+  };
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      statusBarTranslucent
+      onRequestClose={() => {
+        if (showRatingModal) {
+          setShowRatingModal(false);
+        } else if (expandedType) {
+          setExpandedType(null);
+        } else {
+          onClose();
+        }
+      }}
+    >
+      <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
+        <TouchableOpacity
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15,15,25,0.95)" }]}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <SafeAreaView style={[styles.notificationOverlayContainer, showRatingModal && { justifyContent: 'center' }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={isUpdateLocked ? undefined : onClose}
+          />
+
+          {!showRatingModal ? (
+            <View style={styles.notificationContent}>
+              <BlurView
+                intensity={80}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.notificationHeader}>
+                <Text style={styles.notificationTitle}>Notifications</Text>
+                {!isUpdateLocked && (
+                  <TouchableOpacity
+                    onPress={onClose}
+                    style={styles.notificationCloseBtn}
+                  >
+                    <Ionicons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                {[
+                  ...MOCK_NOTIFICATIONS.filter((n) => {
+                    if (n.id === "n2") return !isUpdateApplied;
+                    if (n.type === "rating") return !isRatingPermanentlyRemoved;
+                    return !readIds.has(n.id);
+                  }),
+                  ...MOCK_NOTIFICATIONS.filter((n) => {
+                    if (n.id === "n2" || n.type === "rating") return false;
+                    return readIds.has(n.id);
+                  }),
+                ].map((item) => {
+                  const isRead = readIds.has(item.id);
+                  const isUnread = !isRead;
+                  const isLockedUpdate = item.id === "n2" && isUpdateLocked;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.notificationCard,
+                        isUnread && styles.notificationCardNew,
+                        isRead && styles.notificationCardRead,
+                        isLockedUpdate && styles.notificationCardLocked,
+                      ]}
+                      onPress={() => {
+                        if (item.type !== 'rating') {
+                          markRead(item.id);
+                        }
+                        onSelect(item);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      {isUnread && (
+                        <LinearGradient
+                          colors={["rgba(16, 185, 129, 0.2)", "transparent"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={StyleSheet.absoluteFill}
+                        />
+                      )}
+                      {isUnread && <View style={styles.notificationCardSheen} />}
+
+                      <View
+                        style={[
+                          styles.notificationIconWrap,
+                          {
+                            backgroundColor:
+                              item.type === "movie"
+                                ? isRead ? "rgba(56,189,248,0.07)" : "rgba(56,189,248,0.15)"
+                                : item.type === "rating"
+                                ? isRead ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.15)"
+                                : isRead ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
+                          },
+                          isUnread && styles.notificationIconWrapNew,
+                        ]}
+                      >
+                        <Ionicons
+                          name={item.icon}
+                          size={18}
+                          color={
+                            isRead
+                              ? "rgba(255,255,255,0.35)"
+                              : item.type === "movie"
+                              ? "#38bdf8"
+                              : item.type === "rating"
+                              ? "#f59e0b"
+                              : "#fff"
+                          }
+                        />
+                      </View>
+                      <View style={styles.notificationTextWrap}>
+                        <View style={styles.notificationCardHeader}>
+                          <View style={styles.notificationTitleRow}>
+                            <Text style={[styles.notificationCardTitle, isRead && styles.notificationCardTitleRead]}>
+                              {item.title}
+                            </Text>
+                            {getFilteredItems(item).unreadTotal > 0 && !isRead && (
+                              <View style={[
+                                styles.countBadge,
+                                (item.type === 'trending' || item.type === 'rating') && styles.countBadgeTrending
+                              ]}>
+                                <Text style={[
+                                  styles.countBadgeText,
+                                  (item.type === 'trending' || item.type === 'rating') && styles.countBadgeTrendingText
+                                ]}>
+                                  +{getFilteredItems(item).unreadTotal}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.notificationTime}>{item.time}</Text>
+                        </View>
+                        <Text style={[styles.notificationMsg, isRead && { opacity: 0.4 }]} numberOfLines={2}>
+                          {item.message}
+                        </Text>
+                        
+                        {!isRead && (item.id === expandedNotificationId && expandedType ? (
+                          <View style={styles.detailListContainer}>
+                            <View style={styles.detailListHeader}>
+                              <Text style={styles.detailListTitle}>
+                                {expandedType.charAt(0).toUpperCase() + expandedType.slice(1)}
+                              </Text>
+                              <TouchableOpacity onPress={() => setExpandedType(null)}>
+                                <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.4)" />
+                              </TouchableOpacity>
+                            </View>
+                            {(expandedType === 'movies' ? getFilteredItems(item).movies : 
+                              expandedType === 'series' ? getFilteredItems(item).series : 
+                              getFilteredItems(item).vjs).map((subItem: any) => {
+                              const isSubRead = checkedItemIds.has(subItem.id);
+                              return (
+                                <View key={subItem.id} style={[styles.detailListItem, isSubRead && { opacity: 0.4 }]}>
+                                  <TouchableOpacity 
+                                    style={{ flex: 1 }}
+                                    onPress={() => {
+                                      // Persistent state: mark for re-opening on back and defer checking
+                                      setLastViewedItemId(subItem.id);
+                                      setReopenOnBack(true);
+
+                                      // "Command" the app to navigate or select
+                                      if (expandedType === 'movies') {
+                                        const fullMovie = ALL_ITEMS.find(m => m.id === subItem.id);
+                                        DeviceEventEmitter.emit("movieSelected", fullMovie || { id: subItem.id, title: subItem.title });
+                                      } else {
+                                        DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
+                                      }
+                                    }}
+                                  >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                      {isSubRead && <Ionicons name="checkmark-done" size={14} color="#10b981" style={{ marginRight: 6 }} />}
+                                      <Text style={[styles.detailItemText, isSubRead && { textDecorationLine: 'line-through' }]}>
+                                        {subItem.title || subItem.name}
+                                        {isSubRead && <Text style={{ color: '#10b981', fontWeight: '800' }}> (Checked)</Text>}
+                                      </Text>
+                                    </View>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity 
+                                    onPress={() => toggleCheckedItem(subItem.id)}
+                                    style={styles.checkBtn}
+                                  >
+                                    <Ionicons 
+                                      name={isSubRead ? "checkmark-circle" : "checkmark-circle-outline"} 
+                                      size={20} 
+                                      color="#10b981" 
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        ) : (
+                          <View style={styles.typeBadgesRow}>
+                            {getFilteredItems(item).movies.length > 0 && (
+                              <TouchableOpacity 
+                                style={[
+                                  styles.typeBadge, 
+                                  styles.movieBadge
+                                ]}
+                                onPress={() => {
+                                  const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
+                                  const gridData = ALL_ITEMS.filter(m => movieIds.has(m.id));
+                                  if (gridData.length > 0) {
+                                    setGlobalGridTitle(`${item.title} - Movies`);
+                                    setGlobalGridData(gridData);
+                                    setGlobalGridVisible(true);
+                                  }
+                                }}
+                              >
+                                <Ionicons name="film" size={10} color="#0ea5e9" style={{ marginRight: 4 }} />
+                                <Text style={styles.movieBadgeText}>
+                                  {getFilteredItems(item).movies.length} Movies
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            {getFilteredItems(item).series.length > 0 && (
+                              <TouchableOpacity 
+                                style={[
+                                  styles.typeBadge, 
+                                  styles.seriesBadge
+                                ]}
+                                onPress={() => {
+                                  const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
+                                  const gridData = ALL_ITEMS.filter(m => seriesIds.has(m.id));
+                                  if (gridData.length > 0) {
+                                    setGlobalGridTitle(`${item.title} - Series`);
+                                    setGlobalGridData(gridData);
+                                    setGlobalGridVisible(true);
+                                  }
+                                }}
+                              >
+                                <Ionicons name="tv" size={10} color="#a855f7" style={{ marginRight: 4 }} />
+                                <Text style={styles.seriesBadgeText}>
+                                  {getFilteredItems(item).series.length} Series
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            {getFilteredItems(item).vjs.length > 0 && (
+                              <View style={styles.vjPillsRow}>
+                                {getFilteredItems(item).vjs.map((vj, idx) => {
+                                  return (
+                                    <View 
+                                      key={idx} 
+                                      style={styles.vjPill}
+                                    >
+                                      <Text style={styles.vjPillText}>
+                                        {vj.name}
+                                      </Text>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                      {isUnread && (
+                        <View style={styles.newBadgePill}>
+                          <View style={styles.pillSheen} />
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+                      {isRead && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' }}>
+                          <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={[styles.notificationContent, styles.ratingContent]}>
+              <Text style={styles.ratingTitle}>Rate your experience</Text>
+              <Text style={styles.ratingSub}>
+                Tap a star to give your feedback
+              </Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setSelectedRating(star)}
+                    activeOpacity={0.6}
+                    style={styles.starTouch}
+                  >
+                    <Ionicons
+                      name={star <= selectedRating ? "star" : "star-outline"}
+                      size={36}
+                      color="#f59e0b"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              {selectedRating > 0 && !isRatingSubmitted && (
+                <TouchableOpacity 
+                  style={styles.submitRatingBtn}
+                  onPress={() => submitRating(selectedRating)}
+                >
+                  <Text style={styles.submitRatingText}>Submit Rating</Text>
+                </TouchableOpacity>
+              )}
+
+              {isRatingSubmitted && (
+                <Text style={styles.thankYouText}>Thank you! Redirecting...</Text>
+              )}
+
+              <TouchableOpacity
+                onPress={() => {
+                  // Play store placeholder
+                  Linking.openURL("market://details?id=com.yourapp.package").catch(() => {
+                    Linking.openURL("https://play.google.com/store/apps/details?id=com.yourapp.package");
+                  });
+                  markRead('n5');
+                  setShowRatingModal(false);
+                }}
+                style={styles.playStoreBtn}
+              >
+                <Ionicons name="logo-google-playstore" size={16} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.playStoreBtnText}>Write a review on Play Store</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowRatingModal(false)}
+                style={styles.cancelRating}
+              >
+                <Text style={styles.cancelRatingText}>Later</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SafeAreaView>
+      </BlurView>
+    </Modal>
+  );
+}
+import { Easing } from "react-native";
+
+// ─── Marquee Placeholder Component ─────────────────────────────────────────────
+const MarqueePlaceholder = ({
+  text,
+  containerWidth,
+  style,
+}: {
+  text: string;
+  containerWidth: number;
+  style?: any;
+}) => {
+  const scrollAnim = useRef(new Animated.Value(0)).current;
+  const [textWidth, setTextWidth] = useState(0);
+
+  useEffect(() => {
+    if (textWidth > containerWidth - 40 && containerWidth > 0) {
+      // subtract padding/icon space
+      const scrollDistance = textWidth - (containerWidth - 40) + 20; // extra padding
+      const duration = scrollDistance * 60; // speed adjustment
+
+      const startAnimation = () => {
+        scrollAnim.setValue(0);
+        Animated.sequence([
+          Animated.delay(2000),
+          Animated.timing(scrollAnim, {
+            toValue: -scrollDistance,
+            duration: duration,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.delay(2000),
+          Animated.timing(scrollAnim, {
+            toValue: 0,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ]).start(() => startAnimation());
+      };
+
+      startAnimation();
+    } else {
+      scrollAnim.setValue(0);
+      scrollAnim.stopAnimation();
+    }
+  }, [text, textWidth, containerWidth]);
+
+  return (
+    <View
+      style={[{ overflow: "hidden", flex: 1, justifyContent: "center" }, style]}
+    >
+      <Animated.Text
+        numberOfLines={1}
+        onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+        style={[
+          {
+            color: "rgba(255,255,255,0.4)",
+            fontSize: 14,
+            transform: [{ translateX: scrollAnim }],
+            width: textWidth || "auto",
+          },
+        ]}
+      >
+        {text}
+      </Animated.Text>
+    </View>
+  );
+};
+
+// ─── Search Overlay (Universal) ─────────────────────────────────────────────
+function SearchOverlay({
+  visible,
+  onClose,
+  onSelect,
+  vjOnly = false,
+  autoFocusRequested = false,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (m: Movie) => void;
+  vjOnly?: boolean;
+  autoFocusRequested?: boolean;
+}) {
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [query, setQuery] = useState("");
+  const [subCategory, setSubCategory] = useState<string | null>(null);
+  const [discoveryMode, setDiscoveryMode] = useState<"trending" | "sections">(
+    "trending",
+  );
+  const [selectedType, setSelectedType] = useState<"Movie" | "Series" | "Mini Series" | null>(
+    null,
+  );
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rating" | null>(
+    null,
+  );
+  const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
+  const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
+
+  const toggleFilter = (key: string) => {
+    setExpandedFilter((prev) => (prev === key ? null : key));
+  };
+
+  const clearFilters = (stepByStep = false) => {
+    if (stepByStep) {
+      if (expandedFilter) {
+        setExpandedFilter(null);
+      } else if (selectedGenre) {
+        setSelectedGenre(null);
+        setExpandedFilter("genre");
+      } else if (selectedYear) {
+        setSelectedYear(null);
+        setExpandedFilter("year");
+      } else if (selectedVJ) {
+        setSelectedVJ(null);
+        setExpandedFilter("vj");
+      } else if (selectedType) {
+        setSelectedType(null);
+      } else {
+        setQuery("");
+        setSortBy(null);
+      }
+    } else {
+      setSelectedType(null);
+      setSelectedGenre(null);
+      setSelectedYear(null);
+      setSelectedVJ(null);
+      setSelectedSeason(null);
+      setSortBy(null);
+      setExpandedFilter(null);
+      setQuery("");
+    }
+  };
+
+  const inputRef = useRef<TextInput>(null);
+  const resultsRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (visible && autoFocusRequested) {
+      setTimeout(() => inputRef.current?.focus(), 250);
+    }
+  }, [visible, autoFocusRequested]);
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery("");
+      setSubCategory(null);
+      setSelectedType(null);
+      setSelectedGenre(null);
+      setSelectedYear(null);
+      setSelectedVJ(null);
+      setSelectedSeason(null);
+      setSortBy(null);
+      setExpandedFilter(null);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (selectedType && selectedType !== "Series" && selectedSeason) {
+      setSelectedSeason(null);
+    }
+  }, [selectedType]);
+
+  // Auto-scroll to top when query changes
+  useEffect(() => {
+    if (query.trim().length > 0) {
+      resultsRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, [query]);
+
+  useEffect(() => {
+    // Keyboard listeners removed in favor of KeyboardAvoidingView
+  }, []);
+
+  const getPlaceholderText = () => {
+    if (!selectedGenre && !selectedYear && !selectedVJ)
+      return "Search movies, series, genres, VJs, year";
+
+    let parts = ["Search"];
+    if (selectedGenre) parts.push(selectedGenre);
+    parts.push("movies");
+    if (selectedVJ) parts.push(`by ${selectedVJ}`);
+    if (selectedYear) parts.push(`in ${selectedYear}`);
+
+    return parts.join(" ");
+  };
+
+  const hasActiveFilters =
+    selectedType !== null ||
+    selectedGenre !== null ||
+    selectedYear !== null ||
+    selectedVJ !== null ||
+    selectedSeason !== null ||
+    sortBy !== null;
+
+  const isFiltering =
+    query.trim().length > 0 || hasActiveFilters || expandedFilter !== null;
+
+  const isPerformingFiltering =
+    hasActiveFilters || expandedFilter !== null || discoveryMode === "sections";
+
+  const results = isFiltering
+    ? (() => {
+        const q = query.toLowerCase().trim();
+        let base: (Movie | Series)[] = ALL_ITEMS;
+
+        if (q) {
+          let searchQ = q;
+          // Aliases for sections
+          if (q === "trending movies") searchQ = "trending";
+          if (q === "newly released" || q === "newly movie" || q === "latest") searchQ = "new releases";
+          if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
+
+          // 1. Match any section names (e.g. "Action", "Trending", "New") and grab their movies
+          const sectionMatches = ALL_ROWS.filter((r) => r.title.toLowerCase().includes(searchQ))
+            .flatMap((r) => r.data);
+
+          // 2. Fuzzy search across all items (movies + series)
+          const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
+          const attributeMatches = ALL_ITEMS.filter((m) => {
+            return (
+              m.title.toLowerCase().includes(searchQ) ||
+              m.genre.toLowerCase().includes(searchQ) ||
+              String(m.year).includes(searchQ) ||
+              m.vj.toLowerCase().includes(vjSearchQuery) ||
+              m.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
+            );
+          });
+
+          // Combine and deduplicate
+          const combined = [...sectionMatches, ...attributeMatches];
+          base = Array.from(new Map(combined.map(item => [item.id, item])).values());
+          
+          // Sort if we typed a vj name to bubble up VJ content matching the exact VJ
+          if (searchQ.startsWith("vj ") || ALL_ITEMS.some(m => m.vj.toLowerCase() === searchQ)) {
+            base.sort((a, b) => {
+               const aVJ = a.vj.toLowerCase() === vjSearchQuery || a.vj.toLowerCase() === searchQ;
+               const bVJ = b.vj.toLowerCase() === vjSearchQuery || b.vj.toLowerCase() === searchQ;
+               if (aVJ && !bVJ) return -1;
+               if (!aVJ && bVJ) return 1;
+               if (b.year !== a.year) return b.year - a.year;
+               return parseFloat(b.rating) - parseFloat(a.rating);
+            });
+          }
+        }
+
+        let filtered = base;
+        if (selectedVJ) {
+          const vjQ = selectedVJ.toLowerCase();
+          const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
+          filtered = filtered.filter(
+            (m) => m.vj.toLowerCase() === vjName || m.vj.toLowerCase() === vjQ,
+          );
+        }
+        if (selectedType) {
+          filtered = filtered.filter((m) => {
+            const isSeries = "seasons" in m;
+            if (selectedType === "Movie") return !isSeries;
+            if (selectedType === "Series") return isSeries && !(m as any).isMiniSeries;
+            if (selectedType === "Mini Series") return isSeries && !!(m as any).isMiniSeries;
+            return true;
+          });
+        }
+        if (selectedGenre)
+          filtered = filtered.filter((m) => m.genre.includes(selectedGenre));
+        if (selectedYear)
+          filtered = filtered.filter((m) => String(m.year) === selectedYear);
+        if (selectedSeason) {
+          filtered = filtered.filter((m) => {
+            if ("seasons" in m) {
+              return m.seasons >= parseInt(selectedSeason);
+            }
+            return false;
+          });
+        }
+
+        if (sortBy === "newest")
+          filtered = [...filtered].sort((a, b) => b.year - a.year);
+        else if (sortBy === "oldest")
+          filtered = [...filtered].sort((a, b) => a.year - b.year);
+        else if (sortBy === "rating")
+          filtered = [...filtered].sort(
+            (a, b) => parseFloat(b.rating) - parseFloat(a.rating),
+          );
+
+        return filtered;
+      })()
+    : [];
+
+  const renderFilters = () => (
+    <View style={styles.resultsHeader}>
+      {isFiltering ||
+      selectedType ||
+      selectedGenre ||
+      selectedYear ||
+      sortBy ? (
+        <View style={styles.resultsHeaderTop}>
+          {isPerformingFiltering ? (
+            <>
+              <TouchableOpacity
+                style={styles.clearFiltersBtn}
+                onPress={() => clearFilters(true)}
+              >
+                <BlurView
+                  intensity={40}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={styles.clearFiltersText}>Clear Filters</Text>
+                <Ionicons
+                  name="close-circle"
+                  size={14}
+                  color="#fff"
+                  style={{ marginLeft: 6 }}
+                />
+              </TouchableOpacity>
+
+              {/* By Search Pill - Green, returns focus to search */}
+              <TouchableOpacity
+                style={[
+                  styles.clearFiltersBtn,
+                  {
+                    backgroundColor: "rgba(34, 197, 94, 0.12)",
+                    borderColor: "rgba(34, 197, 94, 0.3)",
+                    marginLeft: 8,
+                  },
+                ]}
+                onPress={() => {
+                  clearFilters(); // Clear all
+                  setTimeout(() => inputRef.current?.focus(), 100);
+                }}
+              >
+                <BlurView
+                  intensity={40}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={[styles.clearFiltersText, { color: "#4ade80" }]}>
+                  By Search
+                </Text>
+                <Ionicons
+                  name="search"
+                  size={13}
+                  color="#4ade80"
+                  style={{ marginLeft: 6 }}
+                />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+
+
+        </View>
+      ) : null}
+
+      {query.trim().length === 0 && (
+        <>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterCategoryContainer}
+        >
+        <TouchableOpacity
+          style={[
+            styles.categoryBtn,
+            (expandedFilter === "vj" || selectedVJ) &&
+              styles.categoryBtnActive,
+          ]}
+          onPress={() => toggleFilter("vj")}
+        >
+          <BlurView
+            intensity={30}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <Text
+            style={[
+              styles.categoryBtnText,
+              (expandedFilter === "vj" || selectedVJ) &&
+                styles.categoryBtnTextActive,
+            ]}
+          >
+            {selectedVJ || "VJ,s"}
+          </Text>
+          <Ionicons
+            name={expandedFilter === "vj" ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#fff"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.categoryBtn,
+            (expandedFilter === "type" || selectedType) &&
+              styles.categoryBtnActive,
+          ]}
+          onPress={() => toggleFilter("type")}
+        >
+          <BlurView
+            intensity={30}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <Text
+            style={[
+              styles.categoryBtnText,
+              (expandedFilter === "type" || selectedType) &&
+                styles.categoryBtnTextActive,
+            ]}
+          >
+            {selectedType
+              ? selectedType === "Movie"
+                ? "Movies"
+                : selectedType === "Mini Series"
+                ? "Mini"
+                : "Series"
+              : "Type"}
+          </Text>
+          <Ionicons
+            name={expandedFilter === "type" ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#fff"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        {selectedType === "Series" && (
+          <TouchableOpacity
+            style={[
+              styles.categoryBtn,
+              (expandedFilter === "season" || selectedSeason) &&
+                styles.categoryBtnActive,
+            ]}
+            onPress={() => toggleFilter("season")}
+          >
+            <BlurView
+              intensity={30}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <Text
+              style={[
+                styles.categoryBtnText,
+                (expandedFilter === "season" || selectedSeason) &&
+                  styles.categoryBtnTextActive,
+              ]}
+            >
+              {selectedSeason ? `S ${selectedSeason}+` : "Season"}
+            </Text>
+            <Ionicons
+              name={expandedFilter === "season" ? "chevron-up" : "chevron-down"}
+              size={14}
+              color="#fff"
+              style={{ marginLeft: 6 }}
+            />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.categoryBtn,
+            (expandedFilter === "sort" || sortBy) && styles.categoryBtnActive,
+          ]}
+          onPress={() => toggleFilter("sort")}
+        >
+          <BlurView
+            intensity={30}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <Text
+            style={[
+              styles.categoryBtnText,
+              (expandedFilter === "sort" || sortBy) &&
+                styles.categoryBtnTextActive,
+            ]}
+          >
+            {sortBy
+              ? sortBy === "rating"
+                ? "Top Rated"
+                : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)
+              : "Sort"}
+          </Text>
+          <Ionicons
+            name={expandedFilter === "sort" ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#fff"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.categoryBtn,
+            (expandedFilter === "genre" || selectedGenre) &&
+              styles.categoryBtnActive,
+          ]}
+          onPress={() => toggleFilter("genre")}
+        >
+          <BlurView
+            intensity={30}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <Text
+            style={[
+              styles.categoryBtnText,
+              (expandedFilter === "genre" || selectedGenre) &&
+                styles.categoryBtnTextActive,
+            ]}
+          >
+            {selectedGenre || "Genre"}
+          </Text>
+          <Ionicons
+            name={expandedFilter === "genre" ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#fff"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.categoryBtn,
+            (expandedFilter === "year" || selectedYear) &&
+              styles.categoryBtnActive,
+          ]}
+          onPress={() => toggleFilter("year")}
+        >
+          <BlurView
+            intensity={30}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <Text
+            style={[
+              styles.categoryBtnText,
+              (expandedFilter === "year" || selectedYear) &&
+                styles.categoryBtnTextActive,
+            ]}
+          >
+            {selectedYear || "Year"}
+          </Text>
+          <Ionicons
+            name={expandedFilter === "year" ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#fff"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        </ScrollView>
+
+        <View style={styles.multiSelectionContainer}>
+        {expandedFilter === "sort" && (
+          <View style={styles.selectionTrayWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  sortBy === "newest" && styles.filterPillActive,
+                ]}
+                onPress={() => {
+                  const newVal = sortBy === "newest" ? null : "newest";
+                  setSortBy(newVal);
+                  if (newVal === "newest") {
+                    setYearCategory("new");
+                    if (selectedYear && parseInt(selectedYear) < 2020) {
+                      setSelectedYear(null);
+                    }
+                  }
+                  setExpandedFilter(null);
+                }}
+              >
+                <BlurView
+                  intensity={30}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+                <Ionicons
+                  name="flash"
+                  size={12}
+                  color={sortBy === "newest" ? "#fff" : "rgba(255,255,255,0.6)"}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    sortBy === "newest" && styles.filterPillTextActive,
+                  ]}
+                >
+                  Newest
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  sortBy === "oldest" && styles.filterPillActive,
+                ]}
+                onPress={() => {
+                  const newVal = sortBy === "oldest" ? null : "oldest";
+                  setSortBy(newVal);
+                  if (newVal === "oldest") {
+                    setYearCategory("oldest");
+                    if (selectedYear && parseInt(selectedYear) >= 2020) {
+                      setSelectedYear(null);
+                    }
+                  }
+                  setExpandedFilter(null);
+                }}
+              >
+                <BlurView
+                  intensity={30}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    sortBy === "oldest" && styles.filterPillTextActive,
+                  ]}
+                >
+                  Oldest
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {expandedFilter === "type" && (
+          <View style={styles.selectionTrayWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              {(["Movie", "Series", "Mini Series"] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[
+                    styles.filterPill,
+                    selectedType === t && styles.filterPillActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedType(selectedType === t ? null : t);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <BlurView
+                    intensity={30}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      selectedType === t && styles.filterPillTextActive,
+                    ]}
+                  >
+                    {t === "Movie" ? "Movies" : t === "Series" ? "Series" : "Mini Series"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {expandedFilter === "genre" && (
+          <View style={styles.selectionTrayWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              {ALL_GENRES.map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  style={[
+                    styles.filterPill,
+                    selectedGenre === g && styles.filterPillActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedGenre(selectedGenre === g ? null : g);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <BlurView
+                    intensity={30}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      selectedGenre === g && styles.filterPillTextActive,
+                    ]}
+                  >
+                    {g}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {expandedFilter === "year" && (
+          <View style={styles.selectionTrayWrapper}>
+            {/* Year Sub-Toggle - Hidden if sortBy newest/oldest is active */}
+            {!sortBy && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  paddingHorizontal: 16,
+                  marginBottom: 4,
+                  gap: 6,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setYearCategory("new")}
+                  style={[
+                    styles.yearSubToggle,
+                    yearCategory === "new" && styles.yearSubToggleActiveNew,
+                  ]}
+                >
+                  <BlurView
+                    intensity={20}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.yearSubToggleText,
+                      yearCategory === "new" && styles.yearSubToggleTextActiveNew,
+                    ]}
+                  >
+                    NEW
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setYearCategory("oldest")}
+                  style={[
+                    styles.yearSubToggle,
+                    yearCategory === "oldest" && styles.yearSubToggleActiveOldest,
+                  ]}
+                >
+                  <BlurView
+                    intensity={20}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.yearSubToggleText,
+                      yearCategory === "oldest" &&
+                        styles.yearSubToggleTextActiveOldest,
+                    ]}
+                  >
+                    OLDEST
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingLeft: 16,
+                }}
+              >
+                {sortBy === "newest" ||
+                (yearCategory === "new" && sortBy !== "oldest")
+                  ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) =>
+                      String(2026 - i),
+                    ).map((y) => (
+                      <TouchableOpacity
+                        key={y}
+                        style={[
+                          styles.filterPill,
+                          selectedYear === y && styles.filterPillActive,
+                        ]}
+                        onPress={() => {
+                          setSelectedYear(selectedYear === y ? null : y);
+                          setExpandedFilter(null);
+                        }}
+                      >
+                        <BlurView
+                          intensity={30}
+                          tint="dark"
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <Text
+                          style={[
+                            styles.filterPillText,
+                            selectedYear === y && styles.filterPillTextActive,
+                          ]}
+                        >
+                          {y}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  : Array.from({ length: 2019 - 1975 + 1 }, (_, i) =>
+                      String(2019 - i),
+                    ).map((y) => (
+                      <TouchableOpacity
+                        key={y}
+                        style={[
+                          styles.filterPill,
+                          selectedYear === y && styles.filterPillActive,
+                        ]}
+                        onPress={() => {
+                          setSelectedYear(selectedYear === y ? null : y);
+                          setExpandedFilter(null);
+                        }}
+                      >
+                        <BlurView
+                          intensity={30}
+                          tint="dark"
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <Text
+                          style={[
+                            styles.filterPillText,
+                            selectedYear === y && styles.filterPillTextActive,
+                          ]}
+                        >
+                          {y}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {expandedFilter === "season" && (
+          <View style={styles.selectionTrayWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              {Array.from({ length: 20 }, (_, i) => String(i + 1)).map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[
+                    styles.filterPill,
+                    selectedSeason === s && styles.filterPillActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedSeason(selectedSeason === s ? null : s);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <BlurView
+                    intensity={30}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      selectedSeason === s && styles.filterPillTextActive,
+                    ]}
+                  >
+                    Season {s}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {expandedFilter === "vj" && (
+          <View style={styles.selectionTrayWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarScroll}
+            >
+              {ALL_VJS.map((v) => (
+                <TouchableOpacity
+                  key={v}
+                  style={[
+                    styles.filterPill,
+                    selectedVJ === v && styles.filterPillActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedVJ(selectedVJ === v ? null : v);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <BlurView
+                    intensity={30}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      selectedVJ === v && styles.filterPillTextActive,
+                    ]}
+                  >
+                    {v}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+        </View>
+        </>
+      )}
+    </View>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      statusBarTranslucent
+      onRequestClose={() => {
+        if (isFiltering) {
+          setQuery("");
+          setSelectedVJ(null);
+          clearFilters();
+        } else onClose();
+      }}
+    >
+      <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
+              {/* ── Fixed Top Search Bar ── */}
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  pointerEvents="box-none"
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    right: 12,
+                    top: 10, // slightly lower
+                    flexDirection: "row",
+                    alignItems: "center",
+                    zIndex: 1000,
+                    height: 50, // outer container
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (expandedFilter) {
+                        setExpandedFilter(null);
+                      } else if (hasActiveFilters) {
+                        clearFilters(true); // Step by step
+                      } else {
+                        onClose();
+                      }
+                    }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 6,
+                    }}
+                  >
+                    {!isPerformingFiltering && <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />}
+                  </TouchableOpacity>
+                  {!isPerformingFiltering && (
+                    <View
+                      style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
+                      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+                    >
+                      <Ionicons
+                        name="search"
+                        size={15}
+                        color="rgba(255,255,255,0.4)"
+                        style={{ marginLeft: 10, marginRight: 6 }}
+                      />
+                      <TextInput
+                        ref={inputRef}
+                        style={[styles.universalSearchInput, { paddingHorizontal: 0 }]}
+                        placeholder={getPlaceholderText()}
+                        placeholderTextColor="rgba(255,255,255,0.45)"
+                        value={query}
+                        onChangeText={(text) => {
+                          if (
+                            text.length > 0 &&
+                            query.length === 0 &&
+                            results.length === 0 &&
+                            (selectedType || selectedGenre || selectedYear || selectedVJ || selectedSeason || sortBy)
+                          ) {
+                            clearFilters();
+                          }
+                          setQuery(text);
+                        }}
+                        returnKeyType="search"
+                        multiline={false}
+                        numberOfLines={1}
+                        autoFocus={false}
+                      />
+                      {isFiltering && query.length > 0 && (
+                        <View style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          backgroundColor: "rgba(91,95,239,0.25)",
+                          borderRadius: 10,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          marginRight: 4,
+                        }}>
+                          <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "700" }}>
+                            {results.length}
+                          </Text>
+                        </View>
+                      )}
+                      {query.length > 0 && (
+                        <TouchableOpacity onPress={() => setQuery("")} style={{ padding: 6 }}>
+                          <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.45)" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </KeyboardAvoidingView>
+
+              <View style={{ flex: 1, marginTop: isPerformingFiltering ? 0 : 40 }}>
+              {isFiltering ? (
+                <View style={{ flex: 1 }}>
+                  {renderFilters()}
+                  <FlatList
+                    ref={resultsRef}
+                    keyboardShouldPersistTaps="always"
+                    data={results}
+                    keyExtractor={(m, i) => `${m.id}-${i}`}
+                    numColumns={3}
+                    contentContainerStyle={{
+                      paddingHorizontal: 16,
+                      paddingBottom: 160,
+                    }}
+                    columnWrapperStyle={{
+                      justifyContent: "flex-start",
+                      gap: 6,
+                      marginBottom: 10,
+                    }}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.searchResultCard}
+                        onPress={() => {
+                          onSelect(item);
+                        }}
+                      >
+                        <View>
+                          <Image
+                            source={{ uri: item.poster }}
+                            style={styles.searchResultPoster}
+                          />
+                          <View style={styles.vjBadge}>
+                            <Text style={styles.vjBadgeText}>{item.vj}</Text>
+                          </View>
+                          <View style={styles.genreBadge}>
+                            <Text style={[styles.genreBadgeText, "seasons" in item && { color: "#fff" }]}>
+                              {"seasons" in item ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
+                            </Text>
+                          </View>
+                          {"seasons" in item && (
+                            <View style={styles.epBadgePremium}>
+                              <Ionicons name="ellipsis-horizontal" size={10} color="#FFC107" style={{ marginRight: 2 }} />
+                              <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.searchResultInfo}>
+                          <Text
+                            style={styles.searchResultTitle}
+                            numberOfLines={1}
+                          >
+                            {item.title}
+                          </Text>
+                          <Text
+                            style={styles.searchResultMetadata}
+                            numberOfLines={1}
+                          >
+                            {item.year} ·{" "}
+                            {"seasons" in item
+                              ? ((item as any).isMiniSeries ? "Mini Series" : `Season ${item.seasons}`)
+                              : item.duration}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                      <View style={styles.emptyResults}>
+                        <Text style={styles.emptyText}>
+                          No matches found for "{query}"
+                        </Text>
+                      </View>
+                    }
+                  />
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always"
+                  contentContainerStyle={{ paddingBottom: 160 }}
+                >
+                  {vjOnly && (
+                    <View style={styles.discoverySection}>
+                      <View style={styles.vjHeaderPill}>
+                        <LinearGradient
+                          colors={["#6C6FF5", "#5B5FEF", "#4A4EDD"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <View style={styles.pillSheen} />
+                        <Text style={styles.vjHeaderPillText}>
+                          LIST OF ALL VJS 🗣️
+                        </Text>
+                      </View>
+
+                      <View style={styles.vjGlassWell}>
+                        <BlurView
+                          intensity={15}
+                          tint="dark"
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <View style={styles.trendingWrap}>
+                          {ALL_VJS.map((vj) => (
+                            <TouchableOpacity
+                              key={vj}
+                              style={styles.discoveryChip}
+                              onPress={() => setSelectedVJ(vj)}
+                            >
+                              <BlurView
+                                intensity={35}
+                                tint="dark"
+                                style={StyleSheet.absoluteFill}
+                              />
+                              <Text style={styles.trendingText}>{vj}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+              </View>
+
+              {/* ── Bottom Quick Search / Sections ── */}
+              {!isFiltering && !vjOnly && (
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  style={[
+                    styles.universalSearchBottomFilters,
+                    { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 2 }
+                  ]}
+                >
+                  {/* Filter Chips Layer — above the pill switcher */}
+                  <View style={[styles.trendingWrap, { marginBottom: 8, paddingHorizontal: 20 }]}>
+                    {discoveryMode === "trending" ? (
+                      SEARCH_OPTIONS.map((topic) => (
+                        <TouchableOpacity
+                          key={topic}
+                          style={styles.discoveryChip}
+                          onPress={() => {
+                            const t = topic.toLowerCase();
+                            if (t === "by sections") setDiscoveryMode("sections");
+                            else if (t === "by movies") setSelectedType("Movie");
+                            else if (t === "by series") setSelectedType("Series");
+                            else if (t === "by genres") toggleFilter("genre");
+                            else if (t === "by vjs" || t === "by vj's") toggleFilter("vj");
+                            else if (t === "by year") toggleFilter("year");
+                            else setQuery(topic);
+                          }}
+                        >
+                          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                          <Text style={styles.trendingText}>{topic}</Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      DISCOVERY_SECTIONS.map((section) => (
+                        <TouchableOpacity
+                          key={section}
+                          style={styles.discoveryChip}
+                          onPress={() => setQuery(section)}
+                        >
+                          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                          <Text style={styles.trendingText}>{section}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+
+                  {/* Quick Search / Quick Sections pill switcher — at the bottom */}
+                  <View
+                    style={[
+                      styles.discoverySwitcher,
+                      {
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        overflow: "hidden",
+                        marginHorizontal: 20,
+                      },
+                    ]}
+                  >
+                    <BlurView
+                      intensity={40}
+                      tint="dark"
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.switcherTab,
+                        discoveryMode === "trending" &&
+                          styles.switcherTabActive,
+                      ]}
+                      onPress={() => setDiscoveryMode("trending")}
+                    >
+                      {discoveryMode === "trending" && (
+                        <View style={styles.discoveryPillSheen} />
+                      )}
+                      <Ionicons
+                        name="flame"
+                        size={16}
+                        color={
+                          discoveryMode === "trending"
+                            ? "#fff"
+                            : "rgba(255,255,255,0.4)"
+                        }
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text
+                        style={[
+                          styles.switcherTabText,
+                          discoveryMode === "trending" &&
+                            styles.switcherTabTextActive,
+                        ]}
+                      >
+                        Quick Search
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.switcherTab,
+                        discoveryMode === "sections" &&
+                          styles.switcherTabActive,
+                      ]}
+                      onPress={() => setDiscoveryMode("sections")}
+                    >
+                      {discoveryMode === "sections" && (
+                        <View style={styles.discoveryPillSheen} />
+                      )}
+                      <Ionicons
+                        name="grid"
+                        size={16}
+                        color={
+                          discoveryMode === "sections"
+                            ? "#fff"
+                            : "rgba(255,255,255,0.4)"
+                        }
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text
+                        style={[
+                          styles.switcherTabText,
+                          discoveryMode === "sections" &&
+                            styles.switcherTabTextActive,
+                        ]}
+                      >
+                        Quick Sections
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </KeyboardAvoidingView>
+              )}
+            </View>
+          </SafeAreaView>
+        </View>
+      </BlurView>
+    </Modal>
+  );
+}
+
+// ─── Custom Tab Bar ──────────────────────────────────────────────────────────
+function CustomTabBar() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const path = usePathname();
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchVjOnly, setSearchVjOnly] = useState(false);
+  const [searchAutoFocus, setSearchAutoFocus] = useState(false);
+  const [notificationVisible, setNotificationVisible] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
+  const [updateDismissCount, setUpdateDismissCount] = useState(0);
+
+  // Emit events when search or notification overlays are toggled to auto-mute hero video
+  useEffect(() => {
+    DeviceEventEmitter.emit("searchOverlayVisible", searchVisible);
+  }, [searchVisible]);
+
+  useEffect(() => {
+    DeviceEventEmitter.emit("notificationOverlayVisible", notificationVisible);
+  }, [notificationVisible]);
+
+  const [hasThreeButtonNav, setHasThreeButtonNav] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'android' && insets.bottom > 28) {
+      setHasThreeButtonNav(true);
+    }
+  }, [insets.bottom]);
+
+  const [isHomeHeaderBlurred, setIsHomeHeaderBlurred] = useState(false);
+  const homeHeaderOpacity = useRef(new Animated.Value(0)).current;
+  const [homeScrollY, setHomeScrollY] = useState(0);
+  const [isMenuHeaderBlurred, setIsMenuHeaderBlurred] = useState(false);
+  const menuHeaderOpacity = useRef(new Animated.Value(0)).current;
+  const [menuScrollY, setMenuScrollY] = useState(0);
+  const inPlaceSearchRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    Animated.timing(homeHeaderOpacity, {
+      toValue: isHomeHeaderBlurred ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isHomeHeaderBlurred]);
+
+  useEffect(() => {
+    Animated.timing(menuHeaderOpacity, {
+      toValue: isMenuHeaderBlurred ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isMenuHeaderBlurred]);
+
+  const dynamicBarBottom = Platform.OS === 'android' 
+    ? (hasThreeButtonNav ? 50 : (insets.bottom > 0 ? insets.bottom : 16))
+    : 28;
+
+  const dynamicSearchBottom = Platform.OS === 'ios' ? 20 : 16;
+
+
+  const [showInPlaceSearch, setShowInPlaceSearch] = useState(false);
+  const [inPlaceSearchQuery, setInPlaceSearchQuery] = useState("");
+  const [returnSeries, setReturnSeries] = useState<any>(null);
+
+  useEffect(() => {
+    if (showInPlaceSearch) {
+      const timer = setTimeout(() => {
+        inPlaceSearchRef.current?.focus();
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, [showInPlaceSearch]);
+
+  const segment = path.replace(/^\/\(tabs\)/, "") || "/";
+  const active = (route: string) => {
+    const seg = route.replace(/^\/\(tabs\)/, "") || "/";
+    if (seg === "/")
+      return segment === "/" || segment === "/index" || segment === "";
+    return segment === seg || segment.startsWith(seg + "/");
+  };
+
+  const unreadCount = MOCK_NOTIFICATIONS.filter(n => !readIds.has(n.id)).length;
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("clearSeriesSearch", () => {
+      setInPlaceSearchQuery("");
+    });
+    const sub2 = DeviceEventEmitter.addListener("openSearchOverlay", (data?: { autoFocus?: boolean }) => {
+      // Force a re-trigger of focus by setting to false first if already true
+      setSearchAutoFocus(false);
+      setSearchVisible(true);
+      if (data?.autoFocus) {
+        setTimeout(() => setSearchAutoFocus(true), 50);
+      }
+    });
+    const sub3 = DeviceEventEmitter.addListener("homeHeaderScroll", (y: number) => {
+      setHomeScrollY(y);
+      // Threshold: appear as the hero banner leaves the top area
+      if (y > 360) { // Delayed threshold
+        setIsHomeHeaderBlurred(true);
+      } else {
+        setIsHomeHeaderBlurred(false);
+      }
+    });
+    const sub4 = DeviceEventEmitter.addListener("menuHeaderScroll", (y: number) => {
+      setMenuScrollY(y);
+      if (y > 50) {
+        setIsMenuHeaderBlurred(true);
+      } else {
+        setIsMenuHeaderBlurred(false);
+      }
+    });
+
+    const sub5 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", (series: any) => {
+      setReturnSeries(series);
+      setShowInPlaceSearch(true);
+      DeviceEventEmitter.emit("seriesSearchQuery", "");
+    });
+
+    return () => {
+      sub.remove();
+      sub2.remove();
+      sub3.remove();
+      sub4.remove();
+      sub5.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showInPlaceSearch) {
+        setShowInPlaceSearch(false);
+        setInPlaceSearchQuery("");
+        DeviceEventEmitter.emit("seriesSearchClosed");
+        Keyboard.dismiss();
+        return true; // Prevent default behavior
+      }
+      return false; // allow default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
+
+    return () => backHandler.remove();
+  }, [showInPlaceSearch]);
+
+  useEffect(() => {
+    if (!active("/(tabs)/saved") && showInPlaceSearch) {
+      setShowInPlaceSearch(false);
+      setInPlaceSearchQuery("");
+      DeviceEventEmitter.emit("seriesSearchClosed");
+    }
+  }, [segment, showInPlaceSearch]);
+
+  useEffect(() => {
+    // Keyboard listeners removed in favor of KeyboardAvoidingView
+  }, []);
+
+  const toggleCheckedItem = (id: string) => {
+    setCheckedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+  const [isUpdateApplied, setIsUpdateApplied] = useState(false);
+  const [expandedType, setExpandedType] = useState<"movies" | "series" | "vjs" | null>(null);
+  const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
+  const [reopenOnBack, setReopenOnBack] = useState(false);
+  const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
+  const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
+  const [seriesCount, setSeriesCount] = useState<number | null>(null);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Premium Grid View State for Notifications
+  const [globalGridVisible, setGlobalGridVisible] = useState(false);
+  const [globalGridTitle, setGlobalGridTitle] = useState("");
+  const [globalGridData, setGlobalGridData] = useState<(Movie | Series)[]>([]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("openRatingModal", () => {
+      setSelectedRating(0);
+      setIsRatingSubmitted(false);
+      setShowRatingModal(true);
+      setNotificationVisible(true);
+    });
+    const sub2 = DeviceEventEmitter.addListener("ratingDonePermanent", () => {
+      setIsRatingPermanentlyRemoved(true);
+    });
+    const sub3 = DeviceEventEmitter.addListener("seriesCountUpdate", (count: number) => {
+      setSeriesCount(count);
+    });
+    return () => {
+      sub.remove();
+      sub2.remove();
+      sub3.remove();
+    };
+  }, []);
+
+  // Auto-reopen overlay when returning home if navigate from sub-item
+  useEffect(() => {
+    if (reopenOnBack && path === "/(tabs)") {
+      if (lastViewedItemId) {
+        toggleCheckedItem(lastViewedItemId);
+        setLastViewedItemId(null);
+      }
+      setNotificationVisible(true);
+      setReopenOnBack(false);
+    }
+  }, [path, reopenOnBack, lastViewedItemId]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("previewClosed", () => {
+      if (reopenOnBack) {
+        if (lastViewedItemId) {
+          toggleCheckedItem(lastViewedItemId);
+          setLastViewedItemId(null);
+        }
+        setNotificationVisible(true);
+        setReopenOnBack(false);
+      }
+    });
+    return () => sub.remove();
+  }, [reopenOnBack, lastViewedItemId]);
+
+  useEffect(() => {
+    MOCK_NOTIFICATIONS.forEach(item => {
+      if (!readIds.has(item.id) && (item.moviesList || item.seriesList || item.vjsDetailed)) {
+        const movies = (item.moviesList || []).filter(m => !checkedItemIds.has(m.id));
+        const series = (item.seriesList || []).filter(s => !checkedItemIds.has(s.id));
+        const vjs = (item.vjsDetailed || []).filter(v => !checkedItemIds.has(v.id));
+        if (movies.length === 0 && series.length === 0 && vjs.length === 0) {
+          markRead(item.id);
+        }
+      }
+    });
+  }, [checkedItemIds]);
+
+  useEffect(() => {
+    const startRotation = () => {
+      // Sequence: Start at image (0), delay 10s -> Flip to text (0.5), delay 10s -> Flip to image (1 -> resets to 0)
+      Animated.sequence([
+        Animated.delay(9200), // Total 10s state (9.2s delay + 0.8s flip)
+        Animated.timing(rotateAnim, {
+          toValue: 0.5, // Flip halfway (180 deg) to show text
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.delay(9200), // Total 10s state (9.2s delay + 0.8s flip)
+        Animated.timing(rotateAnim, {
+          toValue: 1, // Complete the flip back to image (360 deg)
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        rotateAnim.setValue(0); // Reset for infinite loop
+        startRotation();
+      });
+    };
+    startRotation();
+  }, []);
+
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"], // Full flip
+  });
+  const logoOpacity = rotateAnim.interpolate({
+    inputRange: [0, 0.249, 0.25, 0.75, 0.751, 1],
+    outputRange: [1, 1, 0, 0, 1, 1],
+  });
+
+  const textOpacity = rotateAnim.interpolate({
+    inputRange: [0, 0.249, 0.25, 0.75, 0.751, 1],
+    outputRange: [0, 0, 1, 1, 0, 0],
+  });
+
+  // Segment logic moved to top of component
+
+  const markRead = (id: string) => {
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    if (id === "n2" && !isUpdateApplied) {
+      setUpdateDismissCount((prev) => Math.min(prev + 1, 3));
+    }
+  };
+
+  // Reset update notification to "Unread" if dismissed but not locked
+  useEffect(() => {
+    if (notificationVisible && updateDismissCount < 3) {
+      setReadIds((prev) => {
+        if (prev.has("n2")) {
+          const next = new Set(prev);
+          next.delete("n2");
+          return next;
+        }
+        return prev;
+      });
+    }
+  }, [notificationVisible, updateDismissCount]);
+
+  const onSelect = (item: Notification) => {
+    if (item.type === "rating") {
+      setSelectedRating(0);
+      setIsRatingSubmitted(false);
+      setShowRatingModal(true);
+      return;
+    }
+    if (item.id === "n2") {
+      setIsUpdateApplied(true);
+    }
+    
+    // Handle "Trending VJs" or "New Release" collections
+    const hasMovies = item.moviesList && item.moviesList.length > 0;
+    const hasSeries = item.seriesList && item.seriesList.length > 0;
+    const isTrendingVj = item.vjsDetailed && item.vjsDetailed.length > 0;
+
+    if (item.title === "New Release" || item.title === "Trending Now" || isTrendingVj) {
+      let gridData: (Movie | Series)[] = [];
+      
+      const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
+      const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
+
+      if (movieIds.size > 0 || seriesIds.size > 0) {
+        // Collect specifically listed items first
+        gridData = ALL_ITEMS.filter(m => movieIds.has(m.id) || seriesIds.has(m.id));
+      } else if (isTrendingVj) {
+        // Collect movies for all featured VJs only if no specific list is provided
+        const vjNames = item.vjsDetailed?.map(v => v.name.toLowerCase()) || [];
+        gridData = ALL_ITEMS.filter(m => vjNames.some(name => m.vj.toLowerCase().includes(name)));
+      }
+
+      if (gridData.length > 0) {
+        setGlobalGridTitle(item.title);
+        setGlobalGridData(gridData);
+        setGlobalGridVisible(true);
+        return;
+      }
+    }
+
+    if (item.movieId) {
+      const fullMovie = ALL_ITEMS.find(m => m.id === item.movieId);
+      DeviceEventEmitter.emit("movieSelected", fullMovie || { id: item.movieId });
+      setNotificationVisible(false);
+    } else if (item.sectionTitle) {
+      setNotificationVisible(false);
+      setTimeout(() => {
+        DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
+      }, 300);
+    } else if (item.route) {
+      router.push(item.route as any);
+    }
+  };
+
+  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
+
+  const submitRating = (rating: number) => {
+    setIsRatingSubmitted(true);
+    setIsRatingPermanentlyRemoved(true);
+    // Simulate short delay for "Thank you" feeling before redirect
+    setTimeout(() => {
+      markRead('n5'); // Mark as read ONLY on submission
+      Linking.openURL("market://details?id=com.yourapp.package").catch(() => {
+        Linking.openURL("https://play.google.com/store/apps/details?id=com.yourapp.package");
+      });
+      setShowRatingModal(false);
+      setSelectedRating(0);
+      setIsRatingSubmitted(false);
+      setNotificationVisible(false);
+    }, 1200);
+  };
+
+  return (
+    <>
+      <GridModal
+        visible={globalGridVisible}
+        title={globalGridTitle}
+        data={globalGridData}
+        onClose={() => setGlobalGridVisible(false)}
+        onSelect={(m) => {
+          DeviceEventEmitter.emit("movieSelected", m);
+        }}
+      />
+      {/* Background for 3-button nav */}
+      {Platform.OS === 'android' && hasThreeButtonNav && (
+        <View 
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: showInPlaceSearch ? dynamicBarBottom : dynamicBarBottom + 29, 
+            overflow: 'hidden',
+            zIndex: 998,
+          }}
+          pointerEvents="none"
+        >
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <View style={styles.glassFill} />
+        </View>
+      )}
+
+      {!searchVisible && (
+        <View style={[
+          styles.topBarWrapper, 
+          (active("/") || active("/menu")) ? { 
+            top: 0,
+            left: 0,
+            right: 0,
+            paddingTop: active("/") 
+              ? (homeScrollY < (HERO_H - 120) 
+                  ? (insets.top + (Platform.OS === 'ios' ? 0 : 4)) 
+                  : Math.max(
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - 1, 
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - (homeScrollY - (HERO_H - 120))
+                    ))
+              : (menuScrollY < 50
+                  ? (insets.top + (Platform.OS === 'ios' ? 0 : 4))
+                  : Math.max(
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - 1,
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - (menuScrollY - 50)
+                    )),
+            paddingHorizontal: 16,
+          } : {
+            top: Platform.OS === "ios" ? 44 : (StatusBar.currentHeight ?? 0) + 4,
+            left: 4,
+            right: 8,
+          }
+        ]}>
+          {(active("/") || active("/menu")) && (
+            <Animated.View 
+              style={[
+                StyleSheet.absoluteFill, 
+                { 
+                  zIndex: -1, 
+                  opacity: active("/") ? homeHeaderOpacity : menuHeaderOpacity 
+                }
+              ]}
+            >
+              <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
+              <View 
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: "rgba(15, 15, 25, 0.95)" }
+                ]} 
+              />
+              <LinearGradient
+                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
+                style={{
+                  position: "absolute",
+                  bottom: -12,
+                  left: 0,
+                  right: 0,
+                  height: 12,
+                }}
+                pointerEvents="none"
+              />
+            </Animated.View>
+          )}
+          <View style={styles.topBarContainer}>
+            {/* Logo replacement conditionally removed to allow pill expansion */}
+            {!active("/(tabs)/saved") && !active("/(tabs)/category") && (
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 8,
+                  height: 35,
+                  justifyContent: "center",
+                }}
+                onPress={() => {
+                  if (active("/")) {
+                    DeviceEventEmitter.emit("homeTabPress");
+                  } else {
+                    router.push("/" as any);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View>
+                  <Animated.Image
+                    source={require("@/assets/images/movie-zone-logo.jpg")}
+                    style={[
+                      styles.logoImage,
+                      {
+                        transform: [{ rotateY: rotation }],
+                        backfaceVisibility: "hidden",
+                        opacity: logoOpacity,
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      {
+                        position: "absolute",
+                        width: 120, // Wider than logo (35px)
+                        height: 35,
+                        left: -20, // Shifted right so text doesn't clip edge
+                        justifyContent: "center",
+                        alignItems: "center",
+                        backfaceVisibility: "hidden",
+                        backgroundColor: "transparent",
+                        transform: [{ rotateY: "180deg" }, { rotateY: rotation }],
+                        opacity: textOpacity,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.logoTextTitle}>THE MOVIE</Text>
+                    <View style={styles.logoTextSubContainer}>
+                      <LinearGradient
+                        colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.logoTextSubSheen}
+                      />
+                      <Text style={styles.logoTextSub}>ZONE 24/7</Text>
+                    </View>
+                  </Animated.View>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <View style={[styles.topBarRight, (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }]}>
+              {/* All VJs / Series Library Pill (Repositioned) */}
+              {active("/(tabs)/saved") ? (
+                showInPlaceSearch ? (
+                  <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowInPlaceSearch(false);
+                        setInPlaceSearchQuery("");
+                        DeviceEventEmitter.emit("seriesSearchClosed");
+                        Keyboard.dismiss();
+                        if (returnSeries) {
+                          const seriesToReturn = returnSeries;
+                          setReturnSeries(null);
+                          setTimeout(() => {
+                            DeviceEventEmitter.emit("openSeriesPreview", seriesToReturn);
+                          }, 150);
+                        }
+                      }}
+                      style={styles.searchBackBtnSmall}
+                    >
+                      <Ionicons name="arrow-back" size={22} color="#fff" />
+                    </TouchableOpacity>
+
+                    <View style={[styles.searchInnerCapsule, { flex: 1, marginRight: 0, height: 35, borderRadius: 17.5 }]}>
+                      <Ionicons
+                        name="search"
+                        size={18}
+                        color="rgba(255,255,255,0.5)"
+                        style={{ marginLeft: 12, marginRight: 8 }}
+                      />
+                      <TextInput
+                        ref={inPlaceSearchRef}
+                        style={[styles.universalSearchInput, { paddingHorizontal: 0, flex: 1 }]}
+                        placeholder="Search series..."
+                        placeholderTextColor="rgba(255,255,255,0.7)"
+                        value={inPlaceSearchQuery}
+                        onChangeText={(text) => {
+                          setInPlaceSearchQuery(text);
+                          DeviceEventEmitter.emit("seriesSearchQuery", text);
+                        }}
+                        returnKeyType="search"
+                        multiline={false}
+                        numberOfLines={1}
+                        autoFocus={false}
+                      />
+                      {inPlaceSearchQuery.length > 0 && seriesCount !== null && (
+                        <View style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          backgroundColor: "rgba(91,95,239,0.45)",
+                          borderRadius: 12,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          marginRight: 4,
+                        }}>
+                          <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: "800" }}>
+                            {seriesCount}
+                          </Text>
+                        </View>
+                      )}
+                      {inPlaceSearchQuery.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setInPlaceSearchQuery("");
+                            DeviceEventEmitter.emit("seriesSearchQuery", "");
+                          }}
+                          style={{ padding: 8, marginRight: 4 }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color="rgba(255,255,255,0.5)"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                <View
+                  style={{
+                    flex: 1, // Let the pill occupy the remaining space
+                    height: 35,
+                    paddingHorizontal: 16,
+                    borderRadius: 17.5,
+                    overflow: "hidden",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.3)",
+                    backgroundColor: "rgba(91, 95, 239, 0.25)",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    shadowColor: "#5B5FEF",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.45,
+                    shadowRadius: 10,
+                    elevation: 8,
+                  }}
+                >
+                  <View style={styles.pillSheen} />
+                  
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="tv" size={14} color="#fff" />
+                    <Text style={{
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: "800",
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                    }}>SERIES LIBRARY</Text>
+                    {seriesCount !== null && (
+                      <View style={{
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        marginLeft: 2
+                      }}>
+                        <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{seriesCount} series</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity 
+                    onPress={() => DeviceEventEmitter.emit("toggleSeriesFilters")}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Ionicons name="options-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+                    <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.7)" />
+                  </TouchableOpacity>
+                  </View>
+                )) : active("/(tabs)/category") ? (
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 35,
+                      paddingHorizontal: 20,
+                      borderRadius: 17.5,
+                      overflow: "hidden",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.4)",
+                      backgroundColor: "rgba(91, 95, 239, 0.25)",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: "#5B5FEF",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.45,
+                      shadowRadius: 10,
+                      elevation: 8,
+                    }}
+                  >
+                    <View style={styles.pillSheen} />
+                    <Text style={{
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: "900",
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                    }}>CINEMA GENRES AND UGANDAN VJS 🇺🇬</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.allVjsPill}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setSearchVjOnly(true);
+                      setSearchVisible(true);
+                    }}
+                  >
+                    <View style={styles.pillSheen} />
+                    <Ionicons
+                      name="people"
+                      size={14}
+                      color="#fff"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.allVjsPillText}>ALL VJs</Text>
+                  </TouchableOpacity>
+                )}
+
+
+              {/* Hide the top bar search icon if the in-place search bar is active or on category tab */}
+              {!(active("/(tabs)/saved") && showInPlaceSearch) && !active("/(tabs)/category") && (
+                <View style={styles.searchBlurCapsule}>
+                  <BlurView
+                    tint="dark"
+                    intensity={99}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <LinearGradient
+                    colors={["rgba(255,255,255,0.15)", "transparent"]}
+                    style={styles.pillSheen}
+                  />
+                  <TouchableOpacity
+                    style={styles.searchTriggerBtn}
+                    onPress={() => {
+                      if (active("/(tabs)/saved")) {
+                        if (showInPlaceSearch) {
+                          setShowInPlaceSearch(false);
+                          setInPlaceSearchQuery("");
+                          DeviceEventEmitter.emit("seriesSearchClosed");
+                          Keyboard.dismiss();
+                        } else {
+                          setShowInPlaceSearch(true);
+                          DeviceEventEmitter.emit("seriesSearchQuery", "");
+                        }
+                      } else {
+                        setSearchVjOnly(false);
+                        setSearchVisible(true);
+                      }
+                    }}
+                  >
+                    <Ionicons name="search" size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={styles.notificationBlurCapsule}>
+                <BlurView
+                  tint="dark"
+                  intensity={99}
+                  style={StyleSheet.absoluteFill}
+                />
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.15)", "transparent"]}
+                  style={styles.pillSheen}
+                />
+                <TouchableOpacity
+                  style={styles.topBarActionBtn}
+                  onPress={() => setNotificationVisible(true)}
+                >
+                  <Ionicons
+                    name="notifications-outline"
+                    size={18}
+                    color="#fff"
+                  />
+                  {unreadCount > 0 && (
+                    <View style={styles.notificationIndicator}>
+                      <Text style={styles.notificationIndicatorText}>{unreadCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      <SearchOverlay
+        visible={searchVisible}
+        autoFocusRequested={searchAutoFocus}
+        onClose={() => {
+          setSearchVisible(false);
+          setSearchVjOnly(false);
+          setSearchAutoFocus(false);
+        }}
+        onSelect={(movie) => {
+          setSearchVisible(false); // Close search when movie is selected
+          setSearchAutoFocus(false);
+          if ("seasons" in movie) {
+            router.push("/(tabs)/saved");
+            setTimeout(() => {
+              DeviceEventEmitter.emit("openSeriesPreview", movie);
+              DeviceEventEmitter.emit("seriesSearchClosed");
+            }, 100);
+          } else {
+            router.push({
+              pathname: "/(tabs)",
+              params: { movieId: movie.id },
+            });
+            DeviceEventEmitter.emit("movieSelected", movie);
+          }
+        }}
+        vjOnly={searchVjOnly}
+      />
+
+      <NotificationOverlay
+        visible={notificationVisible}
+        onClose={() => setNotificationVisible(false)}
+        onSelect={onSelect}
+        showRatingModal={showRatingModal}
+        setShowRatingModal={setShowRatingModal}
+        selectedRating={selectedRating}
+        setSelectedRating={setSelectedRating}
+        submitRating={submitRating}
+        isRatingSubmitted={isRatingSubmitted}
+        readIds={readIds}
+        markRead={markRead}
+        checkedItemIds={checkedItemIds}
+        toggleCheckedItem={toggleCheckedItem}
+        expandedType={expandedType}
+        setExpandedType={setExpandedType}
+        expandedNotificationId={expandedNotificationId}
+        setExpandedNotificationId={setExpandedNotificationId}
+        setReopenOnBack={setReopenOnBack}
+        setLastViewedItemId={setLastViewedItemId}
+        isUpdateLocked={updateDismissCount >= 3}
+        isUpdateApplied={isUpdateApplied}
+        isRatingPermanentlyRemoved={isRatingPermanentlyRemoved}
+        setGlobalGridTitle={setGlobalGridTitle}
+        setGlobalGridData={setGlobalGridData}
+        setGlobalGridVisible={setGlobalGridVisible}
+      />
+
+      {!showInPlaceSearch && (
+        <View style={[styles.barWrapper, { bottom: dynamicBarBottom }]} pointerEvents="box-none">
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
+          <View style={styles.glassFill} />
+          <View style={styles.barInner}>
+          {TABS.map((tab) => {
+            const isFocused = active(tab.route);
+            return (
+              <TouchableOpacity
+                key={tab.name}
+                style={styles.tabItem}
+                onPress={() => {
+                  if (isFocused && tab.name === "index") {
+                    DeviceEventEmitter.emit("homeTabPress");
+                  } else {
+                    router.push(tab.route as never);
+                  }
+                }}
+                activeOpacity={0.75}
+              >
+                {isFocused ? (
+                  <View style={styles.pill}>
+                    <View style={styles.pillSheen} />
+                    <Ionicons name={tab.iconActive} size={18} color="#fff" />
+                    <Text style={styles.pillLabel} numberOfLines={1}>
+                      {tab.label}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.inactiveIconWrap}>
+                    <Ionicons
+                      name={tab.icon}
+                      size={22}
+                      color="rgba(255,255,255,0.45)"
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+      )}
+
+      {/* In-place search handled inline in header */}
+    </>
+  );
+}
+
+// ─── Root Layout ─────────────────────────────────────────────────────────────
+export default function TabLayout() {
+  return (
+    <Tabs
+      tabBar={() => <CustomTabBar />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="saved" options={{ title: "Series" }} />
+      <Tabs.Screen name="category" options={{ title: "Category" }} />
+      <Tabs.Screen name="menu" options={{ title: "Profile" }} />
+    </Tabs>
+  );
+}
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  barWrapper: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 28 : 16,
+    left: 16,
+    right: 16,
+    height: 58,
+    borderRadius: 29,
+    overflow: "hidden",
+    // Glass border — thin white rim simulating glass edge
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    // Multi-layer shadow for depth + lift
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 200,
+    zIndex: 999, // Guarantee tab bar floats above all scrollable content
+  },
+
+  // Dark translucent glass fill
+  glassFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15,15,25,0.65)",
+  },
+
+  barInner: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingBottom: Platform.OS === "ios" ? 0 : 0,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 46,
+  },
+
+  // ── Active pill ──
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 50,
+    overflow: "hidden",
+    // Deep indigo-purple matching reference style
+    backgroundColor: "rgba(91, 95, 239, 0.25)",
+    // Inner border — glass rim on the pill itself
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  // Upper-half shine inside the pill to give it a glass bubble feel
+  pillSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 50,
+  },
+  pillLabel: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  inactiveIconWrap: {
+    padding: 6,
+  },
+  // ── Notification Overlay ──
+  notificationOverlayContainer: {
+    flex: 1,
+    // Reduced padding to match standard sections; SafeAreaView handles the notch
+    paddingTop: Platform.OS === "ios" ? 20 : 10,
+    alignItems: "center",
+  },
+  notificationContent: {
+    width: SCREEN_W * 0.9,
+    maxHeight: "97%",
+    backgroundColor: "rgba(17, 24, 39, 0.8)", // Design 1 influence (Dark Blue)
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  notificationTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  notificationCloseBtn: {
+    padding: 6,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 15,
+  },
+  notificationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.03)",
+  },
+  notificationTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  notificationCardNew: {
+    backgroundColor: "rgba(16, 185, 129, 0.04)", 
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.15)",
+    borderTopColor: "rgba(16, 185, 129, 0.45)", // Bright top edge
+    marginVertical: 6,
+    borderRadius: 16,
+    marginHorizontal: 12,
+    overflow: "hidden", // Clip absolute children strictly
+  },
+  notificationCardRead: {
+    opacity: 0.55,
+    backgroundColor: "rgba(255,255,255,0.02)",
+    borderWidth: 0,
+    marginVertical: 1,
+  },
+  notificationCardTitleRead: {
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: "500",
+  },
+  notificationCardLocked: {
+    backgroundColor: "rgba(16, 185, 129, 0.08)",
+    borderColor: "rgba(16, 185, 129, 0.4)",
+    borderWidth: 1.5,
+    marginVertical: 10,
+    shadowColor: "#10b981",
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  notificationCardSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+  },
+  notificationIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  notificationIconWrapNew: {
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 15,
+    borderWidth: 1.5,
+    borderColor: "rgba(16, 185, 129, 0.5)",
+  },
+  notificationTextWrap: {
+    flex: 1,
+  },
+  notificationCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  notificationCardTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  notificationTime: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  notificationMsg: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  newBadgePill: {
+    backgroundColor: "#10b981",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20, 
+    marginLeft: 10,
+    overflow: "hidden",
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  newBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  countBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1.2,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    marginLeft: 10,
+  },
+  countBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  countBadgeTrending: {
+    backgroundColor: "rgba(245, 158, 11, 0.18)",
+    borderColor: "rgba(245, 158, 11, 0.4)",
+  },
+  countBadgeTrendingText: {
+    color: "#f59e0b",
+  },
+  vjPillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  vjPill: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.2)",
+  },
+  vjPillText: {
+    color: "#10b981",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  typeBadgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 6,
+  },
+  typeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  movieBadge: {
+    backgroundColor: "rgba(14, 165, 233, 0.1)",
+    borderColor: "rgba(14, 165, 233, 0.2)",
+  },
+  seriesBadge: {
+    backgroundColor: "rgba(168, 85, 247, 0.1)",
+    borderColor: "rgba(168, 85, 247, 0.2)",
+  },
+  movieBadgeText: {
+    color: "#0ea5e9",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  seriesBadgeText: {
+    color: "#a855f7",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  detailListContainer: {
+    marginTop: 10,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  detailListHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  detailListTitle: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  detailListItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.02)",
+  },
+  detailItemText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  checkBtn: {
+    padding: 4,
+  },
+  // ── Rating Styles ──
+  ratingContent: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  ratingTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  ratingSub: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 14,
+    marginBottom: 24,
+  },
+  submitRatingBtn: {
+    backgroundColor: "#f59e0b",
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginBottom: 20,
+    shadowColor: "#f59e0b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  submitRatingText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  playStoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 10,
+  },
+  playStoreBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  starTouch: {
+    padding: 4,
+  },
+  thankYouText: {
+    color: "#10b981",
+    fontWeight: "700",
+    marginBottom: 20,
+  },
+  cancelRating: {
+    padding: 12,
+  },
+  cancelRatingText: {
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  // ── Universal Top Bar ──
+  topBarWrapper: {
+    position: "absolute",
+    zIndex: 1000,
+    backgroundColor: "transparent",
+    paddingBottom: 4,
+  },
+  topBarBlur: {
+    borderRadius: 25,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  inPlaceSearchContainer: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(2, 2, 5, 0.85)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    width: "100%",
+  },
+  inPlaceSearchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 15,
+    paddingVertical: 0,
+    fontWeight: "600",
+  },
+
+  searchBlurCapsule: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    backgroundColor: "rgba(2, 2, 5, 0.85)",
+  },
+  notificationBlurCapsule: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    backgroundColor: "rgba(2, 2, 5, 0.85)",
+  },
+  notificationIndicator: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#FF3B30', // Premium Apple Red
+    borderWidth: 1.5,
+    borderColor: 'rgba(2, 2, 5, 1)', // Matches capsule background
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 2,
+  },
+  notificationIndicatorText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  topBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  allVjsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    height: 35,
+    borderRadius: 17.5,
+    overflow: "hidden",
+    backgroundColor: "rgba(91, 95, 239, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  allVjsPillText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  logoImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    resizeMode: "cover",
+  },
+  logoTextTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.5,
+  },
+  logoTextSubContainer: {
+    marginTop: -2,
+    paddingHorizontal: 3,
+    paddingVertical: 0.5,
+    borderRadius: 4,
+    backgroundColor: "rgba(91, 95, 239, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  logoTextSubSheen: {
+    position: "absolute",
+    top: -20,
+    left: -20,
+    right: -20,
+    bottom: -20,
+    transform: [{ rotate: "45deg" }],
+  },
+  logoTextSub: {
+    color: "#EFF1FF", // Brighter off-white for glass contrast
+    fontSize: 8.5,
+    fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: 1.5,
+    textShadowColor: "rgba(91, 95, 239, 0.8)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  searchTriggerBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topBarActionBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // ── Universal Search ──
+  searchHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchInputCapsule: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 44,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  universalSearchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+  },
+  searchResultCard: {
+    width: (SCREEN_W - 44) / 3, // 3 columns
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  searchResultPoster: {
+    width: "100%",
+    height: 150, // Shorter for 3 columns
+    resizeMode: "cover",
+  },
+  searchResultInfo: {
+    padding: 6,
+    alignItems: "center",
+  },
+  searchResultTitle: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  searchResultMetadata: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 9,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  emptyResults: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 15,
+    textAlign: "center",
+  },
+  // ── Discovery Screen ──
+  discoverySection: {
+    marginTop: 24,
+  },
+  discoveryHeader: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  discoverySwitcher: {
+    flexDirection: "row",
+    backgroundColor: "rgba(17, 24, 39, 0.6)",
+    borderRadius: 50,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  switcherTab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 7,
+    borderRadius: 50,
+  },
+  switcherTabActive: {
+    backgroundColor: "#5B5FEF", // Indigo Pill
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  discoveryPillSheen: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 50,
+  },
+  switcherTabText: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  switcherTabTextActive: {
+    color: "#fff",
+  },
+  trendingWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    gap: 6,
+    marginTop: 8,
+  },
+  discoveryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  sectionHeaderBadge: {
+    marginHorizontal: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 50,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    backgroundColor: "#5B5FEF",
+  },
+  vjHeaderWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 20,
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  vjHeaderAnchorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(91, 95, 239, 0.25)",
+  },
+  vjHeaderPill: {
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 50,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    borderTopColor: "rgba(255,255,255,0.6)",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  vjHeaderPillText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
+  vjGlassWell: {
+    marginHorizontal: 16,
+    borderRadius: 30,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    paddingTop: 16,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  rowTitle: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    textShadowColor: "rgba(0, 0, 0, 0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  resultsHeader: {
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  filterBarScroll: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
+  },
+  filterPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 28,
+    borderRadius: 50,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  filterPillActive: {
+    backgroundColor: "#5B5FEF",
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  filterPillText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  filterPillTextActive: {
+    color: "#fff",
+  },
+  resultsHeaderTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  clearFiltersBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 28,
+    borderRadius: 50,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(239, 68, 68, 0.2)",
+  },
+  clearFiltersText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  multiSelectionContainer: {
+    gap: 0,
+  },
+  resultsCountText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  resultsCountBadge: {
+    paddingHorizontal: 12,
+    height: 28,
+    borderRadius: 50,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  filterCategoryContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  categoryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 28,
+    borderRadius: 50,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  categoryBtnActive: {
+    backgroundColor: "#5B5FEF",
+    borderColor: "rgba(255,255,255,0.4)",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  categoryBtnText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  categoryBtnTextActive: {
+    color: "#fff",
+  },
+  selectionTrayWrapper: {
+    paddingBottom: 0,
+    marginTop: -4,
+  },
+  seeAllBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#5B5FEF",
+    paddingHorizontal: 12,
+    height: 28,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    overflow: "hidden",
+    shadowColor: "#5B5FEF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  yearCategoryTitle: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+    marginRight: 12,
+  },
+  yearSubToggle: {
+    paddingHorizontal: 12,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  yearSubToggleActive: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  yearSubToggleActiveNew: {
+    backgroundColor: "rgba(16, 185, 129, 0.25)",
+    borderColor: "rgba(16, 185, 129, 0.6)",
+    shadowColor: "#10b981",
+    shadowOpacity: 0.3,
+  },
+  yearSubToggleActiveOldest: {
+    backgroundColor: "rgba(168, 162, 158, 0.2)",
+    borderColor: "rgba(168, 162, 158, 0.4)",
+    shadowColor: "#a8a29e",
+    shadowOpacity: 0.2,
+  },
+  yearSubToggleText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  yearSubToggleTextActive: {
+    color: "#fff",
+  },
+  yearSubToggleTextActiveNew: {
+    color: "#10b981",
+  },
+  yearSubToggleTextActiveOldest: {
+    color: "#a8a29e",
+  },
+  seeAllText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  trendingText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  genreDiscoverCard: {
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    minWidth: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  genreDiscoverText: {
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  sectionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  sectionPill: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  sectionPillText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  // ── Mini Movie Card ──
+  miniMovieCard: {
+    width: 100,
+    gap: 8,
+  },
+  miniMoviePoster: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: "#1a1a24",
+  },
+  miniMovieTitle: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  universalSearchTopPill: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "transparent",
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+  },
+  universalSearchBottomFilters: {
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: "transparent",
+    zIndex: 1000,
+  },
+  searchBackBtnSmall: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+  searchInnerCapsule: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 34,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 17,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  genreBadge: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  genreBadgeText: { color: "#FFC107", fontSize: 8, fontWeight: "900" },
+  vjBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  vjBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
+  epBadgePremium: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  epBadgeTextPremium: {
+    color: "#FFC107",
+    fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+});

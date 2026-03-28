@@ -1,0 +1,244 @@
+Starting project at /Users/hkfiles/Desktop/hk app/movieApp
+React Compiler enabled
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 74.9% (801/973)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1564/1564)
+Android Bundled 7228ms node_modules/expo-router/entry.js (1564 modules)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T10:30:49.780Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 97ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T10:34:41.406Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 87ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T10:34:49.700Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1411ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T10:44:50.967Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [ReferenceError: Property 'isHeroMuted' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 3658 |[39m         [33m<[39m[33mHeroBanner[39m
+ [90m 3659 |[39m           onSelect[33m=[39m{(m) [33m=>[39m setSelectedMovieStack((prev) [33m=>[39m [[33m...[39mprev[33m,[39m m])}
+[31m[1m>[22m[39m[90m 3660 |[39m           isMuted[33m=[39m{isHeroMuted}
+ [90m      |[39m                    [31m[1m^[22m[39m
+ [90m 3661 |[39m           setIsMuted[33m=[39m{setIsHeroMuted}
+ [90m 3662 |[39m         [33m/[39m[33m>[39m
+ [90m 3663 |[39m[0m
+Call Stack
+  HomeScreen (app/(tabs)/index.tsx:3660:20) 
+
+Code: _layout.tsx
+[0m [90m 2859 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 2860 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 2861 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 2862 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 2863 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 2864 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:2861:5)
+  RootLayout (app/_layout.tsx:25:9)
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 104ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T10:47:57.014Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/app/(tabs)/saved.tsx: Missing semicolon. (1558:9)
+
+  1556 |
+  1557 |   onSeeAll,
+> 1558 |   isMuted: isMutedProp,
+       |          ^
+  1559 | }: {
+  1560 |   series: Series;
+  1561 |   onClose: () => void;
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.semicolon (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6895:10)
+    at TypeScriptParserMixin.parseExpressionStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13285:10)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12899:19)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12612:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14488:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10126:18)
+    at parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14501:26)
+    at parser (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/parser/index.js:41:34)
+    at parser.next (<anonymous>)
+    at normalizeFile (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+    at normalizeFile.next (<anonymous>)
+    at run (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transformation/index.js:22:50)
+    at run.next (<anonymous>)
+    at transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transform.js:22:33)
+    at transform.next (<anonymous>)
+    at evaluateSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/gensync/index.js:251:28)
+    at sync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/gensync/index.js:89:14)
+    at stopHiding - secret - don't use this - v1 (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/errors/rewrite-stack-trace.js:47:12)
+    at Object.transformSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transform.js:40:76)
+    at parseWithBabel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transformSync.js:75:18)
+    at transformSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transformSync.js:54:16)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/babel-transformer.js:127:58)
+    at transformJSWithBabel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js:468:47)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js:583:12)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/transform-worker.js:178:19)
+    at transformFile (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/DeltaBundler/Worker.flow.js:67:36)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/DeltaBundler/Worker.flow.js:42:10)
+    at execFunction (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/jest-worker/build/workers/processChild.js:149:17)
+    at execHelper (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/jest-worker/build/workers/processChild.js:137:5)
+    at execMethod (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/jest-worker/build/workers/processChild.js:140:5)
+    at process.messageListener (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/jest-worker/build/workers/processChild.js:44:7)
+    at process.emit (node:events:508:28)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 94ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T11:02:44.265Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1507ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T11:15:25.080Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 92ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T12:23:01.952Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 98ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  [2026-03-27T12:25:05.871Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context

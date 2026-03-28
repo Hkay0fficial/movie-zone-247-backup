@@ -1,0 +1,438 @@
+Starting project at /Users/hkfiles/Desktop/hk app/movieApp
+React Compiler enabled
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 62.9% ( 854/1077)
+Android Bundled 6427ms node_modules/expo-router/entry.js (1512 modules)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1491ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 885 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 886 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 887 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 888 |[39m       }[33m,[39m
+ [90m 889 |[39m     )[33m;[39m
+ [90m 890 |[39m     [36mreturn[39m () [33m=>[39m {[0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:887:17)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 79ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 82ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 874 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 875 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 876 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 877 |[39m       }[33m,[39m
+ [90m 878 |[39m     )[33m;[39m
+ [90m 879 |[39m     [36mconst[39m hideSub [33m=[39m [33mKeyboard[39m[33m.[39maddListener([0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:876:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 874 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 875 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 876 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 877 |[39m       }[33m,[39m
+ [90m 878 |[39m     )[33m;[39m
+ [90m 879 |[39m     [36mconst[39m hideSub [33m=[39m [33mKeyboard[39m[33m.[39maddListener([0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:876:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 885 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 886 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 887 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 888 |[39m       }[33m,[39m
+ [90m 889 |[39m     )[33m;[39m
+ [90m 890 |[39m     [36mreturn[39m () [33m=>[39m {[0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:887:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 885 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 886 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 887 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 888 |[39m       }[33m,[39m
+ [90m 889 |[39m     )[33m;[39m
+ [90m 890 |[39m     [36mreturn[39m () [33m=>[39m {[0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:887:17)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 80ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/app/(tabs)/_layout.tsx: Unexpected token, expected ";" (1925:61)
+
+  1923 |                 {
+  1924 |                   transform: [
+> 1925 |                   transform: [{ translateY: Animated.multiply(keyboardHeight, -1) }],
+       |                                                              ^
+  1926 |                   ],
+  1927 |                 },
+  1928 |               ]}
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6619:16)
+    at TypeScriptParserMixin.expect (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6899:12)
+    at TypeScriptParserMixin.tsParseTypeMemberSemicolon (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8107:12)
+    at TypeScriptParserMixin.tsParsePropertyOrMethodSignature (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8186:12)
+    at TypeScriptParserMixin.tsParseTypeMember (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8221:17)
+    at TypeScriptParserMixin.tsParseList (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7878:19)
+    at TypeScriptParserMixin.tsParseObjectTypeMembers (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8230:26)
+    at TypeScriptParserMixin.tsParseTypeLiteral (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8225:25)
+    at TypeScriptParserMixin.tsParseNonArrayType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8440:106)
+    at TypeScriptParserMixin.tsParseArrayTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8470:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8526:158
+    at TypeScriptParserMixin.tsInAllowConditionalTypesContext (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8815:14)
+    at TypeScriptParserMixin.tsParseTypeOperatorOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8526:114)
+    at TypeScriptParserMixin.tsParseUnionOrIntersectionType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8533:18)
+    at TypeScriptParserMixin.tsParseIntersectionTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8542:17)
+    at TypeScriptParserMixin.tsParseUnionOrIntersectionType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8533:18)
+    at TypeScriptParserMixin.tsParseUnionTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8545:17)
+    at TypeScriptParserMixin.tsParseNonConditionalType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8712:17)
+    at TypeScriptParserMixin.tsParseType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8687:23)
+    at TypeScriptParserMixin.tsParseTupleElementType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8330:19)
+    at TypeScriptParserMixin.tsParseDelimitedListWorker (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7893:23)
+    at TypeScriptParserMixin.tsParseDelimitedList (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7883:25)
+    at TypeScriptParserMixin.tsParseBracketedList (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7923:25)
+    at TypeScriptParserMixin.tsParseTupleType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8283:30)
+    at TypeScriptParserMixin.tsParseNonArrayType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8442:21)
+    at TypeScriptParserMixin.tsParseArrayTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8470:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8526:158
+    at TypeScriptParserMixin.tsInAllowConditionalTypesContext (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8815:14)
+    at TypeScriptParserMixin.tsParseTypeOperatorOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8526:114)
+    at TypeScriptParserMixin.tsParseUnionOrIntersectionType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8533:18)
+    at TypeScriptParserMixin.tsParseIntersectionTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8542:17)
+    at TypeScriptParserMixin.tsParseUnionOrIntersectionType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8533:18)
+    at TypeScriptParserMixin.tsParseUnionTypeOrHigher (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8545:17)
+    at TypeScriptParserMixin.tsParseNonConditionalType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8712:17)
+    at TypeScriptParserMixin.tsParseType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8687:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8681:31
+    at TypeScriptParserMixin.tsInType (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8797:14)
+    at TypeScriptParserMixin.tsParseTypeAnnotation (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:8679:10)
+    at TypeScriptParserMixin.parseParenItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9614:42)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10833:29)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12493:17)
+    at TypeScriptParserMixin.parseExprListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12175:18)
+    at TypeScriptParserMixin.parseExprList (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12150:22)
+    at TypeScriptParserMixin.parseArrayLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12057:26)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 77ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 874 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 875 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 876 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 877 |[39m       }[33m,[39m
+ [90m 878 |[39m     )[33m;[39m
+ [90m 879 |[39m     [36mconst[39m hideSub [33m=[39m [33mKeyboard[39m[33m.[39maddListener([0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:876:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 874 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 875 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 876 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 877 |[39m       }[33m,[39m
+ [90m 878 |[39m     )[33m;[39m
+ [90m 879 |[39m     [36mconst[39m hideSub [33m=[39m [33mKeyboard[39m[33m.[39maddListener([0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:876:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 885 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 886 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 887 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 888 |[39m       }[33m,[39m
+ [90m 889 |[39m     )[33m;[39m
+ [90m 890 |[39m     [36mreturn[39m () [33m=>[39m {[0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:887:17)
+ ERROR  [Error: Attempting to run JS driven animation on animated node that has been moved to "native" earlier by starting an animation with `useNativeDriver: true`] 
+
+Code: _layout.tsx
+[0m [90m 885 |[39m           friction[33m:[39m [35m8[39m[33m,[39m
+ [90m 886 |[39m           tension[33m:[39m [35m40[39m[33m,[39m
+[31m[1m>[22m[39m[90m 887 |[39m         })[33m.[39mstart()[33m;[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 888 |[39m       }[33m,[39m
+ [90m 889 |[39m     )[33m;[39m
+ [90m 890 |[39m     [36mreturn[39m () [33m=>[39m {[0m
+Call Stack
+  Keyboard.addListener$argument_1 (app/(tabs)/_layout.tsx:887:17)
+Android Bundled 84ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 79ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1353ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1464ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 84ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 84ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 66ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/app/(tabs)/_layout.tsx: Unexpected token (2164:2)
+
+  2162 |       setReopenOnBack(false);
+  2163 |     }
+> 2164 |   }, [reopenOnBack, path, lastViewedItemId]);
+       |   ^
+  2165 |
+  2166 |   const [seriesCount, setSeriesCount] = useState<number>(0);
+  2167 |
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6619:16)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11442:22)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at TypeScriptParserMixin.parseExpressionBase (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10784:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:17)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12895:23)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12612:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14488:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10126:18)
+    at parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14501:26)
+    at parser (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/parser/index.js:41:34)
+    at parser.next (<anonymous>)
+    at normalizeFile (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+    at normalizeFile.next (<anonymous>)
+    at run (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transformation/index.js:22:50)
+    at run.next (<anonymous>)
+    at transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transform.js:22:33)
+    at transform.next (<anonymous>)
+    at evaluateSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/gensync/index.js:251:28)
+    at sync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/gensync/index.js:89:14)
+    at stopHiding - secret - don't use this - v1 (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/errors/rewrite-stack-trace.js:47:12)
+    at Object.transformSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/core/lib/transform.js:40:76)
+    at parseWithBabel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transformSync.js:75:18)
+    at transformSync (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transformSync.js:54:16)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/babel-transformer.js:127:58)
+    at transformJSWithBabel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js:468:47)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js:583:12)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@expo/metro-config/build/transform-worker/transform-worker.js:178:19)
+    at transformFile (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/DeltaBundler/Worker.flow.js:67:36)
+    at Object.transform (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/DeltaBundler/Worker.flow.js:42:10)
+    at execFunction (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/jest-worker/build/workers/processChild.js:149:17)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 83ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 705ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 82ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 82ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 82ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 64ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  Text strings must be rendered within a <Text> component. 
+
+Code: _layout.tsx
+[0m [90m 2368 |[39m               {[90m/* All VJs / Series Library Pill (Repositioned) */[39m}
+ [90m 2369 |[39m               {active([32m"/(tabs)/saved"[39m) [33m?[39m (
+[31m[1m>[22m[39m[90m 2370 |[39m                 [33m<[39m[33mView[39m
+ [90m      |[39m                 [31m[1m^[22m[39m
+ [90m 2371 |[39m                   style[33m=[39m{{
+ [90m 2372 |[39m                     flex[33m:[39m [35m1[39m[33m,[39m [90m// Let the pill occupy the remaining space[39m
+ [90m 2373 |[39m                     height[33m:[39m [35m42[39m[33m,[39m[0m
+Call Stack
+  CustomTabBar (app/(tabs)/_layout.tsx:2370:17)
+  TabLayout (app/(tabs)/_layout.tsx:2740:70)
+  TabLayout (app/(tabs)/_layout.tsx:2739:42)
+  <global> (app/(tabs)/saved.tsx:2288:23)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 82ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1455ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 756ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 89ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 69ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 275ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 812ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
