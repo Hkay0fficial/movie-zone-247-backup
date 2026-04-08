@@ -37,7 +37,7 @@ export default function ClockAnimation({ size = 20, color = '#818cf8' }: ClockAn
   return (
     <View style={styles.container}>
       <Animated.View style={[animatedStyle, { width: size, height: size }]}>
-        <Ionicons name="time-outline" size={size} color={color} />
+        <Ionicons name="chevron-forward-circle-outline" size={size} color={color} />
       </Animated.View>
     </View>
   );

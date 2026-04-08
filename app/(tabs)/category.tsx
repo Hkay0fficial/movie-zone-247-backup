@@ -88,8 +88,13 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { ALL_ROWS, Movie, Series } from "@/constants/movieData";
-import { MoviePreviewModal } from "./index";
-import { GridModal } from "../../components/GridComponents";
+import { MoviePreviewModal, MoviePreviewContent } from "./index";
+import { GridModal, GridContent } from "../../components/GridComponents";
+import { useMovies } from "@/app/context/MovieContext";
+import { useSubscription } from "@/app/context/SubscriptionContext";
+import PremiumAccessModal from "../../components/PremiumAccessModal";
+import PlanSelectionModal from "../../components/PlanSelectionModal";
+import { useRouter } from "expo-router";
 
 const { width: W } = Dimensions.get("window");
 
@@ -347,6 +352,7 @@ function VJRequestModal({
   genre: string;
   onSelectMovie: (m: Movie | Series) => void;
 }) {
+  const { allRows: ALL_ROWS } = useMovies();
   const [search, setSearch] = useState("");
   const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -504,13 +510,24 @@ function GenreCard({ item, onPress }: { item: any; onPress: () => void }) {
 
 // ─── Category Screen ──────────────────────────────────────────────────────────
 export default function CategoryScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { allRows: ALL_ROWS } = useMovies();
+  const { isGuest } = useSubscription();
   const [query, setQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
   const [requestModalVisible, setRequestModalVisible] = useState(false);
   const [activeRequestTitle, setActiveRequestTitle] = useState("");
   const [activeGenre, setActiveGenre] = useState("");
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+  // Navigation stack – mirrors the home screen pattern so "See All" works
+  type CatStackItem =
+    | { type: 'movie'; movie: Movie | Series }
+    | { type: 'grid'; title: string; data: (Movie | Series)[] };
+  const [categoryStack, setCategoryStack] = React.useState<CatStackItem[]>([]);
 
   const handlePress = (item: any) => {
     setActiveRequestTitle(
@@ -578,14 +595,67 @@ export default function CategoryScreen() {
         }}
       />
 
+      {/* Category navigation stack – handles See All from movie detail */}
+      <Modal
+        visible={categoryStack.length > 0}
+        animationType="slide"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setCategoryStack(prev => prev.slice(0, -1))}
+      >
+        <View style={{ flex: 1 }}>
+          {categoryStack.map((item, index) => {
+            const onClose = () =>
+              setCategoryStack(prev => {
+                const next = [...prev];
+                next.splice(index, 1);
+                return next;
+              });
+            if (item.type === 'grid') {
+              return (
+                <GridContent
+                  key={`cg-${index}`}
+                  title={item.title}
+                  data={item.data}
+                  onClose={onClose}
+                  onSelect={(m) =>
+                    setCategoryStack(prev => [...prev, { type: 'movie', movie: m }])
+                  }
+                />
+              );
+            }
+            return (
+              <MoviePreviewContent
+                key={`cm-${index}`}
+                movie={item.movie}
+                onClose={onClose}
+                onSwitch={(m) =>
+                  setCategoryStack(prev => [...prev, { type: 'movie', movie: m }])
+                }
+                onSeeAll={(title, data) =>
+                  setCategoryStack(prev => [...prev, { type: 'grid', title, data }])
+                }
+                onShowPremium={() => setShowPremiumModal(true)}
+                onUpgrade={() => {
+                  setShowPremiumModal(false);
+                  setShowPlanModal(true);
+                }}
+              />
+            );
+          })}
+        </View>
+      </Modal>
+
+      {/* Legacy single-movie preview (opened from genre grid) */}
       {previewMovie && (
         <MoviePreviewModal
           movie={previewMovie}
           onClose={() => setPreviewMovie(null)}
-          onSwitch={(m) => {
+          onSwitch={(m: any) => {
             setPreviewMovie(null);
             setTimeout(() => setPreviewMovie(m), 150);
           }}
+          onShowPremium={() => setShowPremiumModal(true)}
         />
       )}
 
@@ -594,7 +664,32 @@ export default function CategoryScreen() {
         title={activeRequestTitle}
         genre={activeGenre}
         onClose={() => setRequestModalVisible(false)}
-        onSelectMovie={(m) => setPreviewMovie(m)}
+        onSelectMovie={(m: any) =>
+          setCategoryStack([{ type: 'movie', movie: m }])
+        }
+      />
+
+      <PremiumAccessModal
+        visible={showPremiumModal}
+        isGuest={isGuest}
+        onClose={() => setShowPremiumModal(false)}
+        onLogin={() => {
+          setShowPremiumModal(false);
+          router.push("/login" as any);
+        }}
+        onUpgrade={() => {
+          setShowPremiumModal(false);
+          setShowPlanModal(true);
+        }}
+        onSocialLogin={(provider) => {
+          setShowPremiumModal(false);
+          router.push("/login" as any);
+        }}
+      />
+
+      <PlanSelectionModal 
+        visible={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
       />
     </View>
   );

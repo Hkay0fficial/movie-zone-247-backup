@@ -38,6 +38,11 @@ import {
   ALL_GENRES,
 } from "@/constants/movieData";
 import { GridModal, GridCard } from "../../components/GridComponents";
+import { useMovies } from "@/app/context/MovieContext";
+import { useSubscription } from "@/app/context/SubscriptionContext";
+import { auth, db } from "../../constants/firebaseConfig";
+import ClockAnimation from "../../components/ClockAnimation";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const HERO_H = SCREEN_H * 0.55;
@@ -360,6 +365,8 @@ function NotificationOverlay({
   setGlobalGridTitle,
   setGlobalGridData,
   setGlobalGridVisible,
+  notifications,
+  highlightedId,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -386,7 +393,27 @@ function NotificationOverlay({
   setGlobalGridTitle: (title: string) => void;
   setGlobalGridData: (data: (Movie | Series)[]) => void;
   setGlobalGridVisible: (visible: boolean) => void;
+  notifications: Notification[];
+  highlightedId: string | null;
 }) {
+  const highlightAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible && highlightedId) {
+      highlightAnim.setValue(1);
+      Animated.sequence([
+        Animated.delay(2500),
+        Animated.timing(highlightAnim, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      highlightAnim.setValue(0);
+    }
+  }, [visible, highlightedId]);
 
   const getFilteredItems = (item: Notification) => {
     const movies = item.moviesList || [];
@@ -457,12 +484,12 @@ function NotificationOverlay({
                 contentContainerStyle={{ paddingBottom: 20 }}
               >
                 {[
-                  ...MOCK_NOTIFICATIONS.filter((n) => {
+                  ...notifications.filter((n) => {
                     if (n.id === "n2") return !isUpdateApplied;
                     if (n.type === "rating") return !isRatingPermanentlyRemoved;
                     return !readIds.has(n.id);
                   }),
-                  ...MOCK_NOTIFICATIONS.filter((n) => {
+                  ...notifications.filter((n) => {
                     if (n.id === "n2" || n.type === "rating") return false;
                     return readIds.has(n.id);
                   }),
@@ -487,6 +514,21 @@ function NotificationOverlay({
                       }}
                       activeOpacity={0.7}
                     >
+                      {item.id === highlightedId && (
+                        <Animated.View 
+                          style={[
+                            StyleSheet.absoluteFill,
+                            {
+                              borderColor: "rgba(255, 255, 255, 0.6)",
+                              borderWidth: 2,
+                              backgroundColor: "rgba(255, 255, 255, 0.15)",
+                              opacity: highlightAnim,
+                              zIndex: 10,
+                              borderRadius: 16,
+                            }
+                          ]}
+                        />
+                      )}
                       {isUnread && (
                         <LinearGradient
                           colors={["rgba(16, 185, 129, 0.2)", "transparent"]}
@@ -698,12 +740,14 @@ function NotificationOverlay({
                     key={star}
                     onPress={() => setSelectedRating(star)}
                     activeOpacity={0.6}
+                    disabled={isRatingSubmitted}
                     style={styles.starTouch}
                   >
                     <Ionicons
                       name={star <= selectedRating ? "star" : "star-outline"}
                       size={36}
                       color="#f59e0b"
+                      style={{ opacity: isRatingSubmitted && star > selectedRating ? 0.4 : 1 }}
                     />
                   </TouchableOpacity>
                 ))}
@@ -724,9 +768,8 @@ function NotificationOverlay({
 
               <TouchableOpacity
                 onPress={() => {
-                  // Play store placeholder
-                  Linking.openURL("market://details?id=com.yourapp.package").catch(() => {
-                    Linking.openURL("https://play.google.com/store/apps/details?id=com.yourapp.package");
+                  Linking.openURL("market://details?id=com.themoviezone247.official").catch(() => {
+                    Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
                   });
                   markRead('n5');
                   setShowRatingModal(false);
@@ -851,6 +894,7 @@ function SearchOverlay({
   );
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
+  const { isPaid } = useSubscription();
 
   const toggleFilter = (key: string) => {
     setExpandedFilter((prev) => (prev === key ? null : key));
@@ -1826,6 +1870,12 @@ function SearchOverlay({
                           <View style={styles.vjBadge}>
                             <Text style={styles.vjBadgeText}>{item.vj}</Text>
                           </View>
+
+                          {(!isPaid && !item.isFree) && (
+                            <View style={styles.lockBadge}>
+                               <Ionicons name="lock-closed" size={9} color="#fff" />
+                            </View>
+                          )}
                           <View style={styles.genreBadge}>
                             <Text style={[styles.genreBadgeText, "seasons" in item && { color: "#fff" }]}>
                               {"seasons" in item ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
@@ -1833,7 +1883,7 @@ function SearchOverlay({
                           </View>
                           {"seasons" in item && (
                             <View style={styles.epBadgePremium}>
-                              <Ionicons name="ellipsis-horizontal" size={10} color="#FFC107" style={{ marginRight: 2 }} />
+                              <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
                               <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
                             </View>
                           )}
@@ -1874,18 +1924,6 @@ function SearchOverlay({
                 >
                   {vjOnly && (
                     <View style={styles.discoverySection}>
-                      <View style={styles.vjHeaderPill}>
-                        <LinearGradient
-                          colors={["#6C6FF5", "#5B5FEF", "#4A4EDD"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFill}
-                        />
-                        <View style={styles.pillSheen} />
-                        <Text style={styles.vjHeaderPillText}>
-                          LIST OF ALL VJS 🗣️
-                        </Text>
-                      </View>
 
                       <View style={styles.vjGlassWell}>
                         <BlurView
@@ -2053,6 +2091,8 @@ function SearchOverlay({
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
+  const { liveMovies, liveSeries } = useMovies();
+  const { allMoviesFree, eventMessage } = useSubscription();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();
@@ -2061,10 +2101,17 @@ function CustomTabBar() {
   const [searchAutoFocus, setSearchAutoFocus] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showEventPreview, setShowEventPreview] = useState(false);
+  const [isFromHero, setIsFromHero] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const readIdsRef = useRef(readIds);
+  useEffect(() => {
+    readIdsRef.current = readIds;
+  }, [readIds]);
   const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
   const [updateDismissCount, setUpdateDismissCount] = useState(0);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   // Emit events when search or notification overlays are toggled to auto-mute hero video
   useEffect(() => {
@@ -2134,7 +2181,54 @@ function CustomTabBar() {
     return segment === seg || segment.startsWith(seg + "/");
   };
 
-  const unreadCount = MOCK_NOTIFICATIONS.filter(n => !readIds.has(n.id)).length;
+  // Construct notifications with live data
+  const notifications = useMemo(() => {
+    let baseData = [...MOCK_NOTIFICATIONS];
+    
+    // Inject latest live releases if any
+    if (liveMovies.length > 0 || liveSeries.length > 0) {
+      const liveNotif: Notification = {
+        id: "live_n1",
+        type: "movie",
+        icon: "film",
+        title: "New Release",
+        message: liveMovies.length > 0 
+          ? `🎬 "${liveMovies[0].title}" ${liveMovies.length > 1 ? `and ${liveMovies.length - 1} more` : ''} now streaming!`
+          : `📺 New series available from The Movie Zone!`,
+        time: "Just Now",
+        image: liveMovies[0]?.poster || liveSeries[0]?.poster,
+        isNew: true,
+        movieId: liveMovies[0]?.id,
+        sectionTitle: "New Releases",
+        count: liveMovies.length + liveSeries.length,
+        moviesCount: liveMovies.length,
+        seriesCount: liveSeries.length,
+        moviesList: liveMovies.map(m => ({ id: m.id, title: m.title })),
+        seriesList: liveSeries.map((s: Series) => ({ id: s.id, title: s.title })),
+        vjsDetailed: Array.from(new Set([...liveMovies.map((m: Movie) => m.vj), ...liveSeries.map((s: Series) => s.vj)])).map((vj: string, i: number) => ({ id: `v_live_${i}`, name: vj.replace('VJ ', ''), count: (liveMovies.filter((m: Movie) => m.vj === vj).length + liveSeries.filter((s: Series) => s.vj === vj).length) })),
+      };
+      
+      // Prepend to top
+      baseData = [liveNotif, ...baseData];
+    }
+    if (allMoviesFree) {
+      const eventNotif: Notification = {
+        id: "event_n1",
+        type: "update",
+        icon: "gift",
+        title: "Holiday Celebration!",
+        message: eventMessage || "System Launch Celebration! Enjoy all movies for FREE today!",
+        time: "Just Now",
+        isNew: true,
+        route: "/(tabs)/"
+      };
+      baseData = [eventNotif, ...baseData];
+    }
+    
+    return baseData;
+  }, [liveMovies, liveSeries, allMoviesFree, eventMessage]);
+
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("clearSeriesSearch", () => {
@@ -2172,12 +2266,28 @@ function CustomTabBar() {
       DeviceEventEmitter.emit("seriesSearchQuery", "");
     });
 
+    const sub6 = DeviceEventEmitter.addListener("openNotifications", (data?: { highlightId: string }) => {
+      setIsFromHero(true);
+      
+      // Direct Preview logic for Holiday Celebration if already read
+      if (data?.highlightId === 'event_n1' && readIdsRef.current.has('event_n1')) {
+        setShowEventPreview(true);
+        return; // Don't show the notification list behind it
+      }
+
+      if (data?.highlightId) {
+        setHighlightedId(data.highlightId);
+      }
+      setNotificationVisible(true);
+    });
+
     return () => {
       sub.remove();
       sub2.remove();
       sub3.remove();
       sub4.remove();
       sub5.remove();
+      sub6.remove();
     };
   }, []);
 
@@ -2210,7 +2320,6 @@ function CustomTabBar() {
   }, [segment, showInPlaceSearch]);
 
   useEffect(() => {
-    // Keyboard listeners removed in favor of KeyboardAvoidingView
   }, []);
 
   const toggleCheckedItem = (id: string) => {
@@ -2232,6 +2341,7 @@ function CustomTabBar() {
   const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   // Premium Grid View State for Notifications
   const [globalGridVisible, setGlobalGridVisible] = useState(false);
@@ -2281,8 +2391,16 @@ function CustomTabBar() {
         setReopenOnBack(false);
       }
     });
-    return () => sub.remove();
-  }, [reopenOnBack, lastViewedItemId]);
+    const sub2 = DeviceEventEmitter.addListener("openLiveReleaseGrid", () => {
+      setGlobalGridTitle("New Release");
+      setGlobalGridData([...liveMovies, ...liveSeries]);
+      setGlobalGridVisible(true);
+    });
+    return () => {
+      sub.remove();
+      sub2.remove();
+    };
+  }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries]);
 
   useEffect(() => {
     MOCK_NOTIFICATIONS.forEach(item => {
@@ -2319,6 +2437,24 @@ function CustomTabBar() {
       });
     };
     startRotation();
+  }, []);
+  
+  useEffect(() => {
+    const pulseAnimation = () => {
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => pulseAnimation());
+    };
+    pulseAnimation();
   }, []);
 
   const rotation = rotateAnim.interpolate({
@@ -2363,6 +2499,10 @@ function CustomTabBar() {
   }, [notificationVisible, updateDismissCount]);
 
   const onSelect = (item: Notification) => {
+    if (item.id === "event_n1") {
+      setShowEventPreview(true);
+      return;
+    }
     if (item.type === "rating") {
       setSelectedRating(0);
       setIsRatingSubmitted(false);
@@ -2378,13 +2518,15 @@ function CustomTabBar() {
     const hasSeries = item.seriesList && item.seriesList.length > 0;
     const isTrendingVj = item.vjsDetailed && item.vjsDetailed.length > 0;
 
-    if (item.title === "New Release" || item.title === "Trending Now" || isTrendingVj) {
+    if (item.title === "New Release" || item.title === "Trending Now" || isTrendingVj || item.id === "live_n1") {
       let gridData: (Movie | Series)[] = [];
       
       const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
       const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
 
-      if (movieIds.size > 0 || seriesIds.size > 0) {
+      if (item.id === "live_n1") {
+        gridData = [...liveMovies, ...liveSeries];
+      } else if (movieIds.size > 0 || seriesIds.size > 0) {
         // Collect specifically listed items first
         gridData = ALL_ITEMS.filter(m => movieIds.has(m.id) || seriesIds.has(m.id));
       } else if (isTrendingVj) {
@@ -2417,14 +2559,30 @@ function CustomTabBar() {
 
   const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
 
-  const submitRating = (rating: number) => {
+  const submitRating = async (rating: number) => {
     setIsRatingSubmitted(true);
     setIsRatingPermanentlyRemoved(true);
-    // Simulate short delay for "Thank you" feeling before redirect
+    
+    // 1. Automated Notification Cleanup in Firestore
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const notifRef = collection(db, "users", user.uid, "notifications");
+        const q = query(notifRef, where("type", "==", "rating"));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(async (d) => {
+          await deleteDoc(doc(db, "users", user.uid, "notifications", d.id));
+        });
+      }
+    } catch (e) {
+      console.error("Firestore cleanup failed", e);
+    }
+
+    // 2. Clear local states and redirect
     setTimeout(() => {
       markRead('n5'); // Mark as read ONLY on submission
-      Linking.openURL("market://details?id=com.yourapp.package").catch(() => {
-        Linking.openURL("https://play.google.com/store/apps/details?id=com.yourapp.package");
+      Linking.openURL("market://details?id=com.themoviezone247.official").catch(() => {
+        Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
       });
       setShowRatingModal(false);
       setSelectedRating(0);
@@ -2528,7 +2686,7 @@ function CustomTabBar() {
               <TouchableOpacity
                 style={{
                   paddingHorizontal: 8,
-                  height: 35,
+                  height: 45,
                   justifyContent: "center",
                 }}
                 onPress={() => {
@@ -2540,9 +2698,10 @@ function CustomTabBar() {
                 }}
                 activeOpacity={0.8}
               >
-                <View>
+                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                  <Animated.View style={[styles.tabLogoGlowRing, { opacity: glowAnim }]} />
                   <Animated.Image
-                    source={require("@/assets/images/movie-zone-logo.jpg")}
+                    source={require("@/assets/images/movie_zone_logo_new.png")}
                     style={[
                       styles.logoImage,
                       {
@@ -2556,9 +2715,9 @@ function CustomTabBar() {
                     style={[
                       {
                         position: "absolute",
-                        width: 120, // Wider than logo (35px)
-                        height: 35,
-                        left: -20, // Shifted right so text doesn't clip edge
+                        width: 160,
+                        height: 45,
+                        left: -8,
                         justifyContent: "center",
                         alignItems: "center",
                         backfaceVisibility: "hidden",
@@ -2568,22 +2727,43 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    <Text style={styles.logoTextTitle}>THE MOVIE</Text>
-                    <View style={styles.logoTextSubContainer}>
-                      <LinearGradient
-                        colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.logoTextSubSheen}
-                      />
-                      <Text style={styles.logoTextSub}>ZONE 24/7</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      {/* Logo side by side with text in the flip */}
+                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                         <Animated.View style={[styles.tabLogoGlowRingSmall, { opacity: glowAnim }]} />
+                         <View style={styles.navLogoSmallCircle}>
+                            <Image 
+                                source={require("@/assets/images/movie_zone_logo_new.png")}
+                                style={styles.navLogoSmallImg}
+                                resizeMode="cover"
+                            />
+                         </View>
+                      </View>
+
+                      <View style={{ marginLeft: 8 }}>
+                        <Text style={styles.navLogoTitle}>
+                          THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                          <LinearGradient 
+                            colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
+                            start={{ x: 0, y: 0 }} 
+                            end={{ x: 1, y: 0 }} 
+                            style={{ flex: 1, height: 1, marginRight: 6 }} 
+                          />
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <ClockAnimation size={10} color="#ffffff" />
+                            <Text style={styles.navLogoSub}>24 / 7</Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
                   </Animated.View>
                 </View>
               </TouchableOpacity>
             )}
 
-            <View style={[styles.topBarRight, (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }]}>
+            <View style={[styles.topBarRight, (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }, { height: 45 }]}>
               {/* All VJs / Series Library Pill (Repositioned) */}
               {active("/(tabs)/saved") ? (
                 showInPlaceSearch ? (
@@ -2868,8 +3048,12 @@ function CustomTabBar() {
 
       <NotificationOverlay
         visible={notificationVisible}
-        onClose={() => setNotificationVisible(false)}
+        onClose={() => {
+          setNotificationVisible(false);
+          setIsFromHero(false);
+        }}
         onSelect={onSelect}
+        highlightedId={highlightedId}
         showRatingModal={showRatingModal}
         setShowRatingModal={setShowRatingModal}
         selectedRating={selectedRating}
@@ -2886,16 +3070,108 @@ function CustomTabBar() {
         setExpandedNotificationId={setExpandedNotificationId}
         setReopenOnBack={setReopenOnBack}
         setLastViewedItemId={setLastViewedItemId}
-        isUpdateLocked={updateDismissCount >= 3}
+isUpdateLocked={updateDismissCount >= 3}
         isUpdateApplied={isUpdateApplied}
         isRatingPermanentlyRemoved={isRatingPermanentlyRemoved}
+        setGlobalGridVisible={setGlobalGridVisible}
         setGlobalGridTitle={setGlobalGridTitle}
         setGlobalGridData={setGlobalGridData}
-        setGlobalGridVisible={setGlobalGridVisible}
+        notifications={notifications}
       />
 
+      {/* ── Holiday Event Preview Modal ── */}
+      <Modal
+        visible={showEventPreview}
+        animationType="fade"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setShowEventPreview(false)}
+      >
+        <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(10, 10, 15, 0.94)' }}>
+          <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
+            <View
+              style={{
+                width: '100%',
+                borderRadius: 24,
+                padding: 32,
+                backgroundColor: 'rgba(17, 24, 39, 0.98)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.08)',
+                alignItems: 'center',
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.4,
+                shadowRadius: 20,
+                elevation: 10,
+              }}
+            >
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                borderWidth: 1.5,
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 24,
+              }}>
+                <Ionicons name="gift" size={40} color="#10b981" />
+              </View>
+
+              <Text style={{
+                color: '#fff',
+                fontSize: 28,
+                fontWeight: '900',
+                textAlign: 'center',
+                marginBottom: 16,
+                letterSpacing: 0.5,
+              }}>
+                Holiday Celebration!
+              </Text>
+
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                <Text style={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontSize: 18,
+                  lineHeight: 28,
+                  textAlign: 'center',
+                  fontWeight: '500',
+                }}>
+                  {eventMessage || "Enjoy all movies for FREE today! We're celebrating our system launch with global free access for everyone. Start exploring now!"}
+                </Text>
+              </ScrollView>
+
+              <View style={{ marginTop: 40, width: '100%' }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowEventPreview(false);
+                      if (isFromHero) {
+                        setNotificationVisible(false);
+                        setIsFromHero(false);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      height: 54,
+                      borderRadius: 27,
+                      borderWidth: 1,
+                      borderColor: 'rgba(16, 185, 129, 0.4)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#10b981', fontSize: 18, fontWeight: '800' }}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
       {!showInPlaceSearch && (
-        <View style={[styles.barWrapper, { bottom: dynamicBarBottom }]} pointerEvents="box-none">
+        <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : Math.max(16, insets.bottom + 12) }]} pointerEvents="box-none">
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
@@ -3489,10 +3765,66 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   logoImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     resizeMode: "cover",
+    transform: [{ scale: 1.27 }], // Zoom in to exactly 1.27 as requested
+  },
+  tabLogoGlowRing: {
+    position: 'absolute',
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(70,140,220,0.55)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 0,
+  },
+  tabLogoGlowRingSmall: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(70,140,220,0.55)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 0,
+  },
+  navLogoSmallCircle: {
+     width: 26,
+     height: 26,
+     borderRadius: 13,
+     overflow: 'hidden',
+     backgroundColor: '#0a0a0f',
+     borderWidth: 1,
+     borderColor: 'rgba(80,150,230,0.5)',
+  },
+  navLogoSmallImg: {
+     width: '100%',
+     height: '100%',
+     transform: [{ scale: 1.25 }],
+  },
+  navLogoTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#ffffff",
+    letterSpacing: 1,
+  },
+  navLogoSub: {
+    color: "#ffffff",
+    fontSize: 9,
+    fontWeight: "700",
+    marginLeft: 3,
+    letterSpacing: 1.5,
   },
   logoTextTitle: {
     color: "#fff",
@@ -3749,6 +4081,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
     paddingTop: 16,
+    paddingBottom: 24,
     backgroundColor: "rgba(255,255,255,0.02)",
   },
   rowTitle: {
@@ -4053,7 +4386,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
   },
-  genreBadgeText: { color: "#FFC107", fontSize: 8, fontWeight: "900" },
+  genreBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
   vjBadge: {
     position: "absolute",
     top: 6,
@@ -4084,5 +4417,18 @@ const styles = StyleSheet.create({
     fontSize: 7,
     fontWeight: "900",
     letterSpacing: 0.2,
+  },
+  lockBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
 });

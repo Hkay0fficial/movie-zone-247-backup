@@ -1,5 +1,5 @@
-import AdminScreen from '../components/AdminScreen';
+import NativeAdminScreen from '../components/NativeAdminScreen';
 
 export default function AdminRoute() {
-  return <AdminScreen />;
+  return <NativeAdminScreen />;
 }

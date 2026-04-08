@@ -1,5 +1,4 @@
 // Shared movie data for the app
-export const PROFILE_IMAGE_URI = 'file:///Users/hkfiles/.gemini/antigravity/brain/5158953f-ec3f-48ca-b11f-a59e93c7d094/haruna_profile_pic_1773179555861.png';
 
 export interface Movie {
   id: string;
@@ -10,8 +9,18 @@ export interface Movie {
   vj: string;
   poster: string;
   duration: string;
+  previewDuration?: string;
+  description?: string;
   videoUrl?: string;
-  parts?: { id: string; title: string; videoUrl?: string }[];
+  previewUrl?: string;
+  isFree?: boolean;
+  isHero?: boolean;
+  type?: 'Movie' | 'Series';
+  coverUrl?: string;
+  heroType?: 'video' | 'photo';
+  heroVideoUrl?: string;
+  heroPhotoUrl?: string;
+  parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string }[];
 }
 
 export interface Series {
@@ -25,10 +34,22 @@ export interface Series {
   status: 'Ongoing' | 'Ended' | 'New';
   poster: string;
   episodes: number; // New field for number of parts/episodes
-  totalDuration?: string;
-  episodeDuration?: string;
-  isMiniSeries?: boolean; // New field for mini-series
+  episodeList?: { title: string; url: string }[]; // New field for real episodes
+  freeEpisodesCount?: number; // New field for how many episodes are free
+  description?: string;
   videoUrl?: string;
+  previewUrl?: string;
+  totalDuration?: string;
+  previewDuration?: string;
+  episodeDuration?: string;
+  isMiniSeries?: boolean;
+  isFree?: boolean;
+  isHero?: boolean;
+  type?: 'Movie' | 'Series';
+  coverUrl?: string;
+  heroType?: 'video' | 'photo';
+  heroVideoUrl?: string;
+  heroPhotoUrl?: string;
 }
 
 export function shortenGenre(genre: string): string {
@@ -92,19 +113,20 @@ const POSTERS = {
   p20: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=400&q=80',
 };
 
-function movie(id: string, title: string, year: number, genre: string, rating: string, vj: string, poster: string, duration: string, videoUrl?: string, parts?: { id: string; title: string; videoUrl?: string }[]): Movie {
-  return { id, title, year, genre, rating, vj, poster, duration, videoUrl, parts };
+function movie(id: string, title: string, year: number, genre: string, rating: string, vj: string, poster: string, duration: string, videoUrl?: string, parts?: { id: string; title: string; videoUrl?: string }[], isFree?: boolean): Movie {
+  return { id, title, year, genre, rating, vj, poster, duration, videoUrl, parts, isFree };
 }
 
 // ─── Per-section lists ────────────────────────────────────────────────────────
-export const NEW_RELEASES: Movie[] = [
+// --- Internal Raw Data (Containing both Free and Paid) ---
+const _RAW_NEW_RELEASES: Movie[] = [
   movie('hr1', 'Heroes Part 1',   2023, 'Action',  '8.5', 'VJ Junior', POSTERS.p7,  '2h 00m', undefined, [
     { id: 'hr1-p1', title: 'Part 1: The Beginning', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
     { id: 'hr1-p2', title: 'Part 2: The Rising', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4' },
     { id: 'hr1-p3', title: 'Part 3: The End', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
-  ]),
+  ], true),
   movie('hr2', 'Heroes Part 2',   2026, 'Action',  '8.8', 'VJ Junior', POSTERS.p8,  '2h 10m'),
-  movie('nr1', 'Neon Horizon',    2025, 'Sci-Fi',  '8.1', 'VJ Junior', POSTERS.p1,  '2h 14m'),
+  movie('nr1', 'Neon Horizon',    2025, 'Sci-Fi',  '8.1', 'VJ Junior', POSTERS.p1,  '2h 14m', undefined, undefined, true),
   movie('nr2', 'Dark Tide',       2025, 'Thriller','7.6', 'VJ Emmy',   POSTERS.p2,  '1h 58m'),
   movie('nr3', 'Solar Wind',      2025, 'Action',  '8.4', 'VJ Mark',   POSTERS.p3,  '2h 02m'),
   movie('nr4', 'After Hours',     2025, 'Drama',   '7.9', 'VJ Junior', POSTERS.p4,  '1h 45m'),
@@ -112,8 +134,8 @@ export const NEW_RELEASES: Movie[] = [
   movie('nr6', 'The Quiet Room',  2025, 'Drama',   '8.2', 'VJ Mark',   POSTERS.p6,  '1h 52m'),
 ];
 
-export const TRENDING: Movie[] = [
-  movie('tr1', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m'),
+const _RAW_TRENDING: Movie[] = [
+  movie('tr1', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m', undefined, undefined, true),
   movie('tr2', 'Wildfire',        2024, 'Action',  '8.3', 'VJ Junior', POSTERS.p8,  '2h 01m'),
   movie('tr3', 'Love & Static',   2024, 'Romance', '7.8', 'VJ Emmy',   POSTERS.p9,  '1h 48m'),
   movie('tr4', 'The Reckoning',   2024, 'Thriller','8.5', 'VJ Mark',   POSTERS.p10, '2h 15m'),
@@ -121,7 +143,7 @@ export const TRENDING: Movie[] = [
   movie('tr6', 'Depths',          2024, 'Horror',  '8.0', 'VJ Emmy',   POSTERS.p12, '1h 37m'),
 ];
 
-export const MOST_DOWNLOADED: Movie[] = [
+const _RAW_MOST_DOWNLOADED: Movie[] = [
   movie('md1', 'Inception 2',     2024, 'Sci-Fi',  '8.7', 'VJ Mark',   POSTERS.p13, '2h 30m'),
   movie('md2', 'The Final Hour',  2024, 'Action',  '8.1', 'VJ Junior', POSTERS.p14, '2h 05m'),
   movie('md3', 'Moonlighter',     2024, 'Romance', '7.5', 'VJ Emmy',   POSTERS.p15, '1h 44m'),
@@ -130,14 +152,27 @@ export const MOST_DOWNLOADED: Movie[] = [
   movie('md6', 'Silent Shore',    2024, 'Horror',  '7.4', 'VJ Emmy',   POSTERS.p18, '1h 41m'),
 ];
 
-export const LATEST: Movie[] = [
-  movie('lt1', 'Override',        2025, 'Sci-Fi',  '7.8', 'VJ Junior', POSTERS.p19, '1h 55m'),
+const _RAW_LATEST: Movie[] = [
+  movie('lt1', 'Override',        2025, 'Sci-Fi',  '7.8', 'VJ Junior', POSTERS.p19, '1h 55m', undefined, undefined, true),
   movie('lt2', 'Cascade Point',   2025, 'Action',  '8.0', 'VJ Emmy',   POSTERS.p20, '2h 09m'),
   movie('lt3', 'Velvet Noir',     2025, 'Mystery', '8.2', 'VJ Mark',   POSTERS.p1,  '1h 50m'),
   movie('lt4', 'Fractured Sky',   2025, 'Drama',   '7.6', 'VJ Junior', POSTERS.p2,  '2h 00m'),
   movie('lt5', 'The Undercroft',  2025, 'Horror',  '8.4', 'VJ Emmy',   POSTERS.p3,  '1h 38m'),
   movie('lt6', 'Parallel Lines',  2025, 'Romance', '7.7', 'VJ Mark',   POSTERS.p4,  '1h 47m'),
 ];
+
+// --- Public Filtered Arrays ---
+export const FREE_CONTENT: (Movie | Series)[] = [
+  ..._RAW_NEW_RELEASES.filter(m => m.isFree),
+  ..._RAW_TRENDING.filter(m => m.isFree),
+  ..._RAW_LATEST.filter(m => m.isFree),
+];
+
+export const NEW_RELEASES = _RAW_NEW_RELEASES.filter(m => !m.isFree);
+export const TRENDING = _RAW_TRENDING.filter(m => !m.isFree);
+export const MOST_DOWNLOADED = _RAW_MOST_DOWNLOADED.filter(m => !m.isFree);
+export const LATEST = _RAW_LATEST.filter(m => !m.isFree);
+
 
 export const CONTINUE_WATCHING: Movie[] = [
   movie('cw1', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m'),
@@ -179,20 +214,11 @@ export const YOU_MAY_ALSO_LIKE: Movie[] = [
   movie('ym6', 'Neon Horizon',    2025, 'Sci-Fi',  '8.1', 'VJ Mark',   POSTERS.p1,  '2h 14m'),
 ];
 
-export const LAST_WATCHED: Movie[] = [
-  movie('lw4', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m'),
-];
+export const LAST_WATCHED: Movie[] = []; // Filtered by logic
+export const MOST_VIEWED = [_RAW_NEW_RELEASES[2], _RAW_TRENDING[1], _RAW_TRENDING[0]].filter(m => !m.isFree);
 
-export const MOST_VIEWED: Movie[] = [
-  movie('mv1', 'Neon Horizon',    2025, 'Sci-Fi',  '8.1', 'VJ Junior', POSTERS.p1,  '2h 14m'),
-  movie('mv2', 'Wildfire',        2024, 'Action',  '8.3', 'VJ Mark',   POSTERS.p8,  '2h 01m'),
-  movie('mv3', 'The Reckoning',   2024, 'Thriller','8.5', 'VJ Emmy',   POSTERS.p10, '2h 15m'),
-  movie('mv4', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m'),
-  movie('mv5', 'Inception 2',     2024, 'Sci-Fi',  '8.7', 'VJ Junior', POSTERS.p13, '2h 30m'),
-  movie('mv6', 'After Hours',     2025, 'Drama',   '7.9', 'VJ Emmy',   POSTERS.p4,  '1h 45m'),
-];
 
-export const ACTION_MOVIES: Movie[] = [
+const _RAW_ACTION_MOVIES: Movie[] = [
   movie('ac1', 'Solar Wind',      2025, 'Action',  '8.4', 'VJ Mark',   POSTERS.p3,  '2h 02m'),
   movie('ac2', 'Wildfire',        2024, 'Action',  '8.3', 'VJ Junior', POSTERS.p8,  '2h 01m'),
   movie('ac3', 'Ice Fortress',    2025, 'Action',  '7.3', 'VJ Emmy',   POSTERS.p5,  '2h 08m'),
@@ -200,8 +226,9 @@ export const ACTION_MOVIES: Movie[] = [
   movie('ac5', 'Cascade Point',   2025, 'Action',  '8.0', 'VJ Junior', POSTERS.p20, '2h 09m'),
   movie('ac6', 'Override',        2025, 'Sci-Fi',  '7.8', 'VJ Emmy',   POSTERS.p19, '1h 55m'),
 ];
+export const ACTION_MOVIES = _RAW_ACTION_MOVIES.filter(m => !m.isFree);
 
-export const SCIFI_MOVIES: Movie[] = [
+const _RAW_SCIFI_MOVIES: Movie[] = [
   movie('sf1', 'Neon Horizon',    2025, 'Sci-Fi',  '8.1', 'VJ Junior', POSTERS.p1,  '2h 14m'),
   movie('sf2', 'Orbital',         2024, 'Sci-Fi',  '9.0', 'VJ Mark',   POSTERS.p7,  '2h 22m'),
   movie('sf3', 'Inception 2',     2024, 'Sci-Fi',  '8.7', 'VJ Mark',   POSTERS.p13, '2h 30m'),
@@ -209,6 +236,8 @@ export const SCIFI_MOVIES: Movie[] = [
   movie('sf5', 'Phantom Signal',  2024, 'Mystery', '7.6', 'VJ Emmy',   POSTERS.p11, '1h 59m'),
   movie('sf6', 'Fractured Sky',   2025, 'Drama',   '7.6', 'VJ Emmy',   POSTERS.p2,  '2h 00m'),
 ];
+export const SCIFI_MOVIES = _RAW_SCIFI_MOVIES.filter(m => !m.isFree);
+
 
 export const ROMANCE_MOVIES: Movie[] = [
   movie('ro1', 'Love & Static',   2024, 'Romance', '7.8', 'VJ Emmy',   POSTERS.p9,  '1h 48m'),
@@ -358,6 +387,9 @@ export interface HeroMovie {
   description: string;
   poster: string;
   videoUrl: string;
+  heroVideoUrl?: string;
+  heroPhotoUrl?: string;
+  heroType?: 'video' | 'photo';
 }
 
 export const HERO_MOVIES: HeroMovie[] = [
@@ -473,9 +505,9 @@ export const HERO_MOVIES: HeroMovie[] = [
 
 
 
-export const ALL_SERIES: Series[] = [
+const _RAW_ALL_SERIES: Series[] = [
   // Sci-Fi
-  { id: 's1',  title: 'Dark Matter',       genre: 'Sci-Fi',   seasons: 2, year: 2024, rating: '8.8', vj: 'VJ Junior', status: 'Ongoing', poster: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=80', episodes: 8, totalDuration: '18h 30m', episodeDuration: '45m' },
+  { id: 's1',  title: 'Dark Matter',       genre: 'Sci-Fi',   seasons: 2, year: 2024, rating: '8.8', vj: 'VJ Junior', status: 'Ongoing', poster: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=80', episodes: 8, totalDuration: '18h 30m', episodeDuration: '45m', isFree: true },
   { id: 's2',  title: 'Severance',         genre: 'Sci-Fi',   seasons: 2, year: 2022, rating: '8.7', vj: 'VJ Emmy',   status: 'Ongoing', poster: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80', episodes: 9, totalDuration: '17h 15m', episodeDuration: '50m' },
   { id: 's3',  title: 'Westworld',         genre: 'Sci-Fi',   seasons: 4, year: 2016, rating: '8.5', vj: 'VJ Mark',   status: 'Ended',   poster: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&q=80', episodes: 10, totalDuration: '36h 00m', episodeDuration: '60m' },
   { id: 's4',  title: 'The Expanse',       genre: 'Sci-Fi',   seasons: 6, year: 2015, rating: '8.5', vj: 'VJ Junior', status: 'Ended',   poster: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&q=80', episodes: 13, totalDuration: '48h 20m', episodeDuration: '45m' },
@@ -503,6 +535,9 @@ export const ALL_SERIES: Series[] = [
   { id: 's24', title: 'Chernobyl',         genre: 'Drama',           seasons: 1,  year: 2019, rating: '9.4', vj: 'VJ Mark',   status: 'Ended',   poster: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&q=80', episodes: 5,  totalDuration: '5h 30m',   episodeDuration: '60m', isMiniSeries: true },
 ];
 
+export const ALL_SERIES = _RAW_ALL_SERIES.filter(s => !s.isFree);
+
+
 export const TRENDING_SERIES = ALL_SERIES.slice(0, 6);
 export const MOST_VIEWED_SERIES = ALL_SERIES.slice(10, 16);
 export const MOST_DOWNLOADED_SERIES = ALL_SERIES.slice(6, 12);
@@ -510,6 +545,7 @@ export const NEW_SERIES = ALL_SERIES.slice(12, 18);
 
 // ─── All section rows (constant, used globally) ──────────────────────
 export const ALL_ROWS: { title: string; data: (Movie | Series)[] }[] = [
+  { title: 'Free Movies',        data: FREE_CONTENT      },
   { title: 'New Releases',       data: [...NEW_RELEASES, ...NEW_SERIES] },
   { title: 'Trending Now',       data: TRENDING          },
   { title: 'Trending VJs',       data: TRENDING          }, // Destination for VJ notification

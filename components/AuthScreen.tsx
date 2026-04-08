@@ -12,6 +12,9 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Pressable,
+  Alert,
+  Modal,
+  Dimensions,
   StatusBar as RNStatusBar
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -24,20 +27,31 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { auth, db } from '../constants/firebaseConfig';
+import ClockAnimation from './ClockAnimation';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  updateProfile 
+  updateProfile,
+  signInAnonymously,
+  GoogleAuthProvider,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import { signinWithGoogle } from '../lib/authHelpers';
 import Animated, { 
   FadeInDown, 
+  FadeOutDown,
   FadeOutUp, 
   Layout, 
   useSharedValue, 
   useAnimatedStyle, 
   withSpring,
   withTiming,
+  withDelay,
+  withSequence,
   FadeIn,
   FadeOut,
   interpolate,
@@ -46,8 +60,16 @@ import Animated, {
   withRepeat
 } from 'react-native-reanimated';
 
+// Initialize WebBrowser for OAuth
+WebBrowser.maybeCompleteAuthSession();
+
 // Background image (dark sci-fi / cinematic vibe)
 const BG_URL = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1000';
+
+// Change these to your actual Client IDs from Google Cloud Console
+const GOOGLE_WEB_CLIENT_ID = '1005273436856-h08kd1sqg14cp2d3ih7khc9tk271qevg.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '1005273436856-0rrf2a337f9bu4qtprhsl85gohv6conu.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = 'YOUR_IOS_CLIENT_ID_HERE.apps.googleusercontent.com';
 
 const FloatingLabelInput = ({ 
   label, 
@@ -146,6 +168,231 @@ const AnimatedBlob = ({ color, size, initialPos, duration }: any) => {
   return <Animated.View style={animatedStyle} />;
 };
 
+// ─────────────────────────────────────────────────────
+// FlippingLogoHeader – animated logo + "THE MOVIE ZONE"
+// ─────────────────────────────────────────────────────
+
+function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: () => void }) {
+  // Start the rotation exactly at the current side so there's no 1-frame flash
+  const rotation = useSharedValue(flipCount * 180);
+  const glowAnim = useSharedValue(0);
+
+  useEffect(() => {
+    // Only animate if the rotation isn't already at the target
+    if (rotation.value !== flipCount * 180) {
+      rotation.value = withSpring(flipCount * 180, { damping: 12, stiffness: 90 });
+    }
+    
+    glowAnim.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1200 }),
+        withTiming(0.3, { duration: 1200 })
+      ),
+      -1,
+      true
+    );
+  }, [flipCount]);
+
+  const frontStyle = useAnimatedStyle(() => {
+    // Front is visible when rotation is close to 0, 360, 720...
+    // Back is visible when rotation is close to 180, 540, 900...
+    const normalized = ((rotation.value % 360) + 360) % 360;
+    const isFront = normalized < 90 || normalized > 270;
+    
+    return {
+      transform: [
+        { perspective: 1000 },
+        { rotateY: `${rotation.value}deg` }
+      ],
+      opacity: isFront ? 1 : 0,
+      zIndex: isFront ? 10 : 0,
+      position: 'absolute',
+      width: '100%',
+      alignItems: 'center',
+    };
+  });
+
+  const backStyle = useAnimatedStyle(() => {
+    const normalized = ((rotation.value % 360) + 360) % 360;
+    const isBack = normalized >= 90 && normalized <= 270;
+    
+    return {
+      transform: [
+        { perspective: 1000 },
+        { rotateY: `${rotation.value + 180}deg` }
+      ],
+      opacity: isBack ? 1 : 0,
+      zIndex: isBack ? 10 : 0,
+      position: 'absolute',
+      width: '100%',
+      alignItems: 'center',
+    };
+  });
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowAnim.value,
+  }));
+
+  return (
+    <View style={{ width: '100%', alignItems: 'center', height: 180, zIndex: 100 }}>
+      <Pressable onPress={onFlip} style={{ width: '100%', alignItems: 'center' }}>
+        <View style={[flipStyles.wrapper, { height: 180, width: '100%', justifyContent: 'center', alignItems: 'center' }]}>
+          {/* Front Side: Logo */}
+          <Animated.View style={frontStyle}>
+            <Animated.View style={[flipStyles.glowRing, glowStyle]} />
+            <View style={flipStyles.logoShadow}>
+              <View style={flipStyles.logoCircle}>
+                <Image
+                  source={require('../assets/images/movie_zone_logo_new.png')}
+                  style={flipStyles.logoImg}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Back Side: Text */}
+          <Animated.View style={backStyle}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 }}>
+              {/* LOGO IMAGE */}
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <Animated.View style={[flipStyles.glowRingSmall, glowStyle]} />
+                <View style={flipStyles.smallLogoCircle}>
+                  <Image 
+                    source={require('../assets/images/movie_zone_logo_new.png')}
+                    style={flipStyles.logoImg}
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+
+              {/* BRAND TEXT */}
+              <View style={[flipStyles.contentWrap, { alignSelf: 'center', marginLeft: 15 }]}>
+                <Text style={flipStyles.brandTitle}>
+                  THE MOVIE <Text style={{ color: '#818cf8', textShadowColor: 'rgba(129, 140, 248, 0.4)' }}>ZONE</Text>
+                </Text>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, width: '100%' }}>
+                  <LinearGradient 
+                    colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
+                    start={{ x: 0, y: 0 }} 
+                    end={{ x: 1, y: 0 }} 
+                    style={[flipStyles.accentLine, { flex: 1, height: 1.5, marginRight: 10 }]} 
+                  />
+                  <View style={flipStyles.subtitleRow}>
+                    <ClockAnimation size={15} color="#ffffff" />
+                    <Text style={[flipStyles.subtitle, { marginLeft: 6 }]}>24 / 7</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+const flipStyles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  glowRing: {
+    position: 'absolute',
+    top: -10,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(70,140,220,0.55)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 22,
+    elevation: 0,
+  },
+  logoShadow: {
+    borderRadius: 75,
+    shadowColor: '#1a5fa3',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 24,
+    elevation: 16,
+    backgroundColor: '#0a0a0f',
+    marginBottom: 4,
+  },
+  logoCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'rgba(80,150,230,0.5)',
+  },
+  logoImg: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.27 }], // Zoom in to exactly 1.27 as requested
+  },
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(129, 140, 248, 0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  accentLine: {
+    /* Shadows removed as they break transparency in React Native LinearGradients */
+  },
+  subtitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 3,
+    fontStyle: 'italic',
+  },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contentWrap: {
+    alignItems: 'flex-start',
+  },
+  // Logo Styles
+  smallLogoCircle: {
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    overflow: 'hidden',
+    backgroundColor: '#0a0a0f',
+    borderWidth: 2,
+    borderColor: 'rgba(80,150,230,0.5)',
+    shadowColor: '#1a5fa3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  glowRingSmall: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(70,140,220,0.55)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 0,
+  },
+});
+
 export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'login' | 'signup' }) {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -174,22 +421,69 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   // Biometric states
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<LocalAuthentication.AuthenticationType[]>([]);
+  const [hasAccount, setHasAccount] = useState(false);
   
   // Signup Step (Progressive Disclosure)
   const [signupStep, setSignupStep] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  
+  // Flip state for Header
+  const [flipCount, setFlipCount] = useState(0);
+  const prevFocusedField = useRef<string | null>(null);
 
   // Animations
   const btnScale = useSharedValue(1);
+
+  // --- GOOGLE SIGN-IN HOOK ---
+  // Using the absolute URI to fix the redirect_uri_mismatch
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    responseType: 'id_token',
+    // This is the EXACT link that must be in your Google Cloud Console
+    redirectUri: AuthSession.makeRedirectUri({
+      projectNameForProxy: '@haruna2567/movie-zone-24-7'
+    } as any),
+  });
+
+  // Handle Google Auth Response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      if (id_token) {
+        handleGoogleSuccess(id_token);
+      }
+    } else if (response?.type === 'cancel' || response?.type === 'error') {
+      setLoading(false);
+    }
+  }, [response]);
+
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const { user, isNewUser } = await signinWithGoogle(idToken);
+      triggerHaptic('success');
+      
+      if (isNewUser) {
+        Alert.alert("Welcome!", "Your account has been created using Google.");
+      }
+      
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('Google Auth Handler Error:', error);
+      Alert.alert("Login Failed", "Could not sign in with Google. Please try again.");
+      setLoading(false);
+    }
+  };
 
   const animatedBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }]
   }));
   
   useEffect(() => {
-    checkBiometrics();
-
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
       () => setIsKeyboardVisible(true)
@@ -199,11 +493,45 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       () => setIsKeyboardVisible(false)
     );
 
+    checkBiometrics();
+    checkHasAccount();
+
     return () => {
       keyboardDidHideListener.remove();
       keyboardDidShowListener.remove();
     };
   }, []);
+
+  // Automatic Flip Timer (10 Seconds)
+  useEffect(() => {
+    let timer: any;
+    
+    if (!isKeyboardVisible) {
+      timer = setInterval(() => {
+        setFlipCount(c => c + 1);
+      }, 10000); // 10000ms = 10s
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isKeyboardVisible, flipCount]); // Reset timer when manual flip occurs
+
+  useEffect(() => {
+    if (prevFocusedField.current !== null && focusedField === null) {
+      setFlipCount(c => c + 1);
+    }
+    prevFocusedField.current = focusedField;
+  }, [focusedField]);
+
+  const checkHasAccount = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('hasAccount');
+      if (stored === 'true') {
+        setHasAccount(true);
+      }
+    } catch (e) {}
+  };
 
   const checkBiometrics = async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -259,6 +587,15 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       if (isLogin) {
         // --- REAL FIREBASE LOGIN ---
         await signInWithEmailAndPassword(auth, emailOrPhone.trim(), password);
+        
+        // Immediate lastActive update on login
+        if (auth.currentUser) {
+          await setDoc(doc(db, "users", auth.currentUser.uid), {
+            lastActive: serverTimestamp()
+          }, { merge: true });
+        }
+        await AsyncStorage.setItem('hasAccount', 'true');
+        
         triggerHaptic('success');
         router.replace('/(tabs)');
       } else {
@@ -274,8 +611,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
           fullName,
           email: user.email,
           createdAt: serverTimestamp(),
+          lastActive: serverTimestamp(), // Initialize lastActive
           role: 'user' // Default role
         });
+        await AsyncStorage.setItem('hasAccount', 'true');
 
         triggerHaptic('success');
         router.replace('/(tabs)');
@@ -293,6 +632,41 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       else if (error.code === 'auth/network-request-failed') errorMsg = "Network error. Please check your connection.";
       
       alert(errorMsg);
+      setLoading(false);
+    }
+  };
+  
+  const handleForgotPassword = async () => {
+    if (!emailOrPhone || !isEmail(emailOrPhone)) {
+      triggerHaptic('warning');
+      Alert.alert(
+        "Email Required", 
+        "Please enter your email address in the field above to reset your password."
+      );
+      setEmailTouched(true);
+      return;
+    }
+
+    triggerHaptic('impact');
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, emailOrPhone.trim());
+      triggerHaptic('success');
+      Alert.alert(
+        "Email Sent",
+        "A password reset link has been sent to your email address. Please check your inbox (and spam folder)."
+      );
+    } catch (error: any) {
+      console.error('Password Reset Error:', error.code, error.message);
+      triggerHaptic('error');
+      
+      let errorMsg = "Could not send reset email. Please try again later.";
+      if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email.";
+      else if (error.code === 'auth/invalid-email') errorMsg = "Invalid email address format.";
+      else if (error.code === 'auth/network-request-failed') errorMsg = "Network error. Please check your connection.";
+      
+      Alert.alert("Reset Failed", errorMsg);
+    } finally {
       setLoading(false);
     }
   };
@@ -317,16 +691,39 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
+  // --- SOCIAL LOGIN HANDLERS ---
+  const handleSocialLogin = (provider: 'Google' | 'Apple' | 'Phone') => {
+    if (provider === 'Google') {
+      triggerHaptic('impact');
+      setLoading(true);
+      promptAsync();
+    } else if (provider === 'Apple') {
+      triggerHaptic('warning');
+      Alert.alert("Coming Soon", "Apple Sign-In is coming in a future update!");
+      return;
+    }
+  };
+
+  const [showGuestModal, setShowGuestModal] = useState(false);
+
+  const handleGuestLogin = () => {
+    triggerHaptic('impact');
+    setShowGuestModal(true);
+  };
+
+  const confirmGuestLogin = async () => {
+    setShowGuestModal(false);
     setLoading(true);
-    setTimeout(async () => {
-      try {
-        await AsyncStorage.setItem('userToken', `mock-${provider.toLowerCase()}-token`);
-        router.replace('/(tabs)');
-      } catch (e) {
-        setLoading(false);
-      }
-    }, 2000);
+    try {
+      await signInAnonymously(auth);
+      triggerHaptic('success');
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.warn('Firebase Guest Auth Error:', error.message);
+      await AsyncStorage.setItem('userToken', 'mock-guest-token');
+      triggerHaptic('success');
+      router.replace('/(tabs)');
+    }
   };
 
   const toggleAuthMode = () => {
@@ -415,26 +812,18 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
             }
           ]}>
             
-            {/* Header Area - Constant during transition, hidden on keyboard */}
+            {/* Header Area - Instant disappear to keep UI fast */}
             {!isKeyboardVisible && (
               <Animated.View 
-                entering={FadeIn.duration(300)} 
-                exiting={FadeOut.duration(300)}
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(100)}
                 style={styles.headerContainer}
               >
-                <View style={styles.logoShadowContainer}>
-                  <View style={styles.brandingContainer}>
-                    <Image 
-                      source={require('../assets/images/movie_zone_logo.jpg')}
-                      style={[styles.mainLogo, { transform: [{ scale: 1.15 }] }]}
-                      resizeMode="cover"
-                    />
-                  </View>
-                </View>
+                <FlippingLogoHeader flipCount={flipCount} onFlip={() => { triggerHaptic('impact'); setFlipCount(c => c + 1); }} />
                 <Text style={styles.subtitle}>
                   {isLogin 
                     ? "Stream your favorite movies & series anywhere, anytime."
-                    : "Join the Movie Zone 24/7 community today!"}
+                    : "Join THE MOVIE ZONE 24/7 community today!"}
                 </Text>
               </Animated.View>
             )}
@@ -639,19 +1028,38 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                   )}
                 </Animated.View>
 
-                {/* Forgot Password - Only for Login */}
+                {/* Utilities Row - Forgot Password & Quick Sign In */}
                 {isLogin && (
                   <Animated.View 
                     entering={FadeIn.duration(300)}
                     exiting={FadeOut.duration(200)}
+                    style={styles.utilitiesRow}
                   >
-                    <TouchableOpacity style={styles.forgotPassBtn}>
+                    {isBiometricAvailable && hasAccount ? (
+                      <TouchableOpacity 
+                        style={styles.biometricBtnSmall} 
+                        onPress={handleBiometricLogin}
+                      >
+                        <Ionicons 
+                          name={biometricType.includes(1) ? "scan-outline" : "finger-print-outline"} 
+                          size={18} 
+                          color="#818cf8" 
+                        />
+                        <Text style={styles.biometricTextSmall}>Quick Sign In</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={{ flex: 1 }} />
+                    )}
+                    <TouchableOpacity 
+                      style={styles.forgotPassBtn}
+                      onPress={handleForgotPassword}
+                      disabled={loading}
+                    >
                       <Text style={styles.forgotPassText}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </Animated.View>
                 )}
 
-                {/* Auth Button */}
                 <Animated.View style={[animatedBtnStyle, { marginTop: (isLogin || signupStep === 3) ? 10 : 0 }]}>
                   {(isLogin || signupStep === 3) && (
                     <TouchableOpacity 
@@ -666,7 +1074,6 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         end={{ x: 1, y: 0 }}
                         style={styles.loginBtnGradient}
                       >
-                        {/* Premium Sheen Pill Effect */}
                         <View style={[styles.pillSheen, !isFormValid && { opacity: 0.1 }]} />
                         
                         {loading ? (
@@ -681,20 +1088,6 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                   )}
                 </Animated.View>
 
-                {/* Biometric Button */}
-                {isLogin && isBiometricAvailable && (
-                  <TouchableOpacity 
-                    style={styles.biometricBtn} 
-                    onPress={handleBiometricLogin}
-                  >
-                    <Ionicons 
-                      name={biometricType.includes(1) ? "scan-outline" : "finger-print-outline"} 
-                      size={28} 
-                      color="#818cf8" 
-                    />
-                    <Text style={styles.biometricText}>Quick Sign In</Text>
-                  </TouchableOpacity>
-                )}
 
                 {/* Divider */}
                 <View style={styles.dividerRow}>
@@ -720,18 +1113,85 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={styles.socialBtn} 
+                    style={[styles.socialBtn, { opacity: 0.6 }]} 
                     onPress={() => handleSocialLogin('Apple')}
                     disabled={loading}
                   >
                     <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
                     <Ionicons name="logo-apple" size={22} color="#fff" />
-                    <Text style={styles.socialBtnText}>Apple</Text>
+                    <Text style={styles.socialBtnText}>Coming Soon</Text>
                   </TouchableOpacity>
                 </View>
 
               </BlurView>
             </Animated.View>
+
+            {/* Guest Access Button (Outside Container) */}
+            {isLogin && (
+              <Animated.View entering={FadeIn.delay(400).duration(400)}>
+                <TouchableOpacity 
+                  style={styles.guestBtnOutside}
+                  onPress={handleGuestLogin}
+                  disabled={loading}
+                >
+                  <Text style={styles.guestBtnText}>Continue as Guest</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
+            {/* ── Guest Confirm Modal ── */}
+            <Modal
+              transparent
+              visible={showGuestModal}
+              animationType="none"
+              onRequestClose={() => setShowGuestModal(false)}
+              statusBarTranslucent
+            >
+              <View style={styles.guestModalOverlay}>
+                <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowGuestModal(false)} />
+                <Animated.View
+                  entering={FadeInDown.springify().damping(22).stiffness(120)}
+                  exiting={FadeOutDown.duration(220)}
+                  style={styles.guestModalCard}
+                >
+                  <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+
+                  {/* Icon */}
+                  <View style={styles.guestModalIconWrap}>
+                    <Ionicons name="person-outline" size={30} color="#818cf8" />
+                  </View>
+
+                  <Text style={styles.guestModalTitle}>Continue as Guest?</Text>
+                  <Text style={styles.guestModalBody}>
+                    You can explore the app as a guest, but some premium features may require an account.
+                  </Text>
+
+                  {/* Buttons */}
+                  <TouchableOpacity
+                    style={styles.guestModalConfirmBtn}
+                    activeOpacity={0.85}
+                    onPress={confirmGuestLogin}
+                  >
+                    <LinearGradient
+                      colors={['#5B5FEF', '#818cf8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.guestModalConfirmGradient}
+                    >
+                      <Text style={styles.guestModalConfirmText}>Continue as Guest</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#fff" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.guestModalCancelBtn}
+                    onPress={() => { triggerHaptic('impact'); setShowGuestModal(false); }}
+                  >
+                    <Text style={styles.guestModalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
+            </Modal>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>
@@ -763,31 +1223,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 30,
+    paddingBottom: Platform.OS === 'android' ? 20 : 0,
+    paddingTop: 10,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 0,
   },
   logoShadowContainer: {
     marginBottom: 8,
-    borderRadius: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 10,
+    borderRadius: 75,
+    shadowColor: '#1a5fa3',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 24,
+    elevation: 16,
     backgroundColor: '#0a0a0f',
   },
   brandingContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 2.5,
+    borderColor: 'rgba(100,160,230,0.4)',
   },
   mainLogo: {
     width: '100%',
@@ -799,7 +1260,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 18,
-    height: 36, // Fixed height to avoid jumps
+    marginBottom: 4,
   },
   glassCardWrapper: {
     borderRadius: 28,
@@ -809,13 +1270,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20, 20, 30, 0.4)',
   },
   glassCard: {
-    padding: 20,
+    padding: 16,
   },
   cardTitle: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '800',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -824,9 +1285,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
-    height: 48,
+    height: 44,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   inputContainerFocused: {
     borderColor: '#818cf8',
@@ -850,9 +1311,25 @@ const styles = StyleSheet.create({
   eyeBtn: {
     padding: 4,
   },
+  utilitiesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    width: '100%',
+  },
+  biometricBtnSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  biometricTextSmall: {
+    color: '#818cf8',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   forgotPassBtn: {
     alignSelf: 'flex-end',
-    marginBottom: 16,
   },
   forgotPassText: {
     color: '#818cf8',
@@ -871,7 +1348,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)', // Reference pill border
   },
   loginBtnGradient: {
-    height: 46,
+    height: 44,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -891,10 +1368,110 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
+  guestBtnOutside: {
+    width: '100%',
+    marginTop: 8,
+    height: 44,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ── Guest Modal ──
+  guestModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  guestModalCard: {
+    backgroundColor: 'rgba(15,15,22,0.95)',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+    padding: 28,
+    alignItems: 'center',
+  },
+  guestModalIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(129,140,248,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  guestModalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  guestModalBody: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 28,
+    paddingHorizontal: 8,
+  },
+  guestModalConfirmBtn: {
+    width: '100%',
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#5B5FEF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  guestModalConfirmGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  guestModalConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  guestModalCancelBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestModalCancelText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  guestBtnText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 10,
   },
   dividerLine: {
     flex: 1,
@@ -917,7 +1494,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 46,
+    height: 42,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
@@ -933,8 +1510,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 44,
+    marginTop: 12,
+    marginBottom: 16,
   },
   footerText: {
     color: 'rgba(255,255,255,0.6)',
@@ -952,18 +1529,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginLeft: 4,
     fontWeight: '600',
-  },
-  biometricBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    gap: 10,
-  },
-  biometricText: {
-    color: '#818cf8',
-    fontSize: 14,
-    fontWeight: '700',
   },
   stepIndicatorRow: {
     flexDirection: 'row',

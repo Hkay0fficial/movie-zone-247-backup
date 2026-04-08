@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact & Support — THE MOVIE ZONE 24/7</title>
+  <meta name="description" content="Contact and support page for THE MOVIE ZONE 24/7. Get help with your account, the app, or any questions." />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --gold: #f5c518; --dark: #0a0a0f; --dark2: #111118; --card: #16161e; --text: #e8e8f0; --muted: #8888a0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--dark); color: var(--text); line-height: 1.7; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 5%; background: var(--dark2); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .nav-logo { font-size: 1rem; font-weight: 800; color: var(--gold); text-decoration: none; }
+    .nav-logo span { color: var(--text); }
+    .nav-back { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .nav-back:hover { color: var(--gold); }
+    .container { max-width: 780px; margin: 0 auto; padding: 60px 24px 100px; }
+    .page-header { text-align: center; margin-bottom: 60px; }
+    .page-tag { display: inline-block; color: var(--gold); font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+    h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 14px; }
+    .subtitle { color: var(--muted); font-size: 1.05rem; max-width: 460px; margin: 0 auto; }
+    .contact-card {
+      background: var(--card); border-radius: 20px; padding: 40px;
+      border: 1px solid rgba(255,255,255,0.06); margin-bottom: 24px;
+      display: flex; gap: 24px; align-items: flex-start;
+      transition: border-color 0.3s;
+    }
+    .contact-card:hover { border-color: rgba(245,197,24,0.3); }
+    .contact-icon { font-size: 2.5rem; flex-shrink: 0; }
+    .contact-info h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+    .contact-info p { color: #b0b0c8; font-size: 0.9rem; margin-bottom: 14px; }
+    .contact-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(245,197,24,0.1); border: 1px solid rgba(245,197,24,0.3);
+      color: var(--gold); padding: 10px 20px; border-radius: 50px;
+      text-decoration: none; font-weight: 600; font-size: 0.85rem;
+      transition: all 0.3s;
+    }
+    .contact-btn:hover { background: rgba(245,197,24,0.2); }
+    .faq-section { margin-top: 60px; }
+    .faq-section h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 32px; text-align: center; }
+    .faq-item {
+      background: var(--card); border-radius: 14px; padding: 24px;
+      border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;
+      cursor: pointer; transition: border-color 0.3s;
+    }
+    .faq-item:hover { border-color: rgba(245,197,24,0.2); }
+    .faq-q { font-weight: 700; font-size: 0.97rem; display: flex; justify-content: space-between; align-items: center; }
+    .faq-q::after { content: '↓'; color: var(--gold); transition: transform 0.3s; font-size: 0.8rem; }
+    .faq-item.open .faq-q::after { transform: rotate(180deg); }
+    .faq-a { color: #b0b0c8; font-size: 0.9rem; margin-top: 12px; display: none; line-height: 1.7; }
+    .faq-item.open .faq-a { display: block; }
+    footer { background: var(--dark2); border-top: 1px solid rgba(255,255,255,0.05); padding: 24px 5%; text-align: center; }
+    footer p { color: var(--muted); font-size: 0.85rem; }
+    footer a { color: var(--gold); text-decoration: none; margin: 0 10px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="index.html">🎬 <span>THE MOVIE ZONE</span> 24/7</a>
+    <a class="nav-back" href="index.html">← Back to Home</a>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div class="page-tag">💬 Support</div>
+      <h1>How Can We Help?</h1>
+      <p class="subtitle">We're here to help you enjoy the best movie experience. Reach out anytime.</p>
+    </div>
+
+    <!-- Contact Options -->
+    <div class="contact-card">
+      <div class="contact-icon">📧</div>
+      <div class="contact-info">
+        <h3>Email Support</h3>
+        <p>Send us an email for account issues, bugs, or general questions. We typically respond within 24–48 hours.</p>
+        <a href="mailto:Sserunkumaharuna01b@gmail.com?subject=Support%20Request%20-%20THE%20MOVIE%20ZONE%2024/7" class="contact-btn">
+          ✉️ Send Email
+        </a>
+      </div>
+    </div>
+
+    <div class="contact-card">
+      <div class="contact-icon">🗑️</div>
+      <div class="contact-info">
+        <h3>Delete My Account</h3>
+        <p>Want to permanently delete your account and all your data? Visit our dedicated account deletion page.</p>
+        <a href="delete-account.html" class="contact-btn">
+          → Account Deletion
+        </a>
+      </div>
+    </div>
+
+    <div class="contact-card">
+      <div class="contact-icon">🔒</div>
+      <div class="contact-info">
+        <h3>Privacy Concerns</h3>
+        <p>Have questions about how we handle your data? Review our Privacy Policy or contact us directly.</p>
+        <a href="privacy-policy.html" class="contact-btn">
+          → Privacy Policy
+        </a>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+      <h2>Frequently Asked Questions</h2>
+
+      <div class="faq-item open">
+        <div class="faq-q">How do I create an account?</div>
+        <div class="faq-a">Download THE MOVIE ZONE 24/7 from Google Play, open the app, and tap "Sign Up". Enter your email address to create your account and start watching.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Why can't I log in to my account?</div>
+        <div class="faq-a">Try resetting your password via the "Forgot Password" option on the login screen. If the problem persists, contact us at Sserunkumaharuna01b@gmail.com with your registered email address.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Is the app free to use?</div>
+        <div class="faq-a">Yes! THE MOVIE ZONE 24/7 is free to download on Google Play. Check the app for current access plans and available content.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">How do I delete my account?</div>
+        <div class="faq-a">You can delete your account from within the app (Settings → Account → Delete Account) or by visiting our <a href="delete-account.html" style="color:var(--gold);">Account Deletion page</a> and sending an email request.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">The video isn't playing. What should I do?</div>
+        <div class="faq-a">Try these steps: (1) Check your internet connection, (2) Close and reopen the app, (3) Clear the app cache in Android Settings → Apps → THE MOVIE ZONE 24/7, (4) If still not working, email us with your device model and Android version.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">How do I turn off notifications?</div>
+        <div class="faq-a">Go to your Android Settings → Apps → THE MOVIE ZONE 24/7 → Notifications and toggle them off. You can also manage notifications within the app settings.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      <a href="index.html">Home</a>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="terms.html">Terms</a>
+      <a href="delete-account.html">Delete Account</a>
+    </p>
+    <p style="margin-top: 12px;">© 2026 THE MOVIE ZONE 24/7. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.addEventListener('click', () => {
+        item.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+</html>

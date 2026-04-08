@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "THE MOVIE ZONE 24/7",
+    "name": "THE MOVIE ZONE 24/7 UG",
     "slug": "movie-zone-24-7",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "movieapp",
@@ -12,8 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.moviezone247.app",
-      "versionCode": 1,
+      "package": "com.themoviezone247.official",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -32,6 +31,15 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#000000",
+          "sounds": []
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -43,7 +51,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -18,10 +18,11 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series, shortenGenre } from "@/constants/movieData";
+import { useSubscription } from "@/app/context/SubscriptionContext";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-// ─── Grid Card Component ──────────────────────────────────────────────────────
+// ─── Grid Card Component (matches home screen MovieCard exactly) ───────────────
 export function GridCard({
   movie,
   onPress,
@@ -31,9 +32,12 @@ export function GridCard({
   onPress: () => void;
   columns?: number;
 }) {
-  const paddingSpace = 16 * 2 + (columns - 1) * 8;
+  const gap = 8;
+  const hPad = 16;
+  const paddingSpace = hPad * 2 + (columns - 1) * gap;
   const cardWidth = (SCREEN_W - paddingSpace) / columns;
-  const cardHeight = cardWidth * 1.5; // Premium vertical ratio
+  const { isPaid } = useSubscription();
+  const isLocked = !isPaid && !movie.isFree;
 
   return (
     <TouchableOpacity
@@ -41,45 +45,46 @@ export function GridCard({
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={{ borderRadius: 12, overflow: 'hidden' }}>
-        <Image
-          source={{ uri: movie.poster }}
-          style={[styles.gridPoster, { height: cardHeight }]}
-        />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.6)"]}
-          style={StyleSheet.absoluteFill}
-        />
-        
-        {/* VJ Badge (Top Right) */}
-        <View style={styles.vjBadge}>
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-          <Text style={styles.vjBadgeText}>{movie.vj}</Text>
-        </View>
+      {/* Poster */}
+      <Image
+        source={{ uri: movie.poster }}
+        style={styles.gridPoster}
+      />
 
-        {/* Genre Badge (Bottom Left) */}
-        <View style={styles.genreBadge}>
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-          <Text style={styles.genreBadgeText}>
-            {"seasons" in movie ? (movie.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(movie.genre)}
-          </Text>
-        </View>
-
-        {"seasons" in movie && (
-          <View style={styles.epBadgePremium}>
-            <Ionicons name="ellipsis-horizontal" size={10} color="#FFC107" style={{ marginRight: 2 }} />
-            <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
-          </View>
-        )}
+      {/* VJ Badge — top-right, identical to home screen */}
+      <View style={styles.vjBadge}>
+        <Text style={styles.vjBadgeText}>{movie.vj}</Text>
       </View>
-      
+
+      {/* Lock — top-left */}
+      {isLocked && (
+        <View style={styles.lockBadge}>
+          <Ionicons name="lock-closed" size={9} color="#fff" />
+        </View>
+      )}
+
+      {/* Genre — bottom-left */}
+      <View style={styles.genreBadge}>
+        <Text style={styles.genreBadgeText}>
+          {"seasons" in movie ? (movie.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(movie.genre)}
+        </Text>
+      </View>
+
+      {"seasons" in movie && (
+        <View style={styles.epBadgePremium}>
+          <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
+          <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
+        </View>
+      )}
+
+      {/* Card info */}
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle} numberOfLines={1}>
           {movie.title}
         </Text>
         <Text style={styles.cardMetadata} numberOfLines={1}>
-          {"seasons" in movie 
-            ? `${movie.year} · ${(movie.isMiniSeries ? "Mini Series" : `Season ${movie.seasons}`)}`
+          {"seasons" in movie
+            ? `${movie.year} · ${movie.isMiniSeries ? "Mini Series" : `Season ${movie.seasons}`}`
             : `${movie.year} · ${movie.duration}`}
         </Text>
       </View>
@@ -220,78 +225,99 @@ const styles = StyleSheet.create({
   gridCard: {
     marginBottom: 16,
     borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    position: 'relative',
   },
   gridPoster: {
-    width: "100%",
-    resizeMode: "cover",
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
   },
   vjBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  vjBadgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontWeight: "800",
-  },
-  genreBadge: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  genreBadgeText: {
-    color: "#FFC107",
-    fontSize: 9,
-    fontWeight: "900",
-    textTransform: 'uppercase',
-  },
-  epBadgePremium: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.70)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  lockBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  vjBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  genreBadge: {
+    position: 'absolute',
+    bottom: 42,            // above cardInfo (cardInfo ~36px)
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.70)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  genreBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  epBadgePremium: {
+    position: 'absolute',
+    bottom: 42,            // above cardInfo
+    right: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.70)',
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   epBadgeTextPremium: {
-    color: "#FFC107",
-    fontSize: 8,
-    fontWeight: "900",
+    color: '#FFC107',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.2,
   },
   cardInfo: {
-    paddingVertical: 8,
-    paddingHorizontal: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignItems: 'center',
   },
   cardTitle: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "700",
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
     marginBottom: 2,
   },
   cardMetadata: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
-    fontWeight: "500",
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 9,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 
   // Modal Header Styles

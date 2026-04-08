@@ -21,7 +21,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ALL_ROWS, ALL_SERIES, Movie, Series, PROFILE_IMAGE_URI } from '@/constants/movieData';
+import { ALL_ROWS, ALL_SERIES, Movie, Series } from '@/constants/movieData';
+import { useMovies } from '@/app/context/MovieContext';
+import { useUser } from '../context/UserContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -61,6 +63,8 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { allRows: ALL_ROWS, allSeries: ALL_SERIES } = useMovies();
+  const { profile } = useUser();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(Movie | Series)[]>([]);
   const insets = useSafeAreaInsets();
@@ -146,7 +150,7 @@ export default function SearchScreen() {
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>EXPLORE CONTENT</Text>
-          <Image source={{ uri: PROFILE_IMAGE_URI }} style={styles.profilePic} />
+          <Image source={{ uri: profile.profilePhoto }} style={styles.profilePic} />
         </Animated.View>
 
         {query.trim() === '' ? (

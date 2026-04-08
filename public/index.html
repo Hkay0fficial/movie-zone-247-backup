@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE MOVIE ZONE 24/7 — Stream Movies Anytime, Anywhere</title>
+  <meta name="description" content="THE MOVIE ZONE 24/7 is your ultimate destination for non-stop movies and entertainment. Stream the latest titles on Android, any time of day." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #f5c518;
+      --gold-dim: #c9a214;
+      --dark: #0a0a0f;
+      --dark2: #111118;
+      --dark3: #1a1a24;
+      --card: #16161e;
+      --text: #e8e8f0;
+      --muted: #8888a0;
+      --accent: #e50914;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 5%;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+      backdrop-filter: blur(10px);
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 800; color: var(--gold);
+      text-decoration: none; letter-spacing: 0.5px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-logo span { color: var(--text); }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.9rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(245,197,24,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(229,9,20,0.1) 0%, transparent 50%),
+        var(--dark);
+      display: flex; align-items: center;
+      padding: 120px 5% 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f5c518' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.4;
+    }
+    .hero-content {
+      max-width: 600px; position: relative; z-index: 1;
+      animation: fadeUp 0.8s ease both;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(245,197,24,0.1); border: 1px solid rgba(245,197,24,0.3);
+      color: var(--gold); padding: 6px 16px; border-radius: 50px;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 28px;
+    }
+    .hero-badge::before { content: '●'; font-size: 0.6rem; animation: pulse 1.5s infinite; }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900; line-height: 1.05;
+      margin-bottom: 24px; letter-spacing: -1px;
+    }
+    .hero h1 .gold { color: var(--gold); }
+    .hero h1 .red { color: var(--accent); }
+    .hero p {
+      font-size: 1.15rem; color: var(--muted);
+      line-height: 1.75; margin-bottom: 40px; max-width: 480px;
+    }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--gold); color: #000;
+      padding: 15px 32px; border-radius: 50px;
+      font-size: 1rem; font-weight: 700; text-decoration: none;
+      transition: all 0.3s; box-shadow: 0 0 30px rgba(245,197,24,0.3);
+    }
+    .btn-primary:hover {
+      background: #ffd700; transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(245,197,24,0.4);
+    }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--text); border: 1px solid rgba(255,255,255,0.2);
+      padding: 15px 28px; border-radius: 50px;
+      font-size: 1rem; font-weight: 500; text-decoration: none;
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* FLOATING CARDS */
+    .hero-visual {
+      position: absolute; right: 5%; top: 50%;
+      transform: translateY(-50%);
+      display: flex; gap: 16px;
+      animation: fadeIn 1s ease 0.3s both;
+    }
+    @media (max-width: 900px) { .hero-visual { display: none; } }
+    .film-card {
+      width: 160px; background: var(--card);
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .film-card:first-child { transform: translateY(30px); }
+    .film-card:last-child { transform: translateY(-30px); }
+    .film-thumb {
+      height: 220px;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+    }
+    .film-info { padding: 12px; }
+    .film-info .title { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .film-info .rating { color: var(--gold); font-size: 0.75rem; }
+
+    /* STATS */
+    .stats {
+      padding: 60px 5%;
+      background: var(--dark2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .stats-grid {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 40px; text-align: center;
+    }
+    .stat-num {
+      font-size: 2.8rem; font-weight: 900; color: var(--gold);
+      line-height: 1; margin-bottom: 8px;
+    }
+    .stat-label { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+
+    /* FEATURES */
+    .features {
+      padding: 100px 5%;
+      background: var(--dark);
+    }
+    .section-header { text-align: center; margin-bottom: 64px; }
+    .section-tag {
+      display: inline-block; color: var(--gold);
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 16px;
+    }
+    .section-header h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800;
+      margin-bottom: 16px; letter-spacing: -0.5px;
+    }
+    .section-header p { color: var(--muted); font-size: 1.1rem; max-width: 500px; margin: 0 auto; }
+    .features-grid {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--card); border-radius: 20px;
+      padding: 36px; border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.3s; position: relative; overflow: hidden;
+    }
+    .feature-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--gold), var(--accent));
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .feature-card:hover { transform: translateY(-6px); border-color: rgba(245,197,24,0.2); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      font-size: 2.5rem; margin-bottom: 20px;
+      display: inline-block;
+    }
+    .feature-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+    .feature-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.7; }
+
+    /* DOWNLOAD CTA */
+    .cta {
+      padding: 100px 5%;
+      background: linear-gradient(135deg, var(--dark3), var(--dark2));
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .cta::before {
+      content: '🎬';
+      position: absolute; font-size: 20rem;
+      opacity: 0.03; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .cta h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 900; margin-bottom: 20px;
+    }
+    .cta p { color: var(--muted); font-size: 1.1rem; margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .google-play-badge {
+      display: inline-flex; align-items: center; gap: 14px;
+      background: #000; border: 1px solid rgba(255,255,255,0.15);
+      color: white; padding: 14px 28px; border-radius: 12px;
+      text-decoration: none; transition: all 0.3s;
+      font-weight: 600;
+    }
+    .google-play-badge:hover { border-color: var(--gold); transform: scale(1.04); }
+    .gp-icon { font-size: 2rem; }
+    .gp-text .small { font-size: 0.7rem; color: #aaa; display: block; }
+    .gp-text .big { font-size: 1.1rem; font-weight: 700; }
+    .coming-soon {
+      display: inline-block; background: rgba(245,197,24,0.15);
+      color: var(--gold); padding: 6px 18px; border-radius: 20px;
+      font-size: 0.8rem; font-weight: 600; margin-bottom: 16px;
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* FOOTER */
+    footer {
+      background: var(--dark2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 60px 5% 30px;
+    }
+    .footer-grid {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 2fr 1fr 1fr;
+      gap: 48px; margin-bottom: 48px;
+    }
+    @media (max-width: 768px) {
+      .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    }
+    .footer-brand p { color: var(--muted); font-size: 0.9rem; line-height: 1.7; margin-top: 12px; max-width: 320px; }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 10px; }
+    .footer-col a { color: var(--text); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--gold); }
+    .footer-bottom {
+      max-width: 1100px; margin: 0 auto;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .footer-bottom p { color: var(--muted); font-size: 0.85rem; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="index.html">🎬 <span>THE MOVIE ZONE</span> <span style="color:var(--gold)">24/7</span></a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="privacy-policy.html">Privacy</a></li>
+      <li><a href="contact.html">Support</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">Now Available on Android</div>
+      <h1>
+        Your Cinema,<br/>
+        <span class="gold">24 Hours</span><br/>
+        <span class="red">Non-Stop.</span>
+      </h1>
+      <p>Stream the latest movies, blockbusters, and classic hits around the clock. THE MOVIE ZONE 24/7 brings the cinema experience straight to your Android device — anytime, anywhere.</p>
+      <div class="hero-actions">
+        <a href="#download" class="btn-primary">
+          <span>▶</span> Get the App
+        </a>
+        <a href="#features" class="btn-secondary">
+          <span>✦</span> See Features
+        </a>
+      </div>
+    </div>
+
+    <!-- Floating Film Cards -->
+    <div class="hero-visual">
+      <div class="film-card">
+        <div class="film-thumb">🎬</div>
+        <div class="film-info">
+          <div class="title">Now Playing</div>
+          <div class="rating">⭐ 4.8</div>
+        </div>
+      </div>
+      <div class="film-card">
+        <div class="film-thumb" style="background: linear-gradient(135deg, #1e0a00, #3d1a00, #6b2d00);">🏆</div>
+        <div class="film-info">
+          <div class="title">Top Rated</div>
+          <div class="rating">⭐ 4.9</div>
+        </div>
+      </div>
+      <div class="film-card">
+        <div class="film-thumb" style="background: linear-gradient(135deg, #000428, #004e92, #009ffd);">🌊</div>
+        <div class="film-info">
+          <div class="title">New Release</div>
+          <div class="rating">⭐ 4.7</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="stats-grid">
+      <div>
+        <div class="stat-num">24/7</div>
+        <div class="stat-label">Always Streaming</div>
+      </div>
+      <div>
+        <div class="stat-num">100+</div>
+        <div class="stat-label">Movies Available</div>
+      </div>
+      <div>
+        <div class="stat-num">HD</div>
+        <div class="stat-label">High Quality</div>
+      </div>
+      <div>
+        <div class="stat-num">Free</div>
+        <div class="stat-label">To Download</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="section-header">
+      <div class="section-tag">✦ Why Choose Us</div>
+      <h2>Everything You Need<br/>for Movie Night</h2>
+      <p>A premium streaming experience built for Android, designed for movie lovers.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📺</div>
+        <h3>24/7 Streaming</h3>
+        <p>Never miss a moment. Our platform runs around the clock so you can watch whenever the mood strikes — day or night.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <h3>Curated Movie Library</h3>
+        <p>Hand-picked selection of blockbusters, classics, and hidden gems. Fresh content added regularly to keep things exciting.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <h3>Secure Accounts</h3>
+        <p>Your personal account keeps your watchlist, preferences, and history safe. Sign in from any Android device seamlessly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Built for Android</h3>
+        <p>Optimized for phones and tablets. Smooth playback, intuitive navigation, and a beautiful dark interface made for screens.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Fast & Reliable</h3>
+        <p>Powered by Firebase and modern cloud technology for fast load times and reliable streaming performance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🆓</div>
+        <h3>Free to Download</h3>
+        <p>Get started for free. Download the app from Google Play and dive into a world of non-stop movie entertainment.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD CTA -->
+  <section class="cta" id="download">
+    <div class="coming-soon">Coming to Google Play</div>
+    <h2>Start Watching Today 🎬</h2>
+    <p>Download THE MOVIE ZONE 24/7 on your Android device and enjoy non-stop movies.</p>
+    <a href="#" class="google-play-badge">
+      <div class="gp-icon">▶</div>
+      <div class="gp-text">
+        <span class="small">GET IT ON</span>
+        <span class="big">Google Play</span>
+      </div>
+    </a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="nav-logo" href="index.html" style="font-size:1.3rem;">🎬 THE MOVIE ZONE <span style="color:var(--gold)">24/7</span></a>
+        <p>Your ultimate destination for non-stop movies and entertainment. Available on Android.</p>
+      </div>
+      <div class="footer-col">
+        <h4>App</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#download">Download</a></li>
+          <li><a href="contact.html">Support</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+          <li><a href="delete-account.html">Delete Account</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 THE MOVIE ZONE 24/7. All rights reserved.</p>
+      <p>📧 <a href="mailto:Sserunkumaharuna01b@gmail.com" style="color:var(--gold); text-decoration:none;">Sserunkumaharuna01b@gmail.com</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>

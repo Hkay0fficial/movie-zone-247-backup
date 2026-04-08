@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1005273436856",
+    "project_id": "the-movie-zone-247-256",
+    "storage_bucket": "the-movie-zone-247-256.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005273436856:android:ac860bb07d4332884f1a4d",
+        "android_client_info": {
+          "package_name": "com.themoviezone247.official"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1005273436856-83fq66f6lm9apceurva91um85udoqu9n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-XeDajr3OJ0Ety4YdlaKzmBVdYJxXZI4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1005273436856-83fq66f6lm9apceurva91um85udoqu9n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
