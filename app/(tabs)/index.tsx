@@ -73,6 +73,8 @@ import {
   ALL_VJS,
   NEW_SERIES,
   shortenGenre,
+  getStreamUrl,
+  resolveCDNUrl,
 } from "@/constants/movieData";
 import { 
   GridCard, 
@@ -2382,7 +2384,7 @@ function FullVideoPlayerModal({
             {videoUrl || HERO_VIDEOS[0] ? (
               <Video
                 ref={videoRef}
-                source={{ uri: videoUrl || HERO_VIDEOS[0] }}
+                source={{ uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0] }}
                 style={styles.fullPlayerVideo}
                 resizeMode={ResizeMode.COVER}
                 shouldPlay
@@ -5403,7 +5405,7 @@ function HeroBanner({
           {movie.heroType === 'photo' ? (
             // Photo-only mode: custom hero image or poster fallback
             <Image
-              source={{ uri: movie.heroPhotoUrl || movie.poster }}
+              source={{ uri: resolveCDNUrl(movie.heroPhotoUrl) || resolveCDNUrl(movie.poster) }}
               style={[StyleSheet.absoluteFill, { resizeMode: 'cover' }]}
             />
           ) : (
@@ -5412,7 +5414,7 @@ function HeroBanner({
             <Video
               ref={videoRef}
               key={videoIdx}
-              source={{ uri: movie.heroVideoUrl || movie.videoUrl || HERO_VIDEOS[videoIdx % HERO_VIDEOS.length] }}
+              source={{ uri: getStreamUrl(movie) || HERO_VIDEOS[videoIdx % HERO_VIDEOS.length] }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
               shouldPlay

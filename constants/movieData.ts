@@ -1,3 +1,4 @@
+import { resolveCDNUrl, BUNNY_CONFIG } from './bunnyConfig';
 // Shared movie data for the app
 
 export interface Movie {
@@ -20,7 +21,9 @@ export interface Movie {
   heroType?: 'video' | 'photo';
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
-  parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string }[];
+  parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string; bunnyVideoId?: string }[];
+  bunnyVideoId?: string;
+  bunnyLibraryId?: string;
 }
 
 export interface Series {
@@ -50,6 +53,8 @@ export interface Series {
   heroType?: 'video' | 'photo';
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
+  bunnyVideoId?: string;
+  bunnyLibraryId?: string;
 }
 
 export function shortenGenre(genre: string): string {
@@ -114,8 +119,31 @@ const POSTERS = {
 };
 
 function movie(id: string, title: string, year: number, genre: string, rating: string, vj: string, poster: string, duration: string, videoUrl?: string, parts?: { id: string; title: string; videoUrl?: string }[], isFree?: boolean): Movie {
-  return { id, title, year, genre, rating, vj, poster, duration, videoUrl, parts, isFree };
+  return { id, title, year, genre, rating, vj, poster, duration, videoUrl: resolveCDNUrl(videoUrl), parts, isFree };
 }
+
+export { resolveCDNUrl };
+
+/**
+ * Resolves the correct video stream URL for a movie or series.
+ */
+export const getStreamUrl = (item: Movie | Series | any): string => {
+  if (!item) return '';
+
+  // 1. Bunny.net HLS Stream if ID is present
+  if (item.bunnyVideoId) {
+    const libraryId = item.bunnyLibraryId || BUNNY_CONFIG.LIBRARY_ID;
+    const pullZone = BUNNY_CONFIG.PULL_ZONE;
+    return `https://${pullZone}/${item.bunnyVideoId}/playlist.m3u8`;
+  }
+
+  // 2. Direct Video URL (resolved via CDN if origin)
+  if (item.videoUrl) {
+    return resolveCDNUrl(item.videoUrl);
+  }
+
+  return '';
+};
 
 // ─── Per-section lists ────────────────────────────────────────────────────────
 // --- Internal Raw Data (Containing both Free and Paid) ---

@@ -157,7 +157,7 @@ export default function Index() {
                     />
                     <View style={styles.subtitleRow}>
                       <ClockAnimation size={15} color="#ffffff" />
-                      <Text style={[styles.subtitle, { marginLeft: 6 }]}>24 / 7</Text>
+                      <Text style={[styles.subtitle, { marginLeft: 6 }]}>24 / 7 • LIVE</Text>
                     </View>
                   </View>
                 </View>
