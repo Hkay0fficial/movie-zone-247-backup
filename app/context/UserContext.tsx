@@ -23,7 +23,7 @@ const DEFAULT_PROFILE: UserProfile = {
   fullName: 'Guest Mode',
   username: '',
   phoneNumber: '',
-  profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80', // Premium default fallback
+  profilePhoto: '', // No default image, use initials instead
   email: 'Sign in to save your history',
   isGuest: true,
 };
@@ -49,9 +49,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               fullName: data.fullName || currentUser.displayName || 'User',
               username: data.username || '',
               phoneNumber: data.phoneNumber || '',
-              profilePhoto: data.profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80',
+              profilePhoto: data.profilePhoto || '',
               email: currentUser.email || '',
-              isGuest: false,
+              isGuest: currentUser.isAnonymous,
             });
           } else {
             // New user, but logged in
@@ -59,9 +59,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               fullName: currentUser.displayName || 'User',
               username: '',
               phoneNumber: '',
-              profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80',
+              profilePhoto: '',
               email: currentUser.email || '',
-              isGuest: false,
+              isGuest: currentUser.isAnonymous,
             });
           }
           setLoading(false);

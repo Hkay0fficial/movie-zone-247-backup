@@ -133,13 +133,15 @@ export default function Index() {
             {/* BACK SIDE: BRAND TEXT */}
             <Animated.View style={[styles.card, backStyle]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 }}>
-                {/* LOGO IMAGE */}
-                <View style={styles.smallLogoCircle}>
-                  <Image 
-                    source={require('../assets/images/movie_zone_logo_new.png')}
-                    style={styles.logoImg}
-                    resizeMode="cover"
-                  />
+                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                  <Animated.View style={[styles.smallGlowRing, glowStyle]} />
+                  <View style={styles.smallLogoCircle}>
+                    <Image 
+                      source={require('../assets/images/movie_zone_logo_new.png')}
+                      style={styles.logoImg}
+                      resizeMode="cover"
+                    />
+                  </View>
                 </View>
 
                 {/* BRAND TEXT */}
@@ -157,7 +159,7 @@ export default function Index() {
                     />
                     <View style={styles.subtitleRow}>
                       <ClockAnimation size={15} color="#ffffff" />
-                      <Text style={[styles.subtitle, { marginLeft: 6 }]}>24 / 7 • LIVE</Text>
+                      <Text style={[styles.subtitle, { marginLeft: 6 }]}>24 / 7</Text>
                     </View>
                   </View>
                 </View>
@@ -265,6 +267,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 25,
+    elevation: 0,
+    zIndex: -1,
+  },
+  smallGlowRing: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(70,140,220,0.55)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
     elevation: 0,
     zIndex: -1,
   },

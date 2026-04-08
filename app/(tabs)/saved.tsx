@@ -282,12 +282,16 @@ export default function SeriesScreen() {
     const sub5 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
       setSeriesStack([]);
     });
+    const sub6 = DeviceEventEmitter.addListener("resetSeriesFilters", () => {
+      clearFilters();
+    });
     return () => {
       sub1.remove();
       sub2.remove();
       sub3.remove();
       sub4.remove();
       sub5.remove();
+      sub6.remove();
     };
   }, []);
 
@@ -799,6 +803,10 @@ export default function SeriesScreen() {
         onUpgrade={() => {
           setShowPremiumModal(false);
           setShowPlanModal(true);
+        }}
+        onSignUp={() => {
+          setShowPremiumModal(false);
+          router.push("/login?mode=signup" as any);
         }}
         onSocialLogin={(provider) => {
           setShowPremiumModal(false);
@@ -1678,6 +1686,7 @@ function SeriesPreviewModal({
     startExternalGalleryDownload,
     startInternalAppDownload,
     startInternalEpisodeDownload,
+    recordTrialUsage,
   } = useSubscription();
 
 
@@ -1879,8 +1888,13 @@ function SeriesPreviewModal({
   };
 
   const handleDownload = () => {
-    const isPaid = subscriptionBundle !== 'None';
-    if (isGuest || !isPaid) {
+    // If guest, they can ONLY download if the current item is free
+    const isFreeContent = allMoviesFree || (activeEpisode ? ((activeEpisode as any).isFree || (activeEpisode as any).isPremium === false) : ((series as any).isFree));
+    if (isGuest && !isFreeContent) {
+      onShowPremium?.();
+      return;
+    }
+    if (getRemainingDownloads() === 0) {
       onShowPremium?.();
       return;
     }
@@ -2101,7 +2115,7 @@ function SeriesPreviewModal({
             <TouchableOpacity 
               activeOpacity={0.9} 
               onPress={() => {
-                const canWatch = allMoviesFree || (series as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
+                const canWatch = allMoviesFree || (series as any).isFree || isPaid;
                 if (!canWatch) {
                   onShowPremium?.();
                   return;
@@ -2556,7 +2570,7 @@ function SeriesPreviewModal({
                           key={ep.id}
                           style={styles.episodeItemPremium}
                           onPress={() => {
-                            const mpCanWatch = allMoviesFree || !ep.isPremium || (subscriptionBundle !== 'None' && !isGuest);
+                            const mpCanWatch = allMoviesFree || !ep.isPremium || isPaid;
                             if (!mpCanWatch) {
                               onShowPremium?.();
                               return;
@@ -3079,6 +3093,7 @@ function SeriesPreviewModal({
                     ]}
                     onPress={() => {
                       setShowDownloadModal(false);
+                      recordExternalDownload(series.title);
                       startExternalGalleryDownload(series);
                     }}
                     activeOpacity={0.7}

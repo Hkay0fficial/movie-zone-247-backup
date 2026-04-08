@@ -301,9 +301,9 @@ const flipStyles = StyleSheet.create({
   glowRing: {
     position: 'absolute',
     top: -10,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
+    width: 145,
+    height: 145,
+    borderRadius: 72.5,
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: 'rgba(70,140,220,0.55)',
@@ -314,7 +314,7 @@ const flipStyles = StyleSheet.create({
     elevation: 0,
   },
   logoShadow: {
-    borderRadius: 75,
+    borderRadius: 62.5,
     shadowColor: '#1a5fa3',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.9,
@@ -324,9 +324,9 @@ const flipStyles = StyleSheet.create({
     marginBottom: 4,
   },
   logoCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 125,
+    height: 125,
+    borderRadius: 62.5,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: 'rgba(80,150,230,0.5)',
@@ -683,7 +683,6 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       setLoading(true);
       // Simulate quick auth
       setTimeout(async () => {
-        await AsyncStorage.setItem('userToken', 'mock-biometric-token');
         router.replace('/(tabs)');
       }, 500);
     } else {
@@ -720,7 +719,6 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       router.replace('/(tabs)');
     } catch (error: any) {
       console.warn('Firebase Guest Auth Error:', error.message);
-      await AsyncStorage.setItem('userToken', 'mock-guest-token');
       triggerHaptic('success');
       router.replace('/(tabs)');
     }
@@ -1284,8 +1282,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    height: 44,
+    borderRadius: 18,
+    height: 50,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -1337,7 +1335,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginBtnContainer: {
-    borderRadius: 30, 
+    borderRadius: 25, 
     overflow: 'hidden',
     shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 4 },
@@ -1348,7 +1346,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)', // Reference pill border
   },
   loginBtnGradient: {
-    height: 44,
+    height: 50,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1371,9 +1369,9 @@ const styles = StyleSheet.create({
   guestBtnOutside: {
     width: '100%',
     marginTop: 8,
-    height: 44,
+    height: 50,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 30,
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
@@ -1424,8 +1422,8 @@ const styles = StyleSheet.create({
   },
   guestModalConfirmBtn: {
     width: '100%',
-    height: 52,
-    borderRadius: 26,
+    height: 50,
+    borderRadius: 25,
     overflow: 'hidden',
     marginBottom: 12,
     shadowColor: '#5B5FEF',
@@ -1494,8 +1492,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',

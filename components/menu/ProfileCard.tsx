@@ -47,17 +47,37 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     return (names[0][0] + names[1][0]).toUpperCase();
   };
 
-  // Subscription Color Logic
-  const durations: Record<string, number> = { '1 week': 8, '2 weeks': 16, '1 Month': 34, '2 months': 67 };
-  const total = durations[subscriptionBundle] || 16;
-  const percent = (remainingDays / total) * 100;
-  
-  const isExpired = !isSubscribed && !isGuest;
   const isVIP = subscriptionBundle === 'VIP';
   
-  const sCol = isGuest ? '#818cf8' : isVIP ? '#a855f7' : isExpired || percent < 15 ? '#ef4444' : percent < 50 ? '#f59e0b' : '#10b981';
-  const sBg = isGuest ? 'rgba(129,140,248,0.1)' : isVIP ? 'rgba(168,85,247,0.1)' : isExpired || percent < 15 ? 'rgba(239,68,68,0.1)' : percent < 50 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)';
-  const sBor = isGuest ? 'rgba(129,140,248,0.2)' : isVIP ? 'rgba(168,85,247,0.2)' : isExpired || percent < 15 ? 'rgba(239,68,68,0.2)' : percent < 50 ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)';
+  const sCol = isGuest 
+    ? '#818cf8' 
+    : isVIP 
+      ? '#a855f7' 
+      : !isSubscribed || remainingDays <= 2 
+        ? '#ef4444' 
+        : remainingDays <= 5 
+          ? '#f59e0b' 
+          : '#10b981';
+          
+  const sBg = isGuest 
+    ? 'rgba(129,140,248,0.1)' 
+    : isVIP 
+      ? 'rgba(168,85,247,0.1)' 
+      : !isSubscribed || remainingDays <= 2 
+        ? 'rgba(239,68,68,0.1)' 
+        : remainingDays <= 5 
+          ? 'rgba(245,158,11,0.08)' 
+          : 'rgba(16,185,129,0.08)';
+          
+  const sBor = isGuest 
+    ? 'rgba(129,140,248,0.2)' 
+    : isVIP 
+      ? 'rgba(168,85,247,0.2)' 
+      : !isSubscribed || remainingDays <= 2 
+        ? 'rgba(239,68,68,0.2)' 
+        : remainingDays <= 5 
+          ? 'rgba(245,158,11,0.2)' 
+          : 'rgba(16,185,129,0.2)';
 
   const formatBundleName = (name: string) => {
     return name + (name.toLowerCase().includes('week') && !name.toLowerCase().includes('weeks') ? 's' : '');
@@ -95,11 +115,16 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: 'rgba(30, 30, 45, 0.98)', justifyContent: 'center', alignItems: 'center' }]}>
+              <LinearGradient
+                colors={['#2a2a3e', '#1e1e2d']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.avatar, { backgroundColor: '#1e1e2d', justifyContent: 'center', alignItems: 'center' }]}
+              >
                 <Text style={{ color: '#ffffff', fontSize: 26, fontWeight: '900', letterSpacing: 1 }}>
                   {getInitials(userName)}
                 </Text>
-              </View>
+              </LinearGradient>
             )}
           </TouchableOpacity>
           
@@ -125,7 +150,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 />
                 <Text style={[styles.profileBadgeText, { color: sCol, fontSize: 10 }]} numberOfLines={1} adjustsFontSizeToFit>
                   {isGuest
-                      ? "NO ACCOUNT DETECTED • LOG IN TO SYNC & UPGRADE"
+                      ? "GUEST ACCOUNT • REGISTER TO SAVE DATA"
                       : !isSubscribed 
                         ? "NO ACTIVE SUBSCRIPTION • UPGRADE TO PREMIUM"
                         : isVIP 

@@ -1330,6 +1330,10 @@ export default function MenuScreen() {
           setShowGuestPlanModal(false);
           router.replace('/login');
         }}
+        onSignUp={() => {
+          setShowGuestPlanModal(false);
+          router.replace('/login?mode=signup');
+        }}
         onUpgrade={() => {
           setShowGuestPlanModal(false);
           router.replace('/login');
@@ -1414,7 +1418,6 @@ export default function MenuScreen() {
           onPress={async () => {
             try {
               await signOut(auth);
-              await AsyncStorage.removeItem('userToken');
               router.replace('/login');
             } catch (e) {
               console.error('Failed to logout:', e);
@@ -1423,7 +1426,7 @@ export default function MenuScreen() {
         />
 
         {/* ── Footer ── */}
-        <Text style={styles.versionText}>THE MOVIE ZONE 247 v2.4.1</Text>
+        <Text style={styles.versionText}>THE MOVIE ZONE 24 / 7 v2.4.1</Text>
       </Animated.ScrollView>
 
       {/* Bottom Fade Effect */}

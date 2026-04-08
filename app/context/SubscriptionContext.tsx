@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import * as Application from 'expo-application';
+import { Platform } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
 import { downloadToGallery, downloadToAppIsolatedStorage } from '../../lib/externalDownload';
 import DownloadSuccessModal, { DownloadModalType } from '../../components/DownloadSuccessModal';
@@ -15,6 +17,16 @@ const planLimits: Record<string, number> = {
   '1 Month': 3,
   '2 months': 5,
   'Premium': 10,
+  'VIP': 999,
+  'None': 0
+};
+
+const planDeviceLimits: Record<string, number> = {
+  '1 week': 1,
+  '2 weeks': 1,
+  '1 Month': 2,
+  '2 months': 3,
+  'Premium': 5,
   'VIP': 999,
   'None': 0
 };
@@ -46,6 +58,13 @@ interface SubscriptionContextType {
   startExternalGalleryDownload: (item: Movie | Series) => Promise<void>;
   startInternalAppDownload: (item: Movie | Series) => Promise<void>;
   startInternalEpisodeDownload: (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => Promise<void>;
+  recordTrialUsage: () => Promise<void>;
+  isDeviceBlocked: boolean;
+  activeDeviceIds: string[];
+  removeDevice: (id: string) => Promise<void>;
+  deviceLimit: number;
+  isSubscribed: boolean;
+  remainingDays: number;
 }
 
 
@@ -62,7 +81,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [allMoviesFree, setAllMoviesFree] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
   const [customExternalLimit, setCustomExternalLimit] = useState(0);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(true);
+  const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [downloadedMovies, setDownloadedMovies] = useState<(Movie | Series)[]>([]);
   const [favorites, setFavorites] = useState<(Movie | Series)[]>([]);
@@ -78,6 +98,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [downloadQueue, setDownloadQueue] = useState<string[]>([]);
   const [episodeDownloads, setEpisodeDownloads] = useState<Record<string, string>>({});
   const isProcessingQueue = useRef(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
+
+  // Helper to get persistent hardware ID
+  const getDeviceId = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        return (Application as any).androidId;
+      } else if (Platform.OS === 'ios') {
+        return await Application.getIosIdForVendorAsync();
+      }
+      return null;
+    } catch (e) {
+      console.error("Failed to get device ID:", e);
+      return null;
+    }
+  };
 
 
 
@@ -98,6 +136,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const method = userData.paymentMethod || '';
             
             setPaymentMethod(method);
+            setHasUsedGuestTrial(userData.hasUsedGuestTrial || false);
+
+            const fetchedActiveDevices = userData.activeDeviceIds || [];
+            setActiveDeviceIds(fetchedActiveDevices);
+
+            // Device limit check for paid users
+            if (user && !user.isAnonymous && bundle !== 'None' && deviceId) {
+              const limit = planDeviceLimits[bundle] || 1;
+              const isAllowed = fetchedActiveDevices.includes(deviceId);
+
+              if (isAllowed) {
+                setIsDeviceBlocked(false);
+              } else if (fetchedActiveDevices.length < limit) {
+                // Auto-register this device if we have room
+                const newDevices = [...fetchedActiveDevices, deviceId];
+                setDoc(doc(db, 'users', user.uid), { activeDeviceIds: newDevices }, { merge: true });
+                setIsDeviceBlocked(false);
+              } else {
+                // Device limit reached
+                setIsDeviceBlocked(true);
+              }
+            } else {
+              setIsDeviceBlocked(false);
+            }
             
             if (expiresAt && expiresAt.seconds) {
               const expirationMs = expiresAt.seconds * 1000;
@@ -118,11 +180,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // User has no custom plan
             setSubscriptionBundle('None');
             setSubscriptionExpiresAt(null);
+            setHasUsedGuestTrial(false);
           }
         });
       } else {
-        // Fallback check for mock-guest-token if no Firebase user
-        checkMockGuest();
+        // No Firebase user
+        setIsGuest(true);
         if (unsubUserDoc) unsubUserDoc();
         setSubscriptionBundle('None');
         setSubscriptionExpiresAt(null);
@@ -130,17 +193,31 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     });
 
-    const checkMockGuest = async () => {
-      const token = await AsyncStorage.getItem('userToken');
-      if (token === 'mock-guest-token') {
-        setIsGuest(true);
-      }
-    };
-
     return () => {
       unsubAuth();
       if (unsubUserDoc) unsubUserDoc();
     };
+  }, []);
+
+  // NEW: Persistent Device Check for Guests
+  useEffect(() => {
+    const checkDeviceTrial = async () => {
+      const id = await getDeviceId();
+      if (id) {
+        setDeviceId(id);
+        // If we are a guest, check if this physical device already used its 1 free movie
+        try {
+          const deviceTrialRef = doc(db, 'device_trials', id);
+          const snap = await getDoc(deviceTrialRef);
+          if (snap.exists() && snap.data().hasUsedGuestTrial) {
+            setHasUsedGuestTrial(true);
+          }
+        } catch (err) {
+          console.error("Failed to check persistent device trial:", err);
+        }
+      }
+    };
+    checkDeviceTrial();
   }, []);
 
   useEffect(() => {
@@ -285,11 +362,35 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const getExternalDownloadLimit = () => {
     if (customExternalLimit > 0) return customExternalLimit;
+    if (isGuest) return hasUsedGuestTrial ? 0 : 1; // 1 Free Trial lifetime for Guests
     return planLimits[subscriptionBundle] || 0;
   };
 
   const getRemainingDownloads = () => {
-    return Math.max(0, getExternalDownloadLimit() - downloadsUsedToday);
+    return Math.max(0, getExternalDownloadLimit() - (isGuest ? 0 : downloadsUsedToday));
+  };
+
+  const recordTrialUsage = async () => {
+    if (isGuest && auth.currentUser && !hasUsedGuestTrial) {
+      try {
+        // 1. Lock the Firebase User Account
+        await setDoc(doc(db, "users", auth.currentUser.uid), {
+          hasUsedGuestTrial: true
+        }, { merge: true });
+
+        // 2. Lock the Physical Device ID (Survives Uninstall)
+        if (deviceId) {
+          await setDoc(doc(db, "device_trials", deviceId), {
+            hasUsedGuestTrial: true,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+
+        setHasUsedGuestTrial(true);
+      } catch (err) {
+        console.error("Failed to mark guest trial as used:", err);
+      }
+    }
   };
 
   const recordExternalDownload = (movieTitle: string) => {
@@ -305,28 +406,36 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const limit = getExternalDownloadLimit();
     
-    // Non-premium users have a limit of 0
-    if (limit === 0) {
+    // Non-premium users have a limit of 0 (Guests are handled in getExternalDownloadLimit)
+    if (limit === 0 && !isGuest) {
       return { 
         success: false, 
         message: "External downloads (MP4) are a Premium feature. Upgrade your plan to save movies to your gallery!" 
       };
     }
 
+    const remaining = limit - (currentUsed + 1);
     if (currentUsed < limit) {
       const newUsed = currentUsed + 1;
       setDownloadsUsedToday(newUsed);
-      const remaining = limit - newUsed;
+      
+      const successMsg = isGuest
+        ? `"${movieTitle}" is downloading! Register now to unlock high-speed downloads and more.`
+        : `"${movieTitle}" is downloading to your phone storage (MP4).\n${remaining} download${remaining === 1 ? '' : 's'} remaining today.`;
+
       return { 
         success: true, 
-        message: remaining > 0
-          ? `"${movieTitle}" is downloading to your phone storage (MP4).\n${remaining} download${remaining === 1 ? '' : 's'} remaining today.`
-          : `"${movieTitle}" is downloading. You've used all ${limit} external downloads for today.` 
+        message: successMsg
       };
     }
+
+    const errorMsg = isGuest
+      ? "You've used your 1 Free Movie! Register or Upgrade now to unlock more downloads."
+      : `Daily limit reached. You've used all ${limit} external downloads for today. Upgrade for a higher limit, or use in-app saving (unlimited).`;
+
     return { 
       success: false, 
-      message: `Daily limit reached. You've used all ${limit} external downloads for today. Upgrade for a higher limit, or use in-app saving (unlimited).` 
+      message: errorMsg
     };
   };
 
@@ -369,6 +478,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return [item, ...prev];
       }
     });
+  };
+
+  const removeDevice = async (targetId: string) => {
+    if (auth.currentUser && !isGuest) {
+      try {
+        const nextDevices = activeDeviceIds.filter(id => id !== targetId);
+        await setDoc(doc(db, 'users', auth.currentUser.uid), { 
+          activeDeviceIds: nextDevices 
+        }, { merge: true });
+      } catch (err) {
+        console.error("Failed to remove device:", err);
+      }
+    }
   };
 
   // ---- Download modal state ----
@@ -479,6 +601,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           if (dlResult.success) {
             showModal('success', 'Saved to Gallery', dlResult.message);
+            recordTrialUsage();
           } else {
             showModal('error', 'Download Failed', dlResult.message);
           }
@@ -504,6 +627,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 
 
+
   return (
     <SubscriptionContext.Provider value={{
       subscriptionBundle,
@@ -516,6 +640,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       recordInAppDownload,
       getExternalDownloadLimit,
       getRemainingDownloads,
+      recordTrialUsage,
       allMoviesFree,
       eventMessage,
       isGuest,
@@ -529,7 +654,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       episodeDownloads,
       startExternalGalleryDownload,
       startInternalAppDownload,
-      startInternalEpisodeDownload
+      startInternalEpisodeDownload,
+      isDeviceBlocked,
+      activeDeviceIds,
+      removeDevice,
+      deviceLimit: planDeviceLimits[subscriptionBundle] || 0,
+      isSubscribed: subscriptionBundle !== 'None' && subscriptionExpiresAt ? (subscriptionExpiresAt > Date.now()) : false,
+      remainingDays: subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : 0
     }}>
 
 

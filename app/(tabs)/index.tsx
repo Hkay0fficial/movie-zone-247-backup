@@ -44,6 +44,7 @@ import { BlurView } from "expo-blur";
 // import * as NavigationBar from 'expo-navigation-bar'; // Removed to prevent crash if native module is missing
 import * as ScreenOrientation from "expo-screen-orientation";
 import * as Haptics from "expo-haptics";
+import * as Application from "expo-application";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
@@ -89,8 +90,10 @@ import { doc, updateDoc, increment, serverTimestamp, setDoc } from 'firebase/fir
 import { db, auth } from "../../constants/firebaseConfig";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
+import DeviceManagerModal from "../../components/DeviceManagerModal";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 import { NativeModules } from 'react-native';
+import { ExpiryReminderModal } from "../../components/ExpiryReminderModal";
 
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
 // In Expo Go or if improperly configured on Android, Native module might be null,
@@ -2776,6 +2779,11 @@ export function MoviePreviewContent({
     startExternalGalleryDownload,
     startInternalAppDownload,
     startInternalEpisodeDownload,
+    recordTrialUsage,
+    isDeviceBlocked,
+    activeDeviceIds,
+    removeDevice,
+    deviceLimit,
   } = useSubscription();
   const isPaid = subscriptionBundle !== 'None';
   const [previewQuery, setPreviewQuery] = useState("");
@@ -3013,8 +3021,12 @@ export function MoviePreviewContent({
   };
 
   const handleDownload = () => {
-    const isPaid = subscriptionBundle !== 'None';
-    if (isGuest || !isPaid) {
+    if (!movie) return;
+    if (isGuest && !(movie.isFree || allMoviesFree)) {
+      onShowPremium();
+      return;
+    }
+    if (getRemainingDownloads() === 0) {
       onShowPremium();
       return;
     }
@@ -3336,7 +3348,7 @@ export function MoviePreviewContent({
   const handleNextPart = () => {
     if (hasNext) {
       const nextPartItem = movieParts[currentIndex + 1];
-      const canWatchNext = allMoviesFree || (nextPartItem as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchNext = allMoviesFree || (nextPartItem as any).isFree || isPaid;
       if (!canWatchNext) {
         onSwitch?.(nextPartItem);
         setShowFullPlayer?.(false);
@@ -3350,7 +3362,7 @@ export function MoviePreviewContent({
   const handlePrevPart = () => {
     if (hasPrev) {
       const prevPartItem = movieParts[currentIndex - 1];
-      const canWatchPrev = allMoviesFree || (prevPartItem as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchPrev = allMoviesFree || (prevPartItem as any).isFree || isPaid;
       if (!canWatchPrev) {
         onSwitch?.(prevPartItem);
         setShowFullPlayer?.(false);
@@ -3604,7 +3616,7 @@ export function MoviePreviewContent({
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={() => {
-                    const canWatch = allMoviesFree || (movie as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
+                    const canWatch = allMoviesFree || (movie as any).isFree || isPaid;
                     if (!canWatch) {
                       onShowPremium();
                       return;
@@ -3694,12 +3706,12 @@ export function MoviePreviewContent({
                         style={styles.posterPlayBtn}
                         activeOpacity={0.8}
                         onPress={() => {
-                          const canWatch = allMoviesFree || (movie as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
+                          const canWatch = allMoviesFree || (movie as any).isFree || isPaid;
                           if (!canWatch) {
                             onShowPremium();
                             return;
                           }
-
+                          
                           const videoUri = (movie as any).localUri || movie.videoUrl;
                           setSelectedVideoUrl?.(videoUri);
                           setPlayerTitle?.(movie.title);
@@ -4083,7 +4095,7 @@ export function MoviePreviewContent({
                           key={mp.id}
                           style={styles.episodeItemPremium}
                           onPress={() => {
-                            const mpCanWatch = allMoviesFree || mp.isFree || (subscriptionBundle !== 'None' && !isGuest);
+                            const mpCanWatch = allMoviesFree || mp.isFree || isPaid;
                             if (!mpCanWatch) {
                               onShowPremium();
                               return;
@@ -4277,13 +4289,13 @@ export function MoviePreviewContent({
                         (isGuest || !isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.4 }),
                       ]}
                       onPress={() => {
-                        if (isGuest || !isPaid) {
+                        if (getRemainingDownloads() === 0) {
                            setShowDownloadModal(false);
                            onShowPremium();
                            return;
                         }
-                        if (getRemainingDownloads() === 0) return;
                         setShowDownloadModal(false);
+                        recordExternalDownload(movie.title);
                         startExternalGalleryDownload(movie);
                       }}
                       activeOpacity={0.7}
@@ -4298,22 +4310,22 @@ export function MoviePreviewContent({
                       </Text>
                       <View
                         style={{
-                          backgroundColor: (isGuest || !isPaid) ? "rgba(91, 95, 239, 0.15)" : (getRemainingDownloads() === 0 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)"),
+                          backgroundColor: getRemainingDownloads() === 0 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)",
                           paddingHorizontal: 6,
                           paddingVertical: 2,
                           borderRadius: 10,
                           marginLeft: 4,
                         }}
                       >
-                        <Text
-                          style={{
-                            fontSize: 9,
-                            color: (isGuest || !isPaid) ? "#818cf8" : (getRemainingDownloads() === 0 ? "#ef4444" : "#94a3b8"),
-                            fontWeight: "700",
-                          }}
-                        >
-                          {(isGuest || !isPaid) ? "PREMIUM" : (getRemainingDownloads() === 0 ? "0 left" : `${getRemainingDownloads()} left`)}
-                        </Text>
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              color: getRemainingDownloads() === 0 ? "#ef4444" : "#94a3b8",
+                              fontWeight: "700",
+                            }}
+                          >
+                            {getRemainingDownloads() === 0 ? "0 left" : `${getRemainingDownloads()} left`}
+                          </Text>
                       </View>
                     </TouchableOpacity>
 
@@ -5642,7 +5654,20 @@ function HeroBanner({
 export default function HomeScreen() {
   const router = useRouter();
   const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies } = useMovies();
-  const { allMoviesFree, eventMessage, isGuest, subscriptionBundle } = useSubscription();
+  const { 
+    allMoviesFree, 
+    eventMessage, 
+    isGuest, 
+    subscriptionBundle,
+    isDeviceBlocked,
+    activeDeviceIds,
+    removeDevice,
+    deviceLimit,
+    remainingDays,
+    isSubscribed
+  } = useSubscription();
+  const [showExpiryReminder, setShowExpiryReminder] = useState(false);
+  const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [playingNow, setPlayingNow] = useState<Movie | null>(null);
@@ -5657,6 +5682,17 @@ export default function HomeScreen() {
 
   const isFocused = useIsFocused();
   const { movieId, autoplay } = useLocalSearchParams();
+
+  useEffect(() => {
+    // Show expiry reminder if in Yellow or Red zones (<= 5 days)
+    if (isSubscribed && remainingDays <= 5 && !isGuest && !hasShownReminderThisSession && isFocused) {
+      const timer = setTimeout(() => {
+        setShowExpiryReminder(true);
+        setHasShownReminderThisSession(true);
+      }, 3000); // Wait 3 seconds after loading
+      return () => clearTimeout(timer);
+    }
+  }, [isSubscribed, remainingDays, isGuest, hasShownReminderThisSession, isFocused]);
 
   // Handle deep link (movieId) from search params or notifications
   useEffect(() => {
@@ -6019,6 +6055,10 @@ export default function HomeScreen() {
           setShowPremiumModal(false);
           setShowPlanModal(true);
         }}
+        onSignUp={() => {
+          setShowPremiumModal(false);
+          router.push("/login?mode=signup" as any);
+        }}
         onSocialLogin={(provider) => {
           setShowPremiumModal(false);
           // Navigate to login with provider hint or just to login screen
@@ -6029,6 +6069,27 @@ export default function HomeScreen() {
       <PlanSelectionModal 
         visible={showPlanModal}
         onClose={() => setShowPlanModal(false)}
+      />
+
+      <ExpiryReminderModal 
+        visible={showExpiryReminder}
+        onClose={() => setShowExpiryReminder(false)}
+        onRenew={() => {
+          setShowExpiryReminder(false);
+          setShowPlanModal(true);
+        }}
+        remainingDays={remainingDays}
+        planName={subscriptionBundle}
+      />
+
+      <DeviceManagerModal
+        visible={isDeviceBlocked && !isGuest}
+        activeDeviceIds={activeDeviceIds}
+        currentDeviceId={(Application as any).androidId || null}
+        onRemoveDevice={removeDevice}
+        onClose={() => {}} // User must manage devices to move forward
+        planName={subscriptionBundle}
+        limit={deviceLimit}
       />
     </KeyboardAvoidingView>
 

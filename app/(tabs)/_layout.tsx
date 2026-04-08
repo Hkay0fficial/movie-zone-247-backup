@@ -2461,6 +2461,12 @@ function CustomTabBar() {
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"], // Full flip
   });
+
+  const logoPulseScale = glowAnim.interpolate({
+    inputRange: [0.3, 1],
+    outputRange: [1, 1.15],
+  });
+
   const logoOpacity = rotateAnim.interpolate({
     inputRange: [0, 0.249, 0.25, 0.75, 0.751, 1],
     outputRange: [1, 1, 0, 0, 1, 1],
@@ -2698,28 +2704,46 @@ function CustomTabBar() {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                  <Animated.View style={[styles.tabLogoGlowRing, { opacity: glowAnim }]} />
-                  <Animated.Image
-                    source={require("@/assets/images/movie_zone_logo_new.png")}
-                    style={[
-                      styles.logoImage,
-                      {
-                        transform: [{ rotateY: rotation }],
-                        backfaceVisibility: "hidden",
-                        opacity: logoOpacity,
-                      },
-                    ]}
-                  />
+                <View style={{ height: 45, alignItems: 'center', justifyContent: 'center' }}>
+                  {/* FRONT SIDE (Logo) */}
+                  <Animated.View 
+                    style={{ 
+                      opacity: logoOpacity, 
+                      transform: [{ rotateY: rotation }],
+                      backfaceVisibility: "hidden",
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      width: 45,
+                      height: 45,
+                      position: 'absolute'
+                    }}
+                  >
+                    <Animated.View style={[styles.tabLogoGlowRing, { opacity: glowAnim, transform: [{ scale: logoPulseScale }] }]} />
+                    <View style={[styles.navLogoShadow, { opacity: 1 }]}>
+                      <View style={styles.navLogoCircle}>
+                        <Animated.Image
+                          source={require("@/assets/images/movie_zone_logo_new.png")}
+                          style={[
+                            styles.logoImage,
+                            {
+                              backfaceVisibility: "hidden",
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </Animated.View>
+
+                  {/* BACK SIDE (Text) */}
                   <Animated.View
                     style={[
                       {
                         position: "absolute",
-                        width: 160,
+                        width: 170,
                         height: 45,
-                        left: -8,
+                        left: -25, // Nudged further left to fill the icon gap
                         justifyContent: "center",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         backfaceVisibility: "hidden",
                         backgroundColor: "transparent",
                         transform: [{ rotateY: "180deg" }, { rotateY: rotation }],
@@ -2728,19 +2752,7 @@ function CustomTabBar() {
                     ]}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      {/* Logo side by side with text in the flip */}
-                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                         <Animated.View style={[styles.tabLogoGlowRingSmall, { opacity: glowAnim }]} />
-                         <View style={styles.navLogoSmallCircle}>
-                            <Image 
-                                source={require("@/assets/images/movie_zone_logo_new.png")}
-                                style={styles.navLogoSmallImg}
-                                resizeMode="cover"
-                            />
-                         </View>
-                      </View>
-
-                      <View style={{ marginLeft: 8 }}>
+                      <View style={{ marginLeft: 0 }}>
                         <Text style={styles.navLogoTitle}>
                           THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
                         </Text>
@@ -2763,7 +2775,12 @@ function CustomTabBar() {
               </TouchableOpacity>
             )}
 
-            <View style={[styles.topBarRight, (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }, { height: 45 }]}>
+            <View style={[
+              styles.topBarRight, 
+              (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }, 
+              (active("/") || active("/(tabs)/menu")) ? { transform: [{ translateX: 6 }] } : { transform: [{ translateX: -6 }] }, 
+              { height: 45 }
+            ]}>
               {/* All VJs / Series Library Pill (Repositioned) */}
               {active("/(tabs)/saved") ? (
                 showInPlaceSearch ? (
@@ -2975,6 +2992,7 @@ function CustomTabBar() {
                           Keyboard.dismiss();
                         } else {
                           setShowInPlaceSearch(true);
+                          DeviceEventEmitter.emit("resetSeriesFilters");
                           DeviceEventEmitter.emit("seriesSearchQuery", "");
                         }
                       } else {
@@ -3735,6 +3753,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
+    paddingLeft: 16,
+    paddingRight: 2,
   },
   topBarRight: {
     flexDirection: "row",
@@ -3764,40 +3784,63 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  logoImage: {
+  navLogoShadow: {
+    borderRadius: 22.5,
+    shadowColor: '#1a5fa3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 8,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navLogoCircle: {
     width: 45,
     height: 45,
     borderRadius: 22.5,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(80,150,230,0.4)',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 45,
+    height: 45,
     resizeMode: "cover",
-    transform: [{ scale: 1.27 }], // Zoom in to exactly 1.27 as requested
+    transform: [{ scale: 1.15 }],
   },
   tabLogoGlowRing: {
     position: 'absolute',
-    width: 55,
-    height: 55,
-    borderRadius: 27.5,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(70,140,220,0.55)',
+    borderWidth: 2.5,
+    borderColor: 'rgba(70,140,220,0.6)',
+    shadowColor: '#4a8ce0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 0,
+    zIndex: -1,
+  },
+  tabLogoGlowRingSmall: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(70,140,220,0.6)',
     shadowColor: '#4a8ce0',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
     elevation: 0,
-  },
-  tabLogoGlowRingSmall: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(70,140,220,0.55)',
-    shadowColor: '#4a8ce0',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 0,
+    zIndex: -1,
   },
   navLogoSmallCircle: {
      width: 26,

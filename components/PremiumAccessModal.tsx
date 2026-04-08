@@ -34,6 +34,7 @@ interface PremiumAccessModalProps {
   isGuest: boolean;
   onClose: () => void;
   onLogin: () => void;
+  onSignUp: () => void;
   onUpgrade: () => void;
   onSocialLogin: (provider: string) => void;
   guestMessage?: string;
@@ -44,6 +45,7 @@ export default function PremiumAccessModal({
   isGuest,
   onClose,
   onLogin,
+  onSignUp,
   onUpgrade,
   onSocialLogin,
   guestMessage,
@@ -148,7 +150,7 @@ export default function PremiumAccessModal({
                 style={styles.noThanksBtn} 
                 onPress={() => {
                   triggerHaptic('impact');
-                  onLogin(); // Navigate to Login which usually has a Sign Up link
+                  onSignUp();
                 }}
               >
                 <Text style={styles.noThanksText}>
