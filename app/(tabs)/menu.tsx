@@ -51,7 +51,7 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const TOP = Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight ?? 0) + 10;
-const PAYMENT_API_BASE = 'http://192.168.1.74:3000/api/payments';
+const PAYMENT_API_BASE = 'http://192.168.1.20:3000/api/payments';
 
 // ─── Menu items ────────────────────────────────────────────────────────────────
 interface MenuItem {
