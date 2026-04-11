@@ -1686,6 +1686,7 @@ function SeriesPreviewModal({
     startExternalGalleryDownload,
     startInternalAppDownload,
     startInternalEpisodeDownload,
+    startExternalEpisodeDownload,
     recordTrialUsage,
   } = useSubscription();
 

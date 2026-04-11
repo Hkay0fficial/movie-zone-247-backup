@@ -2810,6 +2810,7 @@ export function MoviePreviewContent({
     startExternalGalleryDownload,
     startInternalAppDownload,
     startInternalEpisodeDownload,
+    startExternalEpisodeDownload,
     recordTrialUsage,
     isDeviceBlocked,
     activeDeviceIds,
