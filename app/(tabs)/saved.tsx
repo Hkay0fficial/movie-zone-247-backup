@@ -1837,6 +1837,7 @@ function SeriesPreviewModal({
 
   const [showComments, setShowComments] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState([
     {
@@ -1927,8 +1928,9 @@ function SeriesPreviewModal({
   const startDownloadFlow = () => {
     if (series) {
       setShowDownloadModal(false);
-      if (activeEpisode) {
-        startInternalEpisodeDownload(series, activeEpisode.id, activeEpisode.videoUrl || previewVideoUrl || '', activeEpisode.title);
+      const epToDownload = selectedEpisodeForDownload || activeEpisode;
+      if (epToDownload) {
+        startInternalEpisodeDownload(series, epToDownload.id, epToDownload.videoUrl || previewVideoUrl || '', epToDownload.title);
       } else {
         startInternalAppDownload(series);
       }
@@ -2700,15 +2702,16 @@ function SeriesPreviewModal({
                                     borderWidth: 1,
                                     borderColor: 'rgba(129, 140, 248, 0.3)' // Matching Ep badge border/text color
                                   }}
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    const isPaidSub = subscriptionBundle !== 'None';
-                                    if (isGuest || !isPaidSub) {
-                                      onShowPremium?.();
-                                      return;
-                                    }
-                                    startInternalEpisodeDownload(series, ep.id, ep.videoUrl || previewVideoUrl || '', ep.title);
-                                  }}
+                                    onPress={(e) => {
+                                      e.stopPropagation();
+                                      const isPaidSub = subscriptionBundle !== 'None';
+                                      if (isGuest || !isPaidSub) {
+                                        onShowPremium?.();
+                                        return;
+                                      }
+                                      setSelectedEpisodeForDownload(ep);
+                                      setShowDownloadModal(true);
+                                    }}
                                 >
                                   <Ionicons name="download-outline" size={14} color="#818cf8" />
                                   <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '800' }}>DOWNLOAD EPISODE</Text>
@@ -3105,7 +3108,7 @@ function SeriesPreviewModal({
                       color="#fff"
                     />
                     <Text style={styles.downloadPrimaryBtnText}>
-                      Save to App (Offline)
+                      DOWNLOAD
                     </Text>
                     <View style={styles.pillSheen} />
                   </TouchableOpacity>
@@ -3127,14 +3130,25 @@ function SeriesPreviewModal({
                          return;
                       }
                       setShowDownloadModal(false);
-                      recordExternalDownload(series.title);
-                      startExternalGalleryDownload(series);
+                      const targetTitle = selectedEpisodeForDownload?.title || series.title;
+                      const targetItem = selectedEpisodeForDownload || series;
+                      recordExternalDownload(targetTitle);
+                      if (selectedEpisodeForDownload) {
+                        startExternalEpisodeDownload(
+                          series,
+                          selectedEpisodeForDownload.id,
+                          selectedEpisodeForDownload.videoUrl || previewVideoUrl || "",
+                          selectedEpisodeForDownload.title
+                        );
+                      } else {
+                        startExternalGalleryDownload(series);
+                      }
                     }}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="folder-outline" size={20} color="#94a3b8" />
                     <Text style={styles.downloadSecondaryBtnText}>
-                      External Download
+                      GALLERY
                     </Text>
                     <View
                       style={{

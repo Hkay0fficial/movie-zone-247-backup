@@ -4441,7 +4441,7 @@ export function MoviePreviewContent({
                         color="#fff"
                       />
                       <Text style={styles.downloadPrimaryBtnText}>
-                        Save to App (Offline)
+                        DOWNLOAD
                       </Text>
                       <View style={styles.pillSheen} />
                     </TouchableOpacity>
@@ -4485,7 +4485,7 @@ export function MoviePreviewContent({
                         color="#94a3b8"
                       />
                       <Text style={styles.downloadSecondaryBtnText}>
-                        External Download
+                        GALLERY
                       </Text>
                       <View
                         style={{
