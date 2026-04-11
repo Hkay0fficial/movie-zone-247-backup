@@ -516,22 +516,20 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                        <Text style={{ color: '#818cf8', fontSize: 12, textAlign: 'center', marginTop: 12, fontWeight: '600' }}>
                            {paymentStatusText}
                        </Text>
-                       {paymentStatusText.includes('Waiting') && (
-                         <TouchableOpacity 
-                           style={{ 
-                             marginTop: 16, 
-                             padding: 10, 
-                             backgroundColor: 'rgba(239,68,68,0.1)', 
-                             borderRadius: 12,
-                             borderWidth: 1,
-                             borderColor: 'rgba(239,68,68,0.2)',
-                             alignSelf: 'center'
-                           }}
-                           onPress={onCancel}
-                         >
-                           <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700' }}>Cancel Transfer</Text>
-                         </TouchableOpacity>
-                       )}
+                       <TouchableOpacity 
+                         style={{ 
+                           marginTop: 16, 
+                           padding: 10, 
+                           backgroundColor: 'rgba(239,68,68,0.1)', 
+                           borderRadius: 12,
+                           borderWidth: 1,
+                           borderColor: 'rgba(239,68,68,0.2)',
+                           alignSelf: 'center'
+                         }}
+                         onPress={onCancel}
+                       >
+                         <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700' }}>Cancel Transfer</Text>
+                       </TouchableOpacity>
                      </View>
                    )}
  
