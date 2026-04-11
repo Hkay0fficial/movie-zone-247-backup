@@ -4358,9 +4358,8 @@ export function MoviePreviewContent({
                                   onPress={(e) => {
                                     e.stopPropagation();
                                     // Unified download flow: open the preview/download modal
-                                    setSelectedEpisode({
-                                      movieId: movie.id,
-                                      episodeId: mp.id,
+                                    setSelectedEpisodeForDownload({
+                                      id: mp.id,
                                       title: mp.title,
                                       videoUrl: mp.url || mp.videoUrl || ''
                                     });
