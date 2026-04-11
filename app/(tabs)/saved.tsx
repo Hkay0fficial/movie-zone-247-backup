@@ -1430,7 +1430,7 @@ function FullVideoPlayerModal({
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                         <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>All Episodes</Text>
                         <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, justifyContent: 'center', alignItems: 'center' }}>
-                          <Text style={{ color: '#cbd5e1', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }}>{episodes.length} eps</Text>
+                          <Text style={{ color: '#cbd5e1', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }}>{episodes.length} EP</Text>
                         </View>
                       </View>
                       <TouchableOpacity onPress={() => { setShowEpisodesOverlay(false); resetControlsTimer(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -1746,8 +1746,11 @@ function SeriesPreviewModal({
   const [playerTitle, setPlayerTitle] = useState("");
 
   // Derive a consistent video preview URL for this series
+  // Priority: actual uploaded series preview > main video > fallback demo reel
   const previewVideoUrl = React.useMemo(() => {
     if (!series) return undefined;
+    if (series.previewUrl && series.previewUrl.startsWith('http')) return series.previewUrl;
+    if (series.videoUrl && series.videoUrl.startsWith('http')) return series.videoUrl;
     const index = series.id.charCodeAt(0) % HERO_VIDEOS.length;
     return HERO_VIDEOS[index];
   }, [series]);
@@ -1782,6 +1785,26 @@ function SeriesPreviewModal({
       };
     });
   }, [series, previewVideoUrl]);
+
+  // Intelligent fallback: Calculate total duration if missing in DB
+  const computedTotalDuration = useMemo(() => {
+    if (series.duration && series.duration !== "N/A" && series.duration !== "") return series.duration;
+    if (!episodes || episodes.length === 0) return series.duration || "N/A";
+    
+    const totalMinutes = episodes.reduce((acc, ep) => {
+      const dur = ep.duration || "";
+      const hrMatch = dur.match(/(\d+)\s*h/i);
+      const minMatch = dur.match(/(\d+)\s*m/i);
+      const hrsCount = hrMatch ? parseInt(hrMatch[1]) : 0;
+      const minsCount = minMatch ? parseInt(minMatch[1]) : 0;
+      return acc + (hrsCount * 60) + minsCount;
+    }, 0);
+    
+    if (totalMinutes === 0) return series.duration || "N/A";
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }, [series.duration, episodes]);
 
   const filteredSearchResults = useMemo(() => {
     if (!seriesQuery.trim()) return [];
@@ -2121,9 +2144,10 @@ function SeriesPreviewModal({
                   return;
                 }
                 const firstEp = episodes[0];
-                const finalUrl = (firstEp && episodeDownloads[firstEp.id]) || previewVideoUrl;
+                // Prioritize Actual Episode Video (online or downloaded) over short preview teaser
+                const finalUrl = (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl)) || previewVideoUrl;
                 setSelectedVideoUrl(finalUrl);
-                setPlayerTitle(series.title + (firstEp && episodeDownloads[firstEp.id] ? "" : " - Preview"));
+                setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
                 setShowFullPlayer(true);
               }}
             >
@@ -2132,7 +2156,7 @@ function SeriesPreviewModal({
                   source={{ uri: previewVideoUrl }}
                   style={styles.previewPoster}
                   resizeMode={ResizeMode.COVER}
-                  shouldPlay
+                  shouldPlay={!showFullPlayer}
                   isLooping
                   isMuted={isMuted}
                 />
@@ -2218,13 +2242,13 @@ function SeriesPreviewModal({
                   <View style={styles.previewDot} />
                   <Ionicons name="time-outline" size={11} color="#475569" />
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                    {series.totalDuration || "N/A"}
+                    {computedTotalDuration}
                   </Text>
                   
                   <View style={styles.previewDot} />
                   <Ionicons name="play-circle-outline" size={11} color="#475569" />
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                    {series.episodeDuration || "N/A"}/ep
+                    {series.episodeDuration || (episodes?.[0]?.duration) || "45m"}/ep
                   </Text>
                 </View>
               </View>
@@ -2249,7 +2273,7 @@ function SeriesPreviewModal({
 
                   <View style={[styles.epTitleBadge, { backgroundColor: 'rgba(91, 95, 239, 0.2)', borderColor: 'rgba(91, 95, 239, 0.4)' }]}>
                     <Text style={[styles.epTitleBadgeText, { color: '#818cf8' }]}>
-                      {activeEpisodeId.toUpperCase().replace('EP', 'Ep ')} / {episodes.length}
+                      EP {activeEpisodeId.split('-').pop()} / {episodes.length}
                     </Text>
                   </View>
                 </View>
@@ -3089,9 +3113,19 @@ function SeriesPreviewModal({
                   <TouchableOpacity
                     style={[
                       styles.downloadSecondaryBtn,
-                      getRemainingDownloads() === 0 && { opacity: 0.4 },
+                      (!isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.4 }),
                     ]}
                     onPress={() => {
+                      if (!isPaid) {
+                         setShowDownloadModal(false);
+                         Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                         return;
+                      }
+                      if (getRemainingDownloads() === 0) {
+                         setShowDownloadModal(false);
+                         onShowPremium?.();
+                         return;
+                      }
                       setShowDownloadModal(false);
                       recordExternalDownload(series.title);
                       startExternalGalleryDownload(series);

@@ -2023,6 +2023,7 @@ function FullVideoPlayerModal({
   const [showRelatedOverlay, setShowRelatedOverlay] = useState(false);
   const [bufferPercent, setBufferPercent] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   
   const lockPulseAnim = useRef(new Animated.Value(1)).current;
@@ -2387,15 +2388,31 @@ function FullVideoPlayerModal({
             {videoUrl || HERO_VIDEOS[0] ? (
               <Video
                 ref={videoRef}
-                source={{ uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0] }}
+                source={{ 
+                  uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0],
+                  overridingExtension: 'm3u8',
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+                    'Referer': 'https://themoviezone247.com/'
+                  }
+                }}
                 style={styles.fullPlayerVideo}
                 resizeMode={ResizeMode.COVER}
                 shouldPlay
+                onError={(err) => {
+                  console.error("Video Error:", err);
+                  setVideoError(String(err));
+                }}
                 onPlaybackStatusUpdate={s => {
                   setStatus(s);
                   statusRef.current = s;
                   
+                  if (!s.isLoaded && s.error) {
+                    setVideoError(s.error);
+                  }
+                  
                   if (s.isLoaded) {
+                    setVideoError(null);
                     const currentPos = s.positionMillis || 0;
                     const duration = s.durationMillis || 1;
                     const prog = (currentPos / duration) * 100;
@@ -2422,6 +2439,20 @@ function FullVideoPlayerModal({
               <View style={[styles.fullPlayerVideo, { justifyContent: 'center', alignItems: 'center' }]}>
                 <Ionicons name="alert-circle-outline" size={48} color="rgba(255,255,255,0.3)" />
                 <Text style={{ color: 'rgba(255,255,255,0.4)', marginTop: 12 }}>Video unavailable</Text>
+              </View>
+            )}
+
+            {videoError && (
+              <View style={{ position: 'absolute', top: '40%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.8)', padding: 15, borderRadius: 12, alignItems: 'center', width: '80%' }}>
+                <Ionicons name="warning" size={32} color="#ef4444" />
+                <Text style={{ color: '#fff', textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>Playback Error</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontSize: 12, marginTop: 4 }}>{videoError}</Text>
+                <TouchableOpacity 
+                   onPress={() => { setVideoError(null); videoRef.current?.loadAsync({ uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0] }); }} 
+                   style={{ marginTop: 15, backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Try Again</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -2803,6 +2834,7 @@ export function MoviePreviewContent({
 
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
   const [detectedDuration, setDetectedDuration] = useState<string | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -2895,6 +2927,8 @@ export function MoviePreviewContent({
   const [descExpanded, setDescExpanded] = useState(false);
   const [showOtherParts, setShowOtherParts] = useState(false);
   const [isMuted, setIsMuted] = useState(isMutedProp ?? false);
+  const [prevIsMuted, setPrevIsMuted] = useState(isMuted);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   // ── Swipe-to-dismiss gesture ──
   const pan = useRef(new Animated.ValueXY()).current;
@@ -3020,7 +3054,7 @@ export function MoviePreviewContent({
     if(movie) toggleFavorite(movie);
   };
 
-  const handleDownload = () => {
+  const handleDownload = (episode?: any) => {
     if (!movie) return;
     if (isGuest && !(movie.isFree || allMoviesFree)) {
       onShowPremium();
@@ -3030,6 +3064,7 @@ export function MoviePreviewContent({
       onShowPremium();
       return;
     }
+    setSelectedEpisodeForDownload(episode || null);
     setShowDownloadModal(true);
   };
 
@@ -3037,14 +3072,23 @@ export function MoviePreviewContent({
   const startDownloadFlow = () => {
     if (movie) {
       setShowDownloadModal(false);
-      startInternalAppDownload(movie as any);
+      if (selectedEpisodeForDownload) {
+        startInternalEpisodeDownload(
+          "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any, 
+          selectedEpisodeForDownload.id, 
+          selectedEpisodeForDownload.videoUrl || "", 
+          selectedEpisodeForDownload.title
+        );
+      } else {
+        startInternalAppDownload(movie as any);
+      }
     }
   };
 
   const handleShare = () => {
     Share.share({
       title: movie?.title,
-      message: `🎬 Watch "${movie?.title}" (${movie?.year}) — ${movie?.genre} · Rated ${movie?.rating} ⭐\n\nDiscover this and more on THE MOVIE ZONE 247!`,
+      message: `🎬 Watch "${movie?.title}" (${movie?.year}) — ${movie?.genre} · Rated ${movie?.rating} ⭐\n\nDiscover this and more on THE MOVIE ZONE 24/7!`,
     });
   };
 
@@ -3258,7 +3302,7 @@ export function MoviePreviewContent({
          title: ep.title,
          videoUrl: ep.url,
          poster: movie.poster,
-         duration: (movie as any).duration || "", 
+         duration: ep.duration || (movie as any).duration || "", 
          vj: movie.vj,
          year: movie.year,
          genre: movie.genre,
@@ -3373,12 +3417,41 @@ export function MoviePreviewContent({
     }
   };
 
+  const computedTotalDuration = useMemo(() => {
+    const mov = movie as any;
+    if (mov.duration && mov.duration !== "N/A" && mov.duration !== "" && mov.duration !== "0:00") return mov.duration;
+    if (!movieParts || movieParts.length === 0) return mov.duration || (detectedDuration || "...");
+    
+    const totalMinutes = movieParts.reduce((acc, part) => {
+      const dur = part.duration || "";
+      const hrMatch = dur.match(/(\d+)\s*h/i);
+      const minMatch = dur.match(/(\d+)\s*m/i);
+      const hrsCount = hrMatch ? parseInt(hrMatch[1]) : 0;
+      const minsCount = minMatch ? parseInt(minMatch[1]) : 0;
+      return acc + (hrsCount * 60) + minsCount;
+    }, 0);
+    
+    if (totalMinutes === 0) return mov.duration || (detectedDuration || "...");
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }, [movie, movieParts, detectedDuration]);
+
   const relatedMovies = React.useMemo(() => {
     if (!movie) return [];
     const partIds = new Set(movieParts.map(p => p.id));
+    const partTitles = new Set(movieParts.map(p => p.title.toLowerCase().trim()));
+    const movieTitle = movie.title.toLowerCase().trim();
+
     // Filter YOU_MAY_ALSO_LIKE for movies of the same genre, or just return the list
-    // AND exclude movies that are already identified as "Other Parts"
-    return YOU_MAY_ALSO_LIKE.filter(m => m.id !== movie.id && !partIds.has(m.id)).slice(0, 6);
+    // AND exclude movies that are already identified as "Other Parts" (by ID or Title)
+    return YOU_MAY_ALSO_LIKE.filter(m => {
+      const mTitle = m.title.toLowerCase().trim();
+      return m.id !== movie.id && 
+             !partIds.has(m.id) && 
+             mTitle !== movieTitle &&
+             !partTitles.has(mTitle);
+    }).slice(0, 6);
   }, [movie, movieParts]);
 
   const previewSearchResults = previewQuery.trim()
@@ -3621,15 +3694,26 @@ export function MoviePreviewContent({
                       onShowPremium();
                       return;
                     }
-                    setSelectedVideoUrl?.(movie.videoUrl);
-                    setPlayerTitle?.(movie.title);
+                    // For series, prioritize the first episode, otherwise the standard movie URL
+                    const firstPart = movieParts?.[0];
+                    const finalUrl = (firstPart && (episodeDownloads?.[firstPart.id] || firstPart.videoUrl)) || (movie as any).videoUrl;
+                    
+                    setSelectedVideoUrl?.(finalUrl);
+                    setPlayerTitle?.(movie.title + (firstPart ? " - " + (firstPart.title || "Part 1") : ""));
                     setShowFullPlayer?.(true);
                   }}
                 >
                   {previewVideoUrl ? (
                     <>
                       <Video
-                        source={{ uri: previewVideoUrl }}
+                        source={{ 
+                          uri: resolveCDNUrl(previewVideoUrl),
+                          overridingExtension: 'm3u8',
+                          headers: {
+                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+                            'Referer': 'https://themoviezone247.com/'
+                          }
+                        }}
                         style={styles.previewPoster}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={!showFullPlayer}
@@ -3639,7 +3723,14 @@ export function MoviePreviewContent({
                       {/* Hidden Detector for Full Movie Duration (used if database has 0:00) */}
                       {movie && !("seasons" in movie) && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && (
                         <Video
-                          source={{ uri: (movie as any).videoUrl }}
+                          source={{ 
+                            uri: resolveCDNUrl((movie as any).videoUrl),
+                            overridingExtension: (movie as any).videoUrl?.includes('.m3u8') ? 'm3u8' : undefined,
+                            headers: {
+                              'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+                              'Referer': 'https://themoviezone247.com/'
+                            }
+                          }}
                           shouldPlay={false}
                           onPlaybackStatusUpdate={(s) => {
                             if (s.isLoaded && s.durationMillis && !detectedDuration) {
@@ -3712,10 +3803,30 @@ export function MoviePreviewContent({
                             return;
                           }
                           
-                          const videoUri = (movie as any).localUri || movie.videoUrl;
-                          setSelectedVideoUrl?.(videoUri);
-                          setPlayerTitle?.(movie.title);
-                          setShowFullPlayer?.(true);
+                          // If it's a series and we have an active part selected, play that.
+                          // Otherwise, play the first episode if it's a series.
+                          let videoUri = (movie as any).localUri || (movie as any).videoUrl;
+                          let titleToPlay = movie.title;
+
+                          if ("seasons" in movie) {
+                            const episodes = (movie as Series).episodeList || [];
+                            const activeEpisode = episodes.find(e => `${movie.id}-ep-${episodes.indexOf(e)}` === activePartId);
+                            
+                            if (activeEpisode) {
+                              videoUri = activeEpisode.url;
+                              titleToPlay = activeEpisode.title;
+                            } else if (episodes.length > 0) {
+                              videoUri = episodes[0].url;
+                              titleToPlay = episodes[0].title;
+                              setActivePartId(`${movie.id}-ep-0`);
+                            }
+                          }
+
+                          if (videoUri) {
+                            setSelectedVideoUrl?.(videoUri);
+                            setPlayerTitle?.(titleToPlay);
+                            setShowFullPlayer?.(true);
+                          }
                         }}
                       >
                         <BlurView
@@ -3756,7 +3867,7 @@ export function MoviePreviewContent({
                       ))}
 
                     {/* Compact meta: VJ · year · duration */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                       <Ionicons name="mic-outline" size={11} color="#475569" />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.vj}</Text>
                       <View style={styles.previewDot} />
@@ -3764,10 +3875,59 @@ export function MoviePreviewContent({
                       <View style={styles.previewDot} />
                       <Ionicons name="time-outline" size={11} color="#475569" />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                        {"seasons" in movie
-                          ? (movie.isMiniSeries ? "Mini Series" : `Season ${movie.seasons}`)
-                          : ((movie as any).duration && (movie as any).duration !== "0:00" ? (movie as any).duration : (detectedDuration || "..."))}
+                        {computedTotalDuration}
                       </Text>
+
+                      {/* --- Series Info Pills (New Design) --- */}
+                      {"seasons" in movie && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                          {/* Mini Series / Series Badge (RED) */}
+                          <View style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                            borderWidth: 1,
+                            borderColor: 'rgba(239, 68, 68, 0.3)',
+                            borderRadius: 6,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                          }}>
+                            <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '900' }}>
+                              {movie.isMiniSeries ? "Mini Series" : "Series"}
+                            </Text>
+                          </View>
+
+                          {/* Season Badge (YELLOW) */}
+                          {!movie.isMiniSeries && movie.seasons > 0 && (
+                             <View style={{
+                              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                              borderWidth: 1,
+                              borderColor: 'rgba(245, 158, 11, 0.3)',
+                              borderRadius: 6,
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                            }}>
+                              <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '900' }}>
+                                Season {movie.seasons}
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* EP Badge (PURPLE) */}
+                          {movieParts.length > 0 && (
+                            <View style={{
+                              backgroundColor: 'rgba(91, 95, 239, 0.2)',
+                              borderWidth: 1,
+                              borderColor: 'rgba(91, 95, 239, 0.4)',
+                              borderRadius: 6,
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                            }}>
+                              <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
+                                EP {currentIndex + 1} / {movieParts.length}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
                   </View>
                   {/* Title row + rating + Part badge (like series Ep/Season badges) */}
@@ -4070,7 +4230,7 @@ export function MoviePreviewContent({
                         
                         <View style={styles.premiumHeaderInner}>
                           <Text style={[styles.episodesTitlePremium, { flexShrink: 1 }]} numberOfLines={1}>
-                            {movie.title.toUpperCase()} {"seasons" in movie ? "EPISODES" : "OTHER PARTS"}
+                            {movie.title.toUpperCase()} {"seasons" in movie ? "EPISODE" : "OTHER PARTS"}
                           </Text>
                           <View style={{ flex: 1 }} />
                           <View style={styles.epCountPillPremium}>
@@ -4089,7 +4249,7 @@ export function MoviePreviewContent({
                     </View>
 
                     {showOtherParts && movieParts
-                      .filter((mp) => mp.id !== movie.id)
+                      .filter((mp) => mp.id !== activePartId)
                       .map((mp) => (
                         <TouchableOpacity
                           key={mp.id}
@@ -4101,6 +4261,8 @@ export function MoviePreviewContent({
                               return;
                             }
                             setActivePartId(mp.id);
+                            setSelectedVideoUrl?.(mp.videoUrl);
+                            setPlayerTitle?.(mp.title);
                             setShowFullPlayer?.(true);
                           }}
 
@@ -4163,49 +4325,50 @@ export function MoviePreviewContent({
                               <Text style={styles.epSubPremiumSmall}>Ready to watch</Text>
                             </View>
                             
-                            {/* Stretched Indigo Download Button (Matching Saved Tab Design) */}
+                            {/* Episode Action Row (Unified Download) */}
                             <View style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                               {activeDownloads[mp.id] !== undefined ? (
                                 <View style={{ 
                                   backgroundColor: 'rgba(0, 255, 204, 0.1)', 
                                   borderWidth: 1, 
                                   borderColor: 'rgba(0, 255, 204, 0.3)', 
-                                  borderRadius: 6, 
+                                  borderRadius: 8, 
                                   flex: 1, 
-                                  paddingVertical: 5, 
+                                  paddingVertical: 7, 
                                   alignItems: 'center' 
                                 }}>
-                                  <Text style={{ color: '#00ffcc', fontSize: 10, fontWeight: '900' }}>
-                                    {activeDownloads[mp.id].progress}% COMPLETE
+                                  <Text style={{ color: '#00ffcc', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                                    {activeDownloads[mp.id].progress}% {activeDownloads[mp.id].mode === 'external' ? 'GALLERY' : 'IN-APP'}
                                   </Text>
                                 </View>
                               ) : (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                   style={{ 
-                                    flexDirection: 'row', 
-                                    alignItems: 'center', 
-                                    gap: 6, 
-                                    backgroundColor: 'rgba(91, 95, 239, 0.15)',
+                                    backgroundColor: 'rgba(52, 211, 153, 0.1)', 
+                                    borderWidth: 1, 
+                                    borderColor: 'rgba(52, 211, 153, 0.3)', 
+                                    borderRadius: 8, 
                                     flex: 1, 
-                                    justifyContent: 'center', 
-                                    paddingVertical: 5, 
-                                    borderRadius: 6,
-                                    borderWidth: 1,
-                                    borderColor: 'rgba(129, 140, 248, 0.3)'
+                                    paddingVertical: 7, 
+                                    alignItems: 'center',
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    gap: 6
                                   }}
                                   onPress={(e) => {
                                     e.stopPropagation();
-                                    const mpCanWatch = allMoviesFree || mp.isFree || (subscriptionBundle !== 'None' && !isGuest);
-                                    if (!mpCanWatch) {
-                                      onShowPremium();
-                                      return;
-                                    }
-                                    // movie here is the Series object, mp is the episode
-                                    startInternalEpisodeDownload(movie as Series, mp.id, mp.videoUrl || '', mp.title);
+                                    // Unified download flow: open the preview/download modal
+                                    setSelectedEpisode({
+                                      movieId: movie.id,
+                                      episodeId: mp.id,
+                                      title: mp.title,
+                                      videoUrl: mp.url || mp.videoUrl || ''
+                                    });
+                                    setShowDownloadModal(true);
                                   }}
                                 >
-                                  <Ionicons name="download-outline" size={14} color="#818cf8" />
-                                  <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '800' }}>DOWNLOAD EPISODE</Text>
+                                  <Ionicons name="download-outline" size={14} color="#10b981" />
+                                  <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>DOWNLOAD</Text>
                                 </TouchableOpacity>
                               )}
                             </View>
@@ -4258,7 +4421,7 @@ export function MoviePreviewContent({
 
                   <Text style={styles.downloadTitle}>Download Options</Text>
                   <Text style={styles.downloadSub}>
-                    Choose your preferred method to save "{movie?.title}" for
+                    Choose your preferred method to save "{selectedEpisodeForDownload?.title || movie?.title}" for
                     offline viewing.
                   </Text>
 
@@ -4289,14 +4452,30 @@ export function MoviePreviewContent({
                         (isGuest || !isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.4 }),
                       ]}
                       onPress={() => {
+                        if (!isPaid) {
+                           setShowDownloadModal(false);
+                           Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                           return;
+                        }
                         if (getRemainingDownloads() === 0) {
                            setShowDownloadModal(false);
                            onShowPremium();
                            return;
                         }
                         setShowDownloadModal(false);
-                        recordExternalDownload(movie.title);
-                        startExternalGalleryDownload(movie);
+                        const targetTitle = selectedEpisodeForDownload?.title || movie.title;
+                        const targetItem = selectedEpisodeForDownload || movie;
+                        recordExternalDownload(targetTitle);
+                        if (selectedEpisodeForDownload) {
+                          startExternalEpisodeDownload(
+                            "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
+                            selectedEpisodeForDownload.id,
+                            selectedEpisodeForDownload.videoUrl || "",
+                            selectedEpisodeForDownload.title
+                          );
+                        } else {
+                          startExternalGalleryDownload(targetItem);
+                        }
                       }}
                       activeOpacity={0.7}
                     >
@@ -5275,12 +5454,14 @@ function HeroBanner({
   onSelect, 
   isMuted, 
   setIsMuted,
-  onShowPremium
+  onShowPremium,
+  paused
 }: { 
   onSelect: (m: Movie) => void;
   isMuted: boolean;
   setIsMuted: (m: boolean) => void;
   onShowPremium: () => void;
+  paused: boolean;
 }) {
   const router = useRouter();
   const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites } = useSubscription();
@@ -5354,7 +5535,6 @@ function HeroBanner({
 
   // Current movie metadata — updates live with videoIdx
   const movie = LIVE_HERO_MOVIES[videoIdx] ?? LIVE_HERO_MOVIES[0];
-
   const goTo = useCallback(
     (idx: number) => {
       setVideoIdx((idx + TOTAL) % TOTAL);
@@ -5409,6 +5589,14 @@ function HeroBanner({
     return () => clearTimeout(timer);
   }, [videoIdx, goNext]);
 
+  if (!movie) return null;
+
+  const heroSource = (movie.heroVideoUrl ? resolveCDNUrl(movie.heroVideoUrl) : undefined) || 
+                     (movie.previewUrl ? resolveCDNUrl(movie.previewUrl) : undefined) || 
+                     getStreamUrl(movie) || 
+                     HERO_VIDEOS[videoIdx % HERO_VIDEOS.length];
+  const isHLS = heroSource.includes('.m3u8') || heroSource.includes('playlist');
+
   return (
     <View {...panResponder.panHandlers}>
       {/* ── Video or Photo Hero ── */}
@@ -5426,16 +5614,39 @@ function HeroBanner({
             <Video
               ref={videoRef}
               key={videoIdx}
-              source={{ uri: getStreamUrl(movie) || HERO_VIDEOS[videoIdx % HERO_VIDEOS.length] }}
+              source={{ 
+                uri: heroSource,
+                overridingExtension: isHLS ? 'm3u8' : undefined,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+                  'Referer': 'https://themoviezone247.com/'
+                }
+              }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
-              shouldPlay
+              shouldPlay={!paused}
               isLooping={false}
               isMuted={isMuted}
               onPlaybackStatusUpdate={onStatus}
-              onError={goNext}
+              onError={(err) => {
+                console.warn("Hero Video Error:", err);
+                goNext();
+              }}
             />
           )}
+          {/* Subtle Top Overlay for Header Branding Legibility */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.65)", "transparent"]}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 120,
+              zIndex: 10,
+            }}
+            pointerEvents="none"
+          />
         </View>
       </TouchableWithoutFeedback>
 
@@ -5544,6 +5755,15 @@ function HeroBanner({
 
           {/* New Metadata Row */}
           <View style={styles.heroMetadataRow}>
+            {/* Type Badge (Series/Mini Series) */}
+            {(movie as any).type && (movie as any).type !== 'Movie' && (
+              <>
+                <View style={{ backgroundColor: 'rgba(91, 95, 239, 0.2)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(91, 95, 239, 0.4)' }}>
+                  <Text style={{ color: '#818cf8', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 }}>{(movie as any).type.toUpperCase()}</Text>
+                </View>
+                <View style={styles.heroMetaDot} />
+              </>
+            )}
             <Text style={styles.heroMetaText}>
               {movie.genre}
             </Text>
@@ -5653,7 +5873,7 @@ function HeroBanner({
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies } = useMovies();
+  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies } = useMovies();
   const { 
     allMoviesFree, 
     eventMessage, 
@@ -5946,6 +6166,7 @@ export default function HomeScreen() {
           isMuted={isHeroMuted}
           setIsMuted={setIsUserMuted}
           onShowPremium={() => setShowPremiumModal(true)}
+          paused={!!playingNow || !isFocused}
         />
 
         {ROWS.map((row) => (
@@ -6032,6 +6253,10 @@ export default function HomeScreen() {
         visible={!!playingNow}
         videoUrl={playingNow?.videoUrl}
         title={playingNow?.title ?? ""}
+        movieVj={playingNow?.vj}
+        parts={playingNow?.parts}
+        relatedContent={liveMovies.filter(m => m.genre === playingNow?.genre && m.id !== playingNow?.id).slice(0, 10)}
+        onSelectRelated={(m) => setPlayingNow(m as Movie)}
         onClose={() => setPlayingNow(null)}
       />
 

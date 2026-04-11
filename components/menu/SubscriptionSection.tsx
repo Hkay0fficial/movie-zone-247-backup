@@ -37,7 +37,6 @@ interface SubscriptionSectionProps {
   activeDevices: Device[];
   getDeviceLimit: () => number;
   handleKickDevice: (id: string) => void;
-  simulateNewDeviceLogin: () => void;
   billingHistory: BillingItem[];
   upcomingMembership?: {
     bundle: string;
@@ -72,7 +71,6 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
   activeDevices,
   getDeviceLimit,
   handleKickDevice,
-  simulateNewDeviceLogin,
   billingHistory,
   upcomingMembership,
   currentScrollY,
@@ -330,12 +328,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
               <View style={styles.cardDivider} />
 
               <View style={{ marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Text style={styles.detailLabel}>Active Devices ({activeDevices.length}/{getDeviceLimit()})</Text>
-                  <TouchableOpacity onPress={simulateNewDeviceLogin}>
-                    <Text style={{ color: '#818cf8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Simulate Login</Text>
-                  </TouchableOpacity>
-                </View>
                 <View style={{ gap: 8 }}>
                   {activeDevices.map((device) => (
                     <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>

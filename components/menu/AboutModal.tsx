@@ -194,11 +194,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               <View style={styles.aboutSection}>
                 <Text style={styles.aboutLabel}>Legal</Text>
                 <View style={styles.legalLinks}>
-                  <TouchableOpacity onPress={() => Linking.openURL('https://the-movie-zone-247-256.web.app/privacy-policy.html')}>
+                  <TouchableOpacity onPress={() => Linking.openURL('https://themoviezone247.com/privacy-policy.html')}>
                     <Text style={styles.legalLink}>Privacy Policy</Text>
                   </TouchableOpacity>
                   <View style={styles.legalDivider} />
-                  <TouchableOpacity onPress={() => Linking.openURL('https://the-movie-zone-247-256.web.app/terms.html')}>
+                  <TouchableOpacity onPress={() => Linking.openURL('https://themoviezone247.com/terms.html')}>
                     <Text style={styles.legalLink}>Terms of Service</Text>
                   </TouchableOpacity>
                 </View>
@@ -207,7 +207,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 </Text>
                 <TouchableOpacity 
                   style={styles.websiteRow}
-                  onPress={() => Linking.openURL('https://the-movie-zone-247-256.web.app/')}
+                  onPress={() => Linking.openURL('https://themoviezone247.com/')}
                 >
                   <Ionicons name="globe-outline" size={14} color="#38bdf8" />
                   <Text style={styles.websiteText}>Visit Official Website</Text>

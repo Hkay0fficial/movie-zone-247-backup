@@ -59,7 +59,12 @@ export async function downloadToGallery(
     const downloadResumable = FileSystem.createDownloadResumable(
       videoUrl,
       fileUri,
-      {},
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+          'Referer': 'https://themoviezone247.com/'
+        }
+      },
       ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
         if (totalBytesExpectedToWrite > 0) {
           const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
@@ -139,7 +144,12 @@ export async function downloadToAppIsolatedStorage(
     const downloadResumable = FileSystem.createDownloadResumable(
       videoUrl,
       fileUri,
-      {},
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
+          'Referer': 'https://themoviezone247.com/'
+        }
+      },
       ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
         if (totalBytesExpectedToWrite > 0) {
           const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);

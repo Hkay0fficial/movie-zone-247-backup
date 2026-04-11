@@ -218,125 +218,7 @@ interface Notification {
   vjsDetailed?: { id: string; name: string; count: number }[];
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    type: "movie",
-    icon: "film",
-    title: "New Release",
-    message: '🎬 "Neon Horizon" and "Dark Tide" are now available!',
-    time: "2h ago",
-    image:
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&q=80",
-    isNew: true,
-    movieId: "nr1",
-    sectionTitle: "New Releases",
-    count: 15,
-    moviesCount: 8,
-    seriesCount: 7,
-    moviesList: [
-      { id: "nr1", title: "Neon Horizon" },
-      { id: "nr2", title: "Dark Tide" },
-      { id: "nr3", title: "Solar Wind" },
-      { id: "nr4", title: "After Hours" },
-      { id: "nr5", title: "Ice Fortress" },
-      { id: "nr6", title: "The Quiet Room" },
-      { id: "lt1", title: "Override" },
-      { id: "lt2", title: "Cascade Point" },
-    ],
-    seriesList: [
-      { id: "s1", title: "Dark Matter" },
-      { id: "s2", title: "Severance" },
-      { id: "s3", title: "Westworld" },
-      { id: "s4", title: "The Expanse" },
-      { id: "s5", title: "Slow Horses" },
-      { id: "s6", title: "True Detective" },
-      { id: "s11", title: "The Last of Us" },
-    ],
-    vjsDetailed: [
-      { id: "v1", name: "Junior", count: 6 },
-      { id: "v2", name: "Emmy", count: 5 },
-      { id: "v3", name: "Mark", count: 4 },
-    ],
-  },
-  {
-    id: "n2",
-    type: "update",
-    icon: "rocket",
-    title: "App Update",
-    message: "🚀 Version 2.4.1 is live with improved streaming performance.",
-    time: "5h ago",
-    isNew: true,
-    route: "/(tabs)/menu?showAbout=true",
-  },
-  {
-    id: "n3",
-    type: "suggestion",
-    icon: "sparkles",
-    title: "For You",
-    message: '✨ Based on "Orbital", we think you\'ll love "Inception 2".',
-    time: "1d ago",
-    movieId: "md1",
-    sectionTitle: "You May Also Like",
-    moviesCount: 6,
-    moviesList: [
-      { id: "md1", title: "Inception 2" },
-      { id: "mv2", title: "Wildfire" },
-      { id: "mv3", title: "The Reckoning" },
-      { id: "mv4", title: "Orbital" },
-      { id: "mv5", title: "Inception 2" },
-      { id: "mv6", title: "After Hours" },
-    ],
-  },
-  {
-    id: "n4",
-    type: "trending",
-    icon: "flame",
-    title: "Trending Now",
-    message: '🔥 "Orbital" is the #1 movie today, followed by "Wildfire"!',
-    time: "2d ago",
-    movieId: "tr1",
-    sectionTitle: "Trending Now",
-    count: 5,
-    moviesCount: 3,
-    seriesCount: 2,
-    moviesList: [
-      { id: "tr1", title: "Orbital" },
-      { id: "md1", title: "Inception 2" },
-      { id: "tr2", title: "Wildfire" },
-    ],
-    seriesList: [
-      { id: "s1", title: "Dark Matter" },
-      { id: "s6", title: "True Detective" },
-    ],
-  },
-  {
-    id: "n6",
-    title: "Trending VJs",
-    message: "Check out new releases from Vj Junior, Vj Emmy and Vj Mark! 🎬",
-    type: "trending",
-    icon: "people",
-    time: "3d ago",
-    isNew: true,
-    movieId: "nr1",
-    sectionTitle: "Trending VJs",
-    count: 10,
-    vjsDetailed: [
-      { id: "v1", name: "Junior", count: 4 },
-      { id: "v2", name: "Emmy", count: 3 },
-      { id: "v3", name: "Mark", count: 3 },
-    ],
-  },
-  {
-    id: "n5",
-    title: "Enjoying the App?",
-    message: "Rate us on the Play Store to support our work! ⭐",
-    type: "rating",
-    icon: "star",
-    time: "2d ago",
-    isNew: true,
-  },
-];
+const MOCK_NOTIFICATIONS: Notification[] = [];
 
 // ─── Notification Overlay ───────────────────────────────────────────────────
 function NotificationOverlay({
@@ -2403,7 +2285,7 @@ function CustomTabBar() {
   }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries]);
 
   useEffect(() => {
-    MOCK_NOTIFICATIONS.forEach(item => {
+    notifications.forEach(item => {
       if (!readIds.has(item.id) && (item.moviesList || item.seriesList || item.vjsDetailed)) {
         const movies = (item.moviesList || []).filter(m => !checkedItemIds.has(m.id));
         const series = (item.seriesList || []).filter(s => !checkedItemIds.has(s.id));
@@ -3861,6 +3743,9 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#ffffff",
     letterSpacing: 1,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   navLogoSub: {
     color: "#ffffff",
@@ -3868,6 +3753,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 3,
     letterSpacing: 1.5,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   logoTextTitle: {
     color: "#fff",

@@ -58,6 +58,7 @@ interface SubscriptionContextType {
   startExternalGalleryDownload: (item: Movie | Series) => Promise<void>;
   startInternalAppDownload: (item: Movie | Series) => Promise<void>;
   startInternalEpisodeDownload: (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => Promise<void>;
+  startExternalEpisodeDownload: (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => Promise<void>;
   recordTrialUsage: () => Promise<void>;
   isDeviceBlocked: boolean;
   activeDeviceIds: string[];
@@ -65,6 +66,7 @@ interface SubscriptionContextType {
   deviceLimit: number;
   isSubscribed: boolean;
   remainingDays: number;
+  minAppVersion: string;
 }
 
 
@@ -80,6 +82,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [lastDownloadDate, setLastDownloadDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [allMoviesFree, setAllMoviesFree] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
+  const [minAppVersion, setMinAppVersion] = useState('');
   const [customExternalLimit, setCustomExternalLimit] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
@@ -310,6 +313,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
           setAllMoviesFree(data.allMoviesFree || false);
           setEventMessage(data.eventMessage || '');
+          if (data.minAppVersion) setMinAppVersion(data.minAppVersion);
           return false;
         };
 
@@ -521,7 +525,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const startInternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
-    const queueId = episodeId; // Simplified to just episodeId
+    const queueId = episodeId;
     if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
       showModal('warning', 'Already in Queue', `"${episodeTitle}" is already being saved or is in the queue.`);
       return;
@@ -529,6 +533,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setActiveDownloads(prev => ({ 
       ...prev, 
       [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle } 
+    }));
+    setDownloadQueue(prev => [...prev, queueId]);
+  };
+
+  const startExternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
+    const queueId = episodeId;
+    if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
+      showModal('warning', 'Already in Queue', `"${episodeTitle}" is already being saved or is in the queue.`);
+      return;
+    }
+    setActiveDownloads(prev => ({ 
+      ...prev, 
+      [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle } 
     }));
     setDownloadQueue(prev => [...prev, queueId]);
   };
@@ -590,11 +607,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } else {
           dlResult = await downloadToGallery(
             videoUrl,
-            item.title,
+            displayTitle,
             (progress) => {
               setActiveDownloads(prev => ({ 
                 ...prev, 
-                [item.id]: { ...prev[item.id], progress, mode: 'external' } 
+                [nextId]: { ...prev[nextId], progress, mode: 'external' } 
               }));
             }
           );
@@ -655,12 +672,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       startExternalGalleryDownload,
       startInternalAppDownload,
       startInternalEpisodeDownload,
+      startExternalEpisodeDownload,
       isDeviceBlocked,
       activeDeviceIds,
       removeDevice,
       deviceLimit: planDeviceLimits[subscriptionBundle] || 0,
       isSubscribed: subscriptionBundle !== 'None' && subscriptionExpiresAt ? (subscriptionExpiresAt > Date.now()) : false,
-      remainingDays: subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : 0
+      remainingDays: subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : 0,
+      minAppVersion
     }}>
 
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "THE MOVIE ZONE 24/7 UG",
     "slug": "movie-zone-24-7",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "movieapp",
@@ -13,6 +13,8 @@
     },
     "android": {
       "package": "com.themoviezone247.official",
+      "versionCode": 2,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -54,7 +56,8 @@
       ],
       "expo-web-browser",
       "react-native-google-cast",
-      "expo-updates"
+      "expo-updates",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

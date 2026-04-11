@@ -26,7 +26,11 @@ export async function signinWithGoogle(idToken: string) {
         lastActive: serverTimestamp(),
         role: 'user',
         authProvider: 'google',
-        photoURL: user.photoURL,
+        profilePhoto: user.photoURL || '',
+        subscriptionBundle: 'None',
+        activeDeviceIds: [],
+        paymentMethod: '',
+        hasUsedGuestTrial: false,
       });
       return { user, isNewUser: true };
     } else {

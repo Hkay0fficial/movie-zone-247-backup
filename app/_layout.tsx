@@ -14,6 +14,7 @@ import { UserProvider } from '@/app/context/UserContext';
 import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener } from '../lib/notifications';
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
 import GlobalDownloadBar from '../components/GlobalDownloadBar';
+import VersionLockGuard from '../components/VersionLockGuard';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -84,6 +85,7 @@ export default function RootLayout() {
                 onClose={() => setActiveNotification(null)} 
               />
               <GlobalDownloadBar />
+              <VersionLockGuard />
             </View>
             <StatusBar style="auto" />
           </MovieProvider>

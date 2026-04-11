@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, serverTimestamp, where } from 'firebase/firestore';
 import { Modal } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useUser } from '../context/UserContext';
@@ -594,28 +594,6 @@ export default function MenuScreen() {
     alert('Device has been logged out successfully.');
   };
 
-  // Simulate Option B: Session Takeover
-  const simulateNewDeviceLogin = () => {
-    const limit = getDeviceLimit();
-    const newDevice = {
-      id: Math.random().toString(36).substr(2, 9),
-      device: 'New Phone Logged In',
-      location: 'Current Location',
-      time: 'Just Now',
-      current: false
-    };
-
-    setActiveDevices(prev => {
-      let updated = [newDevice, ...prev];
-      if (updated.length > limit) {
-        // Kick out the oldest session
-        const kicked = updated.pop();
-        alert(`Device Limit Reached (${limit}). Oldest session (${kicked?.device}) was automatically logged out.`);
-      }
-      return updated;
-    });
-  };
-
   // Animation for Get Started buttons
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -944,21 +922,45 @@ export default function MenuScreen() {
   };
 
   const saveProfile = async () => {
+    if (!user) return;
+
+    // Normalize phone number (digits only)
+    const normalizedPhone = tempPhoneNumber.replace(/\D/g, '');
     const newFullName = `${tempFirstName} ${tempLastName}`.trim() || 'User';
-    setIsEditingProfile(false);
-    
-    if (user) {
-      try {
-        await updateDoc(doc(db, "users", user.uid), {
-          fullName: newFullName,
-          username: tempUsername,
-          phoneNumber: tempPhoneNumber
-        });
-        // The UserContext listener will trigger a re-render with new values
-      } catch (err) {
-        console.error("Failed to save profile on firebase:", err);
-        Alert.alert('Error', 'Failed to save changes.');
+
+    try {
+      // 1. Check if username is already taken (if changed)
+      if (tempUsername && tempUsername !== username) {
+        const q = query(collection(db, "users"), where("username", "==", tempUsername));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          Alert.alert('Username Taken', 'This username is already associated with another account.');
+          return;
+        }
       }
+
+      // 2. Check if phone number is already taken (if changed)
+      if (normalizedPhone && normalizedPhone !== (phoneNumber || '').replace(/\D/g, '')) {
+        const q = query(collection(db, "users"), where("phoneNumber", "==", normalizedPhone));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          Alert.alert('Phone Number Taken', 'This phone number is already associated with another account.');
+          return;
+        }
+      }
+
+      // 3. Save to Firestore
+      await updateDoc(doc(db, "users", user.uid), {
+        fullName: newFullName,
+        username: tempUsername,
+        phoneNumber: normalizedPhone // Save normalized version
+      });
+      
+      setIsEditingProfile(false);
+      // The UserContext listener will trigger a re-render with new values
+    } catch (err: any) {
+      console.error("Failed to save profile on firebase:", err);
+      Alert.alert('Error', err.message || 'Failed to save changes.');
     }
   };
 
@@ -1179,7 +1181,6 @@ export default function MenuScreen() {
                     activeDevices={activeDevices}
                     getDeviceLimit={getDeviceLimit}
                     handleKickDevice={handleKickDevice}
-                    simulateNewDeviceLogin={simulateNewDeviceLogin}
                     billingHistory={billingHistory}
                     upcomingMembership={upcomingMembership}
                     currentScrollY={currentScrollY}

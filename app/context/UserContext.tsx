@@ -109,3 +109,5 @@ export function useUser() {
   }
   return context;
 }
+
+export default UserProvider;

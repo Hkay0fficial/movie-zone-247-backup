@@ -5,5 +5,443 @@ warning: Bundler cache is empty, rebuilding (this may take a minute)
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.8% (676/834)
-Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 76.1% (1230/1410)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 70.3% (796/965)
+Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1796/1797)
+Android Bundled 7518ms node_modules/expo-router/entry.js (1797 modules)
+ WARN  [2026-04-09T09:56:04.518Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Firebase Guest Auth Error: Firebase: Error (auth/admin-restricted-operation).
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 100ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T10:02:53.941Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Auth Error: auth/invalid-credential Firebase: Error (auth/invalid-credential). 
+
+Code: AuthScreen.tsx
+[0m [90m 621 |[39m       }
+ [90m 622 |[39m     } [36mcatch[39m (error[33m:[39m any) {
+[31m[1m>[22m[39m[90m 623 |[39m       console[33m.[39merror([32m'Auth Error:'[39m[33m,[39m error[33m.[39mcode[33m,[39m error[33m.[39mmessage)[33m;[39m
+ [90m     |[39m                    [31m[1m^[22m[39m
+ [90m 624 |[39m       triggerHaptic([32m'error'[39m)[33m;[39m
+ [90m 625 |[39m       
+ [90m 626 |[39m       [36mlet[39m errorMsg [33m=[39m error[33m.[39mmessage[33m.[39mreplace([32m"Firebase: "[39m[33m,[39m [32m""[39m) [33m||[39m [32m"Authentication failed"[39m[33m;[39m[0m
+Call Stack
+  handleAuthAction (components/AuthScreen.tsx:623:20)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 91ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T10:04:40.637Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Auth Error: auth/invalid-credential Firebase: Error (auth/invalid-credential). 
+
+Code: AuthScreen.tsx
+[0m [90m 621 |[39m       }
+ [90m 622 |[39m     } [36mcatch[39m (error[33m:[39m any) {
+[31m[1m>[22m[39m[90m 623 |[39m       console[33m.[39merror([32m'Auth Error:'[39m[33m,[39m error[33m.[39mcode[33m,[39m error[33m.[39mmessage)[33m;[39m
+ [90m     |[39m                    [31m[1m^[22m[39m
+ [90m 624 |[39m       triggerHaptic([32m'error'[39m)[33m;[39m
+ [90m 625 |[39m       
+ [90m 626 |[39m       [36mlet[39m errorMsg [33m=[39m error[33m.[39mmessage[33m.[39mreplace([32m"Firebase: "[39m[33m,[39m [32m""[39m) [33m||[39m [32m"Authentication failed"[39m[33m;[39m[0m
+Call Stack
+  handleAuthAction (components/AuthScreen.tsx:623:20)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 100ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T10:11:50.287Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 92ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T10:12:44.990Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Auth Error: auth/invalid-credential Firebase: Error (auth/invalid-credential). 
+
+Code: AuthScreen.tsx
+[0m [90m 621 |[39m       }
+ [90m 622 |[39m     } [36mcatch[39m (error[33m:[39m any) {
+[31m[1m>[22m[39m[90m 623 |[39m       console[33m.[39merror([32m'Auth Error:'[39m[33m,[39m error[33m.[39mcode[33m,[39m error[33m.[39mmessage)[33m;[39m
+ [90m     |[39m                    [31m[1m^[22m[39m
+ [90m 624 |[39m       triggerHaptic([32m'error'[39m)[33m;[39m
+ [90m 625 |[39m       
+ [90m 626 |[39m       [36mlet[39m errorMsg [33m=[39m error[33m.[39mmessage[33m.[39mreplace([32m"Firebase: "[39m[33m,[39m [32m""[39m) [33m||[39m [32m"Authentication failed"[39m[33m;[39m[0m
+Call Stack
+  handleAuthAction (components/AuthScreen.tsx:623:20)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1914ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T15:46:18.958Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Auth Error: auth/invalid-credential Firebase: Error (auth/invalid-credential). 
+
+Code: AuthScreen.tsx
+[0m [90m 621 |[39m       }
+ [90m 622 |[39m     } [36mcatch[39m (error[33m:[39m any) {
+[31m[1m>[22m[39m[90m 623 |[39m       console[33m.[39merror([32m'Auth Error:'[39m[33m,[39m error[33m.[39mcode[33m,[39m error[33m.[39mmessage)[33m;[39m
+ [90m     |[39m                    [31m[1m^[22m[39m
+ [90m 624 |[39m       triggerHaptic([32m'error'[39m)[33m;[39m
+ [90m 625 |[39m       
+ [90m 626 |[39m       [36mlet[39m errorMsg [33m=[39m error[33m.[39mmessage[33m.[39mreplace([32m"Firebase: "[39m[33m,[39m [32m""[39m) [33m||[39m [32m"Authentication failed"[39m[33m;[39m[0m
+Call Stack
+  handleAuthAction (components/AuthScreen.tsx:623:20)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 92ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T16:13:41.613Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 90ms node_modules/expo-router/entry.js (1 module)
+ WARN  [2026-04-09T19:15:17.923Z]  @firebase/auth: Auth (12.11.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+ WARN  Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library. To test the full functionality of this module, you can create a development build. https://docs.expo.dev/develop/development-builds/create-a-build
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+ LOG  Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.
+ WARN  Route "./context/MovieContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/UserContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Auth Error: auth/invalid-credential Firebase: Error (auth/invalid-credential). 
+
+Code: AuthScreen.tsx
+[0m [90m 621 |[39m       }
+ [90m 622 |[39m     } [36mcatch[39m (error[33m:[39m any) {
+[31m[1m>[22m[39m[90m 623 |[39m       console[33m.[39merror([32m'Auth Error:'[39m[33m,[39m error[33m.[39mcode[33m,[39m error[33m.[39mmessage)[33m;[39m
+ [90m     |[39m                    [31m[1m^[22m[39m
+ [90m 624 |[39m       triggerHaptic([32m'error'[39m)[33m;[39m
+ [90m 625 |[39m       
+ [90m 626 |[39m       [36mlet[39m errorMsg [33m=[39m error[33m.[39mmessage[33m.[39mreplace([32m"Firebase: "[39m[33m,[39m [32m""[39m) [33m||[39m [32m"Authentication failed"[39m[33m;[39m[0m
+Call Stack
+  handleAuthAction (components/AuthScreen.tsx:623:20)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundling failed 2076ms node_modules/expo-router/entry.js (1 module)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/menu/SubscriptionSection.tsx: Argument name clash. (75:2)
+
+  73 |   getDeviceLimit,
+  74 |   handleKickDevice,
+> 75 |   handleKickDevice,
+     |   ^
+  76 |   billingHistory,
+  77 |   upcomingMembership,
+  78 |   currentScrollY,
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7506:16)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7544:12)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7540:16)
+    at TypeScriptParserMixin.checkParams (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12131:12)
+    at TypeScriptParserMixin.<anonymous> (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12106:14)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13332:48)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseBlock (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13297:10)
+    at TypeScriptParserMixin.parseFunctionBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12100:24)
+    at TypeScriptParserMixin.parseArrowExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12075:10)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11687:12)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseVar (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13384:91)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13230:10)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9408:31)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12851:23)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13934:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9629:85)
+    at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13893:31)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13812:29)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9385:20)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12878:27)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12612:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14488:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10126:18)
+    at parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14501:26)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundling failed 24ms node_modules/expo-router/entry.js (1 module)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/menu/SubscriptionSection.tsx: Argument name clash. (75:2)
+
+  73 |   getDeviceLimit,
+  74 |   handleKickDevice,
+> 75 |   handleKickDevice,
+     |   ^
+  76 |   billingHistory,
+  77 |   upcomingMembership,
+  78 |   currentScrollY,
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7506:16)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7544:12)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7540:16)
+    at TypeScriptParserMixin.checkParams (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12131:12)
+    at TypeScriptParserMixin.<anonymous> (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12106:14)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13332:48)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseBlock (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13297:10)
+    at TypeScriptParserMixin.parseFunctionBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12100:24)
+    at TypeScriptParserMixin.parseArrowExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12075:10)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11687:12)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseVar (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13384:91)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13230:10)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9408:31)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12851:23)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13934:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9629:85)
+    at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13893:31)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13812:29)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9385:20)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12878:27)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12612:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14488:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10126:18)
+    at parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14501:26)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundling failed 699ms node_modules/expo-router/entry.js (1 module)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/menu/SubscriptionSection.tsx: Argument name clash. (75:2)
+
+  73 |   getDeviceLimit,
+  74 |   handleKickDevice,
+> 75 |   handleKickDevice,
+     |   ^
+  76 |   billingHistory,
+  77 |   upcomingMembership,
+  78 |   currentScrollY,
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7506:16)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7544:12)
+    at TypeScriptParserMixin.checkLVal (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:7540:16)
+    at TypeScriptParserMixin.checkParams (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12131:12)
+    at TypeScriptParserMixin.<anonymous> (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12106:14)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13332:48)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseBlock (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13297:10)
+    at TypeScriptParserMixin.parseFunctionBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12100:24)
+    at TypeScriptParserMixin.parseArrowExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12075:10)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11687:12)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseVar (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13384:91)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13230:10)
+    at TypeScriptParserMixin.parseVarStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9408:31)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12851:23)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13934:17)
+    at TypeScriptParserMixin.parseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9629:85)
+    at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13893:31)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13812:29)
+    at TypeScriptParserMixin.parseExport (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9385:20)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12878:27)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12612:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14488:25)
+    at TypeScriptParserMixin.parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10126:18)
+    at parse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:14501:26)

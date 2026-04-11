@@ -73,31 +73,49 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
   };
 
   const handlePaymentSubmit = async () => {
+    if (!selectedPlan || !selectedMethod) return;
+    
     setIsProcessing(true);
     triggerHaptic('impact');
 
-    // Simulate Payment Processing
-    setTimeout(async () => {
-      const user = auth.currentUser;
-      if (user && selectedPlan) {
-        try {
-          const planLabel = selectedPlan.name;
-          await updateDoc(doc(db, 'users', user.uid), {
-            subscriptionBundle: planLabel,
-            subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Mock 30 days for now
-          });
-          
-          setIsProcessing(false);
-          triggerHaptic('success');
-          setShowSuccess(true);
-        } catch (err) {
-          console.error("Error updating subscription:", err);
-          setIsProcessing(false);
-          triggerHaptic('warning');
-          alert('Payment failed. Please try again.');
-        }
+    const user = auth.currentUser;
+    if (!user) {
+      setIsProcessing(false);
+      alert('You must be signed in to upgrade.');
+      return;
+    }
+
+    try {
+      // Calculate Expiry Date based on Plan ID
+      let durationDays = 0;
+      switch (selectedPlan.id) {
+        case 'week_1': durationDays = 8; break; // 7 + 1 bonus
+        case 'weeks_2': durationDays = 16; break; // 14 + 2 bonus
+        case 'month_1': durationDays = 34; break; // 30 + 4 bonus
+        case 'months_2': durationDays = 67; break; // 60 + 7 bonus
+        default: durationDays = 30;
       }
-    }, 2000);
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + durationDays);
+
+      // Update Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        subscriptionBundle: selectedPlan.name,
+        subscriptionExpiresAt: expiryDate, // Firestore handles JS Date natively
+        paymentMethod: selectedMethod.label,
+        updatedAt: new Date()
+      });
+      
+      setIsProcessing(false);
+      triggerHaptic('success');
+      setShowSuccess(true);
+    } catch (err: any) {
+      console.error("Error updating subscription:", err);
+      setIsProcessing(false);
+      triggerHaptic('warning');
+      alert('Payment failed: ' + (err.message || 'Please try again.'));
+    }
   };
 
   if (!visible) return null;

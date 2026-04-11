@@ -5,32 +5,10 @@ import {
   Movie, 
   Series, 
   HeroMovie,
-  NEW_RELEASES as mockNewReleases,
-  TRENDING as mockTrending,
-  MOST_VIEWED as mockMostViewed,
-  MOST_DOWNLOADED as mockMostDownloaded,
-  LATEST as mockLatest,
-  CONTINUE_WATCHING as mockContinueWatching,
-  FAVOURITES as mockFavourites,
-  MY_LIST as mockMyList,
-  WATCH_LATER as mockWatchLater,
-  YOU_MAY_ALSO_LIKE as mockYouMayAlsoLike,
-  LAST_WATCHED as mockLastWatched,
-  ACTION_MOVIES as mockActionMovies,
-  SCIFI_MOVIES as mockSciFiMovies,
-  ROMANCE_MOVIES as mockRomanceMovies,
-  HORROR_MOVIES as mockHorrorMovies,
-  DRAMA_MOVIES as mockDramaMovies,
-  INDIAN_MOVIES as mockIndianMovies,
-  VJ_COLLECTION as mockVjCollection,
-  NEW_SERIES as mockNewSeries,
-  TRENDING_SERIES as mockTrendingSeries,
-  MOST_VIEWED_SERIES as mockMostViewedSeries,
-  MOST_DOWNLOADED_SERIES as mockMostDownloadedSeries,
-  ALL_SERIES as mockAllSeries,
-  HERO_MOVIES as mockHeroMovies,
-  ALL_ROWS as mockAllRows,
+  resolveCDNUrl,
+  HERO_VIDEOS,
 } from '../../constants/movieData';
+import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
 
 interface MovieContextType {
   movies: (Movie | Series)[];
@@ -41,6 +19,7 @@ interface MovieContextType {
   newReleases: (Movie | Series)[];
   trending: (Movie | Series)[];
   heroMovies: HeroMovie[];
+
   allRows: { title: string; data: (Movie | Series)[] }[];
   allSeries: Series[];
   newSeries: Series[];
@@ -116,19 +95,23 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             status: data.status || 'Ongoing',
             poster: data.coverUrl || data.posterUrl || data.poster || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b',
             episodes: data.episodes || 10,
-            episodeList: data.episodeList || [],
+            episodeList: (data.episodeList || []).map((ep: any) => ({
+              ...ep,
+              url: resolveCDNUrl(ep.url)
+            })),
             freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             description: data.synopsis || data.description || '',
-            videoUrl: data.videoUrl,
-            previewUrl: data.previewUrl,
-            totalDuration: data.duration || '0:00',
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.episodeList && data.episodeList[0]?.url) || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined), false),
+            previewUrl: resolveCDNUrl(data.previewUrl || '', false),
+            totalDuration: data.duration && data.duration !== '0:00' ? data.duration : (data.totalDuration || '0:00'),
             previewDuration: data.previewDuration,
             episodeDuration: data.episodeDuration || '45m',
             isMiniSeries: data.isMiniSeries || false,
             isHero: data.isHero || false,
             heroType: data.heroType || 'video',
-            heroVideoUrl: data.heroVideoUrl || '',
-            heroPhotoUrl: data.heroPhotoUrl || '',
+            heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
+            heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
+            createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
           });
         } else {
           fetchedMovies.push({
@@ -140,15 +123,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             vj: data.vj || 'Unknown VJ',
             poster: data.coverUrl || data.posterUrl || data.poster || 'https://images.unsplash.com/photo-1485846234645-a62644f84728',
             description: data.synopsis || data.description || 'Newly uploaded movie.',
-            videoUrl: data.videoUrl,
-            previewUrl: data.previewUrl,
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined), false),
+            previewUrl: resolveCDNUrl(data.previewUrl || '', false),
             duration: data.duration || '0:00',
             previewDuration: data.previewDuration,
             isFree: data.isFree || false,
             isHero: data.isHero || false,
             heroType: data.heroType || 'video',
-            heroVideoUrl: data.heroVideoUrl || '',
-            heroPhotoUrl: data.heroPhotoUrl || '',
+            heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
+            heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
+            createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
           });
         }
       });
@@ -184,38 +168,36 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ? liveSeries.map(s => ({ ...s, isFree: true }))
       : liveSeries;
 
-    const newReleases = [...actualLiveMovies, ...actualLiveSeries, ...mockNewReleases, ...mockNewSeries];
-    const trending = [...actualLiveMovies, ...mockTrending];
-    const mostViewed = [...actualLiveMovies, ...mockMostViewed];
-    const mostDownloaded = [...actualLiveMovies, ...mockMostDownloaded];
-    const latest = [...actualLiveMovies, ...mockLatest];
-    const continueWatching = mockContinueWatching; // Optional: prepending live to all
-    const favourites = mockFavourites;
-    const myList = mockMyList;
-    const watchLater = mockWatchLater;
-    const youMayAlsoLike = mockYouMayAlsoLike;
-    const lastWatched = mockLastWatched;
+    const newReleases = [...actualLiveMovies, ...actualLiveSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    const trending = [...actualLiveMovies];
+    const mostViewed = [...actualLiveMovies];
+    const mostDownloaded = [...actualLiveMovies];
+    const latest = [...actualLiveMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    const continueWatching: Movie[] = []; // Live data doesn't have continue watching state yet
+    const favourites: Movie[] = [];
+    const myList: Movie[] = [];
+    const watchLater: Movie[] = [];
+    const youMayAlsoLike = [...actualLiveMovies];
+    const lastWatched: Movie[] = [];
     
     // Auto category filter
-    const actionMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('action')), ...mockActionMovies];
-    const scifiMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('sci-fi')), ...mockSciFiMovies];
-    const romanceMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('romance')), ...mockRomanceMovies];
-    const horrorMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('horror')), ...mockHorrorMovies];
-    const dramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('drama')), ...mockDramaMovies];
-    const indianMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('indian')), ...mockIndianMovies];
+    const actionMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('action'))];
+    const scifiMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('sci-fi'))];
+    const romanceMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('romance'))];
+    const horrorMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('horror'))];
+    const dramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('drama'))];
+    const indianMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('indian'))];
     const freeMovies = [
       ...actualLiveMovies.filter(m => m.isFree),
-      ...mockNewReleases.filter(m => m.isFree),
-      ...mockTrending.filter(m => m.isFree),
-      ...mockAllSeries.filter(s => s.isFree),
+      ...actualLiveSeries.filter(s => s.isFree),
     ].filter((item, index, self) => index === self.findIndex((t) => t.id === item.id)); // Dedup
-    const vjCollection = mockVjCollection;
+    const vjCollection: Movie[] = [];
 
-    const allSeries = [...liveSeries, ...mockAllSeries];
-    const newSeries = [...liveSeries, ...mockNewSeries];
-    const trendingSeries = [...liveSeries, ...mockTrendingSeries];
-    const mostViewedSeries = [...liveSeries, ...mockMostViewedSeries];
-    const mostDownloadedSeries = [...liveSeries, ...mockMostDownloadedSeries];
+    const allSeries = [...liveSeries];
+    const newSeries = [...liveSeries];
+    const trendingSeries = [...liveSeries];
+    const mostViewedSeries = [...liveSeries];
+    const mostDownloadedSeries = [...liveSeries];
 
     // Build live hero items — only content explicitly marked as hero by admin
     const adminHeroMovies: HeroMovie[] = [
@@ -230,13 +212,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           year: m.year,
           duration: m.duration,
           director: 'App User',
-          description: m.description || 'Newly uploaded content from THE MOVIE ZONE 247 Admin portal.',
+          description: m.description || 'Newly uploaded content from THE MOVIE ZONE 24/7 Admin portal.',
           poster: m.poster,
-          videoUrl: m.videoUrl || mockHeroMovies[0].videoUrl,
+          videoUrl: m.videoUrl || HERO_VIDEOS[0],
           previewUrl: m.previewUrl || '',
           heroVideoUrl: m.heroVideoUrl || '',
           heroPhotoUrl: m.heroPhotoUrl || '',
           heroType: (m.heroType || 'video') as 'video' | 'photo',
+          createdAt: (m as any).createdAt,
+          id: m.id,
+          type: 'Movie'
         })),
       // Hero-marked series
       ...liveSeries
@@ -247,47 +232,51 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           rating: s.rating,
           vj: s.vj,
           year: s.year,
-          duration: s.totalDuration || '',
+          duration: (s as any).episodes ? `${(s as any).episodes} EP` : (s.totalDuration || ''),
           director: 'App User',
-          description: s.description || 'Newly uploaded series from THE MOVIE ZONE 247 Admin portal.',
+          description: s.description || 'Newly uploaded series from THE MOVIE ZONE 24/7 Admin portal.',
           poster: s.poster,
-          videoUrl: s.videoUrl || mockHeroMovies[0].videoUrl,
+          videoUrl: s.videoUrl || (s.episodeList && s.episodeList[0]?.url) || '',
           previewUrl: s.previewUrl || '',
           heroVideoUrl: s.heroVideoUrl || '',
           heroPhotoUrl: s.heroPhotoUrl || '',
           heroType: (s.heroType || 'video') as 'video' | 'photo',
+          createdAt: s.createdAt,
+          id: s.id,
+          type: (s.isMiniSeries ? 'Mini Series' : 'Series') as any
         })),
-    ];
+    ].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // If admin hasn't marked any content as hero, fall back to the newest uploaded
-    // movies (New Releases) using their videoUrl + previewUrl, then mock data
+    // movies (New Releases) using their videoUrl + previewUrl
     const newReleaseFallback: HeroMovie[] = adminHeroMovies.length === 0
-      ? liveMovies.slice(0, 5).map(m => ({
+      ? newReleases.slice(0, 5).map(m => ({
           title: m.title,
           genre: m.genre,
           rating: m.rating,
           vj: m.vj,
           year: m.year,
-          duration: m.duration,
+          duration: (m as any).episodes ? `${(m as any).episodes} EP` : ((m as any).duration || (m as any).totalDuration || ''),
           director: 'App User',
-          description: m.description || '',
+          description: (m as any).description || '',
           poster: m.poster,
-          videoUrl: m.videoUrl || mockHeroMovies[0].videoUrl,
+          videoUrl: m.videoUrl || '',
           previewUrl: m.previewUrl || '',
           heroType: 'video' as const,
+          createdAt: (m as any).createdAt,
+          id: m.id,
+          type: (m as any).isMiniSeries ? 'Mini Series' : (m as any).seasons ? 'Series' : 'Movie'
         }))
       : [];
 
     const heroMovies: HeroMovie[] = [
       ...adminHeroMovies,
       ...newReleaseFallback,
-      // Always include mock content so hero is never empty
-      ...mockHeroMovies,
     ];
 
     // Rebuild ALL_ROWS with live data prepended
     const allRows = [
-      { title: 'New Releases',       data: [...liveMovies, ...liveSeries, ...mockNewReleases, ...mockNewSeries] },
+      { title: 'New Releases',       data: [...liveMovies, ...liveSeries] },
       { title: 'Free Movies',        data: freeMovies        },
       { title: 'Trending Now',       data: trending          },
       { title: 'Trending VJs',       data: trending          }, 
@@ -359,3 +348,5 @@ export function useMovies() {
   }
   return context;
 }
+
+export default MovieProvider;

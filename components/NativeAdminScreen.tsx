@@ -1902,6 +1902,24 @@ export default function NativeAdminScreen() {
                   thumbColor="#fff"
                 />
               </View>
+
+              {/* --- Advanced Scheduling --- */}
+              <View style={[styles.dashboardSection, { marginTop: 16, backgroundColor: '#0f172a', padding: 16 }]}>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="calendar-outline" size={18} color="#0ea5e9" />
+                  <Text style={styles.sectionTitle}>ADVANCED SCHEDULING</Text>
+                </View>
+                <View style={styles.row}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.label}>Go Live Date</Text>
+                    <TextInput style={styles.input} value={contentForm.goLiveDate} onChangeText={t => setContentForm({...contentForm, goLiveDate: t})} placeholder="YYYY-MM-DD" placeholderTextColor="#64748b" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>Expiry Date</Text>
+                    <TextInput style={styles.input} value={contentForm.expiryDate} onChangeText={t => setContentForm({...contentForm, expiryDate: t})} placeholder="YYYY-MM-DD" placeholderTextColor="#64748b" />
+                  </View>
+                </View>
+              </View>
             </View>
 
             {/* --- Media & Assets --- */}
@@ -1942,11 +1960,27 @@ export default function NativeAdminScreen() {
               </View>
               {contentForm.poster ? <Image source={{ uri: contentForm.poster }} style={styles.posterPreview} contentFit="cover" /> : null}
 
-              <Text style={styles.label}>Main Stream URL (HLS/Direct)</Text>
-              <TextInput style={styles.input} value={contentForm.videoUrl} onChangeText={t => setContentForm({...contentForm, videoUrl: t})} placeholder="https://..." placeholderTextColor="#64748b" />
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={styles.label}>Main Stream URL (HLS/Direct)</Text>
+                  <TextInput style={styles.input} value={contentForm.videoUrl} onChangeText={t => setContentForm({...contentForm, videoUrl: t})} placeholder="https://..." placeholderTextColor="#64748b" />
+                </View>
+                <View style={{ width: 100 }}>
+                  <Text style={styles.label}>Duration</Text>
+                  <TextInput style={styles.input} value={contentForm.duration} onChangeText={t => setContentForm({...contentForm, duration: t})} placeholder="1h 45m" placeholderTextColor="#64748b" />
+                </View>
+              </View>
               
-              <Text style={styles.label}>Preview Teaser URL</Text>
-              <TextInput style={styles.input} value={contentForm.previewUrl} onChangeText={t => setContentForm({...contentForm, previewUrl: t})} placeholder="https://..." placeholderTextColor="#64748b" />
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={styles.label}>Preview Teaser URL</Text>
+                  <TextInput style={styles.input} value={contentForm.previewUrl} onChangeText={t => setContentForm({...contentForm, previewUrl: t})} placeholder="https://..." placeholderTextColor="#64748b" />
+                </View>
+                <View style={{ width: 100 }}>
+                  <Text style={styles.label}>Preview (s)</Text>
+                  <TextInput style={styles.input} value={contentForm.previewDuration} onChangeText={t => setContentForm({...contentForm, previewDuration: t})} placeholder="30s" placeholderTextColor="#64748b" />
+                </View>
+              </View>
             </View>
 
             {/* --- Episodes Management --- */}
