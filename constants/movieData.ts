@@ -249,7 +249,7 @@ export const ALL_ROWS: { title: string; data: (Movie | Series)[] }[] = [
   { title: 'Free Movies',        data: FREE_CONTENT      },
   { title: 'New Releases',       data: [...NEW_RELEASES, ...NEW_SERIES] },
   { title: 'Trending Now',       data: TRENDING          },
-  { title: 'Trending VJs',       data: TRENDING          }, // Destination for VJ notification
+  { title: 'K-Drama',            data: TRENDING          }, // Fallback data
   { title: 'Most Viewed',        data: MOST_VIEWED       },
   { title: 'Most Downloaded',    data: MOST_DOWNLOADED   },
   { title: 'Latest',             data: LATEST            },

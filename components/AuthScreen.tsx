@@ -632,7 +632,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
         // Immediate lastActive update on login
         if (auth.currentUser) {
           await setDoc(doc(db, "users", auth.currentUser.uid), {
-            lastActive: serverTimestamp()
+            lastActive: serverTimestamp(),
+            email: auth.currentUser.email // Ensure email is always present in Firestore
           }, { merge: true });
         }
         await AsyncStorage.setItem('hasAccount', 'true');

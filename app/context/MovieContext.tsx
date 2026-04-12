@@ -39,6 +39,7 @@ interface MovieContextType {
   actionMovies: Movie[];
   scifiMovies: Movie[];
   romanceMovies: Movie[];
+  kDramaMovies: Movie[];
   vjCollection: Movie[];
   allMovies: (Movie | Series)[];
   globalSettings: {
@@ -59,6 +60,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     expiresAt: ''
   });
   const [loading, setLoading] = useState(true);
+  const [appLayout, setAppLayout] = useState<any[]>([]);
 
   useEffect(() => {
     // Listen to Firebase 'movies' collection in real-time
@@ -159,6 +161,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // Listen to Mobile Layout Manager
+    const unsubscribe = onSnapshot(doc(db, 'app_layout', 'main'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().sections) {
+        setAppLayout(docSnap.data().sections);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Merge live data with mock data so the beautiful UI stays populated
   const contextValue = useMemo(() => {
     const actualLiveMovies = globalSettings.allMoviesFree 
@@ -191,6 +203,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ...actualLiveMovies.filter(m => m.isFree),
       ...actualLiveSeries.filter(s => s.isFree),
     ].filter((item, index, self) => index === self.findIndex((t) => t.id === item.id)); // Dedup
+    const kDramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('korean') || m.genre?.toLowerCase().includes('kdrama') || m.genre?.toLowerCase().includes('k-drama'))];
     const vjCollection: Movie[] = [];
 
     const allSeries = [...liveSeries];
@@ -274,29 +287,65 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ...newReleaseFallback,
     ];
 
-    // Rebuild ALL_ROWS with live data prepended
-    const allRows = [
-      { title: 'New Releases',       data: [...liveMovies, ...liveSeries] },
-      { title: 'Free Movies',        data: freeMovies        },
-      { title: 'Trending Now',       data: trending          },
-      { title: 'Trending VJs',       data: trending          }, 
-      { title: 'Most Viewed',        data: mostViewed       },
-      { title: 'Most Downloaded',    data: mostDownloaded   },
-      { title: 'Latest',             data: latest            },
-      { title: 'Continue Watching',  data: continueWatching },
-      { title: 'Favourites',         data: favourites        },
-      { title: 'My List',            data: myList           },
-      { title: 'Watch Later',        data: watchLater       },
-      { title: 'You May Also Like',  data: youMayAlsoLike },
-      { title: 'Last Watched',       data: lastWatched      },
-      { title: 'Action',             data: actionMovies     },
-      { title: 'Sci-Fi',             data: scifiMovies      },
-      { title: 'Romance',            data: romanceMovies    },
-      { title: 'Horror',             data: horrorMovies     },
-      { title: 'Drama',              data: dramaMovies      },
-      { title: 'Indian Movies',      data: indianMovies     },
-      { title: 'VJ Collection',      data: vjCollection     },
-    ];
+    // Rebuild ALL_ROWS dynamically based on the Admin Portal's Layout Manager
+    let allRows: { title: string; data: (Movie | Series)[] }[] = [];
+    
+    if (appLayout && appLayout.length > 0) {
+      // Use Live Firestore Managed Rows
+      const visibleSections = appLayout.filter(s => s.isVisible);
+      allRows = visibleSections.map(section => {
+        let sectionData: any[] = [];
+        if (section.filterType === 'newReleases') {
+          sectionData = newReleases;
+        } else if (section.filterType === 'trending') {
+          sectionData = trending; // Using basic trending var fallback
+        } else if (section.filterType === 'free') {
+          sectionData = freeMovies; 
+        } else if (section.filterType === 'genre') {
+          const val = (section.filterValue || '').toLowerCase();
+          sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => m.genre?.toLowerCase().includes(val));
+        } else {
+          sectionData = newReleases; // Guarantee an array
+        }
+        return { title: section.title, data: sectionData };
+      });
+      
+      // Inject standard persistence categories (these are hardcoded to follow standard Netflix conventions)
+      const personalRows = [
+        { title: 'Continue Watching',  data: continueWatching },
+        { title: 'Favourites',         data: favourites        },
+        { title: 'My List',            data: myList           },
+        { title: 'Watch Later',        data: watchLater       },
+      ];
+      // Splice them neatly underneath the very first row (usually New Releases)
+      allRows.splice(1, 0, ...personalRows);
+      allRows.push({ title: 'Last Watched', data: lastWatched });
+
+    } else {
+      // Fallback Layout (Original System Layout in case of DB offline behavior)
+      allRows = [
+        { title: 'New Releases',       data: newReleases       },
+        { title: 'Free Movies',        data: freeMovies        },
+        { title: 'Trending Now',       data: trending          },
+        { title: 'K-Drama',            data: kDramaMovies      }, 
+        { title: 'Most Viewed',        data: mostViewed       },
+        { title: 'Most Downloaded',    data: mostDownloaded   },
+        { title: 'Latest',             data: latest            },
+        { title: 'Continue Watching',  data: continueWatching },
+        { title: 'Favourites',         data: favourites        },
+        { title: 'My List',            data: myList           },
+        { title: 'Watch Later',        data: watchLater       },
+        { title: 'You May Also Like',  data: youMayAlsoLike },
+        { title: 'Last Watched',       data: lastWatched      },
+        { title: 'Action',             data: actionMovies     },
+        { title: 'Sci-Fi',             data: scifiMovies      },
+        { title: 'Romance',            data: romanceMovies    },
+        { title: 'Horror',             data: horrorMovies     },
+        { title: 'Drama',              data: dramaMovies      },
+        { title: 'Indian Movies',      data: indianMovies     },
+        { title: 'VJ Collection',      data: vjCollection     },
+      ];
+    }
 
     return {
       movies: newReleases, // Merged for UI
@@ -321,6 +370,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       horrorMovies,
       dramaMovies,
       indianMovies,
+      kDramaMovies,
       vjCollection,
       heroMovies,
       allRows,
@@ -332,7 +382,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       mostDownloadedSeries,
       globalSettings
     };
-  }, [liveMovies, liveSeries, loading, globalSettings]);
+  }, [liveMovies, liveSeries, loading, globalSettings, appLayout]);
 
   return (
     <MovieContext.Provider value={contextValue}>

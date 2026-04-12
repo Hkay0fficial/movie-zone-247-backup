@@ -21,6 +21,7 @@ import {
   BackHandler,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
@@ -192,7 +193,7 @@ const BY_TRENDING_LIST = [
   "Newly Released",
   "Most Viewed Movies",
   "Trending Series",
-  "Trending VJs",
+  "K-Drama",
   "Trending This Week",
   "Most Downloaded",
 ];
@@ -500,7 +501,7 @@ function NotificationOverlay({
 
                                       // "Command" the app to navigate or select
                                       if (expandedType === 'movies') {
-                                        const fullMovie = ALL_ITEMS.find(m => m.id === subItem.id);
+                                        const fullMovie = TOTAL_LIVE_ITEMS.find(m => m.id === subItem.id);
                                         DeviceEventEmitter.emit("movieSelected", fullMovie || { id: subItem.id, title: subItem.title });
                                       } else {
                                         DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
@@ -539,7 +540,7 @@ function NotificationOverlay({
                                 ]}
                                 onPress={() => {
                                   const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
-                                  const gridData = ALL_ITEMS.filter(m => movieIds.has(m.id));
+                                  const gridData = TOTAL_LIVE_ITEMS.filter(m => movieIds.has(m.id));
                                   if (gridData.length > 0) {
                                     setGlobalGridTitle(`${item.title} - Movies`);
                                     setGlobalGridData(gridData);
@@ -561,7 +562,7 @@ function NotificationOverlay({
                                 ]}
                                 onPress={() => {
                                   const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
-                                  const gridData = ALL_ITEMS.filter(m => seriesIds.has(m.id));
+                                  const gridData = TOTAL_LIVE_ITEMS.filter(m => seriesIds.has(m.id));
                                   if (gridData.length > 0) {
                                     setGlobalGridTitle(`${item.title} - Series`);
                                     setGlobalGridData(gridData);
@@ -777,6 +778,14 @@ function SearchOverlay({
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
   const { isPaid } = useSubscription();
+  const { liveMovies, liveSeries, allRows } = useMovies();
+  
+  // Combine all live content for absolute coverage
+  const TOTAL_LIVE_ITEMS = React.useMemo(() => {
+    const combined = [...liveMovies, ...liveSeries];
+    // Deduplicate by ID just in case
+    return Array.from(new Map(combined.map(item => [item.id, item])).values());
+  }, [liveMovies, liveSeries]);
 
   const toggleFilter = (key: string) => {
     setExpandedFilter((prev) => (prev === key ? null : key));
@@ -884,7 +893,7 @@ function SearchOverlay({
   const results = isFiltering
     ? (() => {
         const q = query.toLowerCase().trim();
-        let base: (Movie | Series)[] = ALL_ITEMS;
+        let base: (Movie | Series)[] = TOTAL_LIVE_ITEMS;
 
         if (q) {
           let searchQ = q;
@@ -894,12 +903,12 @@ function SearchOverlay({
           if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
 
           // 1. Match any section names (e.g. "Action", "Trending", "New") and grab their movies
-          const sectionMatches = ALL_ROWS.filter((r) => r.title.toLowerCase().includes(searchQ))
+          const sectionMatches = allRows.filter((r) => r.title.toLowerCase().includes(searchQ))
             .flatMap((r) => r.data);
 
           // 2. Fuzzy search across all items (movies + series)
           const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
-          const attributeMatches = ALL_ITEMS.filter((m) => {
+          const attributeMatches = TOTAL_LIVE_ITEMS.filter((m) => {
             return (
               m.title.toLowerCase().includes(searchQ) ||
               m.genre.toLowerCase().includes(searchQ) ||
@@ -1009,6 +1018,7 @@ function SearchOverlay({
                 ]}
                 onPress={() => {
                   clearFilters(); // Clear all
+                  setDiscoveryMode("trending"); // Auto-switch back to Quick Search
                   setTimeout(() => inputRef.current?.focus(), 100);
                 }}
               >
@@ -1792,7 +1802,17 @@ function SearchOverlay({
                     ListEmptyComponent={
                       <View style={styles.emptyResults}>
                         <Text style={styles.emptyText}>
-                          No matches found for "{query}"
+                          No matches found for {(() => {
+                            const parts = [];
+                            if (query) parts.push(`"${query}"`);
+                            if (selectedType) parts.push(selectedType === 'Movie' ? "Movies" : selectedType);
+                            if (selectedGenre) parts.push(selectedGenre);
+                            if (selectedYear) parts.push(selectedYear);
+                            if (selectedVJ) parts.push(selectedVJ);
+                            if (selectedSeason) parts.push(`Season ${selectedSeason}`);
+                            
+                            return parts.length > 0 ? parts.join(" in ") : "these filters";
+                          })()}
                         </Text>
                       </View>
                     }
@@ -1974,7 +1994,7 @@ function SearchOverlay({
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
   const { liveMovies, liveSeries } = useMovies();
-  const { allMoviesFree, eventMessage } = useSubscription();
+  const { allMoviesFree, eventMessage, activeDownloads } = useSubscription();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();
@@ -1994,6 +2014,71 @@ function CustomTabBar() {
   const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
   const [updateDismissCount, setUpdateDismissCount] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [isStateLoaded, setIsStateLoaded] = useState(false);
+
+  // Load persisted states on mount
+  useEffect(() => {
+    const loadState = async () => {
+      try {
+        const [
+          savedReadIds,
+          savedCheckedIds,
+          savedDismissCount,
+          savedUpdateApplied,
+          savedRatingRemoved
+        ] = await Promise.all([
+          AsyncStorage.getItem("readIds"),
+          AsyncStorage.getItem("checkedItemIds"),
+          AsyncStorage.getItem("updateDismissCount"),
+          AsyncStorage.getItem("isUpdateApplied"),
+          AsyncStorage.getItem("isRatingPermanentlyRemoved"),
+        ]);
+
+        if (savedReadIds) setReadIds(new Set(JSON.parse(savedReadIds)));
+        if (savedCheckedIds) setCheckedItemIds(new Set(JSON.parse(savedCheckedIds)));
+        if (savedDismissCount) setUpdateDismissCount(parseInt(savedDismissCount, 10));
+        if (savedUpdateApplied) setIsUpdateApplied(savedUpdateApplied === "true");
+        if (savedRatingRemoved) setIsRatingPermanentlyRemoved(savedRatingRemoved === "true");
+        
+        setIsStateLoaded(true);
+      } catch (e) {
+        console.error("Failed to load notification state", e);
+        setIsStateLoaded(true);
+      }
+    };
+    loadState();
+  }, []);
+
+  // Persist states when they change (only after initial load)
+  useEffect(() => {
+    if (isStateLoaded) {
+      AsyncStorage.setItem("readIds", JSON.stringify([...readIds]));
+    }
+  }, [readIds, isStateLoaded]);
+
+  useEffect(() => {
+    if (isStateLoaded) {
+      AsyncStorage.setItem("checkedItemIds", JSON.stringify([...checkedItemIds]));
+    }
+  }, [checkedItemIds, isStateLoaded]);
+
+  useEffect(() => {
+    if (isStateLoaded) {
+      AsyncStorage.setItem("updateDismissCount", String(updateDismissCount));
+    }
+  }, [updateDismissCount, isStateLoaded]);
+
+  useEffect(() => {
+    if (isStateLoaded) {
+      AsyncStorage.setItem("isUpdateApplied", String(isUpdateApplied));
+    }
+  }, [isUpdateApplied, isStateLoaded]);
+
+  useEffect(() => {
+    if (isStateLoaded) {
+      AsyncStorage.setItem("isRatingPermanentlyRemoved", String(isRatingPermanentlyRemoved));
+    }
+  }, [isRatingPermanentlyRemoved, isStateLoaded]);
 
   // Emit events when search or notification overlays are toggled to auto-mute hero video
   useEffect(() => {
@@ -2107,8 +2192,23 @@ function CustomTabBar() {
       baseData = [eventNotif, ...baseData];
     }
     
+    // Inject Active Downloads
+    const dlNotifications: Notification[] = Object.entries(activeDownloads).map(([id, dl]) => ({
+      id: `dl_${id}`,
+      type: "update",
+      icon: "cloud-download",
+      title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
+      message: `${dl.progress === 100 ? "Finished" : "Saving"} "${(dl as any).episodeTitle || dl.item.title}" (${dl.progress}%)`,
+      time: "ACTIVE",
+      isNew: true,
+      color: "#00ffcc",
+      image: dl.item.poster
+    }));
+
+    baseData = [...dlNotifications, ...baseData];
+    
     return baseData;
-  }, [liveMovies, liveSeries, allMoviesFree, eventMessage]);
+  }, [liveMovies, liveSeries, allMoviesFree, eventMessage, activeDownloads]);
 
   const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
 
@@ -2401,12 +2501,12 @@ function CustomTabBar() {
       setIsUpdateApplied(true);
     }
     
-    // Handle "Trending VJs" or "New Release" collections
+    // Handle "K-Drama" or "New Release" collections
     const hasMovies = item.moviesList && item.moviesList.length > 0;
     const hasSeries = item.seriesList && item.seriesList.length > 0;
     const isTrendingVj = item.vjsDetailed && item.vjsDetailed.length > 0;
 
-    if (item.title === "New Release" || item.title === "Trending Now" || isTrendingVj || item.id === "live_n1") {
+    if (item.title === "New Release" || item.title === "Trending Now" || item.title === "K-Drama" || isTrendingVj || item.id === "live_n1") {
       let gridData: (Movie | Series)[] = [];
       
       const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
@@ -2634,7 +2734,13 @@ function CustomTabBar() {
                     ]}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ marginLeft: 0 }}>
+                      <View style={{ marginRight: 12 }}>
+                        <Image 
+                          source={require("@/assets/images/movie_zone_logo_new.png")}
+                          style={{ width: 32, height: 32, borderRadius: 16 }}
+                        />
+                      </View>
+                      <View>
                         <Text style={styles.navLogoTitle}>
                           THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
                         </Text>

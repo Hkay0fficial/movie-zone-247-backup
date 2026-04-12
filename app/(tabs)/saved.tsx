@@ -2,6 +2,30 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
+import { useRouter } from "expo-router";
+import { BlurView } from "expo-blur";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import {
+  Series,
+  Movie,
+  ALL_SERIES,
+  HERO_VIDEOS,
+  ALL_GENRES,
+  ALL_VJS,
+  TRENDING_SERIES,
+  MOST_VIEWED_SERIES,
+  MOST_DOWNLOADED_SERIES,
+  NEW_SERIES,
+} from "@/constants/movieData";
+import { useSubscription } from "@/app/context/SubscriptionContext";
+import { useMovies } from "@/app/context/MovieContext";
+import PremiumAccessModal from "../../components/PremiumAccessModal";
+import PlanSelectionModal from "../../components/PlanSelectionModal";
+
 import {
   StyleSheet,
   Text,
@@ -71,6 +95,16 @@ const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
   }
 };
 
+let Brightness: any = null;
+try {
+  // We use require to avoid fatal crash if native module is missing
+  if (NativeModules.ExpoBrightness || Platform.OS === 'web') {
+    Brightness = require('expo-brightness');
+  }
+} catch (e) {
+  // Safe fail
+}
+
 // ─── Marquee Placeholder Component ─────────────────────────────────────────────
 const MarqueePlaceholder = ({
   text,
@@ -136,30 +170,7 @@ const MarqueePlaceholder = ({
     </View>
   );
 };
-import { useRouter } from "expo-router";
-import { BlurView } from "expo-blur";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
-import * as ScreenOrientation from "expo-screen-orientation";
-// import * as NavigationBar from 'expo-navigation-bar'; // Removed to prevent crash if native module is missing
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
-import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import {
-  Series,
-  Movie,
-  ALL_SERIES,
-  HERO_VIDEOS,
-  ALL_GENRES,
-  ALL_VJS,
-  TRENDING_SERIES,
-  MOST_VIEWED_SERIES,
-  MOST_DOWNLOADED_SERIES,
-  NEW_SERIES,
-} from "@/constants/movieData";
-import { useSubscription } from "@/app/context/SubscriptionContext";
-import { useMovies } from "@/app/context/MovieContext";
-import PremiumAccessModal from "../../components/PremiumAccessModal";
-import PlanSelectionModal from "../../components/PlanSelectionModal";
+
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = (W - 44) / 3;
@@ -917,6 +928,19 @@ function FullVideoPlayerModal({
   const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
   const insets = useSafeAreaInsets();
   
+  // Gesture State Overlays
+  const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
+  const [currentBrightness, setCurrentBrightness] = useState(1);
+  const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
+  const [currentVolume, setCurrentVolume] = useState(1);
+  
+  // Gesture Tracking Refs
+  const gestureDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
+  const gestureTypeRef = useRef<'brightness' | 'volume' | null>(null);
+  const gestureStartValueRef = useRef(1);
+  const gestureStartXRef = useRef(0);
+  const gestureStartYRef = useRef(0);
+  
   const lockPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -1055,41 +1079,101 @@ function FullVideoPlayerModal({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (isLocked) return false;
-        return Math.abs(gestureState.dx) > 20; 
+        return Math.abs(gestureState.dx) > 20 || Math.abs(gestureState.dy) > 20; 
       },
-      onPanResponderGrant: (evt, gestureState) => {
+      onPanResponderGrant: async (evt, gestureState) => {
+        const { pageX } = evt.nativeEvent;
+        gestureStartXRef.current = pageX;
+        gestureDirectionRef.current = null;
+        gestureTypeRef.current = null;
+        
         const currentStatus = statusRef.current;
         if (currentStatus.isLoaded) {
           const current = currentStatus.positionMillis || 0;
           scrubStartPosRef.current = current;
           scrubPositionRef.current = current;
           setScrubPosition(current);
-          setIsScrubbing(true);
-          scrubbingRef.current = true;
         }
         resetControlsTimer();
       },
-      onPanResponderMove: (evt, gestureState) => {
-        const currentStatus = statusRef.current;
-        if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
-          const sensitivity = 1.0;
-          const delta = (gestureState.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
-          const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubStartPosRef.current || 0) + delta));
-          scrubPositionRef.current = newPos;
-          setScrubPosition(newPos);
-          resetControlsTimer();
+      onPanResponderMove: async (evt, gestureState) => {
+        if (isLocked) return;
+        
+        if (!gestureDirectionRef.current) {
+          if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
+            // Horizontal Scrub
+            gestureDirectionRef.current = 'horizontal';
+            setIsScrubbing(true);
+            scrubbingRef.current = true;
+          } else {
+            // Vertical Adjust
+            gestureDirectionRef.current = 'vertical';
+            const screenWidth = Dimensions.get('window').width;
+            if (gestureStartXRef.current < screenWidth / 2) {
+              gestureTypeRef.current = 'brightness';
+              try {
+                if (Brightness) {
+                  const initialBrightness = await Brightness.getBrightnessAsync();
+                  gestureStartValueRef.current = initialBrightness;
+                  setCurrentBrightness(initialBrightness);
+                } else {
+                  gestureStartValueRef.current = currentBrightness;
+                }
+              } catch (e) {
+                gestureStartValueRef.current = currentBrightness;
+              }
+              setIsAdjustingBrightness(true);
+            } else {
+              gestureTypeRef.current = 'volume';
+              gestureStartValueRef.current = currentVolume;
+              setIsAdjustingVolume(true);
+            }
+          }
+        }
+
+        if (gestureDirectionRef.current === 'horizontal') {
+          const currentStatus = statusRef.current;
+          if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
+            const sensitivity = 1.0;
+            const delta = (gestureState.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
+            const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubStartPosRef.current || 0) + delta));
+            scrubPositionRef.current = newPos;
+            setScrubPosition(newPos);
+            resetControlsTimer();
+          }
+        } else if (gestureDirectionRef.current === 'vertical') {
+          const deltaY = -(gestureState.dy / (Dimensions.get('window').height * 0.8)); // Negative because swipe up is -dy
+          const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + deltaY));
+          
+          if (gestureTypeRef.current === 'brightness') {
+            try {
+              if (Brightness) {
+                await Brightness.setBrightnessAsync(newValue);
+              }
+            } catch(e) {}
+            setCurrentBrightness(newValue);
+          } else if (gestureTypeRef.current === 'volume') {
+            videoRef.current?.setVolumeAsync(newValue);
+            setCurrentVolume(newValue);
+          }
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
-        if (statusRef.current.isLoaded && scrubbingRef.current) {
+        if (gestureDirectionRef.current === 'horizontal' && statusRef.current.isLoaded && scrubbingRef.current) {
           videoRef.current?.setPositionAsync(scrubPositionRef.current);
         }
         setIsScrubbing(false);
         scrubbingRef.current = false;
+        setIsAdjustingBrightness(false);
+        setIsAdjustingVolume(false);
+        gestureDirectionRef.current = null;
       },
       onPanResponderTerminate: () => {
         setIsScrubbing(false);
         scrubbingRef.current = false;
+        setIsAdjustingBrightness(false);
+        setIsAdjustingVolume(false);
+        gestureDirectionRef.current = null;
       },
     })
   ).current;
@@ -1210,6 +1294,26 @@ function FullVideoPlayerModal({
                 }}
                 useNativeControls={false}
               />
+
+              {isAdjustingBrightness && (
+                <View style={{ position: 'absolute', top: '20%', left: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
+                  <Ionicons name="sunny" size={24} color="#fff" />
+                  <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                    <View style={{ width: '100%', height: `${currentBrightness * 100}%`, backgroundColor: '#38bdf8' }} />
+                  </View>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentBrightness * 100)}%</Text>
+                </View>
+              )}
+
+              {isAdjustingVolume && (
+                <View style={{ position: 'absolute', top: '20%', right: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
+                  <Ionicons name={currentVolume > 0.5 ? "volume-high" : currentVolume > 0 ? "volume-medium" : "volume-mute"} size={24} color="#fff" />
+                  <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                    <View style={{ width: '100%', height: `${currentVolume * 100}%`, backgroundColor: '#10b981' }} />
+                  </View>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentVolume * 100)}%</Text>
+                </View>
+              )}
 
               {showControls && (
                 <View style={[
@@ -1687,6 +1791,7 @@ function SeriesPreviewModal({
     startInternalAppDownload,
     startInternalEpisodeDownload,
     startExternalEpisodeDownload,
+    toggleDownloadPause,
     recordTrialUsage,
   } = useSubscription();
 
@@ -1913,6 +2018,56 @@ function SeriesPreviewModal({
   };
 
   const handleDownload = () => {
+    // If already downloading the active episode, toggle pause/resume
+    if (activeDownloads[activeEpisodeId]) {
+      toggleDownloadPause(activeEpisodeId);
+      return;
+    }
+
+    // If already downloaded, show options instead of re-downloading silently
+    const isAlreadyDownloaded = !!episodeDownloads[activeEpisodeId];
+    if (isAlreadyDownloaded) {
+      Alert.alert(
+        '✅ Already Downloaded',
+        `This episode is already saved in My Downloads.`,
+        [
+          {
+            text: '🎬 Play Offline',
+            onPress: () => {
+              const localUri = episodeDownloads[activeEpisodeId];
+              if (localUri) {
+                setPlayerTitle(activeEpisode?.title || "Episode");
+                setSelectedVideoUrl(localUri);
+              }
+            },
+          },
+          {
+            text: '🖼️ Save to Gallery',
+            onPress: () => {
+              if (!isPaid) {
+                 Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                 return;
+              }
+              if (getRemainingDownloads() === 0) {
+                 onShowPremium?.();
+                 return;
+              }
+              recordExternalDownload(activeEpisode?.title || "");
+              if (activeEpisode) {
+                startExternalEpisodeDownload(
+                  series as Series,
+                  activeEpisode.id,
+                  activeEpisode.videoUrl || "",
+                  activeEpisode.title
+                );
+              }
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
     // If guest, they can ONLY download if the current item is free
     const isFreeContent = allMoviesFree || (activeEpisode ? ((activeEpisode as any).isFree || (activeEpisode as any).isPremium === false) : ((series as any).isFree));
     if (isGuest && !isFreeContent) {
@@ -2341,24 +2496,24 @@ function SeriesPreviewModal({
                 <TouchableOpacity
                   style={styles.previewActionCol}
                   onPress={handleDownload}
-                  disabled={isThisDownloading}
                 >
                   <View
                     style={[
                       styles.previewActionIconBg,
-                      isThisDownloading && { borderColor: "#00ffcc" },
+                      isThisDownloading && { 
+                        borderColor: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
+                        backgroundColor: activeDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
+                      },
                     ]}
                   >
                     {activeDownloads[activeEpisodeId] ? (
-                      <Text
-                        style={{
-                          color: "#818cf8",
-                          fontSize: 12,
-                          fontWeight: "800",
-                        }}
-                      >
-                        {Math.round(activeDownloads[activeEpisodeId].progress)}%
-                      </Text>
+                      <View style={{ alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons
+                          name={activeDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"}
+                          size={20}
+                          color={activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"}
+                        />
+                      </View>
                     ) : episodeDownloads[activeEpisodeId] ? (
                       <Ionicons
                         name="checkmark-circle"
@@ -2376,10 +2531,14 @@ function SeriesPreviewModal({
                   <Text
                     style={[
                       styles.previewActionLabel,
-                      isThisDownloading && { color: "#00ffcc" },
+                      isThisDownloading && { color: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" },
                     ]}
                   >
-                    {activeDownloads[activeEpisodeId] ? "Downloading…" : episodeDownloads[activeEpisodeId] ? "Downloaded" : "Download"}
+                    {activeDownloads[activeEpisodeId]
+                      ? activeDownloads[activeEpisodeId]?.isPaused
+                        ? `${Math.round(activeDownloads[activeEpisodeId].progress)}% Paused`
+                        : `${Math.round(activeDownloads[activeEpisodeId].progress)}%`
+                      : episodeDownloads[activeEpisodeId] ? "Downloaded" : "Download"}
                   </Text>
                 </TouchableOpacity>
 

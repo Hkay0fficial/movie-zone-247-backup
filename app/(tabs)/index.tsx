@@ -27,12 +27,11 @@ import {
   BackHandler,
   AppState,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  NativeModules
 } from "react-native";
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+
 import { 
   Ionicons, 
   MaterialIcons, 
@@ -43,6 +42,7 @@ import {
 import { BlurView } from "expo-blur";
 // import * as NavigationBar from 'expo-navigation-bar'; // Removed to prevent crash if native module is missing
 import * as ScreenOrientation from "expo-screen-orientation";
+
 import * as Haptics from "expo-haptics";
 import * as Application from "expo-application";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -92,8 +92,14 @@ import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import DeviceManagerModal from "../../components/DeviceManagerModal";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
-import { NativeModules } from 'react-native';
+
 import { ExpiryReminderModal } from "../../components/ExpiryReminderModal";
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  try {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  } catch (e) {}
+}
 
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
 // In Expo Go or if improperly configured on Android, Native module might be null,
@@ -125,6 +131,16 @@ const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
     // console.log('NavigationBar native module not found. Rebuild your dev client.');
   }
 };
+
+let Brightness: any = null;
+try {
+  // We use require to avoid fatal crash if native module is missing
+  if (NativeModules.ExpoBrightness || Platform.OS === 'web') {
+    Brightness = require('expo-brightness');
+  }
+} catch (e) {
+  // Safe fail
+}
 
 function useSafeCastState() {
   if (!CAN_CAST) return null;
@@ -2026,6 +2042,19 @@ function FullVideoPlayerModal({
   const [videoError, setVideoError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   
+  // Gesture State Overlays
+  const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
+  const [currentBrightness, setCurrentBrightness] = useState(1);
+  const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
+  const [currentVolume, setCurrentVolume] = useState(1);
+  
+  // Gesture Tracking Refs
+  const gestureDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
+  const gestureTypeRef = useRef<'brightness' | 'volume' | null>(null);
+  const gestureStartValueRef = useRef(1);
+  const gestureStartXRef = useRef(0);
+  const gestureStartYRef = useRef(0);
+  
   const lockPulseAnim = useRef(new Animated.Value(1)).current;
 
   // 🟢 Record Watch Activity
@@ -2210,41 +2239,101 @@ function FullVideoPlayerModal({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (isLocked) return false;
-        return Math.abs(gestureState.dx) > 20; 
+        return Math.abs(gestureState.dx) > 20 || Math.abs(gestureState.dy) > 20; 
       },
-      onPanResponderGrant: (evt, gestureState) => {
+      onPanResponderGrant: async (evt, gestureState) => {
+        const { pageX } = evt.nativeEvent;
+        gestureStartXRef.current = pageX;
+        gestureDirectionRef.current = null;
+        gestureTypeRef.current = null;
+        
         const currentStatus = statusRef.current;
         if (currentStatus.isLoaded) {
           const current = currentStatus.positionMillis || 0;
           scrubStartPosRef.current = current;
           scrubPositionRef.current = current;
           setScrubPosition(current);
-          setIsScrubbing(true);
-          scrubbingRef.current = true;
         }
         resetControlsTimer();
       },
-      onPanResponderMove: (evt, gestureState) => {
-        const currentStatus = statusRef.current;
-        if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
-          const sensitivity = 1.0;
-          const delta = (gestureState.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
-          const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubStartPosRef.current || 0) + delta));
-          scrubPositionRef.current = newPos;
-          setScrubPosition(newPos);
-          resetControlsTimer();
+      onPanResponderMove: async (evt, gestureState) => {
+        if (isLocked) return;
+        
+        if (!gestureDirectionRef.current) {
+          if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
+            // Horizontal Scrub
+            gestureDirectionRef.current = 'horizontal';
+            setIsScrubbing(true);
+            scrubbingRef.current = true;
+          } else {
+            // Vertical Adjust
+            gestureDirectionRef.current = 'vertical';
+            const screenWidth = Dimensions.get('window').width;
+            if (gestureStartXRef.current < screenWidth / 2) {
+              gestureTypeRef.current = 'brightness';
+              try {
+                if (Brightness) {
+                  const initialBrightness = await Brightness.getBrightnessAsync();
+                  gestureStartValueRef.current = initialBrightness;
+                  setCurrentBrightness(initialBrightness);
+                } else {
+                  gestureStartValueRef.current = currentBrightness;
+                }
+              } catch (e) {
+                gestureStartValueRef.current = currentBrightness;
+              }
+              setIsAdjustingBrightness(true);
+            } else {
+              gestureTypeRef.current = 'volume';
+              gestureStartValueRef.current = currentVolume;
+              setIsAdjustingVolume(true);
+            }
+          }
+        }
+
+        if (gestureDirectionRef.current === 'horizontal') {
+          const currentStatus = statusRef.current;
+          if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
+            const sensitivity = 1.0;
+            const delta = (gestureState.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
+            const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubStartPosRef.current || 0) + delta));
+            scrubPositionRef.current = newPos;
+            setScrubPosition(newPos);
+            resetControlsTimer();
+          }
+        } else if (gestureDirectionRef.current === 'vertical') {
+          const deltaY = -(gestureState.dy / (Dimensions.get('window').height * 0.8)); // Negative because swipe up is -dy
+          const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + deltaY));
+          
+          if (gestureTypeRef.current === 'brightness') {
+            try {
+              if (Brightness) {
+                await Brightness.setBrightnessAsync(newValue);
+              }
+            } catch(e) {}
+            setCurrentBrightness(newValue);
+          } else if (gestureTypeRef.current === 'volume') {
+            videoRef.current?.setVolumeAsync(newValue);
+            setCurrentVolume(newValue);
+          }
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
-        if (statusRef.current.isLoaded && scrubbingRef.current) {
+        if (gestureDirectionRef.current === 'horizontal' && statusRef.current.isLoaded && scrubbingRef.current) {
           videoRef.current?.setPositionAsync(scrubPositionRef.current);
         }
         setIsScrubbing(false);
         scrubbingRef.current = false;
+        setIsAdjustingBrightness(false);
+        setIsAdjustingVolume(false);
+        gestureDirectionRef.current = null;
       },
       onPanResponderTerminate: () => {
         setIsScrubbing(false);
         scrubbingRef.current = false;
+        setIsAdjustingBrightness(false);
+        setIsAdjustingVolume(false);
+        gestureDirectionRef.current = null;
       },
     })
   ).current;
@@ -2453,6 +2542,26 @@ function FullVideoPlayerModal({
                 >
                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Try Again</Text>
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {isAdjustingBrightness && (
+              <View style={{ position: 'absolute', top: '20%', left: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
+                <Ionicons name="sunny" size={24} color="#fff" />
+                <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                  <View style={{ width: '100%', height: `${currentBrightness * 100}%`, backgroundColor: '#38bdf8' }} />
+                </View>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentBrightness * 100)}%</Text>
+              </View>
+            )}
+
+            {isAdjustingVolume && (
+              <View style={{ position: 'absolute', top: '20%', right: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
+                <Ionicons name={currentVolume > 0.5 ? "volume-high" : currentVolume > 0 ? "volume-medium" : "volume-mute"} size={24} color="#fff" />
+                <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                  <View style={{ width: '100%', height: `${currentVolume * 100}%`, backgroundColor: '#10b981' }} />
+                </View>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentVolume * 100)}%</Text>
               </View>
             )}
 
@@ -2807,10 +2916,13 @@ export function MoviePreviewContent({
     favorites,
     toggleFavorite,
     activeDownloads,
+    downloadedMovies,
+    episodeDownloads,
     startExternalGalleryDownload,
     startInternalAppDownload,
     startInternalEpisodeDownload,
     startExternalEpisodeDownload,
+    toggleDownloadPause,
     recordTrialUsage,
     isDeviceBlocked,
     activeDeviceIds,
@@ -3057,6 +3169,67 @@ export function MoviePreviewContent({
 
   const handleDownload = (episode?: any) => {
     if (!movie) return;
+
+    // If already downloading, toggle pause/resume instead of opening modal
+    const activeDl = activeDownloads[movie.id] || Object.values(activeDownloads).find(d => d.item.id === movie.id);
+    if (activeDl) {
+      const id = Object.keys(activeDownloads).find(
+        k => activeDownloads[k].item.id === movie.id
+      ) || movie.id;
+      toggleDownloadPause(id);
+      return;
+    }
+
+    // If already downloaded, show options instead of re-downloading silently
+    const isAlreadyDownloaded = downloadedMovies.some(m => m.id === movie.id);
+    if (isAlreadyDownloaded) {
+      const localItem = downloadedMovies.find(m => m.id === movie.id);
+      Alert.alert(
+        '✅ Already Downloaded',
+        `"${movie.title}" is already saved in My Downloads.`,
+        [
+          {
+            text: '🎬 Play Offline',
+            onPress: () => {
+              if ((localItem as any)?.localUri) {
+                setSelectedVideoUrl((localItem as any).localUri);
+                setPlayerTitle(movie.title);
+                setShowFullPlayer(true);
+              }
+            },
+          },
+          {
+            text: '🖼️ Save to Gallery',
+            onPress: () => {
+              if (!isPaid) {
+                 Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                 return;
+              }
+              if (getRemainingDownloads() === 0) {
+                 onShowPremium();
+                 return;
+              }
+              const targetTitle = episode?.title || movie.title;
+              const targetItem = episode || movie;
+              recordExternalDownload(targetTitle);
+              if (episode) {
+                startExternalEpisodeDownload(
+                  "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
+                  episode.id,
+                  episode.videoUrl || "",
+                  episode.title
+                );
+              } else {
+                startExternalGalleryDownload(targetItem);
+              }
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     if (isGuest && !(movie.isFree || allMoviesFree)) {
       onShowPremium();
       return;
@@ -4008,45 +4181,60 @@ export function MoviePreviewContent({
                     </TouchableOpacity>
 
                     {/* DOWNLOAD */}
-                    <TouchableOpacity
-                      style={styles.previewActionCol}
-                      onPress={handleDownload}
-                      disabled={movie && activeDownloads[movie.id] !== undefined}
-                    >
-                      <Animated.View
-                        style={[
-                          styles.previewActionIconBg,
-                          (movie && activeDownloads[movie.id] !== undefined) && { borderColor: "#00ffcc" },
-                          { transform: [{ scale: downloadPulse }] },
-                        ]}
-                      >
-                        {(movie && activeDownloads[movie.id] !== undefined) ? (
-                          <Text
-                            style={{
-                              color: "#00ffcc",
-                              fontSize: 12,
-                              fontWeight: "800",
-                            }}
+                    {(() => {
+                      const activeDl = movie ? (activeDownloads[movie.id] || Object.values(activeDownloads).find(d => d.item.id === movie.id)) : null;
+                      const isDl = !!activeDl;
+                      const isDownloaded = movie ? downloadedMovies.some(m => m.id === movie.id) : false;
+                      
+                      return (
+                        <TouchableOpacity
+                          style={styles.previewActionCol}
+                          onPress={handleDownload}
+                        >
+                          <Animated.View
+                            style={[
+                              styles.previewActionIconBg,
+                              isDl && { borderColor: activeDl?.isPaused ? "#ef4444" : "#22c55e", backgroundColor: activeDl?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)" },
+                              isDownloaded && !isDl && { borderColor: "#10b981", backgroundColor: "rgba(16,185,129,0.12)" },
+                              { transform: [{ scale: downloadPulse }] },
+                            ]}
                           >
-                            {activeDownloads[movie.id].progress}%
+                     {isDl ? (
+                              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons
+                                  name={activeDl?.isPaused ? "play" : "pause"}
+                                  size={20}
+                                  color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
+                                />
+                              </View>
+                            ) : isDownloaded ? (
+                              <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                            ) : (
+                              <Ionicons
+                                name="download-outline"
+                                size={22}
+                                color="#fff"
+                              />
+                            )}
+                          </Animated.View>
+                          <Text
+                            style={[
+                              styles.previewActionLabel,
+                              isDl && { color: activeDl?.isPaused ? "#ef4444" : "#22c55e" },
+                              isDownloaded && !isDl && { color: "#10b981" },
+                            ]}
+                          >
+                            {isDl
+                              ? activeDl?.isPaused
+                                ? `${activeDl.progress}% Paused`
+                                : `${activeDl.progress}%`
+                              : isDownloaded
+                                ? "Downloaded"
+                                : "Download"}
                           </Text>
-                        ) : (
-                          <Ionicons
-                            name="download-outline"
-                            size={22}
-                            color="#fff"
-                          />
-                        )}
-                      </Animated.View>
-                      <Text
-                        style={[
-                          styles.previewActionLabel,
-                          (movie && activeDownloads[movie.id] !== undefined) && { color: "#00ffcc" },
-                        ]}
-                      >
-                        {(movie && activeDownloads[movie.id] !== undefined) ? "Downloading…" : "Download"}
-                      </Text>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                      );
+                    })()}
 
                     {/* CAST */}
                     <TouchableOpacity

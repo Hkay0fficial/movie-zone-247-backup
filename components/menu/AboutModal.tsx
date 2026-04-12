@@ -13,6 +13,7 @@ import Constants from 'expo-constants';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Application from 'expo-application';
 import { styles } from './menu.styles';
 
 interface AboutModalProps {
@@ -113,11 +114,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 >
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Version</Text>
-                    <Text style={styles.infoValue}>{Constants.expoConfig?.version || '1.0.2'} (Stable)</Text>
+                    <Text style={styles.infoValue}>{Constants.expoConfig?.version || Application.nativeAppVersion || '1.1.0'} (Stable)</Text>
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Build</Text>
-                    <Text style={styles.infoValue}>#{Constants.expoConfig?.android?.versionCode || '1'}</Text>
+                    <Text style={styles.infoValue}>#{Application.nativeBuildVersion}</Text>
                   </View>
 
                   <View style={styles.updateStatusContainer}>

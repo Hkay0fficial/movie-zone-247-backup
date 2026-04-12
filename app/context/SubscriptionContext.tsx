@@ -6,7 +6,10 @@ import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import { downloadToGallery, downloadToAppIsolatedStorage } from '../../lib/externalDownload';
+import { downloadNotificationManager } from '../../lib/notificationHelper';
 import DownloadSuccessModal, { DownloadModalType } from '../../components/DownloadSuccessModal';
 
 
@@ -53,12 +56,13 @@ interface SubscriptionContextType {
   episodeDownloads: Record<string, string>; // mapping episodeId (or seriesId-episodeId) to localUri
   
   // Global Background Downloads
-  activeDownloads: Record<string, { progress: number, item: Movie | Series, mode: 'internal' | 'external', episodeId?: string }>; // ID -> progress (0-100)
+  activeDownloads: Record<string, { progress: number, item: Movie | Series, mode: 'internal' | 'external', episodeId?: string, isPaused?: boolean }>; // ID -> progress (0-100)
   downloadQueue: string[]; // List of IDs in order
   startExternalGalleryDownload: (item: Movie | Series) => Promise<void>;
   startInternalAppDownload: (item: Movie | Series) => Promise<void>;
   startInternalEpisodeDownload: (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => Promise<void>;
   startExternalEpisodeDownload: (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => Promise<void>;
+  toggleDownloadPause: (id: string) => Promise<void>;
   recordTrialUsage: () => Promise<void>;
   isDeviceBlocked: boolean;
   activeDeviceIds: string[];
@@ -96,11 +100,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     mode: 'internal' | 'external',
     episodeId?: string,
     episodeUrl?: string,
-    episodeTitle?: string
+    episodeTitle?: string,
+    isPaused?: boolean
   }>>({});
   const [downloadQueue, setDownloadQueue] = useState<string[]>([]);
   const [episodeDownloads, setEpisodeDownloads] = useState<Record<string, string>>({});
   const isProcessingQueue = useRef(false);
+  // Stores active DownloadResumable objects keyed by download ID for pause/resume
+  const resumablesRef = useRef<Record<string, import('expo-file-system/legacy').DownloadResumable>>({});
+  // Tracks which downloads are currently paused — using a ref to avoid stale closure issues
+  const pausedRef = useRef<Set<string>>(new Set());
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
@@ -123,6 +132,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 
   useEffect(() => {
+    // Initialize system notification channel
+    downloadNotificationManager.initChannel();
+
     let unsubUserDoc: (() => void) | undefined;
 
     // Check for Firebase Auth state
@@ -550,6 +562,73 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setDownloadQueue(prev => [...prev, queueId]);
   };
 
+  // ── Pause / Resume ────────────────────────────────────────────────────────
+  const toggleDownloadPause = async (id: string) => {
+    const resumable = resumablesRef.current[id];
+    if (!resumable) {
+      console.warn('[DownloadPause] No resumable found for id:', id);
+      return;
+    }
+
+    const isCurrentlyPaused = pausedRef.current.has(id);
+
+    if (isCurrentlyPaused) {
+      // RESUME: clear the paused flag first so the processQueue while-loop wakes up
+      pausedRef.current.delete(id);
+      setActiveDownloads(prev => ({ ...prev, [id]: { ...prev[id], isPaused: false } }));
+    } else {
+      // PAUSE: tell the download to pause, then set the flag
+      try {
+        await resumable.pauseAsync();
+      } catch (e) {
+        // Some platforms throw on pauseAsync — that's expected, ignore
+      }
+      pausedRef.current.add(id);
+      setActiveDownloads(prev => ({ ...prev, [id]: { ...prev[id], isPaused: true } }));
+    }
+  };
+
+  const cancelActiveDownload = async (id: string) => {
+    const resumable = resumablesRef.current[id];
+    if (resumable) {
+      try {
+        await resumable.cancelAsync();
+      } catch (e) {}
+      delete resumablesRef.current[id];
+    }
+    pausedRef.current.delete(id);
+    setActiveDownloads(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setDownloadQueue(prev => prev.filter(qId => qId !== id));
+    downloadNotificationManager.dismiss(id);
+  };
+
+  // Notification Response Listener for Background Interactivity (Pause / Cancel)
+  useEffect(() => {
+    import('expo-notifications').then((Notifications) => {
+      const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+        const actionId = response.actionIdentifier;
+        const notificationId = response.notification.request.identifier;
+        
+        if (notificationId.startsWith('download_')) {
+          const downloadId = notificationId.replace('download_', '');
+          
+          if (actionId === 'pause') {
+            toggleDownloadPause(downloadId);
+          } else if (actionId === 'cancel') {
+            cancelActiveDownload(downloadId);
+          }
+        }
+      });
+      return () => {
+        subscription.remove();
+      };
+    });
+  }, []);
+
   // 3. Process the queue sequentially
   useEffect(() => {
     const processQueue = async () => {
@@ -565,68 +644,189 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
 
-        const { item, mode, episodeId, episodeUrl, episodeTitle } = downloadData;
+      const { item, mode, episodeId, episodeUrl, episodeTitle } = downloadData;
+
+      // Helper: wait until pausedRef no longer contains nextId
+      const waitForResume = () => new Promise<void>(resolve => {
+        const check = setInterval(() => {
+          if (!pausedRef.current.has(nextId)) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 300);
+      });
+
+      // Helper: mark this download as paused (if not already)
+      const markPaused = () => {
+        if (!pausedRef.current.has(nextId)) {
+          pausedRef.current.add(nextId);
+          setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], isPaused: true } }));
+        }
+      };
 
       try {
         const videoUrl = episodeUrl || (item as any).videoUrl || (item as any).previewUrl || '';
         const displayTitle = episodeTitle || item.title;
-        let dlResult: { success: boolean, message: string, localUri?: string };
+
+        const safeTitle = displayTitle.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 60);
+        let displayedPct = 0;
+        let nextThreshold = 1 + Math.floor(Math.random() * 3);
+        
+        let lastBytes = 0;
+        let lastTimestamp = Date.now();
+        let speedString = '';
+
+        const progressCallback = ({ totalBytesWritten, totalBytesExpectedToWrite }: { totalBytesWritten: number; totalBytesExpectedToWrite: number }) => {
+          if (totalBytesExpectedToWrite > 0) {
+            const now = Date.now();
+            if (now - lastTimestamp >= 1000 || speedString === '') {
+               const bytesPerSec = ((totalBytesWritten - lastBytes) / Math.max(1, now - lastTimestamp)) * 1000;
+               const mbPerSec = (bytesPerSec / (1024 * 1024)).toFixed(1);
+               const gbWritten = (totalBytesWritten / (1024 * 1024 * 1024)).toFixed(2);
+               const gbTotal = (totalBytesExpectedToWrite / (1024 * 1024 * 1024)).toFixed(2);
+               speedString = `${gbWritten} GB / ${gbTotal} GB • ${mbPerSec} MB/s`;
+               
+               lastBytes = totalBytesWritten;
+               lastTimestamp = now;
+            }
+
+            const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
+            if (realPct >= nextThreshold && displayedPct < 99) {
+              displayedPct = Math.min(nextThreshold, 99);
+              setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: displayedPct } }));
+              
+              const posterUrl = item.poster || item.heroBanner || '';
+              downloadNotificationManager.updateProgress(nextId, displayTitle, displayedPct, speedString, posterUrl);
+              
+              const step = 2 + Math.floor(Math.random() * 4);
+              nextThreshold = displayedPct + step;
+            }
+          }
+        };
 
         if (mode === 'internal') {
-          dlResult = await downloadToAppIsolatedStorage(
-            videoUrl,
-            displayTitle,
-            (progress) => {
-              setActiveDownloads(prev => ({ 
-                ...prev, 
-                [nextId]: { ...prev[nextId], progress } 
-              }));
-            }
+          const fileUri = `${FileSystem.documentDirectory}${safeTitle}_${Date.now()}.mp4`;
+          const resumable = FileSystem.createDownloadResumable(
+            videoUrl, fileUri,
+            { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B)', 'Referer': 'https://themoviezone247.com/' } },
+            progressCallback
           );
-          if (dlResult.success) {
-             if (episodeId) {
-               // Episode Download
-               setEpisodeDownloads(prev => ({ ...prev, [episodeId]: dlResult.localUri! }));
-               // Ensure series is in downloaded list
-               setDownloadedMovies(prev => {
-                 if (prev.some(m => m.id === item.id)) return prev;
-                 return [item, ...prev];
-               });
-             } else {
-               // Standard Movie Download
-               const downloadedItem = { ...item, localUri: dlResult.localUri };
-               setDownloadedMovies(prev => {
-                  if (prev.some(m => m.id === item.id)) return prev;
-                  return [downloadedItem, ...prev];
-               });
-             }
-             showModal('success', 'In-App Save Complete', dlResult.message);
-          } else {
-             showModal('error', 'Download Failed', dlResult.message);
-          }
-        } else {
-          dlResult = await downloadToGallery(
-            videoUrl,
-            displayTitle,
-            (progress) => {
-              setActiveDownloads(prev => ({ 
-                ...prev, 
-                [nextId]: { ...prev[nextId], progress, mode: 'external' } 
-              }));
-            }
-          );
+          resumablesRef.current[nextId] = resumable;
 
-          if (dlResult.success) {
-            showModal('success', 'Saved to Gallery', dlResult.message);
-            recordTrialUsage();
+          let localUri: string | null = null;
+          let isResuming = false;
+
+          while (!localUri) {
+            try {
+              const result = isResuming
+                ? await resumable.resumeAsync()
+                : await resumable.downloadAsync();
+
+              if (result?.uri) {
+                localUri = result.uri;
+                setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
+              } else {
+                // downloadAsync/resumeAsync resolved with undefined = paused by system or user
+                markPaused();
+                await waitForResume();
+                isResuming = true;
+              }
+            } catch (err: any) {
+              const errMsg = (err?.message || '').toLowerCase();
+              const errCode = err?.code || '';
+              if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
+                // Paused via pauseAsync() throwing a cancellation
+                markPaused();
+                await waitForResume();
+                isResuming = true;
+              } else {
+                throw err;
+              }
+            }
+          }
+
+          // ── Success: save to downloaded list ──
+          if (episodeId) {
+            setEpisodeDownloads(prev => ({ ...prev, [episodeId]: localUri! }));
+            setDownloadedMovies(prev => {
+              if (prev.some(m => m.id === item.id)) return prev;
+              return [item, ...prev];
+            });
           } else {
-            showModal('error', 'Download Failed', dlResult.message);
+            const downloadedItem = { ...item, localUri };
+            setDownloadedMovies(prev => {
+              if (prev.some(m => m.id === item.id)) return prev;
+              return [downloadedItem, ...prev];
+            });
+          }
+          showModal('success', 'In-App Save Complete', `"${displayTitle}" has been saved securely to My Downloads.`);
+
+        } else {
+          // ── External (Gallery) download ──
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status !== 'granted') {
+            showModal('error', 'Permission Denied', 'Please allow media access in your phone settings to save downloads.');
+          } else {
+            const fileUri = `${FileSystem.cacheDirectory}${safeTitle}_${Date.now()}.mp4`;
+            const resumable = FileSystem.createDownloadResumable(
+              videoUrl, fileUri,
+              { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B)', 'Referer': 'https://themoviezone247.com/' } },
+              progressCallback
+            );
+            resumablesRef.current[nextId] = resumable;
+
+            let localUri: string | null = null;
+            let isResuming = false;
+
+            while (!localUri) {
+              try {
+                const result = isResuming
+                  ? await resumable.resumeAsync()
+                  : await resumable.downloadAsync();
+
+                if (result?.uri) {
+                  localUri = result.uri;
+                  setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
+                } else {
+                  markPaused();
+                  await waitForResume();
+                  isResuming = true;
+                }
+              } catch (err: any) {
+                const errMsg = (err?.message || '').toLowerCase();
+                const errCode = err?.code || '';
+                if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
+                  markPaused();
+                  await waitForResume();
+                  isResuming = true;
+                } else {
+                  throw err;
+                }
+              }
+            }
+
+            // Save to media library
+            const asset = await MediaLibrary.createAssetAsync(localUri);
+            try {
+              const album = await MediaLibrary.getAlbumAsync('Movie Zone 24/7');
+              if (album) {
+                await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+              } else {
+                await MediaLibrary.createAlbumAsync('Movie Zone 24/7', asset, true);
+              }
+            } catch { /* Album optional */ }
+
+            await FileSystem.deleteAsync(localUri, { idempotent: true });
+            showModal('success', 'Saved to Gallery', `"${displayTitle}" has been saved to your gallery.`);
+            recordTrialUsage();
           }
         }
       } catch (err) {
         console.error('Global download error:', err);
         showModal('error', 'Unexpected Error', 'An unexpected error occurred during the background download.');
       } finally {
+        delete resumablesRef.current[nextId];
+        pausedRef.current.delete(nextId);
         setTimeout(() => {
           setActiveDownloads(prev => {
             const next = { ...prev };
@@ -673,6 +873,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       startInternalAppDownload,
       startInternalEpisodeDownload,
       startExternalEpisodeDownload,
+      toggleDownloadPause,
       isDeviceBlocked,
       activeDeviceIds,
       removeDevice,

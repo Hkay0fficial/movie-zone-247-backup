@@ -45,6 +45,7 @@ interface PreferencesAndActivityProps {
   setSelectedSubItem: (item: string | null) => void;
   setSavedScrollPosition: (pos: number) => void;
   currentScrollY: number;
+  activeDownloads?: Record<string, any>;
   downloadedMovies: any[];
   removeDownload: (id: string) => void;
   notifications: Notification[];
@@ -64,6 +65,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   setSelectedSubItem,
   setSavedScrollPosition,
   currentScrollY,
+  activeDownloads = {},
   downloadedMovies,
   removeDownload,
   notifications,
@@ -77,6 +79,22 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   onCloseSettings,
 }) => {
   const router = useRouter();
+
+  // Combine notifications with active downloads
+  const allNotifications = React.useMemo(() => {
+    const dlNotifs = Object.entries(activeDownloads).map(([id, dl]) => ({
+      id: `dl_${id}`,
+      title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
+      message: `${dl.progress === 100 ? "Finished" : "Saving"} "${dl.episodeTitle || dl.item.title}" (${dl.progress}%)`,
+      time: "ACTIVE",
+      unread: true,
+      type: "update",
+      icon: "cloud-download",
+      color: "#00ffcc",
+      createdAt: { toMillis: () => Date.now() }
+    }));
+    return [...dlNotifs, ...notifications];
+  }, [notifications, activeDownloads]);
 
   // ─── Section 5: Downloads ───────────────────────────────────────────────────
   if (selectedItem?.id === '5') {
@@ -167,8 +185,8 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
         </View>
 
         <View style={{ gap: 12, marginBottom: 24 }}>
-          {notifications.length > 0 ? (
-            notifications.map((n) => (
+          {allNotifications.length > 0 ? (
+            allNotifications.map((n) => (
               <TouchableOpacity 
                 key={n.id} 
                 style={styles.notificationCard}

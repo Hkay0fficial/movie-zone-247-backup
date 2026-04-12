@@ -34,8 +34,11 @@ export async function signinWithGoogle(idToken: string) {
       });
       return { user, isNewUser: true };
     } else {
-      // Existing user - Update last active
-      await setDoc(userRef, { lastActive: serverTimestamp() }, { merge: true });
+      // Existing user - Update last active and ensure email is synced
+      await setDoc(userRef, { 
+        lastActive: serverTimestamp(),
+        email: user.email // Always ensure email is present
+      }, { merge: true });
       return { user, isNewUser: false };
     }
   } catch (error) {

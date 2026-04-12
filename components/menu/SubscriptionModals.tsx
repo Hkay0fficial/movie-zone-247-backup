@@ -555,10 +555,10 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                      <Ionicons name="shield-checkmark" size={16} color="#10b981" />
                      <View>
                        <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
-                         SECURED & AUTHORIZED BY DPO PAY
+                         SECURED & AUTHORIZED BY PESAPAL
                        </Text>
                        <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '600' }}>
-                         256-BIT SSL ENCRYPTED GATEWAY
+                         OFFICIAL UGANDAN PAYMENT GATEWAY
                        </Text>
                      </View>
                    </View>

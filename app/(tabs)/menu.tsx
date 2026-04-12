@@ -13,7 +13,10 @@ import {
   DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -51,7 +54,7 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const TOP = Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight ?? 0) + 10;
-const PAYMENT_API_BASE = 'https://users-hkfiles-desktop-hk-app-movie.vercel.app/api/payments';
+const PAYMENT_API_BASE = 'https://www.themoviezone247.com/api/payments';
 
 // ─── Menu items ────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -140,7 +143,7 @@ export default function MenuScreen() {
   }, []);
   const [savedScrollPosition, setSavedScrollPosition] = React.useState(0);
   const [scrollContentHeight, setScrollContentHeight] = React.useState(0);
-  const { favorites } = useSubscription();
+
 
   // Notification States
   const [notifications, setNotifications] = React.useState<any[]>([]);
@@ -261,6 +264,8 @@ export default function MenuScreen() {
     recordExternalDownload, recordInAppDownload,
     downloadedMovies, removeDownload,
     toggleFavorite,
+    favorites,
+    activeDownloads,
     subscriptionExpiresAt,
     isPaid,
     isGuest,
@@ -424,11 +429,20 @@ export default function MenuScreen() {
       }
 
       const tx_ref = chargeData.tx_ref;
-      setPaymentStatusText('STK Push sent. Please enter your PIN on your phone...');
+      const redirectUrl = chargeData.redirectUrl;
+
+      if (redirectUrl) {
+        setPaymentStatusText('Opening secure checkout...');
+        // Open Pesapal Checkout
+        await Linking.openURL(redirectUrl);
+        setPaymentStatusText('Please complete payment in the browser window...');
+      } else {
+        setPaymentStatusText('STK Push sent. Please enter your PIN on your phone...');
+      }
 
       // 2. Start Polling for Verification
       let attempts = 0;
-      const maxAttempts = 20; // 60 seconds (3s * 20)
+      const maxAttempts = 40; // Increased timeout for external checkout (120 seconds)
       
       pollIntervalRef.current = setInterval(async () => {
         attempts++;
@@ -1210,6 +1224,7 @@ export default function MenuScreen() {
                   setSelectedSubItem={setSelectedSubItem}
                   setSavedScrollPosition={setSavedScrollPosition}
                   currentScrollY={currentScrollY}
+                  activeDownloads={activeDownloads}
                   downloadedMovies={downloadedMovies}
                   removeDownload={removeDownload}
                   notifications={notifications}
@@ -1427,7 +1442,7 @@ export default function MenuScreen() {
         />
 
         {/* ── Footer ── */}
-        <Text style={styles.versionText}>THE MOVIE ZONE 24 / 7 v2.4.1</Text>
+        <Text style={styles.versionText}>THE MOVIE ZONE 24 / 7 v{Constants.expoConfig?.version || Application.nativeAppVersion || '1.1.0'} ({Application.nativeBuildVersion})</Text>
       </Animated.ScrollView>
 
       {/* Bottom Fade Effect */}
