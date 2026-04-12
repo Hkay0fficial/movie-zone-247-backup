@@ -6,7 +6,7 @@ import {
   Series, 
   HeroMovie,
   resolveCDNUrl,
-  HERO_VIDEOS,
+  
 } from '../../constants/movieData';
 import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
 
@@ -227,7 +227,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           director: 'App User',
           description: m.description || 'Newly uploaded content from THE MOVIE ZONE 24/7 Admin portal.',
           poster: m.poster,
-          videoUrl: m.videoUrl || HERO_VIDEOS[0],
+          videoUrl: m.videoUrl || "",
           previewUrl: m.previewUrl || '',
           heroVideoUrl: m.heroVideoUrl || '',
           heroPhotoUrl: m.heroPhotoUrl || '',

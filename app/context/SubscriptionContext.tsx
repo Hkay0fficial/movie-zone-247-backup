@@ -6,11 +6,13 @@ import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
+import * as Network from 'expo-network';
 import * as MediaLibrary from 'expo-media-library';
 import { downloadToGallery, downloadToAppIsolatedStorage } from '../../lib/externalDownload';
 import { downloadNotificationManager } from '../../lib/notificationHelper';
 import DownloadSuccessModal, { DownloadModalType } from '../../components/DownloadSuccessModal';
+import { resolveCDNUrl } from '../../constants/bunnyConfig';
 
 
 // Define the limits per plan type
@@ -56,7 +58,15 @@ interface SubscriptionContextType {
   episodeDownloads: Record<string, string>; // mapping episodeId (or seriesId-episodeId) to localUri
   
   // Global Background Downloads
-  activeDownloads: Record<string, { progress: number, item: Movie | Series, mode: 'internal' | 'external', episodeId?: string, isPaused?: boolean }>; // ID -> progress (0-100)
+  activeDownloads: Record<string, { 
+    progress: number, 
+    item: Movie | Series, 
+    mode: 'internal' | 'external', 
+    episodeId?: string, 
+    episodeTitle?: string,
+    isPaused?: boolean,
+    speedString?: string 
+  }>; // ID -> progress (0-100)
   downloadQueue: string[]; // List of IDs in order
   startExternalGalleryDownload: (item: Movie | Series) => Promise<void>;
   startInternalAppDownload: (item: Movie | Series) => Promise<void>;
@@ -68,9 +78,11 @@ interface SubscriptionContextType {
   activeDeviceIds: string[];
   removeDevice: (id: string) => Promise<void>;
   deviceLimit: number;
-  isSubscribed: boolean;
-  remainingDays: number;
   minAppVersion: string;
+  downloadOnWifiOnly: boolean;
+  setDownloadOnWifiOnly: (val: boolean) => void;
+  smartDownloads: boolean;
+  setSmartDownloads: (val: boolean) => void;
 }
 
 
@@ -89,6 +101,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [minAppVersion, setMinAppVersion] = useState('');
   const [customExternalLimit, setCustomExternalLimit] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
+  const [downloadOnWifiOnly, setDownloadOnWifiOnlyState] = useState(false);
+  const [smartDownloads, setSmartDownloadsState] = useState(true);
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [downloadedMovies, setDownloadedMovies] = useState<(Movie | Series)[]>([]);
@@ -138,7 +152,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let unsubUserDoc: (() => void) | undefined;
 
     // Check for Firebase Auth state
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
+    const loadSettings = async () => {
+      try {
+        const wifi = await AsyncStorage.getItem('downloadOnWifiOnly');
+        const smart = await AsyncStorage.getItem('smartDownloads');
+        if (wifi !== null) setDownloadOnWifiOnlyState(wifi === 'true');
+        if (smart !== null) setSmartDownloadsState(smart === 'true');
+      } catch (e) {}
+    };
+    loadSettings();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsGuest(user.isAnonymous);
         
@@ -426,7 +449,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (limit === 0 && !isGuest) {
       return { 
         success: false, 
-        message: "External downloads (MP4) are a Premium feature. Upgrade your plan to save movies to your gallery!" 
+        message: "External downloads (MP4) are a Premium feature. Upgrade your plan to unlock external downloads!" 
       };
     }
 
@@ -437,7 +460,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       const successMsg = isGuest
         ? `"${movieTitle}" is downloading! Register now to unlock high-speed downloads and more.`
-        : `"${movieTitle}" is downloading to your phone storage (MP4).\n${remaining} download${remaining === 1 ? '' : 's'} remaining today.`;
+        : `"${movieTitle}" is downloading to your phone storage (MP4).\n${remaining} download${remaining === 1 ? '' : 's'} remaining today. Check your notification tray for progress.`;
 
       return { 
         success: true, 
@@ -467,7 +490,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setDownloadedMovies(prev => [item, ...prev]);
     return { 
       success: true, 
-      message: `"${item.title}" saved to secure app storage for offline viewing. This file is hidden from your gallery.` 
+      message: `"${item.title}" saved to secure app storage for offline viewing. This file is hidden from your local gallery.` 
     };
   };
 
@@ -571,20 +594,50 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     const isCurrentlyPaused = pausedRef.current.has(id);
+    const downloadData = activeDownloads[id];
 
     if (isCurrentlyPaused) {
-      // RESUME: clear the paused flag first so the processQueue while-loop wakes up
+      // RESUME: clear the paused flag first
       pausedRef.current.delete(id);
       setActiveDownloads(prev => ({ ...prev, [id]: { ...prev[id], isPaused: false } }));
+      
+      // Immediate notification update to show "Downloading..." and "Pause" button
+      if (downloadData) {
+        const displayTitle = downloadData.episodeTitle || downloadData.item.title;
+        const posterUrl = downloadData.item.poster || downloadData.item.heroBanner || '';
+        console.log('[DownloadResume] Resuming download for:', displayTitle);
+        downloadNotificationManager.updateProgress(
+          id, 
+          displayTitle, 
+          downloadData.progress, 
+          downloadData.speedString || 'Resuming...', 
+          posterUrl, 
+          false
+        );
+      }
     } else {
       // PAUSE: tell the download to pause, then set the flag
       try {
-        await resumable.pauseAsync();
+        if (resumable) await resumable.pauseAsync();
       } catch (e) {
-        // Some platforms throw on pauseAsync — that's expected, ignore
+        // Some platforms throw on pauseAsync — that's expected
       }
       pausedRef.current.add(id);
       setActiveDownloads(prev => ({ ...prev, [id]: { ...prev[id], isPaused: true } }));
+
+      // Immediate notification update to show "Paused" and "Resume" button
+      if (downloadData) {
+        const displayTitle = downloadData.episodeTitle || downloadData.item.title;
+        const posterUrl = downloadData.item.poster || downloadData.item.heroBanner || '';
+        downloadNotificationManager.updateProgress(
+          id, 
+          displayTitle, 
+          downloadData.progress, 
+          downloadData.speedString || '', 
+          posterUrl, 
+          true
+        );
+      }
     }
   };
 
@@ -616,7 +669,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (notificationId.startsWith('download_')) {
           const downloadId = notificationId.replace('download_', '');
           
-          if (actionId === 'pause') {
+          if (actionId === 'pause' || actionId === 'resume') {
             toggleDownloadPause(downloadId);
           } else if (actionId === 'cancel') {
             cancelActiveDownload(downloadId);
@@ -665,7 +718,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       };
 
       try {
-        const videoUrl = episodeUrl || (item as any).videoUrl || (item as any).previewUrl || '';
+        const rawVideoUrl = episodeUrl || (item as any).videoUrl || (item as any).previewUrl || '';
+        const videoUrl = resolveCDNUrl(rawVideoUrl, false);
         const displayTitle = episodeTitle || item.title;
 
         const safeTitle = displayTitle.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 60);
@@ -692,17 +746,55 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
             if (realPct >= nextThreshold && displayedPct < 99) {
+              const prevPct = displayedPct;
               displayedPct = Math.min(nextThreshold, 99);
-              setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: displayedPct } }));
+              
+              const isPaused = pausedRef.current.has(nextId);
+              setActiveDownloads(prev => ({ 
+                ...prev, 
+                [nextId]: { 
+                  ...prev[nextId], 
+                  progress: displayedPct,
+                  speedString 
+                } 
+              }));
               
               const posterUrl = item.poster || item.heroBanner || '';
-              downloadNotificationManager.updateProgress(nextId, displayTitle, displayedPct, speedString, posterUrl);
+              downloadNotificationManager.updateProgress(
+                nextId, 
+                displayTitle, 
+                displayedPct, 
+                speedString, 
+                posterUrl, 
+                isPaused
+              );
               
               const step = 2 + Math.floor(Math.random() * 4);
               nextThreshold = displayedPct + step;
             }
           }
         };
+
+        // ── Safeguard: Network Scan (Wi-Fi Only Check) ──
+        if (downloadOnWifiOnly) {
+          const netState = await Network.getNetworkStateAsync();
+          if (netState.type !== Network.NetworkStateType.WIFI) {
+            console.log('[DownloadLoop] Wi-Fi only enabled, waiting for Wi-Fi...');
+            // Check again in 30 seconds
+            await new Promise(r => setTimeout(r, 30000));
+            return; 
+          }
+        }
+
+        // ── Safeguard: Disk Space Check ──
+        const freeSpace = await FileSystem.getFreeDiskStorageAsync();
+        const MIN_FREE_SPACE = 500 * 1024 * 1024; // 500MB safety buffer
+        if (freeSpace < MIN_FREE_SPACE) {
+          showModal('error', 'Storage Full', 'You need at least 500MB of free space to download content.');
+          // Pause queue and wait
+          setDownloadQueue(prev => prev.filter(id => id !== nextId));
+          return;
+        }
 
         if (mode === 'internal') {
           const fileUri = `${FileSystem.documentDirectory}${safeTitle}_${Date.now()}.mp4`;
@@ -715,8 +807,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           let localUri: string | null = null;
           let isResuming = false;
+          let retryCount = 0;
 
-          while (!localUri) {
+          while (!localUri && retryCount < 5) {
             try {
               const result = isResuming
                 ? await resumable.resumeAsync()
@@ -726,24 +819,32 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 localUri = result.uri;
                 setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
               } else {
-                // downloadAsync/resumeAsync resolved with undefined = paused by system or user
+                // If it resolves with undefined, it means it's gracefully paused (resumable)
+                console.log('[DownloadLoop] Download gracefully paused/suspended by system or user.');
                 markPaused();
                 await waitForResume();
                 isResuming = true;
+                // Important: Reset speed string on resume wait
+                speedString = 'Resuming...';
               }
             } catch (err: any) {
               const errMsg = (err?.message || '').toLowerCase();
               const errCode = err?.code || '';
               if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
-                // Paused via pauseAsync() throwing a cancellation
+                console.log('[DownloadLoop] Download intentionally paused/cancelled in try-catch.');
                 markPaused();
                 await waitForResume();
                 isResuming = true;
               } else {
-                throw err;
+                console.warn('[DownloadLoop] Transient error, retrying...', err);
+                retryCount++;
+                await new Promise(r => setTimeout(r, 2000));
+                isResuming = true;
               }
             }
           }
+
+          if (!localUri) throw new Error('Download failed after multiple retries.');
 
           // ── Success: save to downloaded list ──
           if (episodeId) {
@@ -752,6 +853,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               if (prev.some(m => m.id === item.id)) return prev;
               return [item, ...prev];
             });
+
+            // ── Smart Downloads: Queue Next Episode ──
+            if (smartDownloads && "episodeList" in item && item.episodeList) {
+              const currentIdx = item.episodeList.findIndex(ep => (ep as any).id === episodeId || ep.title === activeDownloads[nextId].episodeTitle);
+              if (currentIdx !== -1 && currentIdx < item.episodeList.length - 1) {
+                const nextEp = item.episodeList[currentIdx + 1];
+                console.log('[SmartDownload] Queueing next episode:', nextEp.title);
+                startInternalEpisodeDownload(item as Series, (nextEp as any).id || `${item.id}-${currentIdx + 1}`, nextEp.url, nextEp.title);
+              }
+            }
           } else {
             const downloadedItem = { ...item, localUri };
             setDownloadedMovies(prev => {
@@ -808,16 +919,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // Save to media library
             const asset = await MediaLibrary.createAssetAsync(localUri);
             try {
-              const album = await MediaLibrary.getAlbumAsync('Movie Zone 24/7');
+              const album = await MediaLibrary.getAlbumAsync('The Movie Zone');
               if (album) {
                 await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
               } else {
-                await MediaLibrary.createAlbumAsync('Movie Zone 24/7', asset, true);
+                await MediaLibrary.createAlbumAsync('The Movie Zone', asset, true);
               }
             } catch { /* Album optional */ }
 
             await FileSystem.deleteAsync(localUri, { idempotent: true });
-            showModal('success', 'Saved to Gallery', `"${displayTitle}" has been saved to your gallery.`);
+            showModal('success', 'External Download Complete', `"${displayTitle}" has been saved to your local storage.`);
             recordTrialUsage();
           }
         }
@@ -845,47 +956,53 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 
 
+  const isPaid = subscriptionBundle !== 'None';
+
   return (
     <SubscriptionContext.Provider value={{
       subscriptionBundle,
       subscriptionExpiresAt,
       setSubscriptionBundle,
-      paymentMethod,
       downloadsUsedToday,
       customExternalLimit,
       recordExternalDownload,
-      recordInAppDownload,
-      getExternalDownloadLimit,
-      getRemainingDownloads,
-      recordTrialUsage,
+      isGuest,
+      isPaid,
+      paymentMethod,
       allMoviesFree,
       eventMessage,
-      isGuest,
-      isPaid: subscriptionBundle !== 'None',
+      getExternalDownloadLimit,
+      getRemainingDownloads,
       downloadedMovies,
       favorites,
       removeDownload,
+      recordInAppDownload,
       toggleFavorite,
+      episodeDownloads,
       activeDownloads,
       downloadQueue,
-      episodeDownloads,
       startExternalGalleryDownload,
       startInternalAppDownload,
       startInternalEpisodeDownload,
       startExternalEpisodeDownload,
       toggleDownloadPause,
+      recordTrialUsage,
       isDeviceBlocked,
       activeDeviceIds,
       removeDevice,
-      deviceLimit: planDeviceLimits[subscriptionBundle] || 0,
-      isSubscribed: subscriptionBundle !== 'None' && subscriptionExpiresAt ? (subscriptionExpiresAt > Date.now()) : false,
-      remainingDays: subscriptionExpiresAt ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))) : 0,
-      minAppVersion
+      deviceLimit,
+      minAppVersion,
+      downloadOnWifiOnly,
+      setDownloadOnWifiOnly: (val: boolean) => {
+        setDownloadOnWifiOnlyState(val);
+        AsyncStorage.setItem('downloadOnWifiOnly', String(val));
+      },
+      smartDownloads,
+      setSmartDownloads: (val: boolean) => {
+        setSmartDownloadsState(val);
+        AsyncStorage.setItem('smartDownloads', String(val));
+      }
     }}>
-
-
-
-
       {children}
 
       {/* Premium download result modal — overlays everything */}

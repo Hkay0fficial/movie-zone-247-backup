@@ -17,6 +17,7 @@ import {
   Switch,
   KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -72,9 +73,10 @@ export type AdminActionType =
   | 'CREATE_USER'
   | 'UPDATE_USER'
   | 'UPDATE_SETTINGS'
-  | 'BROADCAST';
+  | 'BROADCAST'
+  | 'UPDATE_LAYOUT';
 
-type AdminSection = 'Dashboard' | 'Content' | 'Users' | 'Media' | 'Announcements' | 'Logs' | 'Settings';
+type AdminSection = 'Dashboard' | 'Content' | 'Users' | 'Media' | 'Announcements' | 'Logs' | 'Settings' | 'AppLayout';
 type ContentType = 'Movie' | 'Series';
 
 interface AuditLog {
@@ -109,14 +111,53 @@ interface Announcement {
   createdAt: any;
 }
 
+interface LayoutSection {
+  id: string;
+  title: string;
+  filterType: 'genre' | 'newReleases' | 'trending' | 'custom' | 'free';
+  filterValue: string;
+  isVisible: boolean;
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function NativeAdminScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { liveMovies, liveSeries, loading: moviesLoading } = useMovies();
   
   const [activeSection, setActiveSection] = useState<AdminSection>('Dashboard');
   const [loading, setLoading] = useState(false);
+
+  const getSectionHeaderInfo = (section: string) => {
+    switch (section) {
+      case 'Dashboard': return { title: 'Dashboard Overview', subtitle: 'Welcome back, Admin' };
+      case 'Content': return { title: 'Movies & Series', subtitle: 'Manage your complete content library' };
+      case 'Users': return { title: 'User Management', subtitle: 'Manage accounts, plans, and security' };
+      case 'Media': return { title: 'Media Assets', subtitle: 'Manage promotional banners and imagery' };
+      case 'Announcements': return { title: 'Announcements', subtitle: 'Broadcast platform-wide messages to all users' };
+      case 'Logs': return { title: 'Activity Logs', subtitle: 'Audit administrative actions and system updates' };
+      case 'Settings': return { title: 'Settings', subtitle: 'Manage platform-wide overrides and account settings' };
+      case 'AppLayout': return { title: 'App Layout', subtitle: 'Control sections and order on the home screen' };
+      default: return { title: 'Admin Panel', subtitle: 'System Management' };
+    }
+  };
+
+  const renderSectionHeader = (title: string, subtitle: string) => (
+    <View style={[styles.dashboardHeader, { marginTop: Math.max(insets.top, 16), paddingHorizontal: 20, paddingBottom: 10, backgroundColor: '#0a0a0f' }]}>
+      <TouchableOpacity 
+        onPress={() => router.replace('/(tabs)/menu')} 
+        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Ionicons name="chevron-back" size={20} color="#fff" />
+      </TouchableOpacity>
+      <View style={styles.dashboardTitleContainer}>
+        <Text style={styles.dashboardMainTitle}>{title}</Text>
+        <Text style={styles.dashboardWelcome}>{subtitle}</Text>
+      </View>
+      <ActivityIndicator size="small" color={loading ? "#6366f1" : "transparent"} />
+    </View>
+  );
 
   // --- Dashboard Stats ---
   const [stats, setStats] = useState({
@@ -226,6 +267,18 @@ export default function NativeAdminScreen() {
   // --- Picker Modals ---
   const [isGenreModalVisible, setIsGenreModalVisible] = useState(false);
   const [isVjModalVisible, setIsVjModalVisible] = useState(false);
+
+  // --- App Layout State ---
+  const [layoutSections, setLayoutSections] = useState<LayoutSection[]>([]);
+  const [isLayoutSaving, setIsLayoutSaving] = useState(false);
+  const [editingLayoutId, setEditingLayoutId] = useState<string | null>(null);
+  const [editingLayoutTitle, setEditingLayoutTitle] = useState('');
+  const [isAddSectionModalVisible, setIsAddSectionModalVisible] = useState(false);
+  const [newSectionForm, setNewSectionForm] = useState({
+    title: '',
+    filterType: 'genre' as LayoutSection['filterType'],
+    filterValue: ''
+  });
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -550,6 +603,10 @@ export default function NativeAdminScreen() {
     if (activeSection === 'Announcements') fetchAnnouncements();
     if (activeSection === 'Logs') fetchLogs();
     if (activeSection === 'Settings') fetchSettings();
+    if (activeSection === 'AppLayout') {
+      const unsubscribe = fetchAppLayout();
+      return () => unsubscribe();
+    }
   }, [activeSection]);
 
   const fetchStats = async () => {
@@ -580,7 +637,9 @@ export default function NativeAdminScreen() {
         const d = doc.data();
         return {
           id: doc.id,
-          email: d.email || 'No Email',
+          email: d.email || '',
+          fullName: d.fullName || '',
+          authProvider: d.authProvider || 'email',
           joinDate: d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleDateString() : 'N/A',
           status: d.isAdmin ? 'Admin' : 'User',
           isBanned: d.isBanned || false,
@@ -634,6 +693,49 @@ export default function NativeAdminScreen() {
     }
   };
 
+  const fetchAppLayout = () => {
+    setLoading(true);
+    const layoutRef = doc(db, 'app_layout', 'main');
+    return onSnapshot(layoutRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setLayoutSections(docSnap.data().sections || []);
+      }
+      setLoading(false);
+    });
+  };
+
+  const handleUpdateLayout = async (newSections: LayoutSection[]) => {
+    setIsLayoutSaving(true);
+    try {
+      const layoutRef = doc(db, 'app_layout', 'main');
+      await setDoc(layoutRef, { sections: newSections }, { merge: true });
+    } catch (err) {
+      console.error("Layout Save Error:", err);
+      Alert.alert('Error', 'Failed to save layout change');
+    } finally {
+      setIsLayoutSaving(false);
+    }
+  };
+
+  const toggleLayoutVisibility = (id: string) => {
+    const updated = layoutSections.map(s => s.id === id ? { ...s, isVisible: !s.isVisible } : s);
+    setLayoutSections(updated);
+    handleUpdateLayout(updated);
+    const section = updated.find(s => s.id === id);
+    logAdminAction('UPDATE_LAYOUT', `Toggled visibility for section: ${section?.title}`, id, section?.title);
+  };
+
+  const moveSection = (index: number, direction: 'up' | 'down') => {
+    const updated = [...layoutSections];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= updated.length) return;
+    
+    const [moved] = updated.splice(index, 1);
+    updated.splice(targetIndex, 0, moved);
+    setLayoutSections(updated);
+    handleUpdateLayout(updated);
+  };
+
   // ─── Actions ────────────────────────────────────────────────────────────────
 
   const handleSaveContent = async () => {
@@ -656,12 +758,10 @@ export default function NativeAdminScreen() {
 
       // Cleanup extra fields before saving to keep Firestore clean
       if (data.type === 'Movie') {
-        delete data.episodeList;
-        delete data.freeEpisodesCount;
+        // Keep episodeList and freeEpisodesCount for Movie parts
         delete data.isMiniSeries;
         delete data.seasons;
         delete data.status;
-        delete data.episodeDuration;
       }
 
       let docId = editingId;
@@ -922,12 +1022,9 @@ export default function NativeAdminScreen() {
 
   const renderDashboard = () => (
     <ScrollView style={styles.sectionScroll}>
-       <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardMainTitle}>Dashboard Overview</Text>
-        <Text style={styles.dashboardWelcome}>Welcome back, Admin</Text>
-      </View>
+       <View style={{ height: 10 }} />
 
-      <View style={styles.statsGrid}>
+       <View style={styles.statsGrid}>
         <StatCard title="Total Users" value={stats.users} icon="account-group" color="#3b82f6" trend="+12" />
         <StatCard title="Total Movies" value={stats.movies} icon="movie-open" color="#a855f7" trend="+4" />
         <StatCard title="Active Subscriptions" value={stats.activeSubs} icon="play-circle" color="#10b981" trend="+18" />
@@ -988,10 +1085,7 @@ export default function NativeAdminScreen() {
 
     return (
       <View style={{ flex: 1 }}>
-        <View style={styles.dashboardHeader}>
-          <Text style={styles.dashboardMainTitle}>Movies & Series</Text>
-          <Text style={styles.dashboardWelcome}>Manage your complete content library</Text>
-        </View>
+        <View style={{ height: 10 }} />
 
         <View style={styles.filterSection}>
           <View style={styles.searchBar}>
@@ -1062,8 +1156,8 @@ export default function NativeAdminScreen() {
                     <View style={[styles.priceTag, { backgroundColor: item.isFree ? '#10b98111' : '#f59e0b11' }]}>
                        <Text style={[styles.priceTagText, { color: item.isFree ? '#10b981' : '#f59e0b' }]}>$ {item.isFree ? 'FREE' : 'PAID'}</Text>
                     </View>
-                    <View style={styles.typeTag}>
-                       <Text style={styles.typeTagText}>{item.type ? item.type.toUpperCase() : 'MOVIE'}</Text>
+                    <View style={[styles.typeTag, item.type === 'Series' && item.isMiniSeries ? { backgroundColor: '#db277711' } : {}]}>
+                       <Text style={[styles.typeTagText, item.type === 'Series' && item.isMiniSeries ? { color: '#f472b6' } : {}]}>{item.type === 'Series' && item.isMiniSeries ? 'MINI SERIES' : item.type ? item.type.toUpperCase() : 'MOVIE'}</Text>
                     </View>
                   </View>
                 </View>
@@ -1112,28 +1206,46 @@ export default function NativeAdminScreen() {
 
     return (
       <View style={{ flex: 1 }}>
-        <View style={styles.dashboardHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.dashboardMainTitle}>User Management</Text>
-            <Text style={styles.dashboardWelcome}>Manage accounts, plans, and security</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ height: 10 }} />
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, paddingHorizontal: 16 }}>
             <TouchableOpacity 
-              style={[styles.outlineBtn, { borderColor: '#ef444433', backgroundColor: '#ef444411', paddingHorizontal: 12 }]} 
+              style={{ 
+                flex: 1, 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                backgroundColor: '#ef444411', 
+                paddingVertical: 12, 
+                borderRadius: 14, 
+                borderWidth: 1, 
+                borderColor: '#ef444433' 
+              }} 
               onPress={() => handleUserAction('Cleanup')}
             >
-              <Ionicons name="trash-outline" size={14} color="#ef4444" />
-              <Text style={[styles.outlineBtnText, { color: '#ef4444', marginLeft: 6, fontSize: 10 }]}>CLEANUP EXPIRED</Text>
+              <Ionicons name="trash-outline" size={16} color="#ef4444" />
+              <Text style={{ color: '#ef4444', marginLeft: 8, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>CLEANUP</Text>
             </TouchableOpacity>
+
             <TouchableOpacity 
-              style={[styles.saveBtn, { backgroundColor: '#10b981', paddingHorizontal: 12, height: 36 }]} 
+              style={{ 
+                flex: 1, 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                backgroundColor: '#10b981', 
+                paddingVertical: 12, 
+                borderRadius: 14,
+                shadowColor: '#10b981',
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4
+              }} 
               onPress={() => setIsAddUserModalVisible(true)}
             >
-              <Ionicons name="add" size={18} color="#fff" />
-              <Text style={[styles.saveBtnText, { fontSize: 10 }]}>CREATE NEW USER</Text>
+              <Ionicons name="add-circle" size={18} color="#fff" />
+              <Text style={{ color: '#fff', marginLeft: 8, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>NEW USER</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
         <View style={styles.filterSection}>
           <View style={[styles.searchBar, { flex: 1, margin: 0, height: 48, backgroundColor: '#0f172a' }]}>
@@ -1178,18 +1290,48 @@ export default function NativeAdminScreen() {
                   <Text style={styles.pillarLabel}>USER DETAILS</Text>
                   <View style={styles.userPillarMain}>
                     <View style={[styles.userAvatar, { width: 36, height: 36, backgroundColor: '#1e293b' }]}>
-                      <Ionicons name={item.email ? "mail-outline" : "person-outline"} size={16} color="#64748b" />
+                      <Ionicons 
+                        name={
+                          (item as any).authProvider === 'google' ? 'logo-google' : 
+                          (item as any).authProvider === 'apple' ? 'logo-apple' :
+                          (item as any).authProvider === 'anonymous' ? 'person-outline' : 'mail-outline'
+                        } 
+                        size={16} 
+                        color={
+                          (item as any).authProvider === 'google' ? '#4285F4' :
+                          (item as any).authProvider === 'apple' ? '#fff' :
+                          (item as any).authProvider === 'anonymous' ? '#64748b' : '#64748b'
+                        } 
+                      />
                     </View>
                     <View style={styles.userPillarTextGroup}>
                       {item.email ? (
                         <Text style={styles.userPillarTitle} numberOfLines={1}>{item.email}</Text>
                       ) : (
                         <View>
-                          <Text style={[styles.userPillarTitle, { color: '#64748b' }]}>No Email</Text>
-                          <TouchableOpacity style={styles.addEmailBtn}>
-                            <Ionicons name="add-circle" size={10} color="#10b981" />
-                            <Text style={styles.addEmailText}>ADD EMAIL</Text>
-                          </TouchableOpacity>
+                          {(item as any).fullName ? (
+                            <Text style={styles.userPillarTitle} numberOfLines={1}>{(item as any).fullName}</Text>
+                          ) : (
+                            <Text style={[styles.userPillarTitle, { color: '#64748b' }]}>No Email</Text>
+                          )}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <View style={{
+                              backgroundColor: (item as any).authProvider === 'google' ? 'rgba(66,133,244,0.15)' :
+                                               (item as any).authProvider === 'apple' ? 'rgba(255,255,255,0.1)' :
+                                               (item as any).authProvider === 'anonymous' ? 'rgba(100,116,139,0.15)' : 'rgba(100,116,139,0.15)',
+                              borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1
+                            }}>
+                              <Text style={{ color: '#94a3b8', fontSize: 8, fontWeight: '700', textTransform: 'uppercase' }}>
+                                {(item as any).authProvider === 'google' ? 'Google' :
+                                 (item as any).authProvider === 'apple' ? 'Apple' :
+                                 (item as any).authProvider === 'anonymous' ? 'Guest' : 'Email'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity style={styles.addEmailBtn}>
+                              <Ionicons name="add-circle" size={10} color="#10b981" />
+                              <Text style={styles.addEmailText}>ADD EMAIL</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       )}
                     </View>
@@ -1259,10 +1401,7 @@ export default function NativeAdminScreen() {
 
     return (
       <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.dashboardHeader}>
-          <Text style={styles.dashboardMainTitle}>Announcements</Text>
-          <Text style={styles.dashboardWelcome}>Broadcast platform-wide messages to all users</Text>
-        </View>
+        <View style={{ height: 10 }} />
 
         {/* --- New Broadcast Card --- */}
         <View style={styles.dashboardSection}>
@@ -1368,10 +1507,7 @@ export default function NativeAdminScreen() {
 
     return (
       <View style={{ flex: 1 }}>
-        <View style={styles.dashboardHeader}>
-          <Text style={styles.dashboardMainTitle}>Media Assets</Text>
-          <Text style={styles.dashboardWelcome}>Manage promotional banners and imagery</Text>
-        </View>
+        <View style={{ height: 10 }} />
 
         <View style={styles.tabs}>
           <TabBtn label="Hero Promotions" active={mediaTab === 'Hero'} onPress={() => setMediaTab('Hero')} />
@@ -1502,10 +1638,7 @@ export default function NativeAdminScreen() {
 
     return (
       <View style={{ flex: 1 }}>
-        <View style={styles.dashboardHeader}>
-          <Text style={styles.dashboardMainTitle}>Activity Logs</Text>
-          <Text style={styles.dashboardWelcome}>Audit administrative actions and system updates</Text>
-        </View>
+        <View style={{ height: 10 }} />
 
         <View style={styles.filterSection}>
           <View style={styles.searchBar}>
@@ -1578,10 +1711,7 @@ export default function NativeAdminScreen() {
 
   const renderSettings = () => (
     <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
-      <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardMainTitle}>Settings</Text>
-        <Text style={styles.dashboardWelcome}>Manage platform-wide overrides and account settings</Text>
-      </View>
+      <View style={{ height: 10 }} />
 
       {/* --- Access Overrides --- */}
       <View style={styles.dashboardSection}>
@@ -1723,18 +1853,168 @@ export default function NativeAdminScreen() {
     </ScrollView>
   );
 
+  const renderAppLayout = () => {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{ height: 10 }} />
+
+        <ScrollView style={{ paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+          {layoutSections.map((section, index) => (
+            <View key={section.id} style={[styles.contentCard, !section.isVisible && { opacity: 0.5 }]}>
+              <View style={{ flex: 1 }}>
+                {editingLayoutId === section.id ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TextInput 
+                      style={[styles.input, { flex: 1, marginBottom: 0, paddingVertical: 8 }]} 
+                      value={editingLayoutTitle} 
+                      onChangeText={setEditingLayoutTitle}
+                      autoFocus
+                    />
+                    <TouchableOpacity onPress={async () => {
+                      const updated = layoutSections.map(s => s.id === section.id ? { ...s, title: editingLayoutTitle } : s);
+                      setLayoutSections(updated);
+                      await handleUpdateLayout(updated);
+                      setEditingLayoutId(null);
+                      logAdminAction('UPDATE_LAYOUT', `Renamed section to: ${editingLayoutTitle}`, section.id, editingLayoutTitle);
+                    }}>
+                      <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => {
+                    setEditingLayoutId(section.id);
+                    setEditingLayoutTitle(section.title);
+                  }}>
+                    <Text style={styles.cardTitle}>{section.title}</Text>
+                    <Text style={styles.cardSubtitle}>
+                      {section.filterType === 'genre' ? `Genre: ${section.filterValue}` : 
+                       section.filterType === 'newReleases' ? 'Newest First' : section.filterType}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flexDirection: 'column', gap: 4 }}>
+                  <TouchableOpacity onPress={() => moveSection(index, 'up')} disabled={index === 0}>
+                    <Ionicons name="chevron-up" size={20} color={index === 0 ? '#1e293b' : '#64748b'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => moveSection(index, 'down')} disabled={index === layoutSections.length - 1}>
+                    <Ionicons name="chevron-down" size={20} color={index === layoutSections.length - 1 ? '#1e293b' : '#64748b'} />
+                  </TouchableOpacity>
+                </View>
+                
+                <TouchableOpacity onPress={() => toggleLayoutVisibility(section.id)}>
+                  <Ionicons name={section.isVisible ? "eye-outline" : "eye-off-outline"} size={22} color={section.isVisible ? "#6366f1" : "#64748b"} />
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={async () => {
+                  Alert.alert('Delete Section', 'Remove this section from the app?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: async () => {
+                      const updated = layoutSections.filter(s => s.id !== section.id);
+                      setLayoutSections(updated);
+                      await handleUpdateLayout(updated);
+                      logAdminAction('DELETE_CONTENT', `Deleted layout section: ${section.title}`, section.id, section.title);
+                    }}
+                  ]);
+                }}>
+                  <Ionicons name="trash-outline" size={22} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity 
+            style={styles.addEpBtn} 
+            onPress={() => setIsAddSectionModalVisible(true)}
+          >
+            <Ionicons name="add-circle-outline" size={24} color="#6366f1" />
+            <Text style={styles.addEpBtnText}>ADD NEW HOME SECTION</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 120 }} />
+        </ScrollView>
+
+        <Modal visible={isAddSectionModalVisible} transparent animationType="slide">
+          <View style={styles.overlay}>
+            <View style={styles.userModal}>
+              <Text style={styles.modalHeaderTitle}>Add App Section</Text>
+              
+              <Text style={[styles.label, { marginTop: 20 }]}>Section Title</Text>
+              <TextInput 
+                style={styles.input} 
+                value={newSectionForm.title} 
+                onChangeText={t => setNewSectionForm({...newSectionForm, title: t})}
+                placeholder="e.g. Action Movies"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={styles.label}>Content Source</Text>
+              <View style={styles.typeRow}>
+                {(['genre', 'newReleases', 'trending', 'free'] as const).map(t => (
+                  <TouchableOpacity 
+                    key={t}
+                    style={[styles.typeBtn, newSectionForm.filterType === t && styles.typeBtnActive, { paddingVertical: 8 }]}
+                    onPress={() => setNewSectionForm({...newSectionForm, filterType: t})}
+                  >
+                    <Text style={[styles.typeBtnText, { fontSize: 10 }, newSectionForm.filterType === t && styles.typeBtnTextActive]}>{t.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {newSectionForm.filterType === 'genre' && (
+                <>
+                  <Text style={styles.label}>Genre Match</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={newSectionForm.filterValue}
+                    onChangeText={t => setNewSectionForm({...newSectionForm, filterValue: t})}
+                    placeholder="e.g. action"
+                    placeholderTextColor="#64748b"
+                  />
+                </>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
+                <TouchableOpacity style={[styles.saveBtn, { flex: 1, backgroundColor: '#1e293b' }]} onPress={() => setIsAddSectionModalVisible(false)}>
+                  <Text style={styles.saveBtnText}>CANCEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.saveBtn, { flex: 1 }]} onPress={async () => {
+                  if (!newSectionForm.title) return;
+                  const newSection: LayoutSection = {
+                    id: 'sec_' + Date.now(),
+                    title: newSectionForm.title,
+                    filterType: newSectionForm.filterType,
+                    filterValue: newSectionForm.filterValue,
+                    isVisible: true
+                  };
+                  const updated = [...layoutSections, newSection];
+                  setLayoutSections(updated);
+                  await handleUpdateLayout(updated);
+                  setIsAddSectionModalVisible(false);
+                  setNewSectionForm({ title: '', filterType: 'genre', filterValue: '' });
+                  logAdminAction('UPDATE_LAYOUT', `Created new layout section: ${newSection.title}`, newSection.id, newSection.title);
+                }}>
+                  <Text style={styles.saveBtnText}>CREATE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/menu')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <ReflectiveText style={styles.headerTitle}>{activeSection.toUpperCase()}</ReflectiveText>
-        <ActivityIndicator size="small" color={loading ? "#6366f1" : "transparent"} />
-      </View>
+      {/* Sticky Header */}
+      {renderSectionHeader(
+        getSectionHeaderInfo(activeSection).title,
+        getSectionHeaderInfo(activeSection).subtitle
+      )}
 
       {/* Main Section */}
       <View style={styles.main}>
@@ -1745,13 +2025,15 @@ export default function NativeAdminScreen() {
         {activeSection === 'Announcements' && renderAnnouncements()}
         {activeSection === 'Logs' && renderLogs()}
         {activeSection === 'Settings' && renderSettings()}
+        {activeSection === 'AppLayout' && renderAppLayout()}
       </View>
 
       {/* Navigation */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <NavBtn icon="view-dashboard" label="Home" active={activeSection === 'Dashboard'} onPress={() => setActiveSection('Dashboard')} />
         <NavBtn icon="film-strip" label="Content" active={activeSection === 'Content'} onPress={() => setActiveSection('Content')} />
         <NavBtn icon="account-group" label="Users" active={activeSection === 'Users'} onPress={() => setActiveSection('Users')} />
+        <NavBtn icon="layers" label="Layout" active={activeSection === 'AppLayout'} onPress={() => setActiveSection('AppLayout')} />
         <NavBtn icon="image-multiple" label="Media" active={activeSection === 'Media'} onPress={() => setActiveSection('Media')} />
         <NavBtn icon="bullhorn" label="Alerts" active={activeSection === 'Announcements'} onPress={() => setActiveSection('Announcements')} />
         <NavBtn icon="history" label="Logs" active={activeSection === 'Logs'} onPress={() => setActiveSection('Logs')} />
@@ -1984,36 +2266,50 @@ export default function NativeAdminScreen() {
             </View>
 
             {/* --- Episodes Management --- */}
-            {contentForm.type === 'Series' && (
+            {(contentForm.type === 'Series' || contentForm.type === 'Movie') && (
               <View style={styles.dashboardSection}>
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="list-outline" size={18} color="#f59e0b" />
-                  <Text style={styles.sectionTitle}>EPISODES & PARTS</Text>
-                </View>
-                {/* Series Master Fields */}
-                <View style={styles.switchBox}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.switchLabel}>Is Mini-Series?</Text>
-                    <Text style={styles.switchDesc}>Toggle for shorter series / web-series</Text>
-                  </View>
-                  <Switch 
-                    value={contentForm.isMiniSeries || false} 
-                    onValueChange={v => setContentForm({...contentForm, isMiniSeries: v})} 
-                    trackColor={{ false: '#334155', true: '#6366f1' }}
-                    thumbColor="#fff"
-                  />
+                  <Text style={styles.sectionTitle}>{contentForm.type === 'Series' ? 'EPISODES & SEASONS' : 'MOVIE PARTS'}</Text>
                 </View>
                 
-                <View style={styles.row}>
-                   <View style={{ flex: 1, marginRight: 10 }}>
-                     <Text style={styles.label}>Free Episodes</Text>
-                     <TextInput style={styles.input} value={String(contentForm.freeEpisodesCount || 0)} onChangeText={t => setContentForm({...contentForm, freeEpisodesCount: parseInt(t) || 0})} keyboardType="numeric" />
-                   </View>
-                   <View style={{ flex: 1 }}>
-                     <Text style={styles.label}>Total Seasons</Text>
-                     <TextInput style={styles.input} value={String(contentForm.seasons || 1)} onChangeText={t => setContentForm({...contentForm, seasons: parseInt(t) || 1})} keyboardType="numeric" />
-                   </View>
-                </View>
+                {contentForm.type === 'Series' && (
+                  <>
+                    {/* Series Master Fields */}
+                    <View style={styles.switchBox}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.switchLabel}>Is Mini-Series?</Text>
+                        <Text style={styles.switchDesc}>Toggle for shorter series / web-series</Text>
+                      </View>
+                      <Switch 
+                        value={contentForm.isMiniSeries || false} 
+                        onValueChange={v => setContentForm({...contentForm, isMiniSeries: v})} 
+                        trackColor={{ false: '#334155', true: '#6366f1' }}
+                        thumbColor="#fff"
+                      />
+                    </View>
+                    
+                    <View style={styles.row}>
+                       <View style={{ flex: 1, marginRight: 10 }}>
+                         <Text style={styles.label}>Free Episodes</Text>
+                         <TextInput style={styles.input} value={String(contentForm.freeEpisodesCount || 0)} onChangeText={t => setContentForm({...contentForm, freeEpisodesCount: parseInt(t) || 0})} keyboardType="numeric" />
+                       </View>
+                       <View style={{ flex: 1 }}>
+                         <Text style={styles.label}>Total Seasons</Text>
+                         <TextInput style={styles.input} value={String(contentForm.seasons || 1)} onChangeText={t => setContentForm({...contentForm, seasons: parseInt(t) || 1})} keyboardType="numeric" />
+                       </View>
+                    </View>
+                  </>
+                )}
+
+                {contentForm.type === 'Movie' && (
+                  <View style={styles.row}>
+                     <View style={{ flex: 1 }}>
+                       <Text style={styles.label}>Free Parts Count</Text>
+                       <TextInput style={styles.input} value={String(contentForm.freeEpisodesCount || 0)} onChangeText={t => setContentForm({...contentForm, freeEpisodesCount: parseInt(t) || 0})} keyboardType="numeric" />
+                     </View>
+                  </View>
+                )}
 
                 {contentForm.episodeList?.map((ep: any, idx: number) => (
                   <View key={idx} style={styles.epBox}>
@@ -2511,30 +2807,24 @@ const BulkActionBtn = ({ icon, label, color, onPress }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0f' },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24, // Extra space for reflection
-    borderBottomWidth: 1, 
-    borderBottomColor: '#1e293b',
-    backgroundColor: '#0a0a0f'
-  },
-  headerTitle: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
-  backBtn: { padding: 4 },
   main: { flex: 1 },
-  navBar: { flexDirection: 'row', backgroundColor: '#0f172a', borderTopWidth: 1, borderTopColor: '#1e293b', paddingBottom: Platform.OS === 'ios' ? 20 : 0 },
+  navBar: { flexDirection: 'row', backgroundColor: '#0f172a', borderTopWidth: 1, borderTopColor: '#1e293b' },
   navBtn: { flex: 1, alignItems: 'center', paddingVertical: 12 },
   navText: { color: '#64748b', fontSize: 10, marginTop: 4, fontWeight: '700' },
   navTextActive: { color: '#6366f1' },
   
   // Dashboard
   sectionScroll: { padding: 16 },
-  dashboardHeader: { marginBottom: 24 },
+  dashboardHeader: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20, 
+    paddingHorizontal: 4 
+  },
+  dashboardTitleContainer: { flex: 1, marginLeft: 12 },
   dashboardMainTitle: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-  dashboardWelcome: { color: '#64748b', fontSize: 13, fontWeight: '600', marginTop: 4 },
+  dashboardWelcome: { color: '#64748b', fontSize: 13, fontWeight: '500', marginTop: 2 },
   
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   statCard: { width: (width - 44) / 2, backgroundColor: '#0f172a', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#1e293b' },

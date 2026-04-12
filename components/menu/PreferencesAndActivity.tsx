@@ -96,77 +96,237 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
     return [...dlNotifs, ...notifications];
   }, [notifications, activeDownloads]);
 
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series'>('All');
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [isEditMode, setIsEditMode] = React.useState(false);
+
+  // Filter logic
+  const filteredDownloads = React.useMemo(() => {
+    return downloadedMovies.filter(m => {
+      const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const typeMatch = filterType === 'All' || 
+                       (filterType === 'Movie' && !("seasons" in m)) || 
+                       (filterType === 'Series' && "seasons" in m);
+      return matchesSearch && typeMatch;
+    });
+  }, [downloadedMovies, searchQuery, filterType]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    Alert.alert(
+      'Delete Selected',
+      `Delete ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: () => {
+            selectedIds.forEach(id => removeDownload(id));
+            setSelectedIds(new Set());
+            setIsEditMode(false);
+          } 
+        },
+      ]
+    );
+  };
+
   // ─── Section 5: Downloads ───────────────────────────────────────────────────
   if (selectedItem?.id === '5') {
     return (
       <View style={styles.settingsContentSection}>
-        <Text style={styles.settingsText}>
-          {downloadedMovies.length > 0
-            ? `${downloadedMovies.length} title${downloadedMovies.length === 1 ? '' : 's'} saved for offline viewing.`
-            : 'No offline content yet. Save movies or series from the detail view.'}
-        </Text>
-        <View style={{ marginTop: 24 }}>
-          {downloadedMovies.length > 0 ? (
-            downloadedMovies.map((m, index) => (
-              <View key={(m as any).id ?? `dl-${index}`} style={styles.downloadCard}>
-                <View style={styles.downloadPosterContainer}>
-                  <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
-                  <View style={styles.vjBadgeSmall}>
-                    <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={styles.settingsText}>
+            {downloadedMovies.length > 0
+              ? `${downloadedMovies.length} title${downloadedMovies.length === 1 ? '' : 's'} saved.`
+              : 'No offline content yet.'}
+          </Text>
+          {downloadedMovies.length > 0 && (
+            <TouchableOpacity 
+              onPress={() => {
+                setIsEditMode(!isEditMode);
+                setSelectedIds(new Set());
+              }}
+              style={{ backgroundColor: isEditMode ? 'rgba(91, 95, 239, 0.2)' : 'rgba(255,255,255,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
+            >
+              <Text style={{ color: isEditMode ? '#818cf8' : '#fff', fontSize: 13, fontWeight: '700' }}>
+                {isEditMode ? 'Cancel' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {downloadedMovies.length > 0 && (
+          <>
+            {/* Search Bar */}
+            <View style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              backgroundColor: 'rgba(255,255,255,0.05)', 
+              borderRadius: 15, 
+              paddingHorizontal: 12, 
+              height: 44,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.1)'
+            }}>
+              <Ionicons name="search" size={18} color="rgba(255,255,255,0.4)" />
+              <TextInput
+                style={{ flex: 1, color: '#fff', fontSize: 14, marginLeft: 8 }}
+                placeholder="Search downloaded titles..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Filter Pills */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+              {(['All', 'Movie', 'Series'] as const).map(type => (
+                <TouchableOpacity 
+                  key={type}
+                  onPress={() => setFilterType(type)}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor: filterType === type ? '#5B5FEF' : 'rgba(255,255,255,0.05)',
+                    borderWidth: 1,
+                    borderColor: filterType === type ? '#5B5FEF' : 'rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <Text style={{ color: filterType === type ? '#fff' : 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700' }}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        <View style={{ marginTop: 8 }}>
+          {filteredDownloads.length > 0 ? (
+            filteredDownloads.map((m, index) => {
+              const isSelected = selectedIds.has((m as any).id);
+              return (
+                <TouchableOpacity 
+                  key={(m as any).id ?? `dl-${index}`} 
+                  style={[styles.downloadCard, isEditMode && { paddingLeft: 8 }]}
+                  activeOpacity={isEditMode ? 0.7 : 1}
+                  onPress={() => isEditMode && toggleSelect((m as any).id)}
+                >
+                  {isEditMode && (
+                    <View style={{ marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons 
+                        name={isSelected ? "checkbox" : "square-outline"} 
+                        size={22} 
+                        color={isSelected ? "#5B5FEF" : "rgba(255,255,255,0.3)"} 
+                      />
+                    </View>
+                  )}
+                  <View style={styles.downloadPosterContainer}>
+                    <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                    <View style={styles.vjBadgeSmall}>
+                      <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                    </View>
+                    <View style={styles.genreBadgeSmall}>
+                      <Text style={styles.genreBadgeTextSmall}>
+                        {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.genreBadgeSmall}>
-                    <Text style={styles.genreBadgeTextSmall}>
-                      {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                  <View style={styles.downloadInfo}>
+                    <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                    <Text style={styles.downloadMeta}>
+                      {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
                     </Text>
+                    {!isEditMode && (
+                      <View style={styles.downloadActionRow}>
+                        <TouchableOpacity 
+                          style={styles.downloadPlayBtn}
+                          onPress={() => {
+                            onCloseSettings();
+                            DeviceEventEmitter.emit('movieSelected', { ...m, autoPlay: true });
+                            if ('seasons' in m) {
+                              router.push('/(tabs)/saved');
+                            } else {
+                              router.push('/(tabs)');
+                            }
+                          }}
+                        >
+                          <Ionicons name="play" size={12} color="#fff" />
+                          <Text style={styles.downloadPlayText}>PLAY</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.downloadDeleteBtn}
+                          onPress={() => {
+                            Alert.alert(
+                              'Remove Download',
+                              `Remove "${m.title}" from your downloads?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
+                              ]
+                            );
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
-                </View>
-                <View style={styles.downloadInfo}>
-                  <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
-                  <Text style={styles.downloadMeta}>
-                    {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
-                  </Text>
-                  <View style={styles.downloadActionRow}>
-                    <TouchableOpacity 
-                      style={styles.downloadPlayBtn}
-                      onPress={() => {
-                        onCloseSettings();
-                        DeviceEventEmitter.emit('movieSelected', { ...m, autoPlay: true });
-                        if ('seasons' in m) {
-                          router.push('/(tabs)/saved');
-                        } else {
-                          router.push('/(tabs)');
-                        }
-                      }}
-                    >
-                      <Ionicons name="play" size={12} color="#fff" />
-                      <Text style={styles.downloadPlayText}>PLAY</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.downloadDeleteBtn}
-                      onPress={() => {
-                        Alert.alert(
-                          'Remove Download',
-                          `Remove "${m.title}" from your downloads?`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
-              <Ionicons name="cloud-download-outline" size={48} color="rgba(255,255,255,0.1)" />
-              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>No downloads yet. Save movies or series for offline viewing.</Text>
+              <Ionicons name={searchQuery ? "search-outline" : "cloud-download-outline"} size={48} color="rgba(255,255,255,0.1)" />
+              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>
+                {searchQuery ? `No results for "${searchQuery}"` : 'No downloads yet. Save movies or series for offline viewing.'}
+              </Text>
             </View>
           )}
         </View>
+
+        {isEditMode && selectedIds.size > 0 && (
+          <TouchableOpacity 
+            onPress={handleBatchDelete}
+            style={{
+              position: 'absolute',
+              bottom: 20,
+              left: 20,
+              right: 20,
+              backgroundColor: '#ef4444',
+              height: 56,
+              borderRadius: 28,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 15,
+              elevation: 8,
+            }}
+          >
+            <Ionicons name="trash" size={20} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>DELETE {selectedIds.size} ITEMS</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }

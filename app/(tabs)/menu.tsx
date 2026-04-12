@@ -360,14 +360,43 @@ export default function MenuScreen() {
   }, [subscriptionExpiresAt, subscriptionBundle, contextPaymentMethod]);
 
   const [upcomingMembership, setUpcomingMembership] = React.useState<any>(null);
-  const [billingHistory, setBillingHistory] = React.useState<any[]>([
-    { id: 'TX-12903', date: 'Mar 11, 2026', plan: '2 weeks', amount: '5,000 Ugx', method: 'MTN Money • 078 600 0000' }
-  ]);
+  const [billingHistory, setBillingHistory] = React.useState<any[]>([]);
   const [showBillingHistory, setShowBillingHistory] = React.useState(false);
   const [showGuestPlanModal, setShowGuestPlanModal] = React.useState(false);
-  const [paymentMethods, setPaymentMethods] = React.useState<any[]>([
-    { id: '1', type: 'mtn', label: 'MTN Money • 077 121 2121', icon: 'phone-portrait-outline', color: '#ffcc00', isDefault: true }
-  ]);
+  const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (auth.currentUser?.uid) {
+      const q = query(
+        collection(db, 'users', auth.currentUser.uid, 'transactions'),
+        orderBy('createdAt', 'desc')
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const history = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setBillingHistory(history);
+      });
+      return () => unsubscribe();
+    }
+  }, [auth.currentUser?.uid]);
+
+  React.useEffect(() => {
+    if (contextPaymentMethod) {
+      const type = contextPaymentMethod.toLowerCase().includes('mtn') ? 'mtn' : 'airtel';
+      setPaymentMethods([{
+        id: '1',
+        type,
+        label: contextPaymentMethod,
+        icon: 'phone-portrait-outline',
+        color: type === 'mtn' ? '#ffcc00' : '#ef4444',
+        isDefault: true
+      }]);
+    } else {
+      setPaymentMethods([]);
+    }
+  }, [contextPaymentMethod]);
   const [isManageBillingFlow, setIsManageBillingFlow] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = React.useState<any>(null);
@@ -529,21 +558,14 @@ export default function MenuScreen() {
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         plan: label,
         amount: price,
-        method: formattedPayment
+        method: formattedPayment,
+        createdAt: serverTimestamp(),
       };
-      setBillingHistory(prev => [newTx, ...prev]);
-
-      if (savePaymentMethod) {
-        const newPayment = {
-          id: Math.random().toString(36).substr(2, 9),
-          type: selectedPaymentMethod?.id,
-          label: formattedPayment,
-          icon: selectedPaymentMethod?.icon,
-          isDefault: paymentMethods.length === 0,
-          color: selectedPaymentMethod?.color
-        };
-        setPaymentMethods(prev => [...prev, newPayment]);
+      
+      if (auth.currentUser?.uid) {
+        setDoc(doc(db, 'users', auth.currentUser.uid, 'transactions', tx_ref), newTx);
       }
+
       setPaymentMethod(formattedPayment);
     }, 1800);
   };
@@ -591,10 +613,25 @@ export default function MenuScreen() {
     'What was the name of your first school?',
   ];
 
-  const [activeDevices, setActiveDevices] = React.useState([
-    { id: '1', device: 'MacBook Pro 16"', location: 'Singapore', time: 'Active Now', current: true },
-    { id: '2', device: 'iPhone 15 Pro', location: 'Singapore', time: '2 hours ago', current: false },
-  ]);
+  const [activeDevices, setActiveDevices] = React.useState<any[]>([]);
+
+  const { activeDeviceIds, removeDevice } = useSubscription();
+
+  React.useEffect(() => {
+    // Map the string array to device viewer objects
+    if (activeDeviceIds && activeDeviceIds.length > 0) {
+      const mapped = activeDeviceIds.map((id, index) => ({
+        id,
+        device: `Registered Device ${index + 1}`,
+        location: 'Authorized',
+        time: 'Active',
+        current: false // We could add matching against current deviceId if exposed
+      }));
+      setActiveDevices(mapped);
+    } else {
+      setActiveDevices([]);
+    }
+  }, [activeDeviceIds]);
 
   const getDeviceLimit = () => {
     if (!isSubscribed) return 1;
@@ -603,9 +640,11 @@ export default function MenuScreen() {
     return 1; // 1 week or 2 weeks
   };
 
-  const handleKickDevice = (deviceId: string) => {
-    setActiveDevices(prev => prev.filter(d => d.id !== deviceId));
-    alert('Device has been logged out successfully.');
+  const handleKickDevice = async (deviceId: string) => {
+    if (removeDevice) {
+      await removeDevice(deviceId);
+      alert('Device has been logged out successfully.');
+    }
   };
 
   // Animation for Get Started buttons

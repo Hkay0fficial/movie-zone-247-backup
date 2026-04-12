@@ -14,6 +14,8 @@ export interface Movie {
   description?: string;
   videoUrl?: string;
   previewUrl?: string;
+  subtitleUrl?: string; // NEW: Path to .vtt or .srt
+  qualityOptions?: { label: string; url: string }[]; // NEW: Multi-quality support
   isFree?: boolean;
   isHero?: boolean;
   type?: 'Movie' | 'Series';
@@ -21,9 +23,10 @@ export interface Movie {
   heroType?: 'video' | 'photo';
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
-  parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string; bunnyVideoId?: string }[];
+  parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string; bunnyVideoId?: string; subtitleUrl?: string }[];
   bunnyVideoId?: string;
   bunnyLibraryId?: string;
+  bunnyLibraryId2?: string;
 }
 
 export interface Series {
@@ -37,12 +40,13 @@ export interface Series {
   status: 'Ongoing' | 'Ended' | 'New';
   poster: string;
   episodes: number; // New field for number of parts/episodes
-  episodeList?: { title: string; url: string }[]; // New field for real episodes
+  episodeList?: { title: string; url: string; duration?: string; subtitleUrl?: string; qualityOptions?: { label: string; url: string }[] }[]; // New field for real episodes
   freeEpisodesCount?: number; // New field for how many episodes are free
   description?: string;
   videoUrl?: string;
   previewUrl?: string;
   totalDuration?: string;
+  subtitleUrl?: string; // Default subtitle for first episode or series trailer
   previewDuration?: string;
   episodeDuration?: string;
   isMiniSeries?: boolean;
@@ -200,20 +204,7 @@ export const INDIAN_MOVIES: Movie[] = [];
 // ─── Extra VJ Mock Data ───────────────────────────────────────────────────
 export const VJ_COLLECTION: Movie[] = [];
 
-// ─── 9 looping hero video sources ────────────────────────────────────────────
-export const HERO_VIDEOS = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-];
-
-// ─── Hero movies — one per HERO_VIDEOS entry ─────────────────────────────────
+// ─── Hero movies ─────────────────────────────────
 export interface HeroMovie {
   title: string;
   genre: string;

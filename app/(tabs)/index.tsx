@@ -50,7 +50,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { useIsFocused } from "@react-navigation/native";
 import {
-  HERO_VIDEOS,
+  
   HERO_MOVIES,
   NEW_RELEASES,
   TRENDING,
@@ -86,8 +86,9 @@ import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useMovies } from "@/app/context/MovieContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "../context/UserContext";
-import { doc, updateDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment, serverTimestamp, setDoc, collection, addDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db, auth } from "../../constants/firebaseConfig";
+import { formatRelativeTime } from "../../utils/TimeUtils";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import DeviceManagerModal from "../../components/DeviceManagerModal";
@@ -1979,8 +1980,9 @@ const PlayingNowIndicator = () => {
 };
 
 // ─── Full Video Player Modal ──────────────────────────────────────────────────
-function FullVideoPlayerModal({
-  visible,
+function FloatingPlayer({
+  playerMode,
+  setPlayerMode,
   videoUrl,
   title,
   onClose,
@@ -1995,8 +1997,13 @@ function FullVideoPlayerModal({
   movieVj,
   relatedContent = [],
   onSelectRelated,
+  playerPos,
+  playerSize,
+  movieId, // NEW
+  episodeId, // NEW
 }: {
-  visible: boolean;
+  playerMode: 'closed' | 'full' | 'mini';
+  setPlayerMode: (m: 'closed' | 'full' | 'mini') => void;
   videoUrl?: string;
   title: string;
   onClose: () => void;
@@ -2011,10 +2018,16 @@ function FullVideoPlayerModal({
   movieVj?: string;
   relatedContent?: (Movie | Series)[];
   onSelectRelated?: (m: Movie | Series) => void;
+  playerPos: Animated.ValueXY;
+  playerSize: Animated.Value;
+  movieId?: string; // NEW
+  episodeId?: string; // NEW
 }) {
+  const { savePlaybackProgress, getPlaybackProgress } = useUser(); // Hook into history
   const videoRef = useRef<Video>(null);
   const [status, setStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
   const statusRef = useRef<AVPlaybackStatus>({} as AVPlaybackStatus);
+  const lastSavedPos = useRef(0); // Throttle saving
   const [showControls, setShowControls] = useState(true);
   const showControlsRef = useRef(true);
   const controlsTimeout = useRef<any>(null);
@@ -2031,7 +2044,32 @@ function FullVideoPlayerModal({
   const [sleepTimerMs, setSleepTimerMs] = useState(0);
   const progressBarContainerWidth = useRef(0);
   const wasPlayingBeforeScrub = useRef(false);
+  const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
+  const [currentVolume, setCurrentVolume] = useState(1);
+  const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
+  const [showQualityOverlay, setShowQualityOverlay] = useState(false);
+  const [showSubtitleOverlay, setShowSubtitleOverlay] = useState(false);
+  const [useSubtitles, setUseSubtitles] = useState(true);
 
+  // Derive source based on quality
+  const currentSource = useMemo(() => {
+    if (selectedQuality) return selectedQuality;
+    return videoUrl;
+  }, [videoUrl, selectedQuality]);
+
+  // ── Auto-Resume Placement ──
+  useEffect(() => {
+    if (playerMode !== 'closed' && movieId && videoUrl) {
+      const saved = getPlaybackProgress(movieId, episodeId);
+      if (saved && saved.position > 10000) { // Only resume if past 10s
+        // Small delay to ensure player is ready
+        setTimeout(() => {
+          videoRef.current?.setPositionAsync(saved.position);
+          lastSavedPos.current = saved.position;
+        }, 1000);
+      }
+    }
+  }, [movieId, episodeId, videoUrl, playerMode]);
 
   const [showTimerOptions, setShowTimerOptions] = useState(false);
   const [showPartsOverlay, setShowPartsOverlay] = useState(false);
@@ -2045,8 +2083,6 @@ function FullVideoPlayerModal({
   // Gesture State Overlays
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
   const [currentBrightness, setCurrentBrightness] = useState(1);
-  const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
-  const [currentVolume, setCurrentVolume] = useState(1);
   
   // Gesture Tracking Refs
   const gestureDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
@@ -2060,7 +2096,7 @@ function FullVideoPlayerModal({
   // 🟢 Record Watch Activity
   useEffect(() => {
     const recordActivity = async () => {
-      if (visible && videoUrl && auth.currentUser) {
+      if (playerMode !== 'closed' && videoUrl && auth.currentUser) {
         try {
           const { addDoc, collection, serverTimestamp } = require('firebase/firestore');
           await addDoc(collection(db, 'user_activity'), {
@@ -2076,7 +2112,7 @@ function FullVideoPlayerModal({
       }
     };
     recordActivity();
-  }, [visible, videoUrl, title]);
+  }, [playerMode, videoUrl, title]);
 
   useEffect(() => {
     if (isLocked) {
@@ -2200,6 +2236,17 @@ function FullVideoPlayerModal({
     resetControlsTimer();
   };
 
+  const selectQuality = (url: string) => {
+    setSelectedQuality(url);
+    setShowQualityOverlay(false);
+    resetControlsTimer();
+  };
+
+  const toggleSubtitle = () => {
+    setUseSubtitles(!useSubtitles);
+    resetControlsTimer();
+  };
+
   useEffect(() => {
     let interval: any;
     if (sleepTimerMs > 0) {
@@ -2236,10 +2283,11 @@ function FullVideoPlayerModal({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => playerMode === 'full',
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (isLocked) return false;
-        return Math.abs(gestureState.dx) > 20 || Math.abs(gestureState.dy) > 20; 
+        if (isLocked || playerMode !== 'full') return false;
+        // Only trigger if vertical or horizontal swipe is significant
+        return Math.abs(gestureState.dx) > 15 || Math.abs(gestureState.dy) > 15; 
       },
       onPanResponderGrant: async (evt, gestureState) => {
         const { pageX } = evt.nativeEvent;
@@ -2434,7 +2482,7 @@ function FullVideoPlayerModal({
 
   useEffect(() => {
     const toggleOrientation = async () => {
-      if (visible) {
+      if (playerMode === 'full') {
         if (Platform.OS !== 'web') {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
         }
@@ -2450,7 +2498,7 @@ function FullVideoPlayerModal({
     };
     toggleOrientation();
 
-    if (visible) {
+    if (playerMode !== 'closed') {
       resetControlsTimer();
     }
     return () => {
@@ -2461,24 +2509,107 @@ function FullVideoPlayerModal({
       StatusBar.setHidden(false, 'fade');
       safeSetNavigationBar('visible');
     };
-  }, [visible]);
+  }, [playerMode]);
 
-  if (!visible) return null;
-
+  // Derived progress values for UI
   const currentPos = isScrubbing ? scrubPosition : (status.isLoaded ? status.positionMillis : 0);
   const duration = status.isLoaded ? (status.durationMillis || 0) : 0;
   const progressPercent = duration > 0 ? (currentPos / duration) * 100 : 0;
 
+  const floatingPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => playerMode === 'mini',
+      onMoveShouldSetPanResponder: () => playerMode === 'mini',
+      onPanResponderGrant: () => {
+        playerPos.setOffset({
+          x: (playerPos.x as any)._value,
+          y: (playerPos.y as any)._value
+        });
+        playerPos.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: playerPos.x, dy: playerPos.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: () => {
+        playerPos.flattenOffset();
+      },
+    })
+  ).current;
+
+  // Resizing logic (simple pinch approx)
+  const resizeStartSizeRef = useRef(150);
+  const resizePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => playerMode === 'mini',
+      onMoveShouldSetPanResponder: () => playerMode === 'mini',
+      onPanResponderGrant: () => {
+        resizeStartSizeRef.current = (playerSize as any)._value || 150;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const newSize = Math.max(120, Math.min(SCREEN_W - 40, resizeStartSizeRef.current + gestureState.dx));
+        playerSize.setValue(newSize);
+      },
+    })
+  ).current;
+
+  if (playerMode === 'closed') return null;
+
+  const isMini = playerMode === 'mini';
+
   return (
-    <Modal visible={visible} animationType="fade" transparent statusBarTranslucent navigationBarTranslucent supportedOrientations={['landscape', 'landscape-left', 'landscape-right']} onRequestClose={onClose}>
-      <View style={styles.fullPlayerContainer}>
-        <TouchableWithoutFeedback onPress={handleToggleControls}>
-          <View style={styles.fullPlayerInner} {...panResponder.panHandlers} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
-            {videoUrl || HERO_VIDEOS[0] ? (
+    <Animated.View 
+      style={[
+        isMini ? {
+          position: 'absolute',
+          zIndex: 9999,
+          width: playerSize,
+          height: playerSize.interpolate({ inputRange: [120, SCREEN_W], outputRange: [120 * (9/16), SCREEN_W * (9/16)] }),
+          transform: playerPos.getTranslateTransform(),
+          backgroundColor: '#000',
+          borderRadius: 12,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.2)',
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 10,
+        } : {
+          ...StyleSheet.absoluteFillObject,
+          zIndex: 9999,
+          backgroundColor: '#000',
+        }
+      ]}
+      {...(isMini ? floatingPanResponder.panHandlers : {})}
+    >
+      <TouchableWithoutFeedback onPress={isMini ? () => setPlayerMode('full') : handleToggleControls}>
+        <View style={styles.fullPlayerInner} {...(!isMini ? panResponder.panHandlers : {})} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
+            {isMini && (
+              <View 
+                {...resizePanResponder.panHandlers}
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 30,
+                  height: 30,
+                  zIndex: 10000,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.1)'
+                }}
+              >
+                <MaterialIcons name="drag-handle" size={16} color="rgba(255,255,255,0.6)" style={{ transform: [{ rotate: '45deg' }] }} />
+              </View>
+            )}
+            {currentSource || "" ? (
               <Video
                 ref={videoRef}
+                staysActiveInBackground={true}
                 source={{ 
-                  uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0],
+                  uri: currentSource ? resolveCDNUrl(currentSource) : "",
                   overridingExtension: 'm3u8',
                   headers: {
                     'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
@@ -2505,6 +2636,12 @@ function FullVideoPlayerModal({
                     const currentPos = s.positionMillis || 0;
                     const duration = s.durationMillis || 1;
                     const prog = (currentPos / duration) * 100;
+
+                    // ── Periodically SAVE Progress (every 5s) ──
+                    if (movieId && s.isPlaying && Math.abs(currentPos - lastSavedPos.current) > 5000) {
+                      savePlaybackProgress(movieId, currentPos, episodeId);
+                      lastSavedPos.current = currentPos;
+                    }
                     
                     if (!isOffline) {
                       setBufferPercent(prev => {
@@ -2517,9 +2654,14 @@ function FullVideoPlayerModal({
                       if (s.isPlaying) videoRef.current?.pauseAsync();
                     }
 
-                    if (s.isLoaded && s.isPlaying && s.durationMillis && hasNext && onNext) {
+                    // ── Auto-Next / Completion ──
+                    if (s.isLoaded && s.isPlaying && s.durationMillis) {
                       const remaining = s.durationMillis - s.positionMillis;
-                      if (remaining <= 500) onNext();
+                      if (remaining <= 500) {
+                        // Mark as finished (save 0)
+                        if (movieId) savePlaybackProgress(movieId, 0, episodeId);
+                        if (hasNext && onNext) onNext();
+                      }
                     }
                   }
                 }}
@@ -2537,7 +2679,7 @@ function FullVideoPlayerModal({
                 <Text style={{ color: '#fff', textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>Playback Error</Text>
                 <Text style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontSize: 12, marginTop: 4 }}>{videoError}</Text>
                 <TouchableOpacity 
-                   onPress={() => { setVideoError(null); videoRef.current?.loadAsync({ uri: videoUrl ? resolveCDNUrl(videoUrl) : HERO_VIDEOS[0] }); }} 
+                   onPress={() => { setVideoError(null); videoRef.current?.loadAsync({ uri: currentSource ? resolveCDNUrl(currentSource) : "" }); }} 
                    style={{ marginTop: 15, backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}
                 >
                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Try Again</Text>
@@ -2565,7 +2707,7 @@ function FullVideoPlayerModal({
               </View>
             )}
 
-            {showControls && (
+            {showControls && !isMini && (
               <View style={[
                 styles.playerControlsOverlay, 
                 { 
@@ -2673,34 +2815,15 @@ function FullVideoPlayerModal({
                       <Text style={styles.playerTimeText}>{formatTime(duration)}</Text>
                     </View>
 
-                    <View style={styles.playerBottomToolRow}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={[styles.playerBottomToolRow, isPortrait && { flexWrap: 'wrap', gap: 15, justifyContent: 'center' }]}>
                         <TouchableOpacity onPress={handleToggleMute} style={styles.playerFooterIconBtn}>
                           <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#fff" />
                           <Text style={styles.playerBtnLabel}>{isMuted ? "Unmute" : "Mute"}</Text>
                         </TouchableOpacity>
-                      </View>
 
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
                         <TouchableOpacity onPress={handleToggleLock} style={styles.playerFooterIconBtn}>
                           <Ionicons name="lock-open-outline" size={22} color="#fff" />
                           <Text style={styles.playerBtnLabel}>Lock</Text>
-                        </TouchableOpacity>
-
-                        {parts.length > 1 && (
-                          <TouchableOpacity onPress={() => setShowPartsOverlay(true)} style={styles.playerFooterIconBtn}>
-                            <Ionicons name="copy-outline" size={22} color="#fff" />
-                            <Text style={styles.playerBtnLabel}>Parts</Text>
-                          </TouchableOpacity>
-                        )}
-
-
-                        {/* Removed Timer and Cast from here to top right */}
-                      </View>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <TouchableOpacity onPress={handleToggleSpeed} style={styles.playerSpeedBtn}>
-                          <Text style={styles.playerSpeedText}>{playbackSpeed}x</Text>
                         </TouchableOpacity>
 
                         {relatedContent.length > 0 && (
@@ -2709,13 +2832,46 @@ function FullVideoPlayerModal({
                             <Text style={styles.playerBtnLabel}>More Like This</Text>
                           </TouchableOpacity>
                         )}
-                        {nextPartName && onNext && (
-                          <TouchableOpacity onPress={onNext} style={styles.playerNextEpBtn}>
-                            <Text style={styles.playerNextEpBtnLabel}>Play Next</Text>
-                            <Text style={styles.playerNextEpBtnValue}>{nextPartName}</Text>
+
+                        {parts.length > 1 && (
+                          <TouchableOpacity onPress={() => setShowPartsOverlay(true)} style={styles.playerFooterIconBtn}>
+                            <Ionicons name="copy-outline" size={22} color="#fff" />
+                            <Text style={styles.playerBtnLabel}>Parts</Text>
                           </TouchableOpacity>
                         )}
-                      </View>
+
+                        <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 12 }, isPortrait && { width: '100%', justifyContent: 'center', marginTop: 10 }]}>
+                          
+                          <TouchableOpacity onPress={handleToggleSpeed} style={styles.playerSpeedBtn}>
+                            <Text style={styles.playerSpeedText}>{playbackSpeed}x Speed</Text>
+                          </TouchableOpacity>
+
+                          {nextPartName && onNext && (
+                            <TouchableOpacity onPress={onNext} style={styles.playerNextEpBtn}>
+                              <Text style={styles.playerNextEpBtnLabel}>Play Next</Text>
+                              <Text style={styles.playerNextEpBtnValue}>
+                                {(() => {
+                                  const currentPart = parts.find(p => p.id === activePartId);
+                                  const nextIdx = currentPart ? (currentPart.displayIndex || 0) + 1 : null;
+                                  return nextIdx ? `PART ${nextIdx}: ${nextPartName}` : nextPartName;
+                                })()}
+                              </Text>
+                              <Ionicons name="play-skip-forward" size={12} color="#fff" style={{ marginLeft: 4 }} />
+                            </TouchableOpacity>
+                          )}
+
+                          <TouchableOpacity onPress={() => setShowSubtitleOverlay(true)} style={[styles.playerSpeedBtn, { paddingHorizontal: 10 }]}>
+                            <MaterialCommunityIcons name="closed-caption" size={20} color={useSubtitles ? "#fff" : "rgba(255,255,255,0.4)"} />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity onPress={() => setShowQualityOverlay(true)} style={[styles.playerSpeedBtn, { paddingHorizontal: 10 }]}>
+                            <Ionicons name="settings-outline" size={18} color="#fff" />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity onPress={() => setPlayerMode('mini')} style={[styles.playerSpeedBtn, { paddingHorizontal: 10 }]}>
+                            <Ionicons name="chevron-down" size={16} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
                     </View>
                   </View>
                 )}
@@ -2740,6 +2896,28 @@ function FullVideoPlayerModal({
                           <Text style={[{ color: '#cbd5e1' }, playbackSpeed === rate && { color: '#e11d48' }]}>{rate === 1.0 ? 'Normal' : `${rate}x`}</Text>
                         </TouchableOpacity>
                       ))}
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {showQualityOverlay && (
+                  <TouchableOpacity style={[StyleSheet.absoluteFill, { zIndex: 100 }]} activeOpacity={1} onPress={() => setShowQualityOverlay(false)}>
+                    <View style={{ position: 'absolute', bottom: 70, right: 20, width: 140, backgroundColor: 'rgba(30, 30, 40, 0.98)', borderRadius: 14, padding: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                      {['Auto', '1080p', '720p', '480p'].map(q => (
+                        <TouchableOpacity key={q} style={[{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 }, selectedQuality === q && { backgroundColor: 'rgba(225, 29, 72, 0.15)' }]} onPress={() => selectQuality(q)}>
+                          <Text style={[{ color: '#cbd5e1' }, selectedQuality === q && { color: '#e11d48' }]}>{q}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {showSubtitleOverlay && (
+                  <TouchableOpacity style={[StyleSheet.absoluteFill, { zIndex: 100 }]} activeOpacity={1} onPress={() => setShowSubtitleOverlay(false)}>
+                    <View style={{ position: 'absolute', bottom: 70, right: 20, width: 140, backgroundColor: 'rgba(30, 30, 40, 0.98)', borderRadius: 14, padding: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                      <TouchableOpacity style={[{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 }, useSubtitles && { backgroundColor: 'rgba(225, 29, 72, 0.15)' }]} onPress={toggleSubtitle}>
+                        <Text style={[{ color: '#cbd5e1' }, useSubtitles && { color: '#e11d48' }]}>{useSubtitles ? 'Subtitles On' : 'Subtitles Off'}</Text>
+                      </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -2846,8 +3024,7 @@ function FullVideoPlayerModal({
             )}
           </View>
         </TouchableWithoutFeedback>
-      </View>
-    </Modal>
+    </Animated.View>
   );
 }
 
@@ -2867,10 +3044,10 @@ export function MoviePreviewContent({
   onSeeAll,
   playingNow,
   setPlayingNow,
-  setShowFullPlayer,
+  setPlayerMode,
   setPlayerTitle,
   setSelectedVideoUrl,
-  showFullPlayer,
+  playerMode,
   playerTitle,
   selectedVideoUrl,
   isMuted: isMutedProp,
@@ -2883,10 +3060,10 @@ export function MoviePreviewContent({
   onSeeAll?: (title: string, data: (Movie | Series)[]) => void;
   playingNow?: Movie | null;
   setPlayingNow?: (m: Movie | null) => void;
-  setShowFullPlayer?: (v: boolean) => void;
+  setPlayerMode?: (m: 'closed' | 'full' | 'mini') => void;
   setPlayerTitle?: (t: string) => void;
   setSelectedVideoUrl?: (u: string | undefined) => void;
-  showFullPlayer?: boolean;
+  playerMode?: 'closed' | 'full' | 'mini';
   playerTitle?: string;
   selectedVideoUrl?: string | undefined;
   isMuted?: boolean;
@@ -3096,27 +3273,69 @@ export function MoviePreviewContent({
   const isCastConnecting = rawCastState === CastState.CONNECTING;
   const [showComments, setShowComments] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [alreadyDownloadedState, setAlreadyDownloadedState] = useState<{ visible: boolean, episode?: any, localItem?: any }>({ visible: false });
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState([
-    {
-      id: "1",
-      user: "CineFan92",
-      text: "Absolutely stunning cinematography! 🎬",
-      time: "2h ago",
-    },
-    {
-      id: "2",
-      user: "MovieBuff_UG",
-      text: "This is a must-watch, highly recommend it to everyone!",
-      time: "5h ago",
-    },
-    {
-      id: "3",
-      user: "VJ_Lover",
-      text: "The VJ narration makes it even better 🔥",
-      time: "1d ago",
-    },
-  ]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+  // ── Real-time Firestore Comments ──
+  useEffect(() => {
+    if (!showComments || !movie?.id) return;
+
+    setIsLoadingComments(true);
+    const q = query(
+      collection(db, "comments"),
+      where("contentId", "==", movie.id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedComments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Client-side sort to avoid requiring a composite index
+      fetchedComments.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      setComments(fetchedComments);
+      setIsLoadingComments(false);
+    }, (error) => {
+      console.error("Comments listener error:", error);
+      setIsLoadingComments(false);
+    });
+
+    return () => unsubscribe();
+  }, [showComments, movie?.id]);
+
+  const handlePostComment = async () => {
+    if (isGuest) {
+      onShowPremium();
+      return;
+    }
+    if (!commentText.trim() || !movie?.id) return;
+
+    const trimmed = commentText.trim();
+    setCommentText(""); // Optimistic clear
+
+    try {
+      await addDoc(collection(db, "comments"), {
+        contentId: movie.id,
+        userId: auth.currentUser?.uid || 'anonymous',
+        user: profile?.fullName || "A Movie Fan",
+        avatar: profile?.profilePhoto || null,
+        text: trimmed,
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error("Failed to post comment:", e);
+      setCommentText(trimmed); // Restore text on failure
+      Alert.alert("Error", "Could not post comment. Please try again.");
+    }
+  };
 
   // ── Other Parts Wave/Pulse Animation ──
   const otherPartsWaveAnim = useRef(new Animated.Value(0)).current;
@@ -3184,49 +3403,7 @@ export function MoviePreviewContent({
     const isAlreadyDownloaded = downloadedMovies.some(m => m.id === movie.id);
     if (isAlreadyDownloaded) {
       const localItem = downloadedMovies.find(m => m.id === movie.id);
-      Alert.alert(
-        '✅ Already Downloaded',
-        `"${movie.title}" is already saved in My Downloads.`,
-        [
-          {
-            text: '🎬 Play Offline',
-            onPress: () => {
-              if ((localItem as any)?.localUri) {
-                setSelectedVideoUrl((localItem as any).localUri);
-                setPlayerTitle(movie.title);
-                setShowFullPlayer(true);
-              }
-            },
-          },
-          {
-            text: '🖼️ Save to Gallery',
-            onPress: () => {
-              if (!isPaid) {
-                 Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
-                 return;
-              }
-              if (getRemainingDownloads() === 0) {
-                 onShowPremium();
-                 return;
-              }
-              const targetTitle = episode?.title || movie.title;
-              const targetItem = episode || movie;
-              recordExternalDownload(targetTitle);
-              if (episode) {
-                startExternalEpisodeDownload(
-                  "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
-                  episode.id,
-                  episode.videoUrl || "",
-                  episode.title
-                );
-              } else {
-                startExternalGalleryDownload(targetItem);
-              }
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      setAlreadyDownloadedState({ visible: true, episode, localItem });
       return;
     }
 
@@ -3266,25 +3443,6 @@ export function MoviePreviewContent({
     });
   };
 
-  const handlePostComment = () => {
-    if (isGuest) {
-      onShowPremium();
-      return;
-    }
-    if (!commentText.trim()) return;
-
-    setComments((prev) => [
-      {
-        id: Date.now().toString(),
-        user: profile.fullName,
-        avatar: profile.profilePhoto,
-        text: commentText.trim(),
-        time: "just now",
-      },
-      ...prev,
-    ]);
-    setCommentText("");
-  };
 
   const handleCast = () => {
     if (isGuest) {
@@ -3323,9 +3481,8 @@ export function MoviePreviewContent({
     if (!movie) return undefined;
     // 1. Use the dedicated Preview Clip URL if set in admin
     if ((movie as any).previewUrl) return (movie as any).previewUrl;
-    // 2. DO NOT fallback to full videoUrl (heavy) — instead use the demo loop pool
-    const index = movie.id.charCodeAt(0) % HERO_VIDEOS.length;
-    return HERO_VIDEOS[index];
+    // 2. DO NOT fallback to full videoUrl (heavy)
+    return undefined;
   }, [movie]);
 
   useEffect(() => {
@@ -3455,8 +3612,9 @@ export function MoviePreviewContent({
       .replace(/\s+vj\s+[\w\s]+/i, "")
       // 2. Strip year patterns (e.g., "2025")
       .replace(/\s+\d{4}/g, "")
-      // 3. Strip "Part X" or trailing numbers (e.g., "Part 2", " 2")
+      // 3. Strip "Part X", "EP X", or trailing numbers
       .replace(/\s+part\s+\d+/i, "")
+      .replace(/\s+ep(?:isode)?\s+\d+/i, "")
       .replace(/\s+\d+$/g, "")
       // 4. Strip extra symbols
       .replace(/[^\w\s]/g, "")
@@ -3471,8 +3629,9 @@ export function MoviePreviewContent({
 
     // 1. Check for Series episodes (NEW feature)
     if ((movie as any).episodeList && (movie as any).episodeList.length > 0) {
-      parts = (movie as any).episodeList.map((ep: any, index: number) => ({
+       parts = (movie as any).episodeList.map((ep: any, index: number) => ({
          id: `${movie.id}-ep-${index}`,
+         displayIndex: index + 1,
          title: ep.title,
          videoUrl: ep.url,
          poster: movie.poster,
@@ -3486,8 +3645,9 @@ export function MoviePreviewContent({
     } 
     // 2. Try explicit parts field (Movies legacy feature)
     else if ((movie as Movie).parts && (movie as Movie).parts!.length > 0) {
-      parts = (movie as Movie).parts!.map(p => ({
+      parts = (movie as Movie).parts!.map((p, index) => ({
         ...p,
+        displayIndex: index + 1,
         poster: (p as any).poster || movie.poster,
         duration: (p as any).duration || (movie as any).duration,
         videoUrl: (p as any).videoUrl || (movie as Movie).videoUrl,
@@ -3515,12 +3675,15 @@ export function MoviePreviewContent({
       
       if (matchedParts.length > 0) {
         matchedParts.sort((a, b) => {
-          // Try to extract numbers for better sorting (e.g., Part 1, Part 2 or Movie 1, Movie 2)
-          const aNum = parseInt(a.title.match(/(?:part\s+)?(\d+)/i)?.[1] || "1");
-          const bNum = parseInt(b.title.match(/(?:part\s+)?(\d+)/i)?.[1] || "1");
+          // Extract numbers for better sorting (e.g., Part 1, Part 2, EP 1, EP 2)
+          // We look for a number specifically after "part" or "ep" or at the end
+          const aMatch = a.title.match(/(?:part|ep(?:isode)?)\s*(\d+)/i) || a.title.match(/(\d+)$/);
+          const bMatch = b.title.match(/(?:part|ep(?:isode)?)\s*(\d+)/i) || b.title.match(/(\d+)$/);
+          const aNum = parseInt(aMatch?.[1] || "1");
+          const bNum = parseInt(bMatch?.[1] || "1");
           return aNum - bNum;
         });
-        parts = matchedParts;
+        parts = matchedParts.map((p, index) => ({ ...p, displayIndex: index + 1 }));
       }
     }
     
@@ -3569,11 +3732,13 @@ export function MoviePreviewContent({
       const canWatchNext = allMoviesFree || (nextPartItem as any).isFree || isPaid;
       if (!canWatchNext) {
         onSwitch?.(nextPartItem);
-        setShowFullPlayer?.(false);
+        setPlayerMode?.('closed');
         onShowPremium?.();
         return;
       }
       setActivePartId(nextPartItem.id);
+      setSelectedVideoUrl?.(nextPartItem.videoUrl);
+      setPlayerTitle?.(movie?.title + " - " + nextPartItem.title);
     }
   };
 
@@ -3583,11 +3748,13 @@ export function MoviePreviewContent({
       const canWatchPrev = allMoviesFree || (prevPartItem as any).isFree || isPaid;
       if (!canWatchPrev) {
         onSwitch?.(prevPartItem);
-        setShowFullPlayer?.(false);
+        setPlayerMode?.('closed');
         onShowPremium?.();
         return;
       }
       setActivePartId(prevPartItem.id);
+      setSelectedVideoUrl?.(prevPartItem.videoUrl);
+      setPlayerTitle?.(movie?.title + " - " + prevPartItem.title);
     }
   };
 
@@ -3874,7 +4041,8 @@ export function MoviePreviewContent({
                     
                     setSelectedVideoUrl?.(finalUrl);
                     setPlayerTitle?.(movie.title + (firstPart ? " - " + (firstPart.title || "Part 1") : ""));
-                    setShowFullPlayer?.(true);
+                    setPlayingNow?.(movie as Movie);
+                    setPlayerMode?.('full');
                   }}
                 >
                   {previewVideoUrl ? (
@@ -3890,7 +4058,7 @@ export function MoviePreviewContent({
                         }}
                         style={styles.previewPoster}
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={!showFullPlayer}
+                        shouldPlay={playerMode === 'closed'}
                         isLooping
                         isMuted={isMuted}
                       />
@@ -3977,29 +4145,15 @@ export function MoviePreviewContent({
                             return;
                           }
                           
-                          // If it's a series and we have an active part selected, play that.
-                          // Otherwise, play the first episode if it's a series.
-                          let videoUri = (movie as any).localUri || (movie as any).videoUrl;
-                          let titleToPlay = movie.title;
-
-                          if ("seasons" in movie) {
-                            const episodes = (movie as Series).episodeList || [];
-                            const activeEpisode = episodes.find(e => `${movie.id}-ep-${episodes.indexOf(e)}` === activePartId);
-                            
-                            if (activeEpisode) {
-                              videoUri = activeEpisode.url;
-                              titleToPlay = activeEpisode.title;
-                            } else if (episodes.length > 0) {
-                              videoUri = episodes[0].url;
-                              titleToPlay = episodes[0].title;
-                              setActivePartId(`${movie.id}-ep-0`);
-                            }
-                          }
+                          // Consistently use the current active part's URL and title
+                          const videoUri = currentPlayerUrl;
+                          const titleToPlay = currentPlayerTitle;
 
                           if (videoUri) {
                             setSelectedVideoUrl?.(videoUri);
                             setPlayerTitle?.(titleToPlay);
-                            setShowFullPlayer?.(true);
+                            setPlayingNow?.(movie as Movie);
+                            setPlayerMode?.('full');
                           }
                         }}
                       >
@@ -4110,20 +4264,16 @@ export function MoviePreviewContent({
 
 
 
-                    {/* Part badge – show when title contains "Part X" like series episode badge */}
-                    {!('seasons' in movie) && (() => {
-                      const partMatch = movie.title.match(/part\s+(\d+)/i);
-                      if (!partMatch) return null;
-                      return (
-                        <View style={{
-                          backgroundColor: 'rgba(91, 95, 239, 0.2)', borderWidth: 1,
-                          borderColor: 'rgba(91, 95, 239, 0.4)', borderRadius: 6,
-                          paddingHorizontal: 8, paddingVertical: 3,
-                        }}>
-                          <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>Part {partMatch[1]}</Text>
-                        </View>
-                      );
-                    })()}
+                    {/* Part badge – dynamic based on selected part */}
+                    {!('seasons' in movie) && movieParts.length > 0 && (
+                      <View style={{
+                        backgroundColor: 'rgba(91, 95, 239, 0.2)', borderWidth: 1,
+                        borderColor: 'rgba(91, 95, 239, 0.4)', borderRadius: 6,
+                        paddingHorizontal: 8, paddingVertical: 3,
+                      }}>
+                        <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>PART {currentIndex + 1}</Text>
+                      </View>
+                    )}
                   </View>
                   {/* ── Collapsible Description ── */}
                   <TouchableOpacity
@@ -4452,7 +4602,7 @@ export function MoviePreviewContent({
                             setActivePartId(mp.id);
                             setSelectedVideoUrl?.(mp.videoUrl);
                             setPlayerTitle?.(mp.title);
-                            setShowFullPlayer?.(true);
+                            setPlayerMode?.('full');
                           }}
 
                           activeOpacity={0.8}
@@ -4504,14 +4654,32 @@ export function MoviePreviewContent({
                           </View>
                           
                           <View style={styles.epInfoPremium}>
-                            <Text style={styles.epTitlePremium} numberOfLines={1}>
-                              {mp.title}
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                              <Text style={[styles.epTitlePremium, { flex: 1 }]} numberOfLines={1}>
+                                {mp.title}
+                              </Text>
+                            </View>
                             <View style={styles.epMetaRowSmall}>
+                              <View style={{
+                                backgroundColor: '#fff',
+                                borderWidth: 0.5,
+                                borderColor: 'rgba(0,0,0,0.1)',
+                                borderRadius: 4,
+                                paddingHorizontal: 5,
+                                paddingVertical: 1,
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 1,
+                                elevation: 1,
+                              }}>
+                                <Text style={{ color: '#5B5FEF', fontSize: 8, fontWeight: '900' }}>
+                                  EP {mp.displayIndex}
+                                </Text>
+                              </View>
                               <View style={styles.epStatusBadgeSmall}>
                                 <Text style={styles.epStatusTextSmall}>HD</Text>
                               </View>
-                              <Text style={styles.epSubPremiumSmall}>Ready to watch</Text>
                             </View>
                             
                             {/* Episode Action Row (Unified Download) */}
@@ -4527,7 +4695,7 @@ export function MoviePreviewContent({
                                   alignItems: 'center' 
                                 }}>
                                   <Text style={{ color: '#00ffcc', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
-                                    {activeDownloads[mp.id].progress}% {activeDownloads[mp.id].mode === 'external' ? 'GALLERY' : 'IN-APP'}
+                                    {activeDownloads[mp.id].progress}% {activeDownloads[mp.id].mode === 'external' ? 'EXTERNAL' : 'IN-APP'}
                                   </Text>
                                 </View>
                               ) : (
@@ -4673,7 +4841,7 @@ export function MoviePreviewContent({
                         color="#94a3b8"
                       />
                       <Text style={styles.downloadSecondaryBtnText}>
-                        GALLERY
+                        EXTERNAL DOWNLOAD
                       </Text>
                       <View
                         style={{
@@ -4729,6 +4897,97 @@ export function MoviePreviewContent({
               </View>
             </Modal>
 
+            {/* ── Already Downloaded Modal (Frosted Dark) ── */}
+            <Modal
+              visible={alreadyDownloadedState.visible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setAlreadyDownloadedState({ visible: false })}
+            >
+              <View style={styles.downloadModalCentering}>
+                <TouchableOpacity
+                  style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+                  activeOpacity={1}
+                  onPress={() => setAlreadyDownloadedState({ visible: false })}
+                />
+                <View
+                  style={[
+                    styles.downloadModalContent,
+                    { width: 300, backgroundColor: "#1e293b", padding: 0 },
+                  ]}
+                >
+                  <View style={{ padding: 20, alignItems: "center" }}>
+                    <Ionicons name="checkmark-circle" size={40} color="#10b981" style={{ marginBottom: 10 }} />
+                    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
+                      Already Downloaded
+                    </Text>
+                    <Text style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", lineHeight: 20 }}>
+                      "{movie.title}" is already saved in My Downloads.
+                    </Text>
+                  </View>
+                  
+                  <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" }}>
+                    <TouchableOpacity
+                      style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                      onPress={() => {
+                        setAlreadyDownloadedState({ visible: false });
+                        if ((alreadyDownloadedState.localItem as any)?.localUri) {
+                          setSelectedVideoUrl((alreadyDownloadedState.localItem as any).localUri);
+                          setPlayerTitle(movie.title);
+                          setPlayerMode?.('full');
+                        }
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Ionicons name="play" size={18} color="#10b981" />
+                        <Text style={{ color: "#10b981", fontSize: 16, fontWeight: "600" }}>Play Offline</Text>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                      onPress={() => {
+                        setAlreadyDownloadedState({ visible: false });
+                        if (!isPaid) {
+                           Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                           return;
+                        }
+                        if (getRemainingDownloads() === 0) {
+                           onShowPremium();
+                           return;
+                        }
+                        const targetTitle = alreadyDownloadedState.episode?.title || movie.title;
+                        const targetItem = alreadyDownloadedState.episode || movie;
+                        recordExternalDownload(targetTitle);
+                        if (alreadyDownloadedState.episode) {
+                          startExternalEpisodeDownload(
+                            "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
+                            alreadyDownloadedState.episode.id,
+                            alreadyDownloadedState.episode.videoUrl || "",
+                            alreadyDownloadedState.episode.title
+                          );
+                        } else {
+                          startExternalGalleryDownload(targetItem);
+                        }
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Ionicons name="download" size={18} color="#3b82f6" />
+                        <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>External Downloads</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{ paddingVertical: 16, alignItems: "center" }}
+                      onPress={() => setAlreadyDownloadedState({ visible: false })}
+                    >
+                      <Text style={{ color: "#94a3b8", fontSize: 16, fontWeight: "500" }}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+
             {/* ── Comments Sheet ── */}
             {showComments && (
               <Modal
@@ -4751,23 +5010,23 @@ export function MoviePreviewContent({
                       Keyboard.dismiss();
                     }}
                   />
-                  {/* Sheet positioned at bottom */}
                   <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 480,
-                      backgroundColor: "#111827",
-                      borderTopLeftRadius: 24,
-                      borderTopRightRadius: 24,
-                      overflow: "hidden",
-                    }}
+                    keyboardVerticalOffset={0}
+                    style={{ flex: 1, justifyContent: "flex-end" }}
                   >
+                    <View
+                      style={{
+                        height: '85%', 
+                        maxHeight: 420, 
+                        backgroundColor: "#111827",
+                        borderTopLeftRadius: 24,
+                        borderTopRightRadius: 24,
+                        overflow: "hidden",
+                        paddingBottom: insets.bottom, // Flush with navigation bar
+                      }}
+                    >
                     <View style={{ flex: 1 }}>
-                      {/* Header */}
                       <View
                         style={{
                           flexDirection: "row",
@@ -4827,16 +5086,16 @@ export function MoviePreviewContent({
                               key={c.id}
                               style={{
                                 flexDirection: "row",
-                                gap: 10,
+                                gap: 8,
                                 marginBottom:
-                                  idx < comments.length - 1 ? 16 : 0,
+                                  idx < comments.length - 1 ? 12 : 0,
                               }}
                             >
                               <View
                                 style={{
-                                  width: 36,
-                                  height: 36,
-                                  borderRadius: 18,
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: 15,
                                   backgroundColor: "#1e293b",
                                   justifyContent: "center",
                                   alignItems: "center",
@@ -4847,7 +5106,7 @@ export function MoviePreviewContent({
                                   style={{
                                     color: "#fff",
                                     fontWeight: "800",
-                                    fontSize: 14,
+                                    fontSize: 12,
                                   }}
                                 >
                                   {c.user[0]}
@@ -4857,31 +5116,29 @@ export function MoviePreviewContent({
                                 <View
                                   style={{
                                     flexDirection: "row",
-                                    gap: 8,
+                                    gap: 6,
                                     alignItems: "center",
-                                    marginBottom: 3,
+                                    marginBottom: 1,
                                   }}
                                 >
                                   <Text
                                     style={{
                                       color: "#fff",
-                                      fontWeight: "700",
-                                      fontSize: 13,
+                                      fontWeight: "600",
+                                      fontSize: 12,
                                     }}
                                   >
                                     {c.user}
                                   </Text>
-                                  <Text
-                                    style={{ color: "#64748b", fontSize: 11 }}
-                                  >
-                                    {c.time}
+                                  <Text style={{ color: "#64748b", fontSize: 10 }}>
+                                    {formatRelativeTime(c.createdAt)}
                                   </Text>
                                 </View>
                                 <Text
                                   style={{
                                     color: "#cbd5e1",
-                                    fontSize: 14,
-                                    lineHeight: 20,
+                                    fontSize: 13,
+                                    lineHeight: 18,
                                   }}
                                 >
                                   {c.text}
@@ -4896,8 +5153,9 @@ export function MoviePreviewContent({
                         style={{
                           flexDirection: "row",
                           gap: 10,
-                          padding: 12,
-                          paddingBottom: 20,
+                          paddingHorizontal: 16,
+                          paddingTop: 8,
+                          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
                           borderTopWidth: 1,
                           borderTopColor: "rgba(255,255,255,0.06)",
                           alignItems: "center",
@@ -4908,8 +5166,8 @@ export function MoviePreviewContent({
                             flex: 1,
                             backgroundColor: "rgba(255,255,255,0.07)",
                             borderRadius: 22,
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
+                            paddingHorizontal: 14,
+                            paddingVertical: 4, // Shorter input area
                             color: "#fff",
                             fontSize: 14,
                             borderWidth: 1,
@@ -4943,6 +5201,7 @@ export function MoviePreviewContent({
                         </TouchableOpacity>
                       </View>
                     </View>
+                  </View>
                   </KeyboardAvoidingView>
                 </View>
               </Modal>
@@ -5463,33 +5722,7 @@ export function MoviePreviewContent({
           }}
         />
 
-        <FullVideoPlayerModal
-          visible={showFullPlayer ?? false}
-          videoUrl={currentPlayerUrl}
-          title={currentPlayerTitle ?? ""}
-          onClose={() => setShowFullPlayer?.(false)}
-          onNext={hasNext ? handleNextPart : undefined}
-          onPrev={hasPrev ? handlePrevPart : undefined}
-          hasNext={hasNext}
-          hasPrev={hasPrev}
-          nextPartName={nextPart?.title}
-          parts={movieParts}
-          activePartId={activePartId || undefined}
-          onSelectPart={(p) => {
-            const canWatchPart = allMoviesFree || (p as any).isFree || (subscriptionBundle !== 'None' && !isGuest);
-            if (!canWatchPart) {
-              onShowPremium();
-              return;
-            }
-            setActivePartId(p.id);
-          }}
-          movieVj={movie?.vj}
-          relatedContent={related}
-          onSelectRelated={(m: Movie | Series) => {
-            setShowFullPlayer?.(false);
-            onSwitch(m);
-          }}
-        />
+        {/* FullVideoPlayerModal removed. Using root-level FloatingPlayer for persistence. */}
         
         {/* Playing Now Indicator */}
         {playingNow && (
@@ -5497,7 +5730,7 @@ export function MoviePreviewContent({
             style={{ position: 'absolute', bottom: 100, alignSelf: 'center', zIndex: 1000 }}
             onPress={() => {
               if (playingNow) {
-                setShowFullPlayer?.(true);
+                setPlayerMode?.('full');
                 setPlayerTitle?.(playingNow.title);
                 setSelectedVideoUrl?.(playingNow.videoUrl);
               }
@@ -5781,9 +6014,8 @@ function HeroBanner({
 
   const heroSource = (movie.heroVideoUrl ? resolveCDNUrl(movie.heroVideoUrl) : undefined) || 
                      (movie.previewUrl ? resolveCDNUrl(movie.previewUrl) : undefined) || 
-                     getStreamUrl(movie) || 
-                     HERO_VIDEOS[videoIdx % HERO_VIDEOS.length];
-  const isHLS = heroSource.includes('.m3u8') || heroSource.includes('playlist');
+                     getStreamUrl(movie) || '';
+  const isHLS = Boolean(heroSource && (heroSource.includes('.m3u8') || heroSource.includes('playlist')));
 
   return (
     <View {...panResponder.panHandlers}>
@@ -6079,7 +6311,7 @@ export default function HomeScreen() {
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [playingNow, setPlayingNow] = useState<Movie | null>(null);
-  const [showFullPlayer, setShowFullPlayer] = useState(false);
+  const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | undefined>(undefined);
   const [playerTitle, setPlayerTitle] = useState("");
   const [isUserMuted, setIsUserMuted] = useState(false);
@@ -6420,10 +6652,10 @@ export default function HomeScreen() {
                 onSeeAll={(title: string, data: (Movie | Series)[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
                 playingNow={playingNow}
                 setPlayingNow={setPlayingNow}
-                setShowFullPlayer={setShowFullPlayer}
+                setPlayerMode={setPlayerMode}
                 setPlayerTitle={setPlayerTitle}
                 setSelectedVideoUrl={setSelectedVideoUrl}
-                showFullPlayer={showFullPlayer}
+                playerMode={playerMode}
                 playerTitle={playerTitle}
                 selectedVideoUrl={selectedVideoUrl}
                 isMuted={index !== navigationStack.length - 1 || !isFocused}
@@ -6437,15 +6669,20 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Full Video Player Modal */}
-      <FullVideoPlayerModal
-        visible={!!playingNow}
-        videoUrl={playingNow?.videoUrl}
-        title={playingNow?.title ?? ""}
+      <FloatingPlayer
+        playerMode={playerMode}
+        setPlayerMode={setPlayerMode}
+        videoUrl={selectedVideoUrl}
+        title={playerTitle}
+        movieId={playingNow?.id} // NEW
+        episodeId={(playingNow as any)?.activePartId} // NEW
         movieVj={playingNow?.vj}
         parts={playingNow?.parts}
         relatedContent={liveMovies.filter(m => m.genre === playingNow?.genre && m.id !== playingNow?.id).slice(0, 10)}
         onSelectRelated={(m) => setPlayingNow(m as Movie)}
-        onClose={() => setPlayingNow(null)}
+        onClose={() => setPlayerMode('closed')}
+        playerPos={playerPos}
+        playerSize={playerSize}
       />
 
       {/* Playing Now Indicator (Optional: can be used in Hero or Rows) */}

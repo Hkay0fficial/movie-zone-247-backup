@@ -14,53 +14,77 @@ class DownloadNotificationManager {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('downloads', {
         name: 'Downloads',
-        importance: Notifications.AndroidImportance.DEFAULT, // DEFAULT shows progress bar reliably on more devices
+        importance: Notifications.AndroidImportance.DEFAULT, 
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         showBadge: false,
       });
     }
 
-    // Register Notification Categories for Interactive Buttons
-    await Notifications.setNotificationCategoryAsync('download_actions', [
+    // Category 1: Active Download (Shows Pause + Cancel)
+    await Notifications.setNotificationCategoryAsync('download_active', [
       {
         identifier: 'pause',
-        buttonTitle: 'Pause',
-        options: {
-          opensAppToForeground: false,
-        },
+        buttonTitle: 'Pause Download',
+        options: { opensAppToForeground: false },
       },
       {
         identifier: 'cancel',
         buttonTitle: 'Cancel',
-        options: {
-          isDestructive: true,
-          opensAppToForeground: false,
-        },
+        options: { isDestructive: true, opensAppToForeground: false },
+      },
+    ]);
+
+    // Category 2: User Paused (Shows Resume + Cancel)
+    await Notifications.setNotificationCategoryAsync('download_paused', [
+      {
+        identifier: 'resume',
+        buttonTitle: 'Resume',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: 'cancel',
+        buttonTitle: 'Cancel',
+        options: { isDestructive: true, opensAppToForeground: false },
       },
     ]);
   }
 
-  async updateProgress(id: string, title: string, progress: number, subtext: string = '', posterUrl: string = '') {
+  async updateProgress(
+    id: string, 
+    title: string, 
+    progress: number, 
+    subtext: string = '', 
+    posterUrl: string = '',
+    isPaused: boolean = false
+  ) {
     const now = Date.now();
     const last = this.lastUpdate[id] || 0;
 
-    // Only update the system notification every 1 second (unless it's 0 or 100)
+    // Throttle updates unless 0, 100, or a pause toggle occurred
     if (progress > 0 && progress < 100 && now - last < this.UPDATE_THROTTLE_MS) {
+      // If we are just updating progress (not toggling pause), throttle it
       return;
     }
 
     this.lastUpdate[id] = now;
     this.activeNotifications.add(id);
 
+    const isComplete = progress === 100;
+    
+    // Status text logic
+    let mainTitle = 'Downloading...';
+    if (isPaused) mainTitle = 'Download Paused';
+    if (isComplete) mainTitle = 'Download Complete';
+
     const bodyText = subtext ? `${title} - ${progress}%\n${subtext}` : `${title} - ${progress}%`;
 
     const content: Notifications.NotificationContentInput = {
-      title: progress === 100 ? 'Download Complete' : 'Downloading...',
+      title: mainTitle,
       body: bodyText,
-      sound: progress === 100 ? 'default' : false,
-      sticky: progress < 100, 
-      categoryIdentifier: progress < 100 ? 'download_actions' : undefined,
-      color: progress === 100 ? '#10b981' : '#818cf8', // Turn green on completion
+      sound: isComplete ? 'default' : false,
+      sticky: !isComplete, 
+      categoryIdentifier: isComplete ? undefined : (isPaused ? 'download_paused' : 'download_active'),
+      color: isComplete ? '#10b981' : (isPaused ? '#fcd34d' : '#818cf8'),
     };
 
     if (posterUrl && Platform.OS === 'ios') {
@@ -70,8 +94,8 @@ class DownloadNotificationManager {
     if (Platform.OS === 'android') {
       content.android = {
         channelId: 'downloads',
-        color: progress === 100 ? '#10b981' : '#818cf8',
-        sticky: progress < 100,
+        color: isComplete ? '#10b981' : (isPaused ? '#fcd34d' : '#818cf8'),
+        sticky: !isComplete,
         progressBar: {
           max: 100,
           current: progress,

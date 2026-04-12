@@ -22,9 +22,6 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "navigationBar": {
-        "backgroundColor": "#00000000"
-      },
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -37,7 +34,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/notification_icon.png",
           "color": "#000000",
           "sounds": []
         }

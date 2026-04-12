@@ -75,11 +75,11 @@ export function createGalleryDownload(
 
       const asset = await MediaLibrary.createAssetAsync(result.uri);
       try {
-        const album = await MediaLibrary.getAlbumAsync('Movie Zone 24/7');
+        const album = await MediaLibrary.getAlbumAsync('The Movie Zone');
         if (album) {
           await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
         } else {
-          await MediaLibrary.createAlbumAsync('Movie Zone 24/7', asset, true);
+          await MediaLibrary.createAlbumAsync('The Movie Zone', asset, true);
         }
       } catch {
         // Album optional
@@ -89,7 +89,7 @@ export function createGalleryDownload(
       onProgress(100);
       return {
         success: true,
-        message: `"${title}" has been saved to your gallery in the "Movie Zone 24/7" album.`,
+        message: `"${title}" has been saved to your external storage in the "The Movie Zone" album.`,
       };
     } catch (err: any) {
       // pauseAsync() causes downloadAsync() to throw on most platforms

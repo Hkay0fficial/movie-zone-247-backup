@@ -2733,28 +2733,20 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ marginRight: 12 }}>
-                        <Image 
-                          source={require("@/assets/images/movie_zone_logo_new.png")}
-                          style={{ width: 32, height: 32, borderRadius: 16 }}
+                    <View>
+                      <Text style={styles.navLogoTitle}>
+                        THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                        <LinearGradient 
+                          colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
+                          start={{ x: 0, y: 0 }} 
+                          end={{ x: 1, y: 0 }} 
+                          style={{ flex: 1, height: 1, marginRight: 6 }} 
                         />
-                      </View>
-                      <View>
-                        <Text style={styles.navLogoTitle}>
-                          THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-                          <LinearGradient 
-                            colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
-                            start={{ x: 0, y: 0 }} 
-                            end={{ x: 1, y: 0 }} 
-                            style={{ flex: 1, height: 1, marginRight: 6 }} 
-                          />
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <ClockAnimation size={10} color="#ffffff" />
-                            <Text style={styles.navLogoSub}>24 / 7</Text>
-                          </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <ClockAnimation size={10} color="#ffffff" />
+                          <Text style={styles.navLogoSub}>24 / 7</Text>
                         </View>
                       </View>
                     </View>
