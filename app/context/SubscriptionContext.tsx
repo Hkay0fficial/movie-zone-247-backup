@@ -622,7 +622,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           downloadData.progress, 
           downloadData.speedString || 'Resuming...', 
           posterUrl, 
-          false
+          false,
+          downloadData.item.id
         );
       }
     } else {
@@ -645,7 +646,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           downloadData.progress, 
           downloadData.speedString || '', 
           posterUrl, 
-          true
+          true,
+          downloadData.item.id
         );
       }
     }
@@ -779,7 +781,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 displayedPct, 
                 speedString, 
                 posterUrl, 
-                isPaused
+                isPaused,
+                item.id
               );
               
               const step = 2 + Math.floor(Math.random() * 4);

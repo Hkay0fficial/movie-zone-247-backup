@@ -55,14 +55,14 @@ class DownloadNotificationManager {
     progress: number, 
     subtext: string = '', 
     posterUrl: string = '',
-    isPaused: boolean = false
+    isPaused: boolean = false,
+    movieId?: string 
   ) {
     const now = Date.now();
     const last = this.lastUpdate[id] || 0;
 
     // Throttle updates unless 0, 100, or a pause toggle occurred
     if (progress > 0 && progress < 100 && now - last < this.UPDATE_THROTTLE_MS) {
-      // If we are just updating progress (not toggling pause), throttle it
       return;
     }
 
@@ -72,15 +72,17 @@ class DownloadNotificationManager {
     const isComplete = progress === 100;
     
     // Status text logic
-    let mainTitle = 'Downloading...';
-    if (isPaused) mainTitle = 'Download Paused';
-    if (isComplete) mainTitle = 'Download Complete';
+    let statusLabel = 'Downloading';
+    if (isPaused) statusLabel = 'Paused';
+    if (isComplete) statusLabel = 'Complete';
 
-    const bodyText = subtext ? `${title} - ${progress}%\n${subtext}` : `${title} - ${progress}%`;
+    // Body text combines status and subtext
+    const bodyText = `${statusLabel} (${progress}%) ${subtext ? '• ' + (subtext.includes('•') ? subtext.split('•')[1].trim() : subtext) : ''}`;
 
     const content: Notifications.NotificationContentInput = {
-      title: mainTitle,
+      title: title, // Main title is the MovieName
       body: bodyText,
+      data: { movieId: movieId || id, type: 'download' }, // Add data for tap support
       sound: isComplete ? 'default' : false,
       sticky: !isComplete, 
       categoryIdentifier: isComplete ? undefined : (isPaused ? 'download_paused' : 'download_active'),
@@ -90,9 +92,6 @@ class DownloadNotificationManager {
     if (posterUrl && Platform.OS === 'ios') {
       content.attachments = [{ url: posterUrl }];
     }
-
-    // Android specific notification options are handled differently in expo-notifications, 
-    // we omit the unsupported 'android' property from content.
 
     await Notifications.scheduleNotificationAsync({
       identifier: `download_${id}`,
