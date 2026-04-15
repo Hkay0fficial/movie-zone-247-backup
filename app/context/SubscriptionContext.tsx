@@ -959,11 +959,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           delete resumablesRef.current[nextId];
           pausedRef.current.delete(nextId);
           setActiveDownloads(prev => {
+            // Safety: If it's still < 100%, a NEW download of the same ID might have started.
+            // Don't clear it in that case!
+            if (prev[nextId] && prev[nextId].progress < 100) return prev;
             const next = { ...prev };
             delete next[nextId];
             return next;
           });
-          setDownloadQueue(prev => prev.slice(1));
+          // Remove ONLY this nextId from the queue, don't just slice(1)
+          setDownloadQueue(prev => prev.filter(id => id !== nextId));
           isProcessingQueue.current = false;
         };
 
