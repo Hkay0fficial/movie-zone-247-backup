@@ -114,7 +114,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 >
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Version</Text>
-                    <Text style={styles.infoValue}>{Constants.expoConfig?.version || Application.nativeAppVersion || '1.1.0'} (Stable)</Text>
+                    <Text style={styles.infoValue}>{Constants.expoConfig?.version || Application.nativeApplicationVersion || '1.1.0'} (Stable)</Text>
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Build</Text>

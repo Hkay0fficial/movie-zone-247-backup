@@ -2,7 +2,7 @@
   "expo": {
     "name": "THE MOVIE ZONE 24/7 UG",
     "slug": "movie-zone-24-7",
-    "version": "1.1.0",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "movieapp",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.themoviezone247.official",
-      "versionCode": 4,
+      "versionCode": 16,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0f",
@@ -21,6 +21,19 @@
         "backgroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "VIBRATE",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK",
+        "MODIFY_AUDIO_SETTINGS",
+        "WRITE_SETTINGS"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

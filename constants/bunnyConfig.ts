@@ -33,6 +33,9 @@ export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true)
   // Safety Fallback: If downloading (forceHLS=false) but we only have an HLS link,
   // try to "un-convert" it back to MP4 for the gallery downloader.
   if (!forceHLS && url.includes('b-cdn.net') && url.includes('playlist.m3u8')) {
+    // Bunny Stream typically has a play_720p.mp4 or similar. 
+    // If we don't know the resolution, 720p is the most common default, 
+    // but we can also try the base URL which sometimes works for direct delivery.
     return url.replace('playlist.m3u8', 'play_720p.mp4');
   }
 

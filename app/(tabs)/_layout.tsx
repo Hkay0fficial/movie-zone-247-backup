@@ -44,6 +44,7 @@ import { useSubscription } from "@/app/context/SubscriptionContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
+import ModernVideoPlayer from "../../components/ModernVideoPlayer";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const HERO_H = SCREEN_H * 0.55;
@@ -278,6 +279,7 @@ function NotificationOverlay({
   setGlobalGridVisible: (visible: boolean) => void;
   notifications: Notification[];
   highlightedId: string | null;
+  TOTAL_LIVE_ITEMS: (Movie | Series)[];
 }) {
   const highlightAnim = useRef(new Animated.Value(0)).current;
 
@@ -408,7 +410,7 @@ function NotificationOverlay({
                               opacity: highlightAnim,
                               zIndex: 10,
                               borderRadius: 16,
-                            }
+                            } as any
                           ]}
                         />
                       )}
@@ -501,7 +503,7 @@ function NotificationOverlay({
 
                                       // "Command" the app to navigate or select
                                       if (expandedType === 'movies') {
-                                        const fullMovie = TOTAL_LIVE_ITEMS.find(m => m.id === subItem.id);
+                                        const fullMovie = TOTAL_LIVE_ITEMS.find((m: any) => m.id === subItem.id);
                                         DeviceEventEmitter.emit("movieSelected", fullMovie || { id: subItem.id, title: subItem.title });
                                       } else {
                                         DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
@@ -539,8 +541,8 @@ function NotificationOverlay({
                                   styles.movieBadge
                                 ]}
                                 onPress={() => {
-                                  const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
-                                  const gridData = TOTAL_LIVE_ITEMS.filter(m => movieIds.has(m.id));
+                                  const movieIds = new Set(item.moviesList?.map((m: any) => m.id) || []);
+                                  const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => movieIds.has(m.id));
                                   if (gridData.length > 0) {
                                     setGlobalGridTitle(`${item.title} - Movies`);
                                     setGlobalGridData(gridData);
@@ -561,8 +563,8 @@ function NotificationOverlay({
                                   styles.seriesBadge
                                 ]}
                                 onPress={() => {
-                                  const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
-                                  const gridData = TOTAL_LIVE_ITEMS.filter(m => seriesIds.has(m.id));
+                                  const seriesIds = new Set(item.seriesList?.map((s: any) => s.id) || []);
+                                  const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => seriesIds.has(m.id));
                                   if (gridData.length > 0) {
                                     setGlobalGridTitle(`${item.title} - Series`);
                                     setGlobalGridData(gridData);
@@ -1994,7 +1996,7 @@ function SearchOverlay({
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
   const { liveMovies, liveSeries } = useMovies();
-  const { allMoviesFree, eventMessage, activeDownloads } = useSubscription();
+  const { allMoviesFree, eventMessage, activeDownloads, playingNow, playerMode, setPlayerMode, playerTitle, selectedVideoUrl } = useSubscription();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();
@@ -2015,6 +2017,8 @@ function CustomTabBar() {
   const [updateDismissCount, setUpdateDismissCount] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [isStateLoaded, setIsStateLoaded] = useState(false);
+  const [isUpdateApplied, setIsUpdateApplied] = useState(false);
+  const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
 
   // Load persisted states on mount
   useEffect(() => {
@@ -2315,15 +2319,18 @@ function CustomTabBar() {
       return next;
     });
   };
-  const [isUpdateApplied, setIsUpdateApplied] = useState(false);
   const [expandedType, setExpandedType] = useState<"movies" | "series" | "vjs" | null>(null);
   const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
   const [reopenOnBack, setReopenOnBack] = useState(false);
   const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
-  const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const TOTAL_LIVE_ITEMS = React.useMemo(() => {
+    const combined = [...liveMovies, ...liveSeries];
+    return Array.from(new Map(combined.map(item => [item.id, item])).values());
+  }, [liveMovies, liveSeries]);
 
   // Premium Grid View State for Notifications
   const [globalGridVisible, setGlobalGridVisible] = useState(false);
@@ -3045,6 +3052,7 @@ function CustomTabBar() {
       />
 
       <NotificationOverlay
+        TOTAL_LIVE_ITEMS={TOTAL_LIVE_ITEMS}
         visible={notificationVisible}
         onClose={() => {
           setNotificationVisible(false);
@@ -3215,6 +3223,19 @@ isUpdateLocked={updateDismissCount >= 3}
       )}
 
       {/* In-place search handled inline in header */}
+      
+      {/* Global Video Player Placeholder — Renders Above Everything */}
+      <ModernVideoPlayer
+        playerMode={playerMode}
+        setPlayerMode={setPlayerMode}
+        videoUrl={selectedVideoUrl}
+        title={playerTitle}
+        onClose={() => setPlayerMode('closed')}
+        playerPos={new Animated.ValueXY({ x: 0, y: 0 })} // Default values for global player
+        playerSize={new Animated.Value(SCREEN_W)} // Default values for global player
+        movieId={playingNow?.id}
+        playingNow={playingNow}
+      />
     </>
   );
 }

@@ -88,21 +88,11 @@ class DownloadNotificationManager {
     };
 
     if (posterUrl && Platform.OS === 'ios') {
-      content.attachments = [{ uri: posterUrl }];
+      content.attachments = [{ url: posterUrl }];
     }
 
-    if (Platform.OS === 'android') {
-      content.android = {
-        channelId: 'downloads',
-        color: isComplete ? '#10b981' : (isPaused ? '#fcd34d' : '#818cf8'),
-        sticky: !isComplete,
-        progressBar: {
-          max: 100,
-          current: progress,
-          indeterminate: false,
-        },
-      };
-    }
+    // Android specific notification options are handled differently in expo-notifications, 
+    // we omit the unsupported 'android' property from content.
 
     await Notifications.scheduleNotificationAsync({
       identifier: `download_${id}`,

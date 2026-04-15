@@ -48,6 +48,8 @@ import { SettingsList } from '../../components/menu/SettingsList';
 import { ChoosePlanSection } from '../../components/menu/ChoosePlanSection';
 import { styles } from '../../components/menu/menu.styles';
 import PremiumAccessModal from '../../components/PremiumAccessModal';
+import { MoviePreviewContent, SeriesPreviewModal } from './index';
+import { GridContent } from './index';
 
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -96,6 +98,18 @@ export default function MenuScreen() {
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
   const [selectedSubItem, setSelectedSubItem] = React.useState<string | null>(null);
   const pollIntervalRef = React.useRef<any>(null);
+  const [navigationStack, setNavigationStack] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("menuMovieSelected", (m: any) => {
+      if ("seasons" in m) {
+        setNavigationStack(prev => [...prev, { type: 'series', series: m }]);
+      } else {
+        setNavigationStack(prev => [...prev, { type: 'movie', movie: m }]);
+      }
+    });
+    return () => sub.remove();
+  }, []);
   
   const SUB_ITEM_ICONS: Record<string, string> = {
     'Personal Info': 'person-outline',
@@ -1031,12 +1045,8 @@ export default function MenuScreen() {
   };
 
   const pickMedia = async (type: 'image' | 'video') => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to attach media.');
-      return;
-    }
-
+    // Note: launchImageLibraryAsync on modern Android uses the System Photo Picker 
+    // which does not require applications to request broad READ_MEDIA permissions.
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: type === 'image' ? ['images'] : ['videos'],
       allowsMultipleSelection: true,
@@ -1377,6 +1387,92 @@ export default function MenuScreen() {
         onCancel={handleCancelPayment}
       />
 
+      {/* Local Preview Stack for My List */}
+      <Modal visible={navigationStack.length > 0} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {navigationStack.map((item, index) => {
+            const isFocused = index === navigationStack.length - 1;
+            const onClose = () => {
+              setNavigationStack((prev) => prev.slice(0, prev.length - 1));
+            };
+
+            if (item.type === 'grid') {
+              return (
+                <GridContent
+                  key={`grid-${index}`}
+                  title={item.title}
+                  data={item.data}
+                  onClose={onClose}
+                  onSelect={(m: any) => {
+                    if ("seasons" in m) {
+                      setNavigationStack((prev) => [...prev, { type: 'series', series: m }]);
+                    } else {
+                      setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                    }
+                  }}
+                />
+              );
+            }
+
+            if (item.type === 'series') {
+              return (
+                <SeriesPreviewModal
+                  key={`series-${index}`}
+                  movie={item.series}
+                  onClose={onClose}
+                  onSwitch={(m: any) => {
+                    if ("seasons" in m) {
+                      setNavigationStack((prev) => [...prev, { type: 'series', series: m }]);
+                    } else {
+                      setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                    }
+                  }}
+                  onSeeAll={(title: string, data: any[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
+                  playingNow={playingNow}
+                  setPlayingNow={setPlayingNow}
+                  setPlayerMode={setPlayerMode}
+                  setPlayerTitle={setPlayerTitle}
+                  setSelectedVideoUrl={setSelectedVideoUrl}
+                  playerMode={playerMode}
+                  playerTitle={playerTitle}
+                  selectedVideoUrl={selectedVideoUrl}
+                  isMuted={index !== navigationStack.length - 1 || !isFocused}
+                  onShowPremium={() => setShowPremiumModal(true)}
+                  onUpgrade={() => setShowPlanModal(true)}
+                />
+              );
+            }
+
+            return (
+              <MoviePreviewContent
+                key={`movie-${index}`}
+                movie={item.movie}
+                onClose={onClose}
+                onSwitch={(m: any) => {
+                  if ("seasons" in m) {
+                    setNavigationStack((prev) => [...prev, { type: 'series', series: m }]);
+                  } else {
+                    setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                  }
+                }}
+                onSeeAll={(title: string, data: any[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
+                playingNow={playingNow}
+                setPlayingNow={setPlayingNow}
+                setPlayerMode={setPlayerMode}
+                setPlayerTitle={setPlayerTitle}
+                setSelectedVideoUrl={setSelectedVideoUrl}
+                playerMode={playerMode}
+                playerTitle={playerTitle}
+                selectedVideoUrl={selectedVideoUrl}
+                isMuted={index !== navigationStack.length - 1 || !isFocused}
+                onShowPremium={() => setShowPremiumModal(true)}
+                onUpgrade={() => setShowPlanModal(true)}
+              />
+            );
+          })}
+        </View>
+      </Modal>
+
       <PremiumAccessModal
         visible={showGuestPlanModal}
         isGuest={true}
@@ -1481,7 +1577,7 @@ export default function MenuScreen() {
         />
 
         {/* ── Footer ── */}
-        <Text style={styles.versionText}>THE MOVIE ZONE 24 / 7 v{Constants.expoConfig?.version || Application.nativeAppVersion || '1.1.0'} ({Application.nativeBuildVersion})</Text>
+        <Text style={styles.versionText}>THE MOVIE ZONE 24 / 7 v{Constants.expoConfig?.version || Application.nativeApplicationVersion || '1.1.0'} ({Application.nativeBuildVersion})</Text>
       </Animated.ScrollView>
 
       {/* Bottom Fade Effect */}

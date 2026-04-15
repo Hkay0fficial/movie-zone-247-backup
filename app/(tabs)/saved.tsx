@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as MediaLibrary from "expo-media-library";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import {
   Series,
@@ -266,68 +268,21 @@ export default function SeriesScreen() {
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const { isGuest, allMoviesFree, subscriptionBundle } = useSubscription();
-
-  useEffect(() => {
-    const sub1 = DeviceEventEmitter.addListener("seriesSearchQuery", (q: string) => {
-      setQuery(q);
-      setIsSearchActive(true);
-    });
-    const movieSub = DeviceEventEmitter.addListener("movieSelected", (m: Movie | Series) => {
-        setSeriesStack((prev) => [...prev, m as Series]);
-    });
-    const sub2 = DeviceEventEmitter.addListener("seriesSearchClosed", () => {
-      setQuery("");
-      setIsSearchActive(false);
-    });
-    const sub3 = DeviceEventEmitter.addListener("toggleSeriesFilters", () => {
-      setIsFiltersVisible(prev => {
-        if (!prev) {
-          setActiveCategory("All Series/Mini Series");
-        } else {
-          setTimeout(() => {
-            setSSelectedGenre(null);
-            setSSelectedYear(null);
-            setSSelectedVJ(null);
-            setSSelectedStatus(null);
-            setSSelectedSort(null);
-            setSSelectedSeasons(null);
-            DeviceEventEmitter.emit("clearSeriesSearch");
-          }, 0);
-        }
-        return !prev;
-      });
-    });
-    const sub4 = DeviceEventEmitter.addListener("openSeriesPreview", (s: Series) => {
-      setSeriesStack([s]);
-      setIsExternalSearch(true);
-    });
-    const sub5 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
-      setSeriesStack([]);
-    });
-    const sub6 = DeviceEventEmitter.addListener("resetSeriesFilters", () => {
-      clearFilters();
-    });
-    return () => {
-      sub1.remove();
-      sub2.remove();
-      sub3.remove();
-      sub4.remove();
-      sub5.remove();
-      sub6.remove();
-    };
-  }, []);
-
-  const [playerMode, setPlayerMode] = useState<'full' | 'mini' | 'closed'>('closed');
-  const [selectedVideoUrl, setSelectedVideoUrl] = useState("");
-  const [playerTitle, setPlayerTitle] = useState("");
-  const [activePartId, setActivePartId] = useState("");
-  const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
-  const [activeSeries, setActiveSeries] = useState<Series | null>(null);
-
-  const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const playerPos = useRef(new Animated.ValueXY({ x: SCREEN_W - 170, y: SCREEN_H - 240 })).current;
-  const playerSize = useRef(new Animated.Value(150)).current;
+  const { 
+    isGuest, 
+    allMoviesFree, 
+    subscriptionBundle,
+    playingNow,
+    setPlayingNow,
+    playerMode,
+    setPlayerMode,
+    playerTitle,
+    setPlayerTitle,
+    selectedVideoUrl,
+    setSelectedVideoUrl
+  } = useSubscription();
+  const isFocused = useIsFocused();
+  const { seriesId } = useLocalSearchParams();
 
   const [seriesStack, setSeriesStack] = useState<Series[]>([]);
   const [isExternalSearch, setIsExternalSearch] = useState(false);
@@ -335,6 +290,9 @@ export default function SeriesScreen() {
     title: string;
     data: Series[];
   } | null>(null);
+
+  const [activePartId, setActivePartId] = useState("");
+  const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
 
   // Real Multi-Filters
   const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
@@ -782,26 +740,6 @@ export default function SeriesScreen() {
         )}
       />
 
-      <FloatingPlayer
-        playerMode={playerMode}
-        setPlayerMode={setPlayerMode}
-        videoUrl={selectedVideoUrl}
-        title={playerTitle}
-        movieId={seriesStack[0]?.id} // NEW
-        episodeId={activePartId} // NEW
-        onClose={() => setPlayerMode('closed')}
-        episodes={activeEpisodes}
-        activeEpisodeId={activePartId}
-        onSelectEpisode={(ep) => {
-          setActivePartId(ep.id);
-          setPlayerTitle(ep.title);
-          setSelectedVideoUrl(ep.videoUrl);
-        }}
-        playerPos={playerPos}
-        playerSize={playerSize}
-      />
-
-
       {/* Series Preview Modal Stack */}
       {seriesStack.map((series, index) => (
         <SeriesPreviewModal
@@ -826,6 +764,8 @@ export default function SeriesScreen() {
           setPlayerMode={setPlayerMode}
           setSelectedVideoUrl={setSelectedVideoUrl}
           setPlayerTitle={setPlayerTitle}
+          selectedVideoUrl={selectedVideoUrl}
+          playerTitle={playerTitle}
           setActivePartId={setActivePartId}
           setActiveEpisodes={setActiveEpisodes}
         />
@@ -833,7 +773,7 @@ export default function SeriesScreen() {
 
       {/* Series Grid Modal */}
       <SeriesGridModal
-        visible={!!activeSection}
+        visible={!!activeSection && playerMode !== 'full'}
         title={activeSection?.title ?? ""}
         data={activeSection?.data ?? []}
         onClose={() => setActiveSection(null)}
@@ -875,1037 +815,6 @@ export default function SeriesScreen() {
     </View>
   );
 }
-// ─── Playing Now Indicator Component ──────────────────────────────────────────
-const PlayingNowIndicator = () => {
-  const anim1 = useRef(new Animated.Value(0.4)).current;
-  const anim2 = useRef(new Animated.Value(0.7)).current;
-  const anim3 = useRef(new Animated.Value(0.5)).current;
-
-  useEffect(() => {
-    const createAnim = (val: Animated.Value, duration: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0.3, duration, easing: Easing.linear, useNativeDriver: true }),
-        ])
-      );
-    };
-    const a1 = createAnim(anim1, 500);
-    const a2 = createAnim(anim2, 700);
-    const a3 = createAnim(anim3, 600);
-    a1.start(); a2.start(); a3.start();
-    return () => { a1.stop(); a2.stop(); a3.stop(); };
-  }, []);
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 12, gap: 2, marginRight: 4 }}>
-        <Animated.View style={{ width: 2, backgroundColor: '#e11d48', height: 12, transform: [{ scaleY: anim1 }] }} />
-        <Animated.View style={{ width: 2, backgroundColor: '#e11d48', height: 12, transform: [{ scaleY: anim2 }] }} />
-        <Animated.View style={{ width: 2, backgroundColor: '#e11d48', height: 12, transform: [{ scaleY: anim3 }] }} />
-      </View>
-      <Text style={{ color: '#e11d48', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>PLAYING NOW</Text>
-    </View>
-  );
-};
-function FloatingPlayer({
-  playerMode,
-  setPlayerMode,
-  videoUrl,
-  title,
-  onClose,
-  onNext,
-  onPrev,
-  hasNext,
-  hasPrev,
-  nextPartName,
-  episodes = [],
-  activeEpisodeId,
-  onSelectEpisode,
-  relatedSeries = [],
-  onSelectRelated,
-  seriesVj,
-  seriesEpisodeDuration,
-  playerPos,
-  playerSize,
-  movieId,
-  episodeId,
-}: {
-  playerMode: 'closed' | 'full' | 'mini';
-  setPlayerMode: (m: 'closed' | 'full' | 'mini') => void;
-  videoUrl?: string;
-  title: string;
-  onClose: () => void;
-  onNext?: () => void;
-  onPrev?: () => void;
-  hasNext?: boolean;
-  hasPrev?: boolean;
-  nextPartName?: string;
-  episodes?: any[];
-  activeEpisodeId?: string;
-  onSelectEpisode?: (ep: any) => void;
-  relatedSeries?: Series[];
-  onSelectRelated?: (series: Series) => void;
-  seriesVj?: string;
-  seriesEpisodeDuration?: string;
-  playerPos: Animated.ValueXY;
-  playerSize: Animated.Value;
-  movieId?: string;
-  episodeId?: string;
-}) {
-  const { savePlaybackProgress, getPlaybackProgress } = useUser();
-  const lastSavedPos = useRef(0);
-  // Force landscape layout regardless of immediate window dimensions
-  const isPortrait = false; 
-
-  const videoRef = useRef<Video>(null);
-  const [status, setStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
-  const statusRef = useRef<AVPlaybackStatus>({} as AVPlaybackStatus);
-  const [showControls, setShowControls] = useState(true);
-  const showControlsRef = useRef(true);
-  const controlsTimeout = useRef<any>(null);
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  const scrubbingRef = useRef(false);
-  const [scrubPosition, setScrubPosition] = useState(0);
-  const scrubPositionRef = useRef(0);
-  const [scrubStartPos, setScrubStartPos] = useState(0);
-  const scrubStartPosRef = useRef(0);
-  const progressBarWidth = useRef(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [isLocked, setIsLocked] = useState(false);
-  const [sleepTimerMs, setSleepTimerMs] = useState(0);
-  const [showTimerOptions, setShowTimerOptions] = useState(false); // 0 = off
-  const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false);
-  const [showRelatedOverlay, setShowRelatedOverlay] = useState(false);
-  const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
-  const insets = useSafeAreaInsets();
-  
-  // Gesture State Overlays
-  const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
-  const [currentBrightness, setCurrentBrightness] = useState(1);
-  const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
-  const [currentVolume, setCurrentVolume] = useState(1);
-  
-  // Gesture Tracking Refs
-  const gestureDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
-  const gestureTypeRef = useRef<'brightness' | 'volume' | null>(null);
-  const gestureStartValueRef = useRef(1);
-  const gestureStartXRef = useRef(0);
-  const gestureStartYRef = useRef(0);
-  
-  const lockPulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (playerMode !== 'closed' && movieId && videoUrl) {
-      const saved = getPlaybackProgress(movieId, episodeId);
-      if (saved && saved.position > 10000) { 
-        setTimeout(() => {
-          videoRef.current?.setPositionAsync(saved.position);
-          lastSavedPos.current = saved.position;
-        }, 1000);
-      }
-    }
-  }, [movieId, episodeId, videoUrl, playerMode]);
-
-  useEffect(() => {
-    if (isLocked) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(lockPulseAnim, {
-            toValue: 1.08,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(lockPulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      lockPulseAnim.setValue(1);
-    }
-  }, [isLocked]);
-
-  const formatTime = (ms: number) => {
-    if (!ms || ms < 0) return "0:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const handleTogglePlay = () => {
-    if (isLocked) return;
-    if (status.isLoaded) {
-      if (status.isPlaying) {
-        videoRef.current?.pauseAsync();
-      } else {
-        // If it was already finished, replay from 0
-        if (status.positionMillis === status.durationMillis) {
-          videoRef.current?.replayAsync();
-        } else {
-          videoRef.current?.playAsync();
-        }
-      }
-    }
-    resetControlsTimer();
-  };
-
-  const resetControlsTimer = () => {
-    setShowControls(true);
-    showControlsRef.current = true;
-    if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-    controlsTimeout.current = setTimeout(() => {
-      setShowControls(false);
-      showControlsRef.current = false;
-    }, 3000);
-  };
-
-  const handleToggleControls = () => {
-    if (showControlsRef.current) {
-      setShowControls(false);
-      showControlsRef.current = false;
-      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-    } else {
-      resetControlsTimer();
-    }
-  };
-
-  const handleToggleMute = () => {
-    const next = !isMuted;
-    setIsMuted(next);
-    videoRef.current?.setIsMutedAsync(next);
-    resetControlsTimer();
-  };
-
-  const handleSeek = async (offsetMs: number) => {
-    if (status.isLoaded) {
-      const currentPos = status.positionMillis || 0;
-      const newPos = Math.max(0, Math.min(status.durationMillis || 0, currentPos + offsetMs));
-      await videoRef.current?.setPositionAsync(newPos);
-      resetControlsTimer();
-    }
-  };
-
-  const handleToggleSpeed = () => {
-    setShowSpeedOverlay(true);
-    if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-  };
-
-  const handleSelectSpeed = (rate: number) => {
-    setPlaybackSpeed(rate);
-    videoRef.current?.setRateAsync(rate, true);
-    setShowSpeedOverlay(false);
-    resetControlsTimer();
-  };
-
-  const handleToggleLock = () => {
-    const next = !isLocked;
-    setIsLocked(next);
-    resetControlsTimer();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleSetSleepTimer = () => {
-    setShowTimerOptions(true);
-    if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-  };
-
-  const selectSleepTimer = (minutes: number) => {
-    setSleepTimerMs(minutes * 60 * 1000);
-    setShowTimerOptions(false);
-    resetControlsTimer();
-  };
-
-  useEffect(() => {
-    let interval: any;
-    if (sleepTimerMs > 0) {
-      interval = setInterval(() => {
-        setSleepTimerMs(prev => {
-          if (prev <= 1000) {
-            clearInterval(interval);
-            onClose();
-            return 0;
-          }
-          return prev - 1000;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [sleepTimerMs]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => playerMode === 'full',
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (isLocked || playerMode !== 'full') return false;
-        // Only trigger if vertical or horizontal swipe is significant
-        return Math.abs(gestureState.dx) > 15 || Math.abs(gestureState.dy) > 15; 
-      },
-      onPanResponderGrant: async (evt, gestureState) => {
-        const { pageX } = evt.nativeEvent;
-        gestureStartXRef.current = pageX;
-        gestureDirectionRef.current = null;
-        gestureTypeRef.current = null;
-        
-        const currentStatus = statusRef.current;
-        if (currentStatus.isLoaded) {
-          const current = currentStatus.positionMillis || 0;
-          scrubStartPosRef.current = current;
-          scrubPositionRef.current = current;
-          setScrubPosition(current);
-        }
-        resetControlsTimer();
-      },
-      onPanResponderMove: async (evt, gestureState) => {
-        if (isLocked) return;
-        
-        if (!gestureDirectionRef.current) {
-          if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
-            // Horizontal Scrub
-            gestureDirectionRef.current = 'horizontal';
-            setIsScrubbing(true);
-            scrubbingRef.current = true;
-          } else {
-            // Vertical Adjust
-            gestureDirectionRef.current = 'vertical';
-            const screenWidth = Dimensions.get('window').width;
-            if (gestureStartXRef.current < screenWidth / 2) {
-              gestureTypeRef.current = 'brightness';
-              try {
-                if (Brightness) {
-                  const initialBrightness = await Brightness.getBrightnessAsync();
-                  gestureStartValueRef.current = initialBrightness;
-                  setCurrentBrightness(initialBrightness);
-                } else {
-                  gestureStartValueRef.current = currentBrightness;
-                }
-              } catch (e) {
-                gestureStartValueRef.current = currentBrightness;
-              }
-              setIsAdjustingBrightness(true);
-            } else {
-              gestureTypeRef.current = 'volume';
-              gestureStartValueRef.current = currentVolume;
-              setIsAdjustingVolume(true);
-            }
-          }
-        }
-
-        if (gestureDirectionRef.current === 'horizontal') {
-          const currentStatus = statusRef.current;
-          if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
-            const sensitivity = 1.0;
-            const delta = (gestureState.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
-            const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubStartPosRef.current || 0) + delta));
-            scrubPositionRef.current = newPos;
-            setScrubPosition(newPos);
-            resetControlsTimer();
-          }
-        } else if (gestureDirectionRef.current === 'vertical') {
-          const deltaY = -(gestureState.dy / (Dimensions.get('window').height * 0.8)); // Negative because swipe up is -dy
-          const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + deltaY));
-          
-          if (gestureTypeRef.current === 'brightness') {
-            try {
-              if (Brightness) {
-                await Brightness.setBrightnessAsync(newValue);
-              }
-            } catch(e) {}
-            setCurrentBrightness(newValue);
-          } else if (gestureTypeRef.current === 'volume') {
-            videoRef.current?.setVolumeAsync(newValue);
-            setCurrentVolume(newValue);
-          }
-        }
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        if (gestureDirectionRef.current === 'horizontal' && statusRef.current.isLoaded && scrubbingRef.current) {
-          videoRef.current?.setPositionAsync(scrubPositionRef.current);
-        }
-        setIsScrubbing(false);
-        scrubbingRef.current = false;
-        setIsAdjustingBrightness(false);
-        setIsAdjustingVolume(false);
-        gestureDirectionRef.current = null;
-      },
-      onPanResponderTerminate: () => {
-        setIsScrubbing(false);
-        scrubbingRef.current = false;
-        setIsAdjustingBrightness(false);
-        setIsAdjustingVolume(false);
-        gestureDirectionRef.current = null;
-      },
-    })
-  ).current;
-
-  useEffect(() => {
-    const backAction = () => {
-      if (showEpisodesOverlay) {
-        setShowEpisodesOverlay(false);
-        resetControlsTimer();
-        return true;
-      }
-      if (showRelatedOverlay) {
-        setShowRelatedOverlay(false);
-        resetControlsTimer();
-        return true;
-      }
-      if (showSpeedOverlay) {
-        setShowSpeedOverlay(false);
-        resetControlsTimer();
-        return true;
-      }
-      if (showTimerOptions) {
-        setShowTimerOptions(false);
-        resetControlsTimer();
-        return true;
-      }
-      return false;
-    };
-
-    return () => backHandler.remove();
-  }, [showEpisodesOverlay, showRelatedOverlay, showSpeedOverlay, showTimerOptions]);
-
-  useEffect(() => {
-    if (playerMode !== 'closed' && activeEpisodeId) {
-       // Just ensure title is synced
-       setPlayerTitle(episodes.find(e => e.id === activeEpisodeId)?.title || title);
-    }
-  }, [activeEpisodeId, playerMode]);
-
-  useEffect(() => {
-    const manageLayout = async () => {
-      if (playerMode === 'full') {
-        StatusBar.setHidden(true, 'fade');
-        if (Platform.OS !== "web") {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-        }
-        await safeSetNavigationBar('hidden');
-      } else {
-        StatusBar.setHidden(false, 'fade');
-        if (Platform.OS !== "web") {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        }
-        await safeSetNavigationBar('visible');
-      }
-    };
-    
-    manageLayout();
-
-    if (playerMode !== 'closed') {
-      resetControlsTimer();
-    }
-
-    return () => {
-      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-    };
-  }, [playerMode]);
-
-  const floatingPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => playerMode === 'mini',
-      onMoveShouldSetPanResponder: () => playerMode === 'mini',
-      onPanResponderGrant: () => {
-        playerPos.setOffset({
-          x: (playerPos.x as any)._value,
-          y: (playerPos.y as any)._value
-        });
-        playerPos.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: Animated.event(
-        [null, { dx: playerPos.x, dy: playerPos.y }],
-        { useNativeDriver: false }
-      ),
-      onPanResponderRelease: () => {
-        playerPos.flattenOffset();
-      },
-    })
-  ).current;
-
-  // Resizing logic (simple pinch approx)
-  const resizeStartSizeRef = useRef(150);
-  const resizePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => playerMode === 'mini',
-      onMoveShouldSetPanResponder: () => playerMode === 'mini',
-      onPanResponderGrant: () => {
-        resizeStartSizeRef.current = (playerSize as any)._value || 150;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const newSize = Math.max(120, Math.min(SCREEN_W - 40, resizeStartSizeRef.current + gestureState.dx));
-        playerSize.setValue(newSize);
-      },
-    })
-  ).current;
-
-  if (playerMode === 'closed') return null;
-
-  const isMini = playerMode === 'mini';
-
-  return (
-    <Animated.View 
-      style={[
-        isMini ? {
-          position: 'absolute',
-          zIndex: 9999,
-          width: playerSize,
-          height: playerSize.interpolate({ inputRange: [120, SCREEN_W], outputRange: [120 * (9/16), SCREEN_W * (9/16)] }),
-          transform: playerPos.getTranslateTransform(),
-          backgroundColor: '#000',
-          borderRadius: 12,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.2)',
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.5,
-          shadowRadius: 10,
-        } : {
-          ...StyleSheet.absoluteFillObject,
-          zIndex: 9999,
-          backgroundColor: '#000',
-        }
-      ]}
-      {...(isMini ? floatingPanResponder.panHandlers : {})}
-    >
-      <TouchableWithoutFeedback onPress={isMini ? () => setPlayerMode('full') : handleToggleControls}>
-        <View style={styles.fullPlayerInner} {...(!isMini ? panResponder.panHandlers : {})} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
-            {isMini && (
-              <View 
-                {...resizePanResponder.panHandlers}
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: 0,
-                  width: 30,
-                  height: 30,
-                  zIndex: 10000,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.1)'
-                }}
-              >
-                <MaterialIcons name="drag-handle" size={16} color="rgba(255,255,255,0.6)" style={{ transform: [{ rotate: '45deg' }] }} />
-              </View>
-            )}
-            <View style={styles.fullPlayerVideoWrapper} pointerEvents="box-none">
-              <Video
-                ref={videoRef}
-                staysActiveInBackground={true}
-                source={{ uri: videoUrl || "" }}
-                style={styles.fullPlayerVideo}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                onPlaybackStatusUpdate={s => {
-                  setStatus(s);
-                  statusRef.current = s;
-                  
-                  // Auto-play logic
-                  if (s.isLoaded && s.isPlaying && s.durationMillis && hasNext && onNext) {
-                    const remaining = s.durationMillis - s.positionMillis;
-                    if (remaining <= 500 && s.isPlaying) {
-                       // Episode finished or very close to it
-                       onNext();
-                    }
-                  }
-                }}
-                useNativeControls={false}
-              />
-
-              {isAdjustingBrightness && (
-                <View style={{ position: 'absolute', top: '20%', left: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
-                  <Ionicons name="sunny" size={24} color="#fff" />
-                  <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
-                    <View style={{ width: '100%', height: `${currentBrightness * 100}%`, backgroundColor: '#38bdf8' }} />
-                  </View>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentBrightness * 100)}%</Text>
-                </View>
-              )}
-
-              {isAdjustingVolume && (
-                <View style={{ position: 'absolute', top: '20%', right: '5%', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 15, borderRadius: 20, alignItems: 'center', zIndex: 10 }}>
-                  <Ionicons name={currentVolume > 0.5 ? "volume-high" : currentVolume > 0 ? "volume-medium" : "volume-mute"} size={24} color="#fff" />
-                  <View style={{ width: 6, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden', justifyContent: 'flex-end' }}>
-                    <View style={{ width: '100%', height: `${currentVolume * 100}%`, backgroundColor: '#10b981' }} />
-                  </View>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold', marginTop: 10 }}>{Math.round(currentVolume * 100)}%</Text>
-                </View>
-              )}
-
-              {showControls && !isMini && (
-                <View style={[
-                  styles.playerControlsOverlay, 
-                  { 
-                    pointerEvents: 'box-none',
-                    paddingLeft: Math.max(insets.left, 16),
-                    paddingRight: Math.max(insets.right, 16),
-                    paddingBottom: Math.max(insets.bottom, 16)
-                  }
-                ]}>
-                  <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-                  
-                  {/* Header */}
-                  {!isLocked && (
-                    <View style={[styles.playerHeader, isPortrait && { flexDirection: 'column', alignItems: 'center', paddingTop: 20 }, { pointerEvents: 'box-none' }]}>
-                      {/* Top Row for Portrait / Single Row for Landscape */}
-                      <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={onClose} style={styles.playerBackBtn}>
-                          <Ionicons name="arrow-back" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        
-                        {!isPortrait && (
-                          <View style={styles.playerTitleContainer} pointerEvents="none">
-                            <Text style={styles.playerTitle} numberOfLines={1}>
-                               {title}
-                            </Text>
-                          </View>
-                        )}
-
-                        <View style={styles.playerHeaderRightIcons}>
-                          <TouchableOpacity onPress={handleSetSleepTimer} style={[styles.playerHeaderIconBtn, { width: 'auto', paddingHorizontal: 10 }]}>
-                            <Ionicons 
-                              name="alarm-outline" 
-                              size={22} 
-                              color={sleepTimerMs > 0 ? "#e11d48" : "#fff"} 
-                            />
-                            <View style={{ alignItems: 'center' }}>
-                              <Text style={styles.playerBtnLabel} numberOfLines={1}>Sleep Timer</Text>
-                              {sleepTimerMs > 0 && (
-                                <Text style={styles.sleepTimerBadgeText}>
-                                  {Math.ceil(sleepTimerMs / 60000)}m
-                                </Text>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={resetControlsTimer} style={[styles.playerHeaderIconBtn, { width: 'auto', paddingHorizontal: 10 }]}>
-                            <MaterialCommunityIcons name="cast" size={22} color="#fff" />
-                            <Text style={styles.playerBtnLabel} numberOfLines={1}>AirPlay</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      {/* Title Row for Portrait */}
-                      {isPortrait && (
-                        <View style={{ marginTop: 15, paddingHorizontal: 20 }}>
-                          <Text style={[styles.playerTitle, { fontSize: 18 }]} numberOfLines={2}>
-                             {(() => {
-                               const activeEp = episodes.find(e => e.id === activeEpisodeId);
-                               if (activeEp && activeEp.displayIndex) {
-                                 return `EP ${activeEp.displayIndex} - ${title}`;
-                               }
-                               return title;
-                             })()}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
-                  {/* Center Controls */}
-                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', pointerEvents: 'box-none' }]}>
-                    {!isLocked ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isPortrait ? 25 : 40 }}>
-                        <TouchableOpacity onPress={() => handleSeek(-10000)} style={styles.playerSeekBtn}>
-                          <MaterialIcons name="replay-10" size={isPortrait ? 28 : 32} color="#fff" />
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity onPress={handleTogglePlay}>
-                          <View style={styles.playerPlayBtnLarge}>
-                            <Ionicons 
-                              name={status.isLoaded && status.isPlaying ? "pause" : "play"} 
-                              size={40} 
-                              color="#fff" 
-                              style={status.isLoaded && !status.isPlaying && { marginLeft: 6 }}
-                            />
-                          </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => handleSeek(10000)} style={styles.playerSeekBtn}>
-                          <MaterialIcons name="forward-10" size={32} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <Animated.View style={{ transform: [{ scale: lockPulseAnim }] }}>
-                        <TouchableOpacity 
-                          onPress={handleToggleLock} 
-                          activeOpacity={0.8}
-                          style={styles.premiumLockButton}
-                        >
-                          <Ionicons name="lock-closed" size={32} color="#fff" />
-                        </TouchableOpacity>
-                      </Animated.View>
-                    )}
-                  </View>
-
-                  {/* Footer Controls */}
-                  {!isLocked && (
-                    <View style={[styles.playerFooter, { pointerEvents: 'box-none' }]}>
-                      {/* Timeline row */}
-                      <View style={[styles.playerProgressRow, { pointerEvents: 'box-none' }]}>
-                        <Text style={styles.playerTimeText}>
-                          {formatTime(currentPos)}
-                        </Text>
-                        <View style={styles.playerProgressBarContainer}>
-                          <View style={styles.playerProgressBarOuter}>
-                            <View 
-                              style={[
-                                styles.playerProgressBarInner, 
-                                { width: `${progressPercent}%` }
-                              ]} 
-                            />
-                          </View>
-                          <View style={[styles.playerProgressBarThumb, { left: `${progressPercent}%` }]} />
-                        </View>
-                        <Text style={styles.playerTimeText}>
-                          {formatTime(duration)}
-                        </Text>
-                      </View>
-
-                      {/* Bottom Tool Row */}
-                      <View style={[styles.playerBottomToolRow, isPortrait && { flexWrap: 'wrap', gap: 15, justifyContent: 'center' }]}>
-                        <TouchableOpacity onPress={handleToggleMute} style={styles.playerFooterIconBtn}>
-                          <Ionicons 
-                            name={isMuted ? "volume-mute" : "volume-high"} 
-                            size={24} 
-                            color="#fff" 
-                          />
-                          <Text style={styles.playerBtnLabel}>{isMuted ? "Unmute" : "Mute"}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={handleToggleLock} style={styles.playerFooterIconBtn}>
-                          <Ionicons name="lock-open-outline" size={24} color="#fff" />
-                          <Text style={styles.playerBtnLabel}>Lock</Text>
-                        </TouchableOpacity>
-
-                        {relatedSeries && relatedSeries.length > 0 && (
-                          <TouchableOpacity onPress={() => setShowRelatedOverlay(true)} style={[styles.playerFooterIconBtn, { width: 'auto', paddingHorizontal: 10 }]}>
-                            <Ionicons name="albums-outline" size={24} color="#fff" />
-                            <Text style={styles.playerBtnLabel} numberOfLines={1}>More Like This</Text>
-                          </TouchableOpacity>
-                        )}
-
-                        {episodes && episodes.length > 0 && (
-                          <TouchableOpacity onPress={() => setShowEpisodesOverlay(true)} style={styles.playerFooterIconBtn}>
-                            <Ionicons name="copy-outline" size={24} color="#fff" />
-                            <Text style={styles.playerBtnLabel}>Episodes</Text>
-                          </TouchableOpacity>
-                        )}
-
-                        <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 12 }, isPortrait && { width: '100%', justifyContent: 'center', marginTop: 10 }]}>
-
-                          <TouchableOpacity onPress={handleToggleSpeed} style={styles.playerSpeedBtn}>
-                            <Text style={styles.playerSpeedText}>{playbackSpeed}x Speed</Text>
-                          </TouchableOpacity>
-
-                          {/* Play Next Button */}
-                          {nextEpisodeName && onNext && (
-                            <TouchableOpacity onPress={onNext} style={styles.playerNextEpBtn}>
-                              <Text style={styles.playerNextEpBtnLabel}>Play Next</Text>
-                              <Text style={styles.playerNextEpBtnValue}>
-                                {(() => {
-                                  const currentEp = episodes.find(e => e.id === activeEpisodeId);
-                                  const nextIdx = currentEp ? (currentEp.displayIndex || 0) + 1 : null;
-                                  return nextIdx ? `EP ${nextIdx}: ${nextEpisodeName}` : nextEpisodeName;
-                                })()}
-                              </Text>
-                              <Ionicons name="play-skip-forward" size={12} color="#fff" style={{ marginLeft: 4 }} />
-                            </TouchableOpacity>
-                          )}
-
-                          <TouchableOpacity onPress={() => NativeModules?.PipModule?.enterPipMode()} style={[styles.playerSpeedBtn, { paddingHorizontal: 10 }]}>
-                            <Ionicons name="tv-outline" size={16} color="#4ade80" />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity onPress={() => setPlayerMode('mini')} style={[styles.playerSpeedBtn, { paddingHorizontal: 10 }]}>
-                            <Ionicons name="chevron-down" size={16} color="#fff" />
-                          </TouchableOpacity>
-
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Persistent Countdown removed */}
-
-
-                  {/* Sleep Timer Options Overlay */}
-                  {showTimerOptions && (
-                    <TouchableOpacity 
-                      style={[StyleSheet.absoluteFill, { zIndex: 100 }]}
-                      activeOpacity={1}
-                      onPress={() => { setShowTimerOptions(false); resetControlsTimer(); }}
-                    >
-                      <View style={styles.sleepTimerMenuPopup}>
-                        {[
-                          { label: 'Off', value: 0 },
-                          { label: '5 min', value: 5 },
-                          { label: '15 min', value: 15 },
-                          { label: '30 min', value: 30 },
-                          { label: '45 min', value: 45 },
-                          { label: '60 min', value: 60 },
-                        ].map(opt => (
-                          <TouchableOpacity 
-                            key={opt.value} 
-                            style={styles.sleepTimerPopupItem}
-                            onPress={() => selectSleepTimer(opt.value)}
-                          >
-                            <Text style={[
-                              styles.sleepTimerPopupText, 
-                              sleepTimerMs === opt.value * 60000 && { color: '#e11d48', fontWeight: 'bold' }
-                            ]}>
-                              {opt.label}
-                            </Text>
-                            {sleepTimerMs === opt.value * 60000 && <Ionicons name="checkmark" size={16} color="#e11d48" />}
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-
-              {/* Episodes Overlay */}
-              {showEpisodesOverlay && episodes && episodes.length > 0 && (
-                <TouchableOpacity 
-                  style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }]}
-                  activeOpacity={1}
-                  onPress={() => { setShowEpisodesOverlay(false); resetControlsTimer(); }}
-                >
-                  <View style={{ width: '55%', height: '75%', backgroundColor: 'rgba(30, 30, 40, 0.95)', borderRadius: 12, padding: 20, overflow: 'hidden' }}>
-                    {/* Header */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                        <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>All Episodes</Text>
-                        <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, justifyContent: 'center', alignItems: 'center' }}>
-                          <Text style={{ color: '#cbd5e1', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }}>{episodes.length} EP</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity onPress={() => { setShowEpisodesOverlay(false); resetControlsTimer(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Ionicons name="close" size={24} color="#cbd5e1" />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Divider */}
-                    <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 12 }} />
-
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                      {episodes.map((ep, idx) => {
-                        const isPlaying = activeEpisodeId === ep.id;
-                        return (
-                          <TouchableOpacity
-                            key={ep.id}
-                            style={[{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', alignItems: 'center' }, isPlaying && { backgroundColor: 'rgba(34,197,94,0.08)', paddingHorizontal: 12, borderRadius: 8, borderBottomWidth: 0, marginVertical: 4, borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)' }]}
-                            onPress={() => {
-                              setShowEpisodesOverlay(false);
-                              onSelectEpisode?.(ep);
-                              resetControlsTimer();
-                            }}
-                          >
-                            {/* Episode number */}
-                            <Text style={{ color: isPlaying ? '#22c55e' : '#475569', fontSize: 13, fontWeight: '700', width: 28 }}>
-                              {idx + 1}
-                            </Text>
-                            {/* Episode title + duration + VJ */}
-                            <View style={{ flex: 1 }}>
-                              <Text style={[
-                                { color: '#cbd5e1', fontSize: 14, fontWeight: '500' },
-                                isPlaying && { color: '#22c55e', fontWeight: '700' }
-                              ]} numberOfLines={1}>
-                                {ep.title}
-                              </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                <Text style={{ color: '#64748b', fontSize: 11 }}>{ep.duration}</Text>
-                                {isPlaying && seriesVj && (
-                                  <>
-                                    <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#475569' }} />
-                                    <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '700' }}>{seriesVj}</Text>
-                                  </>
-                                )}
-                              </View>
-                            </View>
-                            {isPlaying && <PlayingNowIndicator />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {/* Related Overlay */}
-              {showRelatedOverlay && relatedSeries && relatedSeries.length > 0 && (
-                <TouchableOpacity 
-                  style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}
-                  activeOpacity={1}
-                  onPress={() => { setShowRelatedOverlay(false); resetControlsTimer(); }}
-                >
-                  <View style={{ 
-                    width: '60%', 
-                    height: '75%', 
-                    backgroundColor: 'rgba(18, 18, 24, 0.98)', 
-                    borderRadius: 16, 
-                    padding: 24, 
-                    overflow: 'hidden',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 12 },
-                    shadowOpacity: 0.5,
-                    shadowRadius: 16,
-                    elevation: 20
-                  }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 0.5 }}>More Like This</Text>
-                      <TouchableOpacity onPress={() => { setShowRelatedOverlay(false); resetControlsTimer(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: 4 }}>
-                          <Ionicons name="close" size={24} color="#cbd5e1" />
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20, justifyContent: 'center' }}>
-                        {relatedSeries.map((s, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={{ width: 110, marginBottom: 8 }}
-                            activeOpacity={0.85}
-                            onPress={() => {
-                              setShowRelatedOverlay(false);
-                              onSelectRelated?.(s);
-                              resetControlsTimer();
-                            }}
-                          >
-                            {/* Poster with badges */}
-                            <View style={{ borderRadius: 10, overflow: 'hidden', width: 110, height: 160 }}>
-                              <Image
-                                source={{ uri: s.poster }}
-                                style={{ width: 110, height: 160 }}
-                                resizeMode="cover"
-                              />
-                              {/* VJ Badge — top right */}
-                              <View style={{
-                                position: 'absolute', top: 6, right: 6,
-                                backgroundColor: 'rgba(0,0,0,0.72)',
-                                borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2,
-                              }}>
-                                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '700', letterSpacing: 0.3 }} numberOfLines={1}>
-                                  {s.vj}
-                                </Text>
-                              </View>
-                              {/* Genre/Type Badge — bottom left */}
-                              <View style={{
-                                position: 'absolute', bottom: 6, left: 6,
-                                backgroundColor: s.isMiniSeries ? 'rgba(168,85,247,0.85)' : 'rgba(15,165,233,0.85)',
-                                borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2,
-                              }}>
-                                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
-                                  {s.isMiniSeries ? 'Mini Series' : 'Series'}
-                                </Text>
-                              </View>
-                              {/* Episode count badge — bottom right */}
-                              <View style={{
-                                position: 'absolute', bottom: 6, right: 6,
-                                flexDirection: 'row', alignItems: 'center',
-                                backgroundColor: 'rgba(0,0,0,0.6)',
-                                borderRadius: 5, paddingHorizontal: 4, paddingVertical: 2,
-                              }}>
-                                <Text style={{ color: '#FFC107', fontSize: 7, fontWeight: '800' }}>
-                                  •••
-                                </Text>
-                                <Text style={{ color: '#fff', fontSize: 7, fontWeight: '800', marginLeft: 2 }}>
-                                  {(s as any).episodes || s.seasons} EP
-                                </Text>
-                              </View>
-                            </View>
-                            {/* Info area with dark background — matches home screen card */}
-                            <View style={{
-                              backgroundColor: '#0f0f16',
-                              paddingHorizontal: 6,
-                              paddingVertical: 5,
-                              borderBottomLeftRadius: 10,
-                              borderBottomRightRadius: 10,
-                            }}>
-                              <Text style={{
-                                color: '#fff',
-                                fontSize: 10,
-                                fontWeight: '700',
-                                textAlign: 'center',
-                                lineHeight: 14,
-                              }} numberOfLines={1}>
-                                {s.title}
-                              </Text>
-                              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: '600', marginTop: 2, textAlign: 'center' }} numberOfLines={1}>
-                                {s.year} · {s.isMiniSeries ? 'Mini Series' : `Season ${s.seasons}`}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {/* Speed Overlay */}
-              {showSpeedOverlay && (
-                <TouchableOpacity 
-                  style={[StyleSheet.absoluteFill, { zIndex: 100 }]}
-                  activeOpacity={1}
-                  onPress={() => { setShowSpeedOverlay(false); resetControlsTimer(); }}
-                >
-                  <View style={{ 
-                    position: 'absolute',
-                    bottom: 70,
-                    right: 20,
-                    width: 140, 
-                    backgroundColor: 'rgba(30, 30, 40, 0.98)', 
-                    borderRadius: 14, 
-                    padding: 8, 
-                    overflow: 'hidden',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 10
-                  }}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                      {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
-                        <TouchableOpacity
-                          key={rate}
-                          style={[
-                            { paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 }, 
-                            playbackSpeed === rate && { backgroundColor: 'rgba(225, 29, 72, 0.15)' }
-                          ]}
-                          onPress={() => handleSelectSpeed(rate)}
-                        >
-                          <Text style={[
-                            { color: '#cbd5e1', fontSize: 14, fontWeight: '500' },
-                            playbackSpeed === rate && { color: '#e11d48', fontWeight: 'bold' }
-                          ]}>
-                            {rate === 1.0 ? 'Normal' : `${rate}x`}
-                          </Text>
-                          {playbackSpeed === rate && <Ionicons name="checkmark" size={16} color="#e11d48" />}
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Animated.View>
-    );
-  }
 
 function SeriesPreviewModal({
   series,
@@ -1918,6 +827,8 @@ function SeriesPreviewModal({
   setPlayerMode,
   setSelectedVideoUrl,
   setPlayerTitle,
+  selectedVideoUrl,
+  playerTitle,
   setActivePartId,
   setActiveEpisodes,
 }: {
@@ -1931,6 +842,8 @@ function SeriesPreviewModal({
   setPlayerMode: (m: any) => void;
   setSelectedVideoUrl: (url: string) => void;
   setPlayerTitle: (t: string) => void;
+  selectedVideoUrl: string;
+  playerTitle: string;
   setActivePartId: (id: string) => void;
   setActiveEpisodes: (eps: any[]) => void;
 }) {
@@ -2024,8 +937,6 @@ function SeriesPreviewModal({
   const [containerWidth, setContainerWidth] = useState(0);
   const [seriesQuery, setSeriesQuery] = useState("");
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>("");
-  const playerPos = useRef(new Animated.ValueXY({ x: W - 170, y: SCREEN_H - 240 })).current;
-  const playerSize = useRef(new Animated.Value(150)).current;
 
   // Derive a consistent video preview URL for this series
   // Priority: actual uploaded series preview > main video > fallback demo reel
@@ -2364,7 +1275,7 @@ function SeriesPreviewModal({
 
   return (
     <Modal
-      visible
+      visible={playerMode !== 'full'}
       animationType="fade"
       transparent
       statusBarTranslucent
@@ -2471,6 +1382,7 @@ function SeriesPreviewModal({
             <TouchableOpacity 
               activeOpacity={0.9}
               onPress={() => {
+                const firstEp = episodes[0];
                 // Prioritize Actual Episode Video (online or downloaded) over short preview teaser
                 const finalUrl = (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl)) || previewVideoUrl;
                 setSelectedVideoUrl(finalUrl);
@@ -2707,9 +1619,9 @@ function SeriesPreviewModal({
                   >
                     {activeDownloads[activeEpisodeId]
                       ? activeDownloads[activeEpisodeId]?.isPaused
-                        ? `${Math.round(activeDownloads[activeEpisodeId].progress)}% Paused`
-                        : `${Math.round(activeDownloads[activeEpisodeId].progress)}%`
-                      : episodeDownloads[activeEpisodeId] ? "Downloaded" : "Download"}
+                        ? `Paused (${Math.round(activeDownloads[activeEpisodeId].progress)}%)`
+                        : `${Math.round(activeDownloads[activeEpisodeId].progress)}% • ${activeDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
+                      : episodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
                   </Text>
                 </TouchableOpacity>
 
@@ -3025,16 +1937,37 @@ function SeriesPreviewModal({
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
                               {/* Episode Download Button */}
                               {episodeDownloads[ep.id] ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderStyle: 'dashed', borderWidth: 0, paddingVertical: 4, flex: 1, justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: 6 }}>
+                                <View style={{ 
+                                  backgroundColor: 'rgba(16, 185, 129, 0.12)', 
+                                  borderWidth: 1, 
+                                  borderColor: 'rgba(16, 185, 129, 0.4)', 
+                                  borderRadius: 8, 
+                                  flex: 1, 
+                                  paddingVertical: 7, 
+                                  alignItems: 'center',
+                                  flexDirection: 'row',
+                                  justifyContent: 'center',
+                                  gap: 6
+                                }}>
                                   <Ionicons name="checkmark-circle" size={14} color="#10b981" />
-                                  <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '800' }}>DOWNLOADED</Text>
+                                  <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>SAVED OFFLINE</Text>
                                 </View>
                               ) : activeDownloads[ep.id] ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', backgroundColor: 'rgba(59, 130, 246, 0.05)', paddingVertical: 4, borderRadius: 6 }}>
-                                  <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.3)', justifyContent: 'center', alignItems: 'center' }}>
-                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3b82f6' }} />
-                                  </View>
-                                  <Text style={{ color: '#3b82f6', fontSize: 11, fontWeight: '800' }}>{Math.round(activeDownloads[ep.id].progress)}% COMPLETE</Text>
+                                <View style={{ 
+                                  backgroundColor: 'rgba(34, 197, 94, 0.1)', 
+                                  borderWidth: 1, 
+                                  borderColor: 'rgba(34, 197, 94, 0.3)', 
+                                  borderRadius: 8, 
+                                  flex: 1, 
+                                  paddingVertical: 7, 
+                                  alignItems: 'center' 
+                                }}>
+                                  <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                                    {activeDownloads[ep.id].isPaused 
+                                      ? `PAUSED (${Math.round(activeDownloads[ep.id].progress)}%)` 
+                                      : `${Math.round(activeDownloads[ep.id].progress)}% • ${activeDownloads[ep.id].speedString?.split('•')[1]?.trim() || 'STAGING...'}`
+                                    }
+                                  </Text>
                                 </View>
                               ) : (
                                 <TouchableOpacity 
@@ -3042,13 +1975,13 @@ function SeriesPreviewModal({
                                     flexDirection: 'row', 
                                     alignItems: 'center', 
                                     gap: 6, 
-                                    backgroundColor: 'rgba(91, 95, 239, 0.15)', // Matching Ep badge background
+                                    backgroundColor: 'rgba(52, 211, 153, 0.1)', 
                                     flex: 1, 
                                     justifyContent: 'center', 
-                                    paddingVertical: 5, 
-                                    borderRadius: 6,
+                                    paddingVertical: 7, 
+                                    borderRadius: 8,
                                     borderWidth: 1,
-                                    borderColor: 'rgba(129, 140, 248, 0.3)' // Matching Ep badge border/text color
+                                    borderColor: 'rgba(52, 211, 153, 0.3)'
                                   }}
                                     onPress={(e) => {
                                       e.stopPropagation();
@@ -3061,8 +1994,8 @@ function SeriesPreviewModal({
                                       setShowDownloadModal(true);
                                     }}
                                 >
-                                  <Ionicons name="download-outline" size={14} color="#818cf8" />
-                                  <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '800' }}>DOWNLOAD EPISODE</Text>
+                                  <Ionicons name="download-outline" size={14} color="#10b981" />
+                                  <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>DOWNLOAD EPISODE</Text>
                                 </TouchableOpacity>
                               )}
                             </View>
@@ -3554,7 +2487,7 @@ function SeriesPreviewModal({
 
           {/* ── Already Downloaded Modal (Frosted Dark) ── */}
           <Modal
-            visible={alreadyDownloadedState.visible}
+            visible={alreadyDownloadedState.visible && playerMode !== 'full'}
             transparent
             animationType="fade"
             onRequestClose={() => setAlreadyDownloadedState({ visible: false })}
@@ -3601,7 +2534,7 @@ function SeriesPreviewModal({
                   
                   <TouchableOpacity
                     style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
-                    onPress={() => {
+                    onPress={async () => {
                       setAlreadyDownloadedState({ visible: false });
                       if (!isPaid) {
                          Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
@@ -3611,7 +2544,16 @@ function SeriesPreviewModal({
                          onShowPremium?.();
                          return;
                       }
-                      recordExternalDownload(alreadyDownloadedState.activeEpisode?.title || "");
+
+                      // Check permissions first in the UI
+                      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+                      if (status !== 'granted') {
+                        Alert.alert("Permission Denied", "Please allow gallery access to save videos as MP4 files.");
+                        return;
+                      }
+
+                      const targetTitle = alreadyDownloadedState.activeEpisode?.title || series.title;
+                      recordExternalDownload(targetTitle);
                       if (alreadyDownloadedState.activeEpisode) {
                         startExternalEpisodeDownload(
                           series as Series,
@@ -3619,6 +2561,8 @@ function SeriesPreviewModal({
                           alreadyDownloadedState.activeEpisode.videoUrl || "",
                           alreadyDownloadedState.activeEpisode.title
                         );
+                      } else {
+                        startExternalGalleryDownload(series);
                       }
                     }}
                   >

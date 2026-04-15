@@ -16,7 +16,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ selectedItem }) => {
       
       <View style={{ marginTop: 24, gap: 16 }}>
         <View style={{ padding: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, borderLeftWidth: 3, borderLeftColor: '#818cf8' }}>
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, marginBottom: 4 }}>Version {Constants.expoConfig?.version || Application.nativeAppVersion || '1.1.0'}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, marginBottom: 4 }}>Version {Constants.expoConfig?.version || Application.nativeApplicationVersion || '1.1.0'}</Text>
           <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Build {Application.nativeBuildVersion}</Text>
         </View>
 

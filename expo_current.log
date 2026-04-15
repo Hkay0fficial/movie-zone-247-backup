@@ -1,0 +1,1237 @@
+env: load .env
+env: export EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
+Starting project at /Users/hkfiles/Desktop/hk app/movieApp
+Starting Metro Bundler
+Error while reading cache, falling back to a full crawl:
+ Error: Unable to deserialize cloned data.
+    at deserialize (node:v8:469:14)
+    at DiskCacheManager.read (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro-file-map/src/cache/DiskCacheManager.js:60:33)
+    at FileMap.read (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro-file-map/src/index.js:284:14)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro-file-map/src/index.js:202:25
+    at DependencyGraph.ready (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/node-haste/DependencyGraph.js:88:5)
+    at Bundler.ready (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/Bundler.js:62:5)
+    at IncrementalBundler.ready (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/IncrementalBundler.js:302:5)
+    at Server.ready (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/metro/src/Server.js:1305:5)
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1446ms node_modules/expo-router/entry.js (1805 modules)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 85ms node_modules/expo-router/entry.js (1 module)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 84ms node_modules/expo-router/entry.js (1 module)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 331ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [ReferenceError: Property 'deviceLimit' doesn't exist] 
+
+Code: SubscriptionContext.tsx
+[0m [90m 992 |[39m       activeDeviceIds[33m,[39m
+ [90m 993 |[39m       removeDevice[33m,[39m
+[31m[1m>[22m[39m[90m 994 |[39m       deviceLimit[33m,[39m
+ [90m     |[39m       [31m[1m^[22m[39m
+ [90m 995 |[39m       minAppVersion[33m,[39m
+ [90m 996 |[39m       downloadOnWifiOnly[33m,[39m
+ [90m 997 |[39m       setDownloadOnWifiOnly[33m:[39m (val[33m:[39m boolean) [33m=>[39m {[0m
+Call Stack
+  SubscriptionProvider (app/context/SubscriptionContext.tsx:994:7) 
+
+Code: _layout.tsx
+[0m [90m 71 |[39m     [33m<[39m[33mThemeProvider[39m value[33m=[39m{colorScheme [33m===[39m [32m'dark'[39m [33m?[39m [33mDarkTheme[39m [33m:[39m [33mDefaultTheme[39m}[33m>[39m
+ [90m 72 |[39m       [33m<[39m[33mUserProvider[39m[33m>[39m
+[31m[1m>[22m[39m[90m 73 |[39m         [33m<[39m[33mSubscriptionProvider[39m[33m>[39m
+ [90m    |[39m         [31m[1m^[22m[39m
+ [90m 74 |[39m           [33m<[39m[33mMovieProvider[39m[33m>[39m
+ [90m 75 |[39m             [33m<[39m[33mView[39m style[33m=[39m{{ flex[33m:[39m [35m1[39m }}[33m>[39m
+ [90m 76 |[39m               [33m<[39m[33mStack[39m[33m>[39m[0m
+Call Stack
+  RootLayout (app/_layout.tsx:73:9)
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [ReferenceError: Property 'playerPos' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2675 |[39m         relatedContent[33m=[39m{liveMovies[33m.[39mfilter(m [33m=>[39m m[33m.[39mgenre [33m===[39m playingNow[33m?[39m[33m.[39mgenre [33m&&[39m m[33m.[39mid [33m!==[39m playingNow[33m?[39m[33m.[39mid)[33m.[39mslice([35m0[39m[33m,[39m [35m10[39m)}
+ [90m 2676 |[39m         onSelectRelated[33m=[39m{(m) [33m=>[39m setPlayingNow(m [36mas[39m [33mMovie[39m)}
+[31m[1m>[22m[39m[90m 2677 |[39m         onClose[33m=[39m{() [33m=>[39m setPlayerMode([32m'closed'[39m)}
+ [90m      |[39m                  [31m[1m^[22m[39m
+ [90m 2678 |[39m         playerPos[33m=[39m{playerPos}
+ [90m 2679 |[39m         playerSize[33m=[39m{playerSize}
+ [90m 2680 |[39m       [33m/[39m[33m>[39m[0m
+Call Stack
+  FloatingPlayer.props.onClose (app/(tabs)/index.tsx:2677:18) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:75:38)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [ReferenceError: Property 'playerPos' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2676 |[39m         onSelectRelated[33m=[39m{(m) [33m=>[39m setPlayingNow(m [36mas[39m [33mMovie[39m)}
+ [90m 2677 |[39m         onClose[33m=[39m{() [33m=>[39m setPlayerMode([32m'closed'[39m)}
+[31m[1m>[22m[39m[90m 2678 |[39m         playerPos[33m=[39m{playerPos}
+ [90m      |[39m                    [31m[1m^[22m[39m
+ [90m 2679 |[39m         playerSize[33m=[39m{playerSize}
+ [90m 2680 |[39m       [33m/[39m[33m>[39m
+ [90m 2681 |[39m[0m
+Call Stack
+  HomeScreen (app/(tabs)/index.tsx:2678:20) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 347ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 330ms node_modules/expo-notifications/build/index.js (713 modules)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ ERROR  [ReferenceError: Property 'MoviePreviewContent' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2636 |[39m
+ [90m 2637 |[39m             [36mreturn[39m (
+[31m[1m>[22m[39m[90m 2638 |[39m               [33m<[39m[33mMoviePreviewContent[39m
+ [90m      |[39m                [31m[1m^[22m[39m
+ [90m 2639 |[39m                 key[33m=[39m{[32m`movie-${index}`[39m}
+ [90m 2640 |[39m                 movie[33m=[39m{item[33m.[39mmovie}
+ [90m 2641 |[39m                 onClose[33m=[39m{onClose}[0m
+Call Stack
+  navigationStack.map$argument_0 (app/(tabs)/index.tsx:2638:16)
+  HomeScreen (app/(tabs)/index.tsx:2613:31) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 81ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 30ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ WARN  Method getFreeDiskStorageAsync imported from "expo-file-system" is deprecated.
+You can migrate to the new filesystem API using "File" and "Directory" classes or import the legacy API from "expo-file-system/legacy".
+API reference and examples are available in the filesystem docs: https://docs.expo.dev/versions/v54.0.0/sdk/filesystem/
+ ERROR  Global download error: [Error: Method getFreeDiskStorageAsync imported from "expo-file-system" is deprecated.
+You can migrate to the new filesystem API using "File" and "Directory" classes or import the legacy API from "expo-file-system/legacy".
+API reference and examples are available in the filesystem docs: https://docs.expo.dev/versions/v54.0.0/sdk/filesystem/] 
+
+Code: SubscriptionContext.tsx
+[0m [90m 789 |[39m
+ [90m 790 |[39m         [90m// ── Safeguard: Disk Space Check ──[39m
+[31m[1m>[22m[39m[90m 791 |[39m         [36mconst[39m freeSpace [33m=[39m [36mawait[39m [33mFileSystem[39m[33m.[39mgetFreeDiskStorageAsync()[33m;[39m
+ [90m     |[39m                                                                   [31m[1m^[22m[39m
+ [90m 792 |[39m         [36mconst[39m [33mMIN_FREE_SPACE[39m [33m=[39m [35m500[39m [33m*[39m [35m1024[39m [33m*[39m [35m1024[39m[33m;[39m [90m// 500MB safety buffer[39m
+ [90m 793 |[39m         [36mif[39m (freeSpace [33m<[39m [33mMIN_FREE_SPACE[39m) {
+ [90m 794 |[39m           showModal([32m'error'[39m[33m,[39m [32m'Storage Full'[39m[33m,[39m [32m'You need at least 500MB of free space to download content.'[39m)[33m;[39m[0m
+Call Stack
+  processQueue (app/context/SubscriptionContext.tsx:791:67)
+  useEffect$argument_0 (app/context/SubscriptionContext.tsx:687:23)
+  useEffect$argument_0 (app/context/SubscriptionContext.tsx:954:17)
+ ERROR  [ReferenceError: Property 'MoviePreviewContent' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2636 |[39m
+ [90m 2637 |[39m             [36mreturn[39m (
+[31m[1m>[22m[39m[90m 2638 |[39m               [33m<[39m[33mMoviePreviewContent[39m
+ [90m      |[39m                [31m[1m^[22m[39m
+ [90m 2639 |[39m                 key[33m=[39m{[32m`movie-${index}`[39m}
+ [90m 2640 |[39m                 movie[33m=[39m{item[33m.[39mmovie}
+ [90m 2641 |[39m                 onClose[33m=[39m{onClose}[0m
+Call Stack
+  navigationStack.map$argument_0 (app/(tabs)/index.tsx:2638:16)
+  HomeScreen (app/(tabs)/index.tsx:2613:31) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 105ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 29ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 93ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 47ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ ERROR  [ReferenceError: Property 'MoviePreviewContent' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2636 |[39m
+ [90m 2637 |[39m             [36mreturn[39m (
+[31m[1m>[22m[39m[90m 2638 |[39m               [33m<[39m[33mMoviePreviewContent[39m
+ [90m      |[39m                [31m[1m^[22m[39m
+ [90m 2639 |[39m                 key[33m=[39m{[32m`movie-${index}`[39m}
+ [90m 2640 |[39m                 movie[33m=[39m{item[33m.[39mmovie}
+ [90m 2641 |[39m                 onClose[33m=[39m{onClose}[0m
+Call Stack
+  navigationStack.map$argument_0 (app/(tabs)/index.tsx:2638:16)
+  HomeScreen (app/(tabs)/index.tsx:2613:31) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 85ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 35ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [ReferenceError: Property 'TextInput' doesn't exist] 
+
+Code: PreferencesAndActivity.tsx
+[0m [90m 182 |[39m             }}[33m>[39m
+ [90m 183 |[39m               [33m<[39m[33mIonicons[39m name[33m=[39m[32m"search"[39m size[33m=[39m{[35m18[39m} color[33m=[39m[32m"rgba(255,255,255,0.4)"[39m [33m/[39m[33m>[39m
+[31m[1m>[22m[39m[90m 184 |[39m               [33m<[39m[33mTextInput[39m
+ [90m     |[39m                [31m[1m^[22m[39m
+ [90m 185 |[39m                 style[33m=[39m{{ flex[33m:[39m [35m1[39m[33m,[39m color[33m:[39m [32m'#fff'[39m[33m,[39m fontSize[33m:[39m [35m14[39m[33m,[39m marginLeft[33m:[39m [35m8[39m }}
+ [90m 186 |[39m                 placeholder[33m=[39m[32m"Search downloaded titles..."[39m
+ [90m 187 |[39m                 placeholderTextColor[33m=[39m[32m"rgba(255,255,255,0.3)"[39m[0m
+Call Stack
+  PreferencesAndActivity (components/menu/PreferencesAndActivity.tsx:184:16) 
+
+Code: menu.tsx
+[0m [90m 1258 |[39m                 )}
+ [90m 1259 |[39m
+[31m[1m>[22m[39m[90m 1260 |[39m                 [33m<[39m[33mPreferencesAndActivity[39m
+ [90m      |[39m                 [31m[1m^[22m[39m
+ [90m 1261 |[39m                   selectedItem[33m=[39m{selectedItem}
+ [90m 1262 |[39m                   selectedSubItem[33m=[39m{selectedSubItem}
+ [90m 1263 |[39m                   setSelectedSubItem[33m=[39m{setSelectedSubItem}[0m
+Call Stack
+  MenuScreen (app/(tabs)/menu.tsx:1260:17)
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 83ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 41ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 9ms node_modules/expo-notifications/build/index.js (1 module)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 83ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 47ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 84ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 40ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 88ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 41ms node_modules/expo-notifications/build/index.js (1 module)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 89ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 40ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ ERROR  [ReferenceError: Property 'TextInput' doesn't exist] 
+
+Code: PreferencesAndActivity.tsx
+[0m [90m 182 |[39m             }}[33m>[39m
+ [90m 183 |[39m               [33m<[39m[33mIonicons[39m name[33m=[39m[32m"search"[39m size[33m=[39m{[35m18[39m} color[33m=[39m[32m"rgba(255,255,255,0.4)"[39m [33m/[39m[33m>[39m
+[31m[1m>[22m[39m[90m 184 |[39m               [33m<[39m[33mTextInput[39m
+ [90m     |[39m                [31m[1m^[22m[39m
+ [90m 185 |[39m                 style[33m=[39m{{ flex[33m:[39m [35m1[39m[33m,[39m color[33m:[39m [32m'#fff'[39m[33m,[39m fontSize[33m:[39m [35m14[39m[33m,[39m marginLeft[33m:[39m [35m8[39m }}
+ [90m 186 |[39m                 placeholder[33m=[39m[32m"Search downloaded titles..."[39m
+ [90m 187 |[39m                 placeholderTextColor[33m=[39m[32m"rgba(255,255,255,0.3)"[39m[0m
+Call Stack
+  PreferencesAndActivity (components/menu/PreferencesAndActivity.tsx:184:16) 
+
+Code: menu.tsx
+[0m [90m 1258 |[39m                 )}
+ [90m 1259 |[39m
+[31m[1m>[22m[39m[90m 1260 |[39m                 [33m<[39m[33mPreferencesAndActivity[39m
+ [90m      |[39m                 [31m[1m^[22m[39m
+ [90m 1261 |[39m                   selectedItem[33m=[39m{selectedItem}
+ [90m 1262 |[39m                   selectedSubItem[33m=[39m{selectedSubItem}
+ [90m 1263 |[39m                   setSelectedSubItem[33m=[39m{setSelectedSubItem}[0m
+Call Stack
+  MenuScreen (app/(tabs)/menu.tsx:1260:17)
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  RootLayout (app/_layout.tsx:76:15)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 83ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 37ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+ WARN  "cast" is not a valid icon name for family "ionicons"
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 276ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 45ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Uncaught (in promise, id: 0) Error: Unable to activate keep awake] 
+
+Code: construct.js
+[0m [90m 2 |[39m [36mvar[39m setPrototypeOf [33m=[39m require([32m"./setPrototypeOf.js"[39m)[33m;[39m
+ [90m 3 |[39m [36mfunction[39m _construct(t[33m,[39m e[33m,[39m r) {
+[31m[1m>[22m[39m[90m 4 |[39m   [36mif[39m (isNativeReflectConstruct()) [36mreturn[39m [33mReflect[39m[33m.[39mconstruct[33m.[39mapply([36mnull[39m[33m,[39m arguments)[33m;[39m
+ [90m   |[39m                                                                 [31m[1m^[22m[39m
+ [90m 5 |[39m   [36mvar[39m o [33m=[39m [[36mnull[39m][33m;[39m
+ [90m 6 |[39m   o[33m.[39mpush[33m.[39mapply(o[33m,[39m e)[33m;[39m
+ [90m 7 |[39m   [36mvar[39m p [33m=[39m [36mnew[39m (t[33m.[39mbind[33m.[39mapply(t[33m,[39m o))()[33m;[39m[0m
+Call Stack
+  construct (<native>)
+  apply (<native>)
+  _construct (node_modules/@babel/runtime/helpers/construct.js:4:65)
+  Wrapper (node_modules/@babel/runtime/helpers/wrapNativeSuper.js:15:23)
+  construct (<native>)
+  _callSuper (node_modules/@babel/runtime/helpers/callSuper.js:5:108)
+  constructor (node_modules/expo-modules-core/src/errors/CodedError.ts:11:5)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 90ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 42ms node_modules/expo-notifications/build/index.js (1 module)
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 95ms node_modules/expo-router/entry.js (1 module)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+Android Bundled 48ms node_modules/expo-notifications/build/index.js (1 module)
+ WARN  SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+ ERROR  [ReferenceError: Property 'playerPos' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 2676 |[39m         onSelectRelated[33m=[39m{(m) [33m=>[39m setPlayingNow(m [36mas[39m [33mMovie[39m)}
+ [90m 2677 |[39m         onClose[33m=[39m{() [33m=>[39m setPlayerMode([32m'closed'[39m)}
+[31m[1m>[22m[39m[90m 2678 |[39m         playerPos[33m=[39m{playerPos}
+ [90m      |[39m                    [31m[1m^[22m[39m
+ [90m 2679 |[39m         playerSize[33m=[39m{playerSize}
+ [90m 2680 |[39m       [33m/[39m[33m>[39m
+ [90m 2681 |[39m[0m
+Call Stack
+  HomeScreen (app/(tabs)/index.tsx:2678:20) 
+
+Code: _layout.tsx
+[0m [90m 3223 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mTabLayout[39m() {
+ [90m 3224 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 3225 |[39m     [33m<[39m[33mTabs[39m
+ [90m      |[39m     [31m[1m^[22m[39m
+ [90m 3226 |[39m       tabBar[33m=[39m{() [33m=>[39m [33m<[39m[33mCustomTabBar[39m [33m/[39m[33m>[39m}
+ [90m 3227 |[39m       screenOptions[33m=[39m{{ headerShown[33m:[39m [36mfalse[39m }}
+ [90m 3228 |[39m     [33m>[39m[0m
+Call Stack
+  TabLayout (app/(tabs)/_layout.tsx:3225:5)
+  <global> (app/(tabs)/search.tsx:323:27)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 122ms node_modules/expo-router/entry.js (1 module)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 89ms node_modules/expo-router/entry.js (1 module)
+ WARN  Route "./(tabs)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Route "./(tabs)/category.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/menu.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./(tabs)/saved.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default.
+ WARN  Route "./context/SubscriptionContext.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  [Error: Cannot find native module 'ExpoNetwork'] 
+
+Code: SubscriptionContext.tsx
+[0m [90m  8 |[39m [36mimport[39m { [33mMovie[39m[33m,[39m [33mSeries[39m } [36mfrom[39m [32m'../../constants/movieData'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mFileSystem[39m [36mfrom[39m [32m'expo-file-system'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mNetwork[39m [36mfrom[39m [32m'expo-network'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m [33m*[39m [36mas[39m [33mMediaLibrary[39m [36mfrom[39m [32m'expo-media-library'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { downloadToGallery[33m,[39m downloadToAppIsolatedStorage } [36mfrom[39m [32m'../../lib/externalDownload'[39m[33m;[39m
+ [90m 13 |[39m [36mimport[39m { downloadNotificationManager } [36mfrom[39m [32m'../../lib/notificationHelper'[39m[33m;[39m[0m
+Call Stack
+  <global> (app/context/SubscriptionContext.tsx:10)
+  <global> (components/GridComponents.tsx:21)
+  <global> (app/(tabs)/_layout.tsx:42)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/app/(tabs)/saved.tsx: Unexpected token (783:8)
+
+  781 |           }} />
+  782 |         )}
+> 783 |         }
+      |         ^
+  784 |       />
+  785 |
+  786 |       <FloatingPlayer
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6619:16)
+    at TypeScriptParserMixin.jsxParseIdentifier (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4569:12)
+    at TypeScriptParserMixin.jsxParseNamespacedName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4576:23)
+    at TypeScriptParserMixin.jsxParseAttribute (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4652:22)
+    at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4667:28)
+    at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10043:18)
+    at TypeScriptParserMixin.jsxParseOpeningElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4662:17)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4686:33)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4749:17)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4759:19)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:39
+    at TypeScriptParserMixin.tryParse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6907:20)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:18)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12493:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11675:28)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at TypeScriptParserMixin.parseExpressionBase (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10784:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:17)
+    at TypeScriptParserMixin.parseReturnStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13142:28)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12798:21)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:61)
+Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundling failed 27ms node_modules/expo-router/entry.js (1 module)
+ ERROR  SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/app/(tabs)/saved.tsx: Unexpected token (783:8)
+
+  781 |           }} />
+  782 |         )}
+> 783 |         }
+      |         ^
+  784 |       />
+  785 |
+  786 |       <FloatingPlayer
+    at constructor (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6619:16)
+    at TypeScriptParserMixin.jsxParseIdentifier (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4569:12)
+    at TypeScriptParserMixin.jsxParseNamespacedName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4576:23)
+    at TypeScriptParserMixin.jsxParseAttribute (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4652:22)
+    at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4667:28)
+    at TypeScriptParserMixin.jsxParseOpeningElementAfterName (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10043:18)
+    at TypeScriptParserMixin.jsxParseOpeningElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4662:17)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4686:33)
+    at TypeScriptParserMixin.jsxParseElementAt (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4698:32)
+    at TypeScriptParserMixin.jsxParseElement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4749:17)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4759:19)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:39
+    at TypeScriptParserMixin.tryParse (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:6907:20)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9775:18)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12493:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11675:28)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11331:23)
+    at TypeScriptParserMixin.parseExprAtom (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9786:20)
+    at TypeScriptParserMixin.parseExpressionBase (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10784:23)
+    at /Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:39
+    at TypeScriptParserMixin.allowInAnd (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12421:16)
+    at TypeScriptParserMixin.parseExpression (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:10780:17)
+    at TypeScriptParserMixin.parseReturnStatement (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13142:28)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12798:21)
+    at TypeScriptParserMixin.parseStatementContent (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12767:17)
+    at TypeScriptParserMixin.parseStatementListItem (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:12747:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/hkfiles/Desktop/hk app/movieApp/node_modules/@babel/parser/lib/index.js:13316:61)

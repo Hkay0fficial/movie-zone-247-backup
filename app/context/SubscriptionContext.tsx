@@ -6,8 +6,13 @@ import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
-import * as FileSystem from 'expo-file-system';
-import * as Network from 'expo-network';
+import * as FileSystem from 'expo-file-system/legacy';
+const { documentDirectory, cacheDirectory, getFreeDiskStorageAsync, createDownloadResumable } = FileSystem;
+// Safe conditional import — avoids startup crash when native module isn't linked in dev builds
+let Network: typeof import('expo-network') | null = null;
+try { Network = require('expo-network'); } catch (_) {
+  console.warn('[SubscriptionContext] expo-network native module unavailable — Wi-Fi guard disabled');
+}
 import * as MediaLibrary from 'expo-media-library';
 import { downloadToGallery, downloadToAppIsolatedStorage } from '../../lib/externalDownload';
 import { downloadNotificationManager } from '../../lib/notificationHelper';
@@ -83,6 +88,14 @@ interface SubscriptionContextType {
   setDownloadOnWifiOnly: (val: boolean) => void;
   smartDownloads: boolean;
   setSmartDownloads: (val: boolean) => void;
+  playingNow: Movie | Series | null;
+  setPlayingNow: (m: Movie | Series | null) => void;
+  playerMode: 'closed' | 'full' | 'mini';
+  setPlayerMode: (mode: 'closed' | 'full' | 'mini') => void;
+  playerTitle: string;
+  setPlayerTitle: (title: string) => void;
+  selectedVideoUrl: string;
+  setSelectedVideoUrl: (url: string) => void;
 }
 
 
@@ -103,6 +116,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isGuest, setIsGuest] = useState(true);
   const [downloadOnWifiOnly, setDownloadOnWifiOnlyState] = useState(false);
   const [smartDownloads, setSmartDownloadsState] = useState(true);
+  const [playingNow, setPlayingNow] = useState<Movie | Series | null>(null);
+  const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
+  const [playerTitle, setPlayerTitle] = useState('');
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [downloadedMovies, setDownloadedMovies] = useState<(Movie | Series)[]>([]);
@@ -115,13 +132,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     episodeId?: string,
     episodeUrl?: string,
     episodeTitle?: string,
-    isPaused?: boolean
+    isPaused?: boolean,
+    speedString?: string
   }>>({});
   const [downloadQueue, setDownloadQueue] = useState<string[]>([]);
   const [episodeDownloads, setEpisodeDownloads] = useState<Record<string, string>>({});
   const isProcessingQueue = useRef(false);
   // Stores active DownloadResumable objects keyed by download ID for pause/resume
-  const resumablesRef = useRef<Record<string, import('expo-file-system/legacy').DownloadResumable>>({});
+  const resumablesRef = useRef<Record<string, FileSystem.DownloadResumable>>({});
   // Tracks which downloads are currently paused — using a ref to avoid stale closure issues
   const pausedRef = useRef<Set<string>>(new Set());
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -232,7 +250,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
 
     return () => {
-      unsubAuth();
+      unsubscribe();
       if (unsubUserDoc) unsubUserDoc();
     };
   }, []);
@@ -546,43 +564,51 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const startInternalAppDownload = async (item: Movie | Series) => {
+    const title = item.title || "Unknown Movie";
     if (activeDownloads[item.id] !== undefined || downloadQueue.includes(item.id)) {
-      showModal('warning', 'Already in Queue', `"${item.title}" is already being saved or is in the queue.`);
+      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
       return;
     }
     setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'internal' } }));
     setDownloadQueue(prev => [...prev, item.id]);
+    showModal('success', 'Added to Downloads', `"${item.title}" has been added to the download queue.`);
   };
 
   const startExternalGalleryDownload = async (item: Movie | Series) => {
+    const title = item.title || "Unknown Movie";
     setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'external' } }));
     setDownloadQueue(prev => [...prev, item.id]);
+    showModal('success', 'Queued to Gallery', `"${title}" will be saved to your phone's gallery as an MP4.`);
   };
 
   const startInternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
+    const title = episodeTitle || series.title || "Unknown Episode";
     if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
-      showModal('warning', 'Already in Queue', `"${episodeTitle}" is already being saved or is in the queue.`);
+      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
       return;
     }
     setActiveDownloads(prev => ({ 
       ...prev, 
-      [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle } 
+      [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle: title } 
     }));
     setDownloadQueue(prev => [...prev, queueId]);
+    showModal('success', 'Episode Queued', `"${title}" has been added to the download queue.`);
   };
 
   const startExternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
+    const title = episodeTitle || series.title || "Unknown Episode";
     if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
-      showModal('warning', 'Already in Queue', `"${episodeTitle}" is already being saved or is in the queue.`);
+      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
       return;
     }
     setActiveDownloads(prev => ({ 
       ...prev, 
-      [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle } 
+      [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle: title } 
     }));
     setDownloadQueue(prev => [...prev, queueId]);
+    showModal('success', 'Episode Queued (External)', `"${title}" will be saved to your gallery.`);
   };
 
   // ── Pause / Resume ────────────────────────────────────────────────────────
@@ -604,7 +630,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Immediate notification update to show "Downloading..." and "Pause" button
       if (downloadData) {
         const displayTitle = downloadData.episodeTitle || downloadData.item.title;
-        const posterUrl = downloadData.item.poster || downloadData.item.heroBanner || '';
+        const posterUrl = downloadData.item.poster || (downloadData.item as any).heroBanner || '';
         console.log('[DownloadResume] Resuming download for:', displayTitle);
         downloadNotificationManager.updateProgress(
           id, 
@@ -628,7 +654,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Immediate notification update to show "Paused" and "Resume" button
       if (downloadData) {
         const displayTitle = downloadData.episodeTitle || downloadData.item.title;
-        const posterUrl = downloadData.item.poster || downloadData.item.heroBanner || '';
+        const posterUrl = downloadData.item.poster || (downloadData.item as any).heroBanner || '';
         downloadNotificationManager.updateProgress(
           id, 
           displayTitle, 
@@ -759,7 +785,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 } 
               }));
               
-              const posterUrl = item.poster || item.heroBanner || '';
+              const posterUrl = item.poster || (item as any).heroBanner || '';
               downloadNotificationManager.updateProgress(
                 nextId, 
                 displayTitle, 
@@ -776,18 +802,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
 
         // ── Safeguard: Network Scan (Wi-Fi Only Check) ──
-        if (downloadOnWifiOnly) {
-          const netState = await Network.getNetworkStateAsync();
-          if (netState.type !== Network.NetworkStateType.WIFI) {
-            console.log('[DownloadLoop] Wi-Fi only enabled, waiting for Wi-Fi...');
-            // Check again in 30 seconds
-            await new Promise(r => setTimeout(r, 30000));
-            return; 
+        if (downloadOnWifiOnly && Network) {
+          try {
+            const netState = await Network.getNetworkStateAsync();
+            if (netState.type !== Network.NetworkStateType.WIFI) {
+              console.log('[DownloadLoop] Wi-Fi only enabled, waiting for Wi-Fi...');
+              await new Promise(r => setTimeout(r, 30000));
+              return;
+            }
+          } catch (netErr) {
+            console.warn('[DownloadLoop] Network check failed, skipping Wi-Fi guard:', netErr);
           }
         }
 
         // ── Safeguard: Disk Space Check ──
-        const freeSpace = await FileSystem.getFreeDiskStorageAsync();
+        const freeSpace = await getFreeDiskStorageAsync();
         const MIN_FREE_SPACE = 500 * 1024 * 1024; // 500MB safety buffer
         if (freeSpace < MIN_FREE_SPACE) {
           showModal('error', 'Storage Full', 'You need at least 500MB of free space to download content.');
@@ -797,8 +826,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         if (mode === 'internal') {
-          const fileUri = `${FileSystem.documentDirectory}${safeTitle}_${Date.now()}.mp4`;
-          const resumable = FileSystem.createDownloadResumable(
+          const fileUri = `${documentDirectory}${safeTitle}_${Date.now()}.mp4`;
+          const resumable = createDownloadResumable(
             videoUrl, fileUri,
             { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B)', 'Referer': 'https://themoviezone247.com/' } },
             progressCallback
@@ -878,8 +907,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           if (status !== 'granted') {
             showModal('error', 'Permission Denied', 'Please allow media access in your phone settings to save downloads.');
           } else {
-            const fileUri = `${FileSystem.cacheDirectory}${safeTitle}_${Date.now()}.mp4`;
-            const resumable = FileSystem.createDownloadResumable(
+            const fileUri = `${cacheDirectory}${safeTitle}_${Date.now()}.mp4`;
+            const resumable = createDownloadResumable(
               videoUrl, fileUri,
               { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B)', 'Referer': 'https://themoviezone247.com/' } },
               progressCallback
@@ -957,6 +986,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 
   const isPaid = subscriptionBundle !== 'None';
+  const deviceLimit = planDeviceLimits[subscriptionBundle] || 1;
 
   return (
     <SubscriptionContext.Provider value={{
@@ -1001,7 +1031,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSmartDownloads: (val: boolean) => {
         setSmartDownloadsState(val);
         AsyncStorage.setItem('smartDownloads', String(val));
-      }
+      },
+      playingNow,
+      setPlayingNow,
+      playerMode,
+      setPlayerMode,
+      playerTitle,
+      setPlayerTitle,
+      selectedVideoUrl,
+      setSelectedVideoUrl,
     }}>
       {children}
 

@@ -60,7 +60,7 @@ export function createGalleryDownload(
   const promise = (async (): Promise<DownloadResult> => {
     try {
       // Check if we need media lib permissions
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
         return {
           success: false,

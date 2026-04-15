@@ -88,8 +88,9 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { ALL_ROWS, Movie, Series } from "@/constants/movieData";
-import { MoviePreviewModal, MoviePreviewContent } from "./index";
+import { MoviePreviewModal } from "./index";
 import { GridModal, GridContent } from "../../components/GridComponents";
+import ModernVideoPlayer from "../../components/ModernVideoPlayer";
 import { useMovies } from "@/app/context/MovieContext";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
@@ -97,6 +98,7 @@ import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useRouter } from "expo-router";
 
 const { width: W } = Dimensions.get("window");
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Genre data ───────────────────────────────────────────────────────────────
 const GENRES = [
@@ -529,6 +531,13 @@ export default function CategoryScreen() {
     | { type: 'grid'; title: string; data: (Movie | Series)[] };
   const [categoryStack, setCategoryStack] = React.useState<CatStackItem[]>([]);
 
+  // Unified Video Player State
+  const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+  const [playerTitle, setPlayerTitle] = useState("");
+  const playerPos = useRef(new Animated.ValueXY({ x: SCREEN_W - 170, y: SCREEN_H - 240 })).current;
+  const playerSize = useRef(new Animated.Value(150)).current;
+
   const handlePress = (item: any) => {
     setActiveRequestTitle(
       `${item.name} ONLY BY YOUR FAVOURITE VJ`.toUpperCase(),
@@ -597,7 +606,7 @@ export default function CategoryScreen() {
 
       {/* Category navigation stack – handles See All from movie detail */}
       <Modal
-        visible={categoryStack.length > 0}
+        visible={categoryStack.length > 0 && playerMode !== 'full'}
         animationType="slide"
         transparent
         statusBarTranslucent
@@ -624,15 +633,15 @@ export default function CategoryScreen() {
                 />
               );
             }
-            return (
-              <MoviePreviewContent
-                key={`cm-${index}`}
+              return (
+                <MoviePreviewModal
+                  key={`cm-${index}`}
                 movie={item.movie}
                 onClose={onClose}
-                onSwitch={(m) =>
+                onSwitch={(m: any) =>
                   setCategoryStack(prev => [...prev, { type: 'movie', movie: m }])
                 }
-                onSeeAll={(title, data) =>
+                onSeeAll={(title: any, data: any) =>
                   setCategoryStack(prev => [...prev, { type: 'grid', title, data }])
                 }
                 onShowPremium={() => setShowPremiumModal(true)}
@@ -640,6 +649,14 @@ export default function CategoryScreen() {
                   setShowPremiumModal(false);
                   setShowPlanModal(true);
                 }}
+                playerMode={playerMode}
+                setPlayerMode={setPlayerMode}
+                setSelectedVideoUrl={setSelectedVideoUrl}
+                setPlayerTitle={setPlayerTitle}
+                selectedVideoUrl={selectedVideoUrl}
+                playerTitle={playerTitle}
+                playerPos={playerPos}
+                playerSize={playerSize}
               />
             );
           })}
@@ -649,6 +666,7 @@ export default function CategoryScreen() {
       {/* Legacy single-movie preview (opened from genre grid) */}
       {previewMovie && (
         <MoviePreviewModal
+          visible={playerMode !== 'full'}
           movie={previewMovie}
           onClose={() => setPreviewMovie(null)}
           onSwitch={(m: any) => {
@@ -656,11 +674,19 @@ export default function CategoryScreen() {
             setTimeout(() => setPreviewMovie(m), 150);
           }}
           onShowPremium={() => setShowPremiumModal(true)}
+          playerMode={playerMode}
+          setPlayerMode={setPlayerMode}
+          setSelectedVideoUrl={setSelectedVideoUrl}
+          setPlayerTitle={setPlayerTitle}
+          selectedVideoUrl={selectedVideoUrl}
+          playerTitle={playerTitle}
+          playerPos={playerPos}
+          playerSize={playerSize}
         />
       )}
 
       <VJRequestModal
-        visible={requestModalVisible}
+        visible={requestModalVisible && playerMode !== 'full'}
         title={activeRequestTitle}
         genre={activeGenre}
         onClose={() => setRequestModalVisible(false)}
@@ -673,6 +699,10 @@ export default function CategoryScreen() {
         visible={showPremiumModal}
         isGuest={isGuest}
         onClose={() => setShowPremiumModal(false)}
+        onSignUp={() => {
+          setShowPremiumModal(false);
+          router.push("/login" as any);
+        }}
         onLogin={() => {
           setShowPremiumModal(false);
           router.push("/login" as any);
@@ -690,6 +720,17 @@ export default function CategoryScreen() {
       <PlanSelectionModal 
         visible={showPlanModal}
         onClose={() => setShowPlanModal(false)}
+      />
+
+      {/* Unified Video Player Component */}
+      <ModernVideoPlayer
+        playerMode={playerMode}
+        setPlayerMode={setPlayerMode}
+        videoUrl={selectedVideoUrl}
+        title={playerTitle}
+        playerPos={playerPos}
+        playerSize={playerSize}
+        onClose={() => setPlayerMode('closed')}
       />
     </View>
   );

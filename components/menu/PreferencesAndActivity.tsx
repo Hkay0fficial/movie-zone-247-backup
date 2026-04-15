@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './menu.styles';
 import { useRouter } from 'expo-router';
 import { getRelativeTime } from '../../constants/utils';
+import { useSubscription } from "@/app/context/SubscriptionContext";
 
 interface Movie {
   id: string;
@@ -79,6 +80,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   onCloseSettings,
 }) => {
   const router = useRouter();
+  const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
 
   // Combine notifications with active downloads
   const allNotifications = React.useMemo(() => {
@@ -96,21 +98,20 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
     return [...dlNotifs, ...notifications];
   }, [notifications, activeDownloads]);
 
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series'>('All');
+  const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series' | 'Mini Series'>('All');
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isEditMode, setIsEditMode] = React.useState(false);
 
   // Filter logic
   const filteredDownloads = React.useMemo(() => {
     return downloadedMovies.filter(m => {
-      const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase());
       const typeMatch = filterType === 'All' || 
                        (filterType === 'Movie' && !("seasons" in m)) || 
-                       (filterType === 'Series' && "seasons" in m);
-      return matchesSearch && typeMatch;
+                       (filterType === 'Series' && "seasons" in m && !(m as any).isMiniSeries) ||
+                       (filterType === 'Mini Series' && "seasons" in m && (m as any).isMiniSeries);
+      return typeMatch;
     });
-  }, [downloadedMovies, searchQuery, filterType]);
+  }, [downloadedMovies, filterType]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -145,64 +146,16 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   if (selectedItem?.id === '5') {
     return (
       <View style={styles.settingsContentSection}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={styles.settingsText}>
-            {downloadedMovies.length > 0
-              ? `${downloadedMovies.length} title${downloadedMovies.length === 1 ? '' : 's'} saved.`
-              : 'No offline content yet.'}
-          </Text>
-          {downloadedMovies.length > 0 && (
-            <TouchableOpacity 
-              onPress={() => {
-                setIsEditMode(!isEditMode);
-                setSelectedIds(new Set());
-              }}
-              style={{ backgroundColor: isEditMode ? 'rgba(91, 95, 239, 0.2)' : 'rgba(255,255,255,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
-            >
-              <Text style={{ color: isEditMode ? '#818cf8' : '#fff', fontSize: 13, fontWeight: '700' }}>
-                {isEditMode ? 'Cancel' : 'Edit'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         {downloadedMovies.length > 0 && (
-          <>
-            {/* Search Bar */}
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              backgroundColor: 'rgba(255,255,255,0.05)', 
-              borderRadius: 15, 
-              paddingHorizontal: 12, 
-              height: 44,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.1)'
-            }}>
-              <Ionicons name="search" size={18} color="rgba(255,255,255,0.4)" />
-              <TextInput
-                style={{ flex: 1, color: '#fff', fontSize: 14, marginLeft: 8 }}
-                placeholder="Search downloaded titles..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-              )}
-            </View>
-
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
             {/* Filter Pills */}
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-              {(['All', 'Movie', 'Series'] as const).map(type => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 10 }} style={{ flex: 1 }}>
+              {(['All', 'Movie', 'Series', 'Mini Series'] as const).map(type => (
                 <TouchableOpacity 
                   key={type}
                   onPress={() => setFilterType(type)}
                   style={{
-                    paddingHorizontal: 16,
+                    paddingHorizontal: 14,
                     paddingVertical: 8,
                     borderRadius: 20,
                     backgroundColor: filterType === type ? '#5B5FEF' : 'rgba(255,255,255,0.05)',
@@ -213,8 +166,41 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                   <Text style={{ color: filterType === type ? '#fff' : 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700' }}>{type}</Text>
                 </TouchableOpacity>
               ))}
+            </ScrollView>
+
+            {/* Actions: Edit / Select All / Delete */}
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginLeft: 8 }}>
+              {isEditMode && (
+                <>
+                  <TouchableOpacity onPress={() => {
+                    if (selectedIds.size === filteredDownloads.length && filteredDownloads.length > 0) {
+                      setSelectedIds(new Set());
+                    } else {
+                      setSelectedIds(new Set(filteredDownloads.map(m => (m as any).id)));
+                    }
+                  }}>
+                    <Ionicons name={selectedIds.size === filteredDownloads.length && filteredDownloads.length > 0 ? "checkbox" : "checkbox-outline"} size={22} color="#5B5FEF" />
+                  </TouchableOpacity>
+                  {selectedIds.size > 0 && (
+                    <TouchableOpacity onPress={handleBatchDelete}>
+                      <Ionicons name="trash-outline" size={22} color="#ef4444" />
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+              <TouchableOpacity 
+                onPress={() => {
+                  setIsEditMode(!isEditMode);
+                  setSelectedIds(new Set());
+                }}
+                style={{ backgroundColor: isEditMode ? 'rgba(91, 95, 239, 0.2)' : 'rgba(255,255,255,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
+              >
+                <Text style={{ color: isEditMode ? '#818cf8' : '#fff', fontSize: 13, fontWeight: '700' }}>
+                  {isEditMode ? 'Done' : 'Edit'}
+                </Text>
+              </TouchableOpacity>
             </View>
-          </>
+          </View>
         )}
 
         <View style={{ marginTop: 8 }}>
@@ -258,13 +244,12 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                         <TouchableOpacity 
                           style={styles.downloadPlayBtn}
                           onPress={() => {
-                            onCloseSettings();
-                            DeviceEventEmitter.emit('movieSelected', { ...m, autoPlay: true });
-                            if ('seasons' in m) {
-                              router.push('/(tabs)/saved');
-                            } else {
-                              router.push('/(tabs)');
-                            }
+                            // Trigger global playback immediately
+                            // This ensures the player covers the menu without closing it
+                            setPlayerTitle(m.title);
+                            setSelectedVideoUrl(m.localUri || m.videoUrl);
+                            setPlayingNow(m as any);
+                            setPlayerMode('full');
                           }}
                         >
                           <Ionicons name="play" size={12} color="#fff" />
@@ -293,40 +278,14 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
             })
           ) : (
             <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
-              <Ionicons name={searchQuery ? "search-outline" : "cloud-download-outline"} size={48} color="rgba(255,255,255,0.1)" />
+              <Ionicons name="cloud-download-outline" size={48} color="rgba(255,255,255,0.1)" />
               <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>
-                {searchQuery ? `No results for "${searchQuery}"` : 'No downloads yet. Save movies or series for offline viewing.'}
+                No downloads yet. Save movies or series for offline viewing.
               </Text>
             </View>
           )}
         </View>
 
-        {isEditMode && selectedIds.size > 0 && (
-          <TouchableOpacity 
-            onPress={handleBatchDelete}
-            style={{
-              position: 'absolute',
-              bottom: 20,
-              left: 20,
-              right: 20,
-              backgroundColor: '#ef4444',
-              height: 56,
-              borderRadius: 28,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.3,
-              shadowRadius: 15,
-              elevation: 8,
-            }}
-          >
-            <Ionicons name="trash" size={20} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>DELETE {selectedIds.size} ITEMS</Text>
-          </TouchableOpacity>
-        )}
       </View>
     );
   }
@@ -425,25 +384,22 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
             ? `${favorites.length} title${favorites.length === 1 ? '' : 's'} saved to your list.`
             : 'Your personally curated collection of movies and series.'}
         </Text>
-        <View style={styles.watchlistGrid}>
+        <View style={{ marginTop: 8 }}>
           {favorites.length > 0 ? (
             favorites.map((m, index) => (
-              <View
-                key={(m as any).id ?? `fav-${index}`}
-                style={[styles.gridCard, { position: 'relative' }]}
-              >
-                <TouchableOpacity
+                <TouchableOpacity 
+                  key={(m as any).id ?? `fav-${index}`} 
+                  style={styles.downloadCard}
                   activeOpacity={0.8}
                   onPress={() => {
-                    if ("seasons" in m) {
-                      router.push({ pathname: "/(tabs)/saved", params: { seriesId: (m as any).id } });
-                    } else {
-                      router.push({ pathname: "/(tabs)/saved", params: { movieId: (m as any).id } });
-                    }
+                    setPlayerTitle(m.title);
+                    setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
+                    setPlayingNow(m as any);
+                    setPlayerMode('full');
                   }}
                 >
-                  <View>
-                    <Image source={{ uri: m.poster }} style={styles.gridPoster} />
+                  <View style={styles.downloadPosterContainer}>
+                    <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
                     <View style={styles.vjBadgeSmall}>
                       <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
                     </View>
@@ -453,30 +409,22 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.gridInfo}>
-                    <Text style={styles.gridTitle} numberOfLines={1}>{m.title}</Text>
-                    <Text style={styles.gridMeta} numberOfLines={1}>
+                  <View style={styles.downloadInfo}>
+                    <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                    <Text style={styles.downloadMeta}>
                       {m.year} · {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : `Season ${(m as any).seasons}`) : (m as any).duration}
                     </Text>
+                    <View style={styles.downloadActionRow}>
+
+                      <TouchableOpacity 
+                        style={styles.downloadDeleteBtn}
+                        onPress={() => toggleFavorite(m)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onPress={() => toggleFavorite(m)}
-                >
-                  <Ionicons name="close" size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
             ))
           ) : (
             <View style={{ width: '100%', padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
