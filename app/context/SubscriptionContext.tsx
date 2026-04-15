@@ -565,12 +565,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const startInternalAppDownload = async (item: Movie | Series) => {
     const title = item.title || "Unknown Movie";
-    if (activeDownloads[item.id] !== undefined || downloadQueue.includes(item.id)) {
-      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
-      return;
-    }
     setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'internal' } }));
-    setDownloadQueue(prev => [...prev, item.id]);
+    setDownloadQueue(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
   };
 
   const startExternalGalleryDownload = async (item: Movie | Series) => {
@@ -582,29 +578,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const startInternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
     const title = episodeTitle || series.title || "Unknown Episode";
-    if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
-      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
-      return;
-    }
     setActiveDownloads(prev => ({ 
       ...prev, 
       [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle: title } 
     }));
-    setDownloadQueue(prev => [...prev, queueId]);
+    setDownloadQueue(prev => prev.includes(queueId) ? prev : [...prev, queueId]);
   };
 
   const startExternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
     const title = episodeTitle || series.title || "Unknown Episode";
-    if (activeDownloads[queueId] !== undefined || downloadQueue.includes(queueId)) {
-      showModal('warning', 'Already in Queue', `"${title}" is already being saved or is in the queue.`);
-      return;
-    }
     setActiveDownloads(prev => ({ 
       ...prev, 
       [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle: title } 
     }));
-    setDownloadQueue(prev => [...prev, queueId]);
+    setDownloadQueue(prev => prev.includes(queueId) ? prev : [...prev, queueId]);
   };
 
   // ── Pause / Resume ────────────────────────────────────────────────────────
