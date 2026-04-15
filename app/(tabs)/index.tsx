@@ -2715,10 +2715,10 @@ export function MoviePreviewContent({
     if (!movie) return;
 
     // If already downloading, toggle pause/resume instead of opening modal
-    const activeDl = activeDownloads[movie.id] || Object.values(activeDownloads).find(d => d.item.id === movie.id);
+    const activeDl = activeDownloads[movie.id] || Object.values(activeDownloads).find(d => (d as any)?.item?.id === movie.id);
     if (activeDl) {
       const id = Object.keys(activeDownloads).find(
-        k => activeDownloads[k].item.id === movie.id
+        k => (activeDownloads[k] as any)?.item?.id === movie.id
       ) || movie.id;
       toggleDownloadPause(id);
       return;
@@ -3657,7 +3657,7 @@ export function MoviePreviewContent({
 
                     {/* DOWNLOAD */}
                     {(() => {
-                      const activeDl = movie ? (activeDownloads[movie.id] || Object.values(activeDownloads).find(d => d.item.id === movie.id)) : null;
+                      const activeDl = movie ? (activeDownloads[movie.id] || Object.values(activeDownloads).find(d => (d as any)?.item?.id === movie.id)) : null;
                       const isDl = !!activeDl;
                       const isDownloaded = movie ? downloadedMovies.some(m => m.id === movie.id) : false;
                       
