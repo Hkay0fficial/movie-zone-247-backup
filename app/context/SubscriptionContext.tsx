@@ -571,14 +571,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'internal' } }));
     setDownloadQueue(prev => [...prev, item.id]);
-    showModal('success', 'Added to Downloads', `"${item.title}" has been added to the download queue.`);
   };
 
   const startExternalGalleryDownload = async (item: Movie | Series) => {
     const title = item.title || "Unknown Movie";
     setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'external' } }));
     setDownloadQueue(prev => [...prev, item.id]);
-    showModal('success', 'Queued to Gallery', `"${title}" will be saved to your phone's gallery as an MP4.`);
   };
 
   const startInternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
@@ -593,7 +591,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle: title } 
     }));
     setDownloadQueue(prev => [...prev, queueId]);
-    showModal('success', 'Episode Queued', `"${title}" has been added to the download queue.`);
   };
 
   const startExternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
@@ -608,7 +605,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle: title } 
     }));
     setDownloadQueue(prev => [...prev, queueId]);
-    showModal('success', 'Episode Queued (External)', `"${title}" will be saved to your gallery.`);
   };
 
   // ── Pause / Resume ────────────────────────────────────────────────────────
@@ -899,8 +895,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               return [downloadedItem, ...prev];
             });
           }
-          showModal('success', 'In-App Save Complete', `"${displayTitle}" has been saved securely to My Downloads.`);
-
         } else {
           // ── External (Gallery) download ──
           const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -957,7 +951,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             } catch { /* Album optional */ }
 
             await FileSystem.deleteAsync(localUri, { idempotent: true });
-            showModal('success', 'External Download Complete', `"${displayTitle}" has been saved to your local storage.`);
             recordTrialUsage();
           }
         }
