@@ -84,17 +84,19 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
 
   // Combine notifications with active downloads
   const allNotifications = React.useMemo(() => {
-    const dlNotifs = Object.entries(activeDownloads).map(([id, dl]) => ({
-      id: `dl_${id}`,
-      title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
-      message: `${dl.progress === 100 ? "Finished" : "Saving"} "${dl.episodeTitle || dl.item.title}" (${dl.progress}%)`,
-      time: "ACTIVE",
-      unread: true,
-      type: "update",
-      icon: "cloud-download",
-      color: "#00ffcc",
-      createdAt: { toMillis: () => Date.now() }
-    }));
+    const dlNotifs = Object.entries(activeDownloads)
+      .filter(([id, dl]) => dl && dl.item)
+      .map(([id, dl]) => ({
+        id: `dl_${id}`,
+        title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
+        message: `${dl.progress === 100 ? "Finished" : "Saving"} "${dl.episodeTitle || dl.item?.title || 'Unknown'}" (${dl.progress}%)`,
+        time: "ACTIVE",
+        unread: true,
+        type: "update",
+        icon: "cloud-download",
+        color: "#00ffcc",
+        createdAt: { toMillis: () => Date.now() }
+      }));
     return [...dlNotifs, ...notifications];
   }, [notifications, activeDownloads]);
 

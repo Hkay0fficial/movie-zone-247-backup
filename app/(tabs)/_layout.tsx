@@ -2197,17 +2197,19 @@ function CustomTabBar() {
     }
     
     // Inject Active Downloads
-    const dlNotifications: Notification[] = Object.entries(activeDownloads).map(([id, dl]) => ({
-      id: `dl_${id}`,
-      type: "update",
-      icon: "cloud-download",
-      title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
-      message: `${dl.progress === 100 ? "Finished" : "Saving"} "${(dl as any).episodeTitle || dl.item.title}" (${dl.progress}%)`,
-      time: "ACTIVE",
-      isNew: true,
-      color: "#00ffcc",
-      image: dl.item.poster
-    }));
+    const dlNotifications: Notification[] = Object.entries(activeDownloads)
+      .filter(([id, dl]) => dl && dl.item)
+      .map(([id, dl]) => ({
+        id: `dl_${id}`,
+        type: "update",
+        icon: "cloud-download",
+        title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
+        message: `${dl.progress === 100 ? "Finished" : "Saving"} "${(dl as any)?.episodeTitle || dl.item?.title || 'Unknown'}" (${dl.progress}%)`,
+        time: "ACTIVE",
+        isNew: true,
+        color: "#00ffcc",
+        image: dl.item?.poster
+      }));
 
     baseData = [...dlNotifications, ...baseData];
     
