@@ -13,7 +13,6 @@ import { MovieProvider } from '@/app/context/MovieContext';
 import { UserProvider } from '@/app/context/UserContext';
 import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener } from '../lib/notifications';
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
-import GlobalDownloadBar from '../components/GlobalDownloadBar';
 import VersionLockGuard from '../components/VersionLockGuard';
 
 export const unstable_settings = {
@@ -84,7 +83,7 @@ export default function RootLayout() {
                 notification={activeNotification} 
                 onClose={() => setActiveNotification(null)} 
               />
-              <GlobalDownloadBar />
+
               <VersionLockGuard />
             </View>
             <StatusBar style="auto" />
