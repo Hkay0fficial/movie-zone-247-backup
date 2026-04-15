@@ -830,9 +830,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           while (!localUri && retryCount < 5) {
             try {
-              const result = isResuming
-                ? await resumable.resumeAsync()
-                : await resumable.downloadAsync();
+              let result;
+              try {
+                result = isResuming
+                  ? await resumable.resumeAsync()
+                  : await resumable.downloadAsync();
+              } catch (resumeErr: any) {
+                if (isResuming && resumablesRef.current[nextId]) {
+                  console.warn('[DownloadLoop] native resumeAsync failed, falling back to downloadAsync...', resumeErr);
+                  result = await resumable.downloadAsync();
+                } else {
+                  throw resumeErr;
+                }
+              }
 
               if (result?.uri) {
                 localUri = result.uri;
@@ -913,9 +923,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             while (!localUri) {
               try {
-                const result = isResuming
-                  ? await resumable.resumeAsync()
-                  : await resumable.downloadAsync();
+                let result;
+                try {
+                  result = isResuming
+                    ? await resumable.resumeAsync()
+                    : await resumable.downloadAsync();
+                } catch (resumeErr: any) {
+                  if (isResuming && resumablesRef.current[nextId]) {
+                    console.warn('[DownloadLoop] native resumeAsync fallback to fresh download...', resumeErr);
+                    result = await resumable.downloadAsync();
+                  } else {
+                    throw resumeErr;
+                  }
+                }
 
                 if (result?.uri) {
                   localUri = result.uri;
@@ -924,6 +944,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   markPaused();
                   await waitForResume();
                   isResuming = true;
+                  speedString = 'Resuming...';
                 }
               } catch (err: any) {
                 const errMsg = (err?.message || '').toLowerCase();
