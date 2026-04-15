@@ -847,7 +847,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               const errMsg = (err?.message || '').toLowerCase();
               const errCode = err?.code || '';
               if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
-                console.log('[DownloadLoop] Download intentionally paused/cancelled in try-catch.');
+                // If the resumable is gone, it was a cancellation, not a pause
+                if (!resumablesRef.current[nextId]) {
+                  console.log('[DownloadLoop] Download intentionally cancelled.');
+                  break; 
+                }
+                console.log('[DownloadLoop] Download intentionally paused in try-catch.');
                 markPaused();
                 await waitForResume();
                 isResuming = true;
@@ -921,6 +926,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 const errMsg = (err?.message || '').toLowerCase();
                 const errCode = err?.code || '';
                 if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
+                  if (!resumablesRef.current[nextId]) break;
                   markPaused();
                   await waitForResume();
                   isResuming = true;
