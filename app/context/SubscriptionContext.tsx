@@ -753,6 +753,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         let speedString = '';
 
         const progressCallback = ({ totalBytesWritten, totalBytesExpectedToWrite }: { totalBytesWritten: number; totalBytesExpectedToWrite: number }) => {
+          // Safety: If this ID has been removed from resumables (canceled), stop updating state
+          if (!resumablesRef.current[nextId]) return;
+
           if (totalBytesExpectedToWrite > 0) {
             const now = Date.now();
             if (now - lastTimestamp >= 1000 || speedString === '') {
@@ -958,9 +961,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.error('Global download error:', err);
         showModal('error', 'Unexpected Error', 'An unexpected error occurred during the background download.');
       } finally {
-        delete resumablesRef.current[nextId];
-        pausedRef.current.delete(nextId);
-        setTimeout(() => {
+        const cleanup = () => {
+          delete resumablesRef.current[nextId];
+          pausedRef.current.delete(nextId);
           setActiveDownloads(prev => {
             const next = { ...prev };
             delete next[nextId];
@@ -968,7 +971,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           });
           setDownloadQueue(prev => prev.slice(1));
           isProcessingQueue.current = false;
-        }, 3000);
+        };
+
+        // Minimal delay just to ensure state settling, no longer need 3s without GlobalDownloadBar
+        setTimeout(cleanup, 200);
       }
     };
 
