@@ -8,7 +8,15 @@ import {
   resolveCDNUrl,
   
 } from '../../constants/movieData';
-import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
+
+interface AppUpdateConfig {
+  latestVersion: string;
+  updateMessage: string;
+  forceUpdate: boolean;
+  isUpdateAvailable: boolean;
+}
 
 interface MovieContextType {
   movies: (Movie | Series)[];
@@ -19,6 +27,7 @@ interface MovieContextType {
   newReleases: (Movie | Series)[];
   trending: (Movie | Series)[];
   heroMovies: HeroMovie[];
+  appUpdateConfig: AppUpdateConfig;
 
   allRows: { title: string; data: (Movie | Series)[] }[];
   allSeries: Series[];
@@ -61,6 +70,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [appLayout, setAppLayout] = useState<any[]>([]);
+  const [appUpdateConfig, setAppUpdateConfig] = useState<AppUpdateConfig>({
+    latestVersion: '',
+    updateMessage: '',
+    forceUpdate: false,
+    isUpdateAvailable: false
+  });
 
   useEffect(() => {
     // Listen to Firebase 'movies' collection in real-time
@@ -152,6 +167,29 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Listen to App Version Settings
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'appVersion'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const latestVersion = data.latestVersion || '1.0.0';
+        const currentVersion = Constants.expoConfig?.version || '1.0.0';
+        
+        // Simple version comparison (e.g. "1.2.1" > "1.2.0")
+        // Converts "1.2.1" to 10201 for comparison if needed, or simple string compare for basic cases
+        const isUpdateAvailable = latestVersion !== currentVersion;
+
+        setAppUpdateConfig({
+          latestVersion,
+          updateMessage: data.updateMessage || 'A new update is available with improvements and bug fixes.',
+          forceUpdate: data.forceUpdate || false,
+          isUpdateAvailable
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     // Listen to Global Settings
     const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
       if (docSnap.exists()) {
@@ -180,10 +218,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ? liveSeries.map(s => ({ ...s, isFree: true }))
       : liveSeries;
 
-    const newReleases = [...actualLiveMovies, ...actualLiveSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    // New Releases = items uploaded in the last 30 days (movies + series), newest first
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const newReleases = [...actualLiveMovies, ...actualLiveSeries]
+      .filter((m: any) => (m.createdAt || 0) >= thirtyDaysAgo)
+      .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
     const trending = [...actualLiveMovies];
     const mostViewed = [...actualLiveMovies];
     const mostDownloaded = [...actualLiveMovies];
+    // Latest = full movie catalog (movies only), sorted newest-first
     const latest = [...actualLiveMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
     const continueWatching: Movie[] = []; // Live data doesn't have continue watching state yet
     const favourites: Movie[] = [];
@@ -261,9 +304,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     ].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // If admin hasn't marked any content as hero, fall back to the newest uploaded
-    // movies (New Releases) using their videoUrl + previewUrl
+    // movies. Use 30-day newReleases first; if empty fall back to full latest catalog.
+    const heroFallbackSource = newReleases.length > 0 ? newReleases : latest;
     const newReleaseFallback: HeroMovie[] = adminHeroMovies.length === 0
-      ? newReleases.slice(0, 5).map(m => ({
+      ? heroFallbackSource.slice(0, 5).map(m => ({
           title: m.title,
           genre: m.genre,
           rating: m.rating,
@@ -324,13 +368,13 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
       allRows = [
-        { title: 'New Releases',       data: newReleases       },
+        { title: 'New Releases',       data: newReleases       }, // Last 30 days, movies + series
         { title: 'Free Movies',        data: freeMovies        },
         { title: 'Trending Now',       data: trending          },
         { title: 'K-Drama',            data: kDramaMovies      }, 
         { title: 'Most Viewed',        data: mostViewed       },
         { title: 'Most Downloaded',    data: mostDownloaded   },
-        { title: 'Latest',             data: latest            },
+        { title: 'Latest',             data: latest            }, // Full movie catalog, newest first
         { title: 'Continue Watching',  data: continueWatching },
         { title: 'Favourites',         data: favourites        },
         { title: 'My List',            data: myList           },
@@ -380,9 +424,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       trendingSeries,
       mostViewedSeries,
       mostDownloadedSeries,
-      globalSettings
+      globalSettings,
+      appUpdateConfig
     };
-  }, [liveMovies, liveSeries, loading, globalSettings, appLayout]);
+  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig]);
 
   return (
     <MovieContext.Provider value={contextValue}>

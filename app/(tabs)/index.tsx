@@ -5734,7 +5734,7 @@ function HeroBanner({
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies } = useMovies();
+  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig } = useMovies();
   const { 
     allMoviesFree, 
     eventMessage, 
@@ -5787,6 +5787,26 @@ export default function HomeScreen() {
       return () => clearTimeout(timer);
     }
   }, [isSubscribed, remainingDays, isGuest, hasShownReminderThisSession, isFocused]);
+
+  // ── Show Update Banner once per version ─────────────────────────────────────
+  useEffect(() => {
+    const checkAndShowUpdateBanner = async () => {
+      if (!appUpdateConfig.isUpdateAvailable || !isFocused) return;
+      const key = `update_banner_shown_${appUpdateConfig.latestVersion}`;
+      const alreadyShown = await AsyncStorage.getItem(key);
+      if (alreadyShown) return;
+      // Delay so the screen loads first
+      setTimeout(() => {
+        DeviceEventEmitter.emit('showLocalNotification', {
+          title: `🎉 Update v${appUpdateConfig.latestVersion} Available!`,
+          body: appUpdateConfig.updateMessage || 'New features and improvements are ready. Update now!',
+          data: { type: 'update' }
+        });
+      }, 2500);
+      await AsyncStorage.setItem(key, 'true');
+    };
+    checkAndShowUpdateBanner();
+  }, [appUpdateConfig.isUpdateAvailable, appUpdateConfig.latestVersion, isFocused]);
 
   // Handle deep link (movieId) from search params or notifications
   useEffect(() => {
@@ -5890,13 +5910,9 @@ export default function HomeScreen() {
     const movieSub = DeviceEventEmitter.addListener(
       "movieSelected",
       (m: (Movie | Series) & { autoPlay?: boolean }) => {
-        if ("seasons" in m) {
-          if (m.autoPlay) {
-             // Optional: Handle autoplay for series if needed, for now just open preview
-             setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
-          } else {
-             setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
-          }
+        const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+        if (isSeries) {
+          router.push(`/(tabs)/saved?seriesId=${m.id}`);
         } else {
           if (m.autoPlay) {
             // Directly play for downloaded items (internal storage)
@@ -6062,8 +6078,9 @@ export default function HomeScreen() {
         )}
         <HeroBanner
           onSelect={(m) => {
-            if ("seasons" in m) {
-               setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
+            const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+            if (isSeries) {
+              router.push(`/(tabs)/saved?seriesId=${m.id}`);
             } else {
                setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
             }
@@ -6083,8 +6100,9 @@ export default function HomeScreen() {
             data={row.data}
             onSeeAll={() => setNavigationStack(prev => [...prev, { type: 'grid', title: row.title, data: row.data }])}
             onSelect={(m) => {
-              if ("seasons" in m) {
-                 setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
+              const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+              if (isSeries) {
+                router.push(`/(tabs)/saved?seriesId=${m.id}`);
               } else {
                  setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
               }
@@ -6126,8 +6144,9 @@ export default function HomeScreen() {
                   data={item.data}
                   onClose={onClose}
                   onSelect={(m) => {
-                    if ("seasons" in m) {
-                      setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
+                    const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+                    if (isSeries) {
+                      router.push(`/(tabs)/saved?seriesId=${m.id}`);
                     } else {
                       setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
                     }
@@ -6136,36 +6155,7 @@ export default function HomeScreen() {
               );
             }
 
-            if (item.type === 'series') {
-              return (
-                <SeriesPreviewContent
-                  key={`series-${index}`}
-                  movie={item.series}
-                  onClose={onClose}
-                  onSwitch={(m) => {
-                    if ("seasons" in m) {
-                      setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
-                    } else {
-                      setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
-                    }
-                  }}
-                  onSeeAll={(title: string, data: (Movie | Series)[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
-                  playingNow={playingNow}
-                  setPlayingNow={setPlayingNow}
-                  setPlayerMode={setPlayerMode}
-                  setPlayerTitle={setPlayerTitle}
-                  setSelectedVideoUrl={setSelectedVideoUrl}
-                  playerMode={playerMode}
-                  playerTitle={playerTitle}
-                  selectedVideoUrl={selectedVideoUrl}
-                  isMuted={index !== navigationStack.length - 1 || !isFocused}
-                  onShowPremium={() => setShowPremiumModal(true)}
-                  onUpgrade={() => setShowPlanModal(true)}
-                  isFocused={isFocused}
-                  appState={appState}
-                />
-              );
-            }
+
 
             return (
               <MoviePreviewContent
@@ -6173,8 +6163,9 @@ export default function HomeScreen() {
                 movie={item.movie}
                 onClose={onClose}
                 onSwitch={(m) => {
-                  if ("seasons" in m) {
-                    setNavigationStack((prev) => [...prev, { type: 'series', series: m as Series }]);
+                  const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+                  if (isSeries) {
+                    router.push(`/(tabs)/saved?seriesId=${m.id}`);
                   } else {
                     setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
                   }

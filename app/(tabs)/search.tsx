@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Easing,
+  DeviceEventEmitter,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -191,8 +192,13 @@ export default function SearchScreen() {
               <ResultCard 
                 item={item} 
                 onPress={() => {
-                   // Navigate to detail or show modal
-                   console.log('Pressed', item.title);
+                   const isSeries = "seasons" in item || (item as any).type === 'Series' || (item as any).isMiniSeries;
+                   if (isSeries) {
+                     router.push(`/(tabs)/saved?seriesId=${item.id}`);
+                   } else {
+                     DeviceEventEmitter.emit('movieSelected', item);
+                     router.back();
+                   }
                 }} 
               />
             )}
