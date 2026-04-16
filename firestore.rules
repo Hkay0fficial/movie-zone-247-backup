@@ -30,6 +30,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- User Profiles & Data ---
     match /users/{userId} {
       // Users can read/write their own profile. Admins can do everything.
