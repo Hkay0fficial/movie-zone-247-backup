@@ -598,11 +598,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // ── Pause / Resume ────────────────────────────────────────────────────────
   const toggleDownloadPause = async (id: string) => {
     const resumable = resumablesRef.current[id];
-    if (!resumable) {
-      console.warn('[DownloadPause] No resumable found for id:', id);
-      return;
-    }
-
     const isCurrentlyPaused = pausedRef.current.has(id);
     const downloadData = activeDownloads[id];
 
@@ -828,6 +823,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           let isResuming = false;
           let retryCount = 0;
 
+          // Initial check: if already paused before we even started
+          if (pausedRef.current.has(nextId)) {
+            console.log('[DownloadLoop] Item was pre-paused, waiting...');
+            markPaused();
+            await waitForResume();
+          }
+
           while (!localUri && retryCount < 5) {
             try {
               let result;
@@ -920,6 +922,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             let localUri: string | null = null;
             let isResuming = false;
+
+            // Initial check: if already paused before we even started
+            if (pausedRef.current.has(nextId)) {
+              console.log('[DownloadLoop] Item was pre-paused (external), waiting...');
+              markPaused();
+              await waitForResume();
+            }
 
             while (!localUri) {
               try {
