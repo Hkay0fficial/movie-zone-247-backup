@@ -58,6 +58,11 @@ interface PreferencesAndActivityProps {
   toggleFavorite: (m: any) => void;
   shortenGenre: (g: string) => string;
   onCloseSettings: () => void;
+  appUpdateConfig?: {
+    isUpdateAvailable: boolean;
+    latestVersion: string;
+    updateMessage: string;
+  };
 }
 
 export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
@@ -78,6 +83,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   toggleFavorite,
   shortenGenre,
   onCloseSettings,
+  appUpdateConfig,
 }) => {
   const router = useRouter();
   const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
@@ -99,6 +105,25 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
       }));
     return [...dlNotifs, ...notifications];
   }, [notifications, activeDownloads]);
+
+  // Prepend update notification pin at top if update is available
+  const allNotificationsWithUpdate = React.useMemo(() => {
+    if (!appUpdateConfig?.isUpdateAvailable) return allNotifications;
+    const updateNotif: Notification = {
+      id: `sys_update_${appUpdateConfig.latestVersion}`,
+      title: `Update Available — v${appUpdateConfig.latestVersion}`,
+      message: appUpdateConfig.updateMessage || 'Tap to update now for the latest features and improvements.',
+      time: 'Now',
+      unread: true,
+      type: 'update',
+      icon: 'cloud-download',
+      color: '#f59e0b',
+      createdAt: { toMillis: () => Date.now() }
+    };
+    // avoid duplicating
+    const filtered = allNotifications.filter(n => !n.id.startsWith('sys_update_'));
+    return [updateNotif, ...filtered];
+  }, [allNotifications, appUpdateConfig]);
 
   const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series' | 'Mini Series'>('All');
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -306,12 +331,24 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
         </View>
 
         <View style={{ gap: 12, marginBottom: 24 }}>
-          {allNotifications.length > 0 ? (
-            allNotifications.map((n) => (
+          {allNotificationsWithUpdate.length > 0 ? (
+            allNotificationsWithUpdate.map((n) => (
               <TouchableOpacity 
                 key={n.id} 
-                style={styles.notificationCard}
-                onPress={() => handleNotificationPress(n)}
+                style={[styles.notificationCard, n.id.startsWith('sys_update_') && { borderColor: '#f59e0b33', borderWidth: 1 }]}
+                onPress={() => {
+                  if (n.id.startsWith('sys_update_')) {
+                    const { Linking, Platform } = require('react-native');
+                    const url = Platform.OS === 'android'
+                      ? 'market://details?id=com.serunkumaharuna.app'
+                      : 'https://play.google.com/store/apps/details?id=com.serunkumaharuna.app';
+                    Linking.openURL(url).catch(() =>
+                      Linking.openURL('https://play.google.com/store/apps/details?id=com.serunkumaharuna.app')
+                    );
+                  } else {
+                    handleNotificationPress(n);
+                  }
+                }}
                 activeOpacity={0.7}
               >
                 <View style={[styles.notificationIcon, { backgroundColor: `${n.color}15` }]}>

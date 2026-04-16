@@ -19,8 +19,10 @@ import { styles } from './menu.styles';
 interface AboutModalProps {
   visible: boolean;
   onClose: () => void;
-  updateStatus: 'idle' | 'checking' | 'updated';
+  updateStatus: 'idle' | 'checking' | 'updated' | 'available';
   handleUpdateCheck: () => void;
+  latestVersion: string;
+  updateMessage: string;
   insets: { top: number; bottom: number; left: number; right: number };
   currentScrollY: number;
   setCurrentScrollY: (val: number) => void;
@@ -35,6 +37,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   onClose,
   updateStatus,
   handleUpdateCheck,
+  latestVersion,
+  updateMessage,
   insets,
   currentScrollY,
   setCurrentScrollY,
@@ -138,6 +142,39 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                       <View style={styles.statusRow}>
                         <Ionicons name="checkmark-circle" size={14} color="#34d399" />
                         <Text style={[styles.statusText, { color: '#34d399' }]}>App is up to date</Text>
+                      </View>
+                    )}
+                    {updateStatus === 'available' && (
+                      <View style={[styles.statusRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 6 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="cloud-download" size={14} color="#f59e0b" />
+                          <Text style={[styles.statusText, { color: '#f59e0b', fontWeight: '700' }]}>
+                            Update Available — v{latestVersion}
+                          </Text>
+                        </View>
+                        <Text style={[styles.statusText, { color: '#94a3b8', fontSize: 11 }]} numberOfLines={2}>
+                          {updateMessage}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const url = Platform.OS === 'android'
+                              ? 'market://details?id=com.serunkumaharuna.app'
+                              : 'https://play.google.com/store/apps/details?id=com.serunkumaharuna.app';
+                            Linking.openURL(url).catch(() =>
+                              Linking.openURL('https://play.google.com/store/apps/details?id=com.serunkumaharuna.app')
+                            );
+                          }}
+                          style={{
+                            marginTop: 4,
+                            paddingHorizontal: 14,
+                            paddingVertical: 7,
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 20,
+                            alignSelf: 'flex-start'
+                          }}
+                        >
+                          <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>Update Now</Text>
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>

@@ -456,6 +456,20 @@ export default function SeriesScreen() {
     }).start();
   }, [showCategories]);
 
+  // Handle incoming seriesId parameter from Home or Search
+  useEffect(() => {
+    if (seriesId && typeof seriesId === 'string' && isFocused) {
+      const found = ALL_SERIES.find(s => s.id === seriesId);
+      if (found) {
+        // Push the found series to the stack to open its detail view
+        setSeriesStack([found]);
+        // Clear the param and clear search state if any
+        setIsExternalSearch(false);
+        router.setParams({ seriesId: undefined } as any);
+      }
+    }
+  }, [seriesId, isFocused]);
+
   const resetActivityTimer = () => {
     setShowCategories(prev => {
       if (!prev) return true;

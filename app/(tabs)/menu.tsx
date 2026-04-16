@@ -31,6 +31,7 @@ import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, updateDoc,
 import { Modal } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useUser } from '../context/UserContext';
+import { useMovies } from '../context/MovieContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AboutSection } from '../../components/menu/AboutSection';
@@ -126,11 +127,12 @@ export default function MenuScreen() {
     'Update Payment Method': 'card-outline'
   };
   const [selectedStat, setSelectedStat] = React.useState<{ label: string, value: string, icon: IoniconsName } | null>(null);
-  const [updateStatus, setUpdateStatus] = React.useState<'idle' | 'checking' | 'updated'>('idle');
+  const [updateStatus, setUpdateStatus] = React.useState<'idle' | 'checking' | 'updated' | 'available'>('idle');
   const [cameFromSubscription, setCameFromSubscription] = React.useState(false);
   const [fromNotification, setFromNotification] = React.useState(false);
   const router = useRouter();
   const { user, profile, loading: userLoading } = useUser();
+  const { appUpdateConfig } = useMovies();
 
   // Profile data from context
   const userName = profile.fullName;
@@ -752,7 +754,8 @@ export default function MenuScreen() {
         setSelectedStat(null);
         handleShowPaymentModal(false);
         setShowPaymentDetailsModal(false);
-        setUpdateStatus('idle');
+        // Auto-show update status if one is available
+        setUpdateStatus(appUpdateConfig.isUpdateAvailable ? 'available' : 'idle');
         setFromNotification(false);
       }
     }
@@ -1040,8 +1043,12 @@ export default function MenuScreen() {
     if (updateStatus !== 'idle') return;
     setUpdateStatus('checking');
     setTimeout(() => {
-      setUpdateStatus('updated');
-    }, 2000);
+      if (appUpdateConfig.isUpdateAvailable) {
+        setUpdateStatus('available');
+      } else {
+        setUpdateStatus('updated');
+      }
+    }, 1500);
   };
 
   const pickMedia = async (type: 'image' | 'video') => {
@@ -1112,6 +1119,8 @@ export default function MenuScreen() {
         onClose={toggleAbout}
         updateStatus={updateStatus}
         handleUpdateCheck={handleUpdateCheck}
+        latestVersion={appUpdateConfig.latestVersion}
+        updateMessage={appUpdateConfig.updateMessage}
         insets={insets}
         currentScrollY={currentScrollY}
         setCurrentScrollY={setCurrentScrollY}
@@ -1285,6 +1294,7 @@ export default function MenuScreen() {
                   toggleFavorite={toggleFavorite}
                   shortenGenre={shortenGenre}
                   onCloseSettings={() => setSelectedItem(null)}
+                  appUpdateConfig={appUpdateConfig}
                 />
                 {selectedItem?.id === '8' && ( // Support
                   <SupportSection

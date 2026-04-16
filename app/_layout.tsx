@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, View, DeviceEventEmitter } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -60,9 +60,15 @@ export default function RootLayout() {
       }
     });
 
+    // Manual trigger for in-app notification banner
+    const localNotifSub = DeviceEventEmitter.addListener("showLocalNotification", (notif: LocalNotification) => {
+      setActiveNotification(notif);
+    });
+
     return () => {
       subscription.remove();
       responseSubscription.remove();
+      localNotifSub.remove();
     };
   }, []);
 
