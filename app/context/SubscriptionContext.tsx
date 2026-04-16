@@ -851,11 +851,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
               } else {
                 // If it resolves with undefined, it means it's gracefully paused (resumable)
-                console.log('[DownloadLoop] Download gracefully paused/suspended by system or user.');
-                markPaused();
-                await waitForResume();
+                console.log('[DownloadLoop] Download gracefully paused/suspended.');
+                if (pausedRef.current.has(nextId)) {
+                  markPaused();
+                  await waitForResume();
+                }
                 isResuming = true;
-                // Important: Reset speed string on resume wait
                 speedString = 'Resuming...';
               }
             } catch (err: any) {
@@ -868,8 +869,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   break; 
                 }
                 console.log('[DownloadLoop] Download intentionally paused in try-catch.');
-                markPaused();
-                await waitForResume();
+                if (pausedRef.current.has(nextId)) {
+                  markPaused();
+                  await waitForResume();
+                }
                 isResuming = true;
               } else {
                 console.warn('[DownloadLoop] Transient error, retrying...', err);
@@ -949,9 +952,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 if (result?.uri) {
                   localUri = result.uri;
                   setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
-                } else {
-                  markPaused();
-                  await waitForResume();
+                  console.log('[DownloadLoop] Download gracefully paused/suspended (external).');
+                  if (pausedRef.current.has(nextId)) {
+                    markPaused();
+                    await waitForResume();
+                  }
                   isResuming = true;
                   speedString = 'Resuming...';
                 }
@@ -960,8 +965,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 const errCode = err?.code || '';
                 if (errCode === 'ERR_TASK_CANCELLED' || errMsg.includes('cancel') || errMsg.includes('pause') || errMsg.includes('abort')) {
                   if (!resumablesRef.current[nextId]) break;
-                  markPaused();
-                  await waitForResume();
+                  console.log('[DownloadLoop] Download intentionally paused in try-catch (external).');
+                  if (pausedRef.current.has(nextId)) {
+                    markPaused();
+                    await waitForResume();
+                  }
                   isResuming = true;
                 } else {
                   throw err;

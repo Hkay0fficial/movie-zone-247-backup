@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Check if user has an admin role
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // --- Public Content ---
+    match /movies/{movieId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /announcements/{annId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /app_layout/{layoutId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- User Profiles & Data ---
+    match /users/{userId} {
+      // Users can read/write their own profile. Admins can do everything.
+      allow read, write: if request.auth.uid == userId || isAdmin();
+      
+      // Allow searching for users by username or phone number (used in menu.tsx)
+      // Note: This allows listing but we restrict fields in the query usually.
+      // For higher security, we could use a custom function or index.
+      allow list: if isAuthenticated(); 
+      
+      match /notifications/{notifId} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+      
+      match /transactions/{txId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow write: if isAdmin();
+      }
+    }
+
+    // --- Social & Interaction ---
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+    
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --- Administrative & Billing ---
+    match /payments/{paymentId} {
+      // Users can see their own payments. Admin writes them via Cloud Functions/Admin SDK.
+      allow read: if (isAuthenticated() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /user_activity/{activityId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
