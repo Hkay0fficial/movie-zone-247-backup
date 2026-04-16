@@ -71,6 +71,7 @@ import {
   UIManager,
   useWindowDimensions,
   NativeModules,
+  AppState,
 } from "react-native";
 
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
@@ -282,6 +283,14 @@ export default function SeriesScreen() {
     setSelectedVideoUrl
   } = useSubscription();
   const isFocused = useIsFocused();
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
   const { seriesId } = useLocalSearchParams();
 
   const [seriesStack, setSeriesStack] = useState<Series[]>([]);
@@ -768,6 +777,8 @@ export default function SeriesScreen() {
           playerTitle={playerTitle}
           setActivePartId={setActivePartId}
           setActiveEpisodes={setActiveEpisodes}
+          isFocused={isFocused}
+          appState={appState}
         />
       ))}
 
@@ -831,6 +842,8 @@ function SeriesPreviewModal({
   playerTitle,
   setActivePartId,
   setActiveEpisodes,
+  isFocused,
+  appState
 }: {
   series: Series;
   onClose: () => void;
@@ -846,6 +859,8 @@ function SeriesPreviewModal({
   playerTitle: string;
   setActivePartId: (id: string) => void;
   setActiveEpisodes: (eps: any[]) => void;
+  isFocused: boolean;
+  appState: string;
 }) {
   const router = useRouter();
   const {
@@ -1397,7 +1412,7 @@ function SeriesPreviewModal({
                   source={{ uri: previewVideoUrl }}
                   style={styles.previewPoster}
                   resizeMode={ResizeMode.COVER}
-                  shouldPlay={playerMode === 'closed'}
+                  shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
                   isLooping
                   isMuted={isMuted}
                 />

@@ -19,7 +19,9 @@ import {
   Image,
   ScrollView,
   Modal,
+  AppState,
 } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -108,6 +110,16 @@ export default function ModernVideoPlayer({
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
   const insets = useSafeAreaInsets();
   
+  const isFocused = useIsFocused();
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
+
   const videoRef = useRef<Video>(null);
   const [status, setStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
   const statusRef = useRef<AVPlaybackStatus>({} as AVPlaybackStatus);
@@ -403,7 +415,7 @@ export default function ModernVideoPlayer({
           source={{ uri: videoUrl || "" }}
           style={styles.absFill}
           resizeMode={ResizeMode.COVER}
-          shouldPlay={playerMode !== 'closed'}
+          shouldPlay={playerMode !== 'closed' && isFocused && appState === 'active'}
           useNativeControls={false}
           onPlaybackStatusUpdate={s => {
             setStatus(s);
