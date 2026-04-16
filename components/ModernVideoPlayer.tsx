@@ -26,6 +26,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ScreenOrientation from "expo-screen-orientation";
+import * as NavigationBar from "expo-navigation-bar";
 import * as Haptics from "expo-haptics";
 import * as Brightness from "expo-brightness";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
@@ -41,14 +42,13 @@ const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastCont
 // ─── Navigation Bar Safety Guard ───
 const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
   if (Platform.OS !== 'android') return;
-  const isAvailable = !!NativeModules.ExpoNavigationBar;
-  if (!isAvailable) return;
 
   try {
-    const NavigationBar = require('expo-navigation-bar');
     if (visibility === 'hidden') {
+      await NavigationBar.setBehaviorAsync('overlay-swipe');
       await NavigationBar.setVisibilityAsync('hidden');
     } else {
+      await NavigationBar.setBehaviorAsync('inset-touch');
       await NavigationBar.setVisibilityAsync('visible');
     }
   } catch (e) {
@@ -180,6 +180,18 @@ export default function ModernVideoPlayer({
     if (playerMode !== 'closed') resetControlsTimer();
     return () => { if (controlsTimeout.current) clearTimeout(controlsTimeout.current); };
   }, [playerMode]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    if (playerMode === 'full') {
+      const handleBackPress = () => {
+        onClose();
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+      return () => subscription.remove();
+    }
+  }, [playerMode, onClose]);
 
   // Lock Animation
   useEffect(() => {
@@ -700,18 +712,9 @@ export default function ModernVideoPlayer({
 
   if (playerMode === 'full') {
     return (
-      <Modal
-        visible={true}
-        transparent={false}
-        statusBarTranslucent
-        animationType="fade"
-        supportedOrientations={['landscape']}
-        onRequestClose={onClose}
-      >
-        <View style={styles.fullContainer}>
-          {playerContent}
-        </View>
-      </Modal>
+      <Animated.View style={[styles.fullContainer, { elevation: 9999, zIndex: 9999 }]}>
+        {playerContent}
+      </Animated.View>
     );
   }
 

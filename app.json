@@ -12,8 +12,9 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.themoviezone247.official",
-      "versionCode": 42,
+      "package": "com.moviezone247.app",
+      "versionCode": 43,
+      "blockedPermissions": ["android.permission.CAMERA"],
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0f",

@@ -7,7 +7,7 @@ export default ({ config }) => {
     // Use a different package name for the test version so both can be installed together
     android: {
       ...config.android,
-      package: IS_TEST ? "com.themoviezone247.staging" : "com.themoviezone247.official",
+      package: IS_TEST ? "com.themoviezone247.staging" : "com.moviezone247.app",
       googleServicesFile: IS_TEST ? "./google-services-test.json" : "./google-services.json",
     },
     // Use the generated Beta icon for the test version
