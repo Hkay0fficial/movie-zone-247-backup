@@ -152,7 +152,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const savePlaybackProgress = async (movieId: string, position: number, episodeId?: string) => {
     const key = episodeId ? `${movieId}_${episodeId}` : movieId;
-    const historyItem = { position, timestamp: Date.now(), episodeId };
+    const historyItem: any = { position, timestamp: Date.now() };
+    if (episodeId) historyItem.episodeId = episodeId;
 
     // Update local state immediately for snappy UI
     setProfile(prev => ({

@@ -2003,7 +2003,9 @@ export function SeriesPreviewContent({
   isMuted: isMutedProp,
   onShowPremium,
   onUpgrade,
-}: {
+  isFocused,
+  appState
+}: { 
   movie: Series;
   onClose: () => void;
   onSwitch: (m: Movie | Series) => void;
@@ -2019,6 +2021,8 @@ export function SeriesPreviewContent({
   isMuted?: boolean;
   onShowPremium: () => void;
   onUpgrade: () => void;
+  isFocused: boolean;
+  appState: string;
 }) {
   const router = useRouter();
   const { 
@@ -2265,7 +2269,7 @@ export function SeriesPreviewContent({
               source={{ uri: previewVideoUrl }}
               style={styles.previewPoster}
               resizeMode={ResizeMode.COVER}
-              shouldPlay={playerMode === 'closed'}
+              shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
               isLooping
               isMuted={isMuted}
             />
@@ -2378,7 +2382,9 @@ export function MoviePreviewContent({
   isMuted: isMutedProp,
   onShowPremium,
   onUpgrade,
-}: {
+  isFocused,
+  appState
+}: { 
   movie: Movie | Series | null;
   onClose: () => void;
   onSwitch: (m: Movie | Series) => void;
@@ -2394,6 +2400,8 @@ export function MoviePreviewContent({
   isMuted?: boolean;
   onShowPremium: () => void;
   onUpgrade: () => void;
+  isFocused: boolean;
+  appState: string;
 }) {
 
   const router = useRouter();
@@ -3383,7 +3391,7 @@ export function MoviePreviewContent({
                         }}
                         style={styles.previewPoster}
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={playerMode === 'closed'}
+                        shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
                         isLooping
                         isMuted={isMuted}
                       />
@@ -5306,13 +5314,17 @@ function HeroBanner({
   isMuted, 
   setIsMuted,
   onShowPremium,
-  paused
+  paused,
+  isFocused,
+  appState
 }: { 
   onSelect: (m: Movie) => void;
   isMuted: boolean;
   setIsMuted: (m: boolean) => void;
   onShowPremium: () => void;
   paused: boolean;
+  isFocused: boolean;
+  appState: string;
 }) {
   const router = useRouter();
   const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites } = useSubscription();
@@ -5474,7 +5486,7 @@ function HeroBanner({
               }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
-              shouldPlay={!paused}
+              shouldPlay={!paused && isFocused && appState === 'active'}
               isLooping={false}
               isMuted={isMuted}
               onPlaybackStatusUpdate={onStatus}
@@ -5755,7 +5767,15 @@ export default function HomeScreen() {
   const [showPlanModal, setShowPlanModal] = useState(false);
 
   const isFocused = useIsFocused();
+  const [appState, setAppState] = useState(AppState.currentState);
   const { movieId, autoplay, playMovieId } = useLocalSearchParams();
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     // Show expiry reminder if in Yellow or Red zones (<= 5 days)
@@ -6052,6 +6072,8 @@ export default function HomeScreen() {
           setIsMuted={setIsUserMuted}
           onShowPremium={() => setShowPremiumModal(true)}
           paused={!!playingNow || !isFocused}
+          isFocused={isFocused}
+          appState={appState}
         />
 
         {ROWS.map((row) => (
@@ -6139,6 +6161,8 @@ export default function HomeScreen() {
                   isMuted={index !== navigationStack.length - 1 || !isFocused}
                   onShowPremium={() => setShowPremiumModal(true)}
                   onUpgrade={() => setShowPlanModal(true)}
+                  isFocused={isFocused}
+                  appState={appState}
                 />
               );
             }
@@ -6167,6 +6191,8 @@ export default function HomeScreen() {
                 isMuted={index !== navigationStack.length - 1 || !isFocused}
                 onShowPremium={() => setShowPremiumModal(true)}
                 onUpgrade={() => setShowPlanModal(true)}
+                isFocused={isFocused}
+                appState={appState}
               />
 
             );
