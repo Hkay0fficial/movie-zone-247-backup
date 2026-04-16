@@ -2003,7 +2003,9 @@ export function SeriesPreviewContent({
   isMuted: isMutedProp,
   onShowPremium,
   onUpgrade,
-}: {
+  isFocused,
+  appState
+}: { 
   movie: Series;
   onClose: () => void;
   onSwitch: (m: Movie | Series) => void;
@@ -2019,6 +2021,8 @@ export function SeriesPreviewContent({
   isMuted?: boolean;
   onShowPremium: () => void;
   onUpgrade: () => void;
+  isFocused: boolean;
+  appState: string;
 }) {
   const router = useRouter();
   const { 
@@ -2378,7 +2382,9 @@ export function MoviePreviewContent({
   isMuted: isMutedProp,
   onShowPremium,
   onUpgrade,
-}: {
+  isFocused,
+  appState
+}: { 
   movie: Movie | Series | null;
   onClose: () => void;
   onSwitch: (m: Movie | Series) => void;
@@ -2394,6 +2400,8 @@ export function MoviePreviewContent({
   isMuted?: boolean;
   onShowPremium: () => void;
   onUpgrade: () => void;
+  isFocused: boolean;
+  appState: string;
 }) {
 
   const router = useRouter();
@@ -6153,6 +6161,8 @@ export default function HomeScreen() {
                   isMuted={index !== navigationStack.length - 1 || !isFocused}
                   onShowPremium={() => setShowPremiumModal(true)}
                   onUpgrade={() => setShowPlanModal(true)}
+                  isFocused={isFocused}
+                  appState={appState}
                 />
               );
             }
@@ -6181,6 +6191,8 @@ export default function HomeScreen() {
                 isMuted={index !== navigationStack.length - 1 || !isFocused}
                 onShowPremium={() => setShowPremiumModal(true)}
                 onUpgrade={() => setShowPlanModal(true)}
+                isFocused={isFocused}
+                appState={appState}
               />
 
             );
