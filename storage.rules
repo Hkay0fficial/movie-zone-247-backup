@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper: Check if user has an admin role
+    function isAdmin() {
+      return request.auth != null && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Public Content ---
+    match /movies/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /posters/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /announcements/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- User Personal Data ---
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if true; // Profile photos are generally public
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
