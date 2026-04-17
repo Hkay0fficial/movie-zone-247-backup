@@ -14,7 +14,8 @@ class DownloadNotificationManager {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('downloads', {
         name: 'Downloads',
-        importance: Notifications.AndroidImportance.DEFAULT, 
+        importance: Notifications.AndroidImportance.LOW, 
+        vibrationPattern: [0], // silent
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         showBadge: false,
       });
@@ -90,13 +91,13 @@ class DownloadNotificationManager {
     };
 
     if (posterUrl && Platform.OS === 'ios') {
-      content.attachments = [{ url: posterUrl }];
+      content.attachments = [{ url: posterUrl, identifier: id, type: 'image' }];
     }
 
     await Notifications.scheduleNotificationAsync({
       identifier: `download_${id}`,
       content,
-      trigger: null,
+      trigger: Platform.OS === 'android' ? { channelId: 'downloads' } : null,
     });
   }
 
@@ -113,7 +114,7 @@ class DownloadNotificationManager {
         body: message,
         color: '#ef4444',
       },
-      trigger: null,
+      trigger: Platform.OS === 'android' ? { channelId: 'downloads' } : null,
     });
   }
 }

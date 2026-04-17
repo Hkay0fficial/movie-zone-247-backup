@@ -724,14 +724,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       };
 
+      const displayTitle = episodeTitle || item.title;
+      const posterUrl = item.poster || (item as any).heroBanner || '';
+
       try {
         const rawVideoUrl = episodeUrl || (item as any).videoUrl || (item as any).previewUrl || '';
         const videoUrl = resolveCDNUrl(rawVideoUrl, false);
-        const displayTitle = episodeTitle || item.title;
 
         const safeTitle = displayTitle.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 60);
         let displayedPct = 0;
-        let nextThreshold = 1 + Math.floor(Math.random() * 3);
         
         let lastBytes = 0;
         let lastTimestamp = Date.now();
@@ -755,9 +756,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
 
             const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
-            if (realPct >= nextThreshold && displayedPct < 99) {
-              const prevPct = displayedPct;
-              displayedPct = Math.min(nextThreshold, 99);
+            if (realPct > displayedPct && realPct < 100) {
+              displayedPct = realPct;
               
               const isPaused = pausedRef.current.has(nextId);
               setActiveDownloads(prev => ({ 
@@ -769,7 +769,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 } 
               }));
               
-              const posterUrl = item.poster || (item as any).heroBanner || '';
               downloadNotificationManager.updateProgress(
                 nextId, 
                 displayTitle, 
@@ -779,9 +778,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 isPaused,
                 item.id
               );
-              
-              const step = 2 + Math.floor(Math.random() * 4);
-              nextThreshold = displayedPct + step;
             }
           }
         };
@@ -849,6 +845,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               if (result?.uri) {
                 localUri = result.uri;
                 setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
+                downloadNotificationManager.updateProgress(
+                  nextId, 
+                  displayTitle, 
+                  100, 
+                  'Complete', 
+                  posterUrl, 
+                  false,
+                  item.id
+                );
               } else {
                 // If it resolves with undefined, it means it's gracefully paused (resumable)
                 console.log('[DownloadLoop] Download gracefully paused/suspended.');
@@ -952,7 +957,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 if (result?.uri) {
                   localUri = result.uri;
                   setActiveDownloads(prev => ({ ...prev, [nextId]: { ...prev[nextId], progress: 100 } }));
-                  console.log('[DownloadLoop] Download gracefully paused/suspended (external).');
+                  downloadNotificationManager.updateProgress(
+                    nextId, 
+                    displayTitle, 
+                    100, 
+                    'Complete', 
+                    posterUrl, 
+                    false,
+                    item.id
+                  );
+                  console.log('[DownloadLoop] Download gracefully finished (external).');
                   if (pausedRef.current.has(nextId)) {
                     markPaused();
                     await waitForResume();
@@ -992,9 +1006,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             recordTrialUsage();
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Global download error:', err);
-        showModal('error', 'Unexpected Error', 'An unexpected error occurred during the background download.');
+        const errorTitle = displayTitle || 'Unknown Content';
+        const errorMsg = err?.message || 'An unexpected error occurred during the background download.';
+        showModal('error', 'Unexpected Error', errorMsg);
+        downloadNotificationManager.notifyError(errorTitle, errorMsg);
       } finally {
         const cleanup = () => {
           delete resumablesRef.current[nextId];
