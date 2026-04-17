@@ -420,6 +420,43 @@ export default function SeriesScreen() {
     DeviceEventEmitter.emit("seriesCountUpdate", filtered.length);
   }, [filtered.length]);
 
+  useEffect(() => {
+    const sub1 = DeviceEventEmitter.addListener("seriesSearchQuery", (text: string) => {
+      setQuery(text);
+      if (text && text.trim().length > 0) {
+        setIsSearchActive(true);
+      } else {
+        setIsSearchActive(false);
+      }
+    });
+
+    const sub2 = DeviceEventEmitter.addListener("toggleSeriesFilters", () => {
+      setIsFiltersVisible(prev => !prev);
+    });
+
+    const sub3 = DeviceEventEmitter.addListener("resetSeriesFilters", () => {
+      clearFilters();
+    });
+
+    const sub4 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
+      setSeriesStack([]);
+    });
+
+    const sub5 = DeviceEventEmitter.addListener("openSeriesPreview", (series: Series) => {
+      if (series) {
+        setSeriesStack(prev => [...prev, series]);
+      }
+    });
+
+    return () => {
+      sub1.remove();
+      sub2.remove();
+      sub3.remove();
+      sub4.remove();
+      sub5.remove();
+    };
+  }, []);
+
   const clearFilters = () => {
     setSSelectedGenre(null);
     setSSelectedYear(null);
@@ -759,6 +796,9 @@ export default function SeriesScreen() {
           <SeriesCard item={item} onPress={() => {
             setSeriesStack([item]);
             setIsExternalSearch(false);
+            if (isSearchActive || query.length > 0) {
+              DeviceEventEmitter.emit("seriesSearchClosed");
+            }
           }} />
         )}
       />
