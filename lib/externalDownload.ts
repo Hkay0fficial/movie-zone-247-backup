@@ -33,7 +33,6 @@ export function createGalleryDownload(
   const fileUri = `${FileSystem.cacheDirectory}${safeTitle}_${Date.now()}.mp4`;
 
   let displayedPct = 0;
-  let nextThreshold = 1 + Math.floor(Math.random() * 3);
 
   const resumable = FileSystem.createDownloadResumable(
     videoUrl,
@@ -47,11 +46,9 @@ export function createGalleryDownload(
     ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
       if (totalBytesExpectedToWrite > 0) {
         const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
-        if (realPct >= nextThreshold && displayedPct < 99) {
-          displayedPct = Math.min(nextThreshold, 99);
+        if (realPct > displayedPct && realPct < 100) {
+          displayedPct = realPct;
           onProgress(displayedPct);
-          const step = 2 + Math.floor(Math.random() * 4);
-          nextThreshold = displayedPct + step;
         }
       }
     }
@@ -122,7 +119,6 @@ export function createAppStorageDownload(
   const fileUri = `${FileSystem.documentDirectory}${safeTitle}_${Date.now()}.mp4`;
 
   let displayedPct = 0;
-  let nextThreshold = 1 + Math.floor(Math.random() * 3);
 
   const resumable = FileSystem.createDownloadResumable(
     videoUrl,
@@ -136,11 +132,9 @@ export function createAppStorageDownload(
     ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
       if (totalBytesExpectedToWrite > 0) {
         const realPct = Math.floor((totalBytesWritten / totalBytesExpectedToWrite) * 100);
-        if (realPct >= nextThreshold && displayedPct < 99) {
-          displayedPct = Math.min(nextThreshold, 99);
+        if (realPct > displayedPct && realPct < 100) {
+          displayedPct = realPct;
           onProgress(displayedPct);
-          const step = 2 + Math.floor(Math.random() * 4);
-          nextThreshold = displayedPct + step;
         }
       }
     }
