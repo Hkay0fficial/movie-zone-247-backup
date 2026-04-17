@@ -45,6 +45,7 @@ import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import ModernVideoPlayer from "../../components/ModernVideoPlayer";
+import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const HERO_H = SCREEN_H * 0.55;
@@ -3230,7 +3231,7 @@ isUpdateLocked={updateDismissCount >= 3}
       <ModernVideoPlayer
         playerMode={playerMode}
         setPlayerMode={setPlayerMode}
-        videoUrl={selectedVideoUrl}
+        videoUrl={resolveCDNUrl(selectedVideoUrl)}
         title={playerTitle}
         onClose={() => setPlayerMode('closed')}
         playerPos={new Animated.ValueXY({ x: 0, y: 0 })} // Default values for global player

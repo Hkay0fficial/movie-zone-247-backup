@@ -23,6 +23,11 @@ export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true)
   if (url.includes(oldCdnBase)) {
     url = url.replace(oldCdnBase, BUNNY_CONFIG.PULL_ZONE);
   }
+
+  // Auto-correct older previews that were stored as .webp image URLs
+  if (url.includes('preview.webp')) {
+    url = url.replace('preview.webp', 'playlist.m3u8').split('?')[0];
+  }
   
   // Auto-convert old Bunny MP4 links to HLS (playlist.m3u8) for mobile reliability
   // ONLY if forceHLS is true (we need MP4 for downloads)

@@ -1,0 +1,55 @@
+[
+  {
+    "id": "1c1a718d-a453-43e2-bdb6-eeec0d634c5c",
+    "status": "ERRORED",
+    "platform": "ANDROID",
+    "error": {
+      "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+      "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+    },
+    "artifacts": {},
+    "fingerprint": {
+      "id": "019d9585-c7af-7ec2-a739-df517ac4ab8b",
+      "hash": "0118d76ef5c15a3e3dbdd6dcca2c80420135e3e6"
+    },
+    "initiatingActor": {
+      "id": "7ea14110-71dd-409a-a45c-c0660911bb64",
+      "displayName": "haruna2567"
+    },
+    "logFiles": [
+      "https://job-logs.eascdn.net/production/1c1a718d-a453-43e2-bdb6-eeec0d634c5c/1776330682527-fac620c4-b8c1-452f-bc10-089281c93ca2.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260416%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260416T092544Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=bdd5fdc8d68812c6417b45f27a37a62827b9df7365baa348b63f44f71424e18a78dd3a7d3210e99f2687157037c1fa9a8dddcc432f7fcc32cd2cc31af555441aa0750595e2d0ef6d8d9abd4878650f047a4a5d5bc3d50293393f3d5a92926057b6eeba6d2841bb5398f13277ffa9cd6e7f125005afca17d95dd5d72e46f9664ac53ab531f22aa605fc1779931d033a6b3c20df3d44b40f554577b2744290603d858a4de77d77a288db17ab1b03d7d4914636a7b7cf3264ba14fe46b416e1edc23b429ce897fe5bd52d5638ca0e95dd88b0f05dca993998bc62ddc545bb2ab170601ba775444efe35191404f7c761d71483d1fc7b745940297549715b03666ac4",
+      "https://job-logs.eascdn.net/production/1c1a718d-a453-43e2-bdb6-eeec0d634c5c/1776330688110-7c43627a-21c5-4bb9-ac6a-00b3d83bf8d4.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260416%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260416T092544Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=de2981142eb9ed3669c273c98b7012a0cb5d9c29326661b9a94a0a3372ba6152930f356a3880030dcf80dcb5cb64d15db5e1eff81a24a7e30e9422b25a8d2bae48792cd2dfe460a59f54d78db69a59612472fb3662c34d23c76f8271254de7dafc5b02634565464a2913529ce737125d840d5250b4b3e5b412100d2be09e2b1fec2ece6edbf699350760c89b549475626477dc47a6cfa3b820df6d68148914bbf57b9f777bbcbe1cc7337b12084efd4358d58080564c80e54154c30025140c02ff769d7e5dc7ac831a2d6cd9a95dbdea7a7e8ff58223ad91b8b51a117369e4336e5041b5189677f891df589fdbd6f3c38025ca8527b416ffa3fd1550aed3d437",
+      "https://job-logs.eascdn.net/production/1c1a718d-a453-43e2-bdb6-eeec0d634c5c/1776330688363-2f9ab545-97a5-4844-b0a7-d749cd20009f.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260416%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260416T092544Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=b43d62dbcb0965604770ef475358cbc701edf0950726abbf900b60efe481969434aef5a83066c362e0a1186f884bc17d78fc3924ae65cde255abffea07bd28963b5881cace05dfd1fed7d9e2f199ab68962d86331bf07e5bc29fe1517d76b25e514496093a4eb09c1e086ef64f09994d074164604d45a9857b942430842d6c98d7bba8af4cc3b175e9086cd3e559cd5adf2a582a803dc3db9e971250d6e3dbc4f3b67fdb429579a835c2304ce6ba5d20b7c2f45f689d7cbb127f1c155480063b7352fe8482d806e96016a81f9a5447642035755aa373186a4caa387b5e009002cb3788666c20e2a2dc199deedc0993b4fc628875be9430136f06e33253099181",
+      "https://job-logs.eascdn.net/production/1c1a718d-a453-43e2-bdb6-eeec0d634c5c/1776330688574-fa0d579e-ed7e-4e9d-b16a-a1aab0552497.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260416%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260416T092544Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=cc6aac86f1da39dd1e49be3996772043c6ef31ae51fb1b5e8e1368571aeafad529d427a863704e46e40d84113628784fc2eb976b4c8d7e51f6d4b93a4e9fc1e211903da56b1c9fbc8534ffe539bd9dd107e5ce8413d38be469103f5031b4ae6e0714ae459f4493179d86575b531d1723c831f77adbc24f1eb93a62f37f6a11cc53fcb393567860c5a31cad80eb1c5364995c0e3d3bac00783fb3e1c2192fbab05696b2abcc7d6d3148dfdc51b90eb177083465a100a106c3ae90c2a8517bc59214024f33ee624582fadc8805dd1c4254c2c2285243d38b23fcde6dcd48f770d1c3ca90139c591786d155cc9b0dcd17016a9b1743b8a9b2f02726906cde5f86e2"
+    ],
+    "project": {
+      "id": "c9754154-086d-4aae-bf12-6e4eb134cef2",
+      "name": "movie-zone-24-7",
+      "slug": "movie-zone-24-7",
+      "ownerAccount": {
+        "id": "b5ed8071-86f1-4d1e-8944-b19a9b5db6a6",
+        "name": "haruna2567"
+      }
+    },
+    "channel": "production",
+    "distribution": "STORE",
+    "buildProfile": "production",
+    "sdkVersion": "54.0.0",
+    "appVersion": "1.2.0",
+    "appBuildVersion": "5",
+    "runtimeVersion": "1.2.0",
+    "gitCommitHash": "f26f80f2e17fe707dc32f696f081a79f56335f47",
+    "gitCommitMessage": "fix(player): convert to immersive view and fix android play store rejections",
+    "priority": "HIGH",
+    "createdAt": "2026-04-16T09:11:22.269Z",
+    "updatedAt": "2026-04-16T09:16:29.400Z",
+    "completedAt": "2026-04-16T09:16:17.999Z",
+    "expirationDate": "2026-05-16T09:11:22.306Z",
+    "isForIosSimulator": false,
+    "metrics": {
+      "buildWaitTime": 161,
+      "buildQueueTime": 46694,
+      "buildDuration": 248112
+    }
+  }
+]
