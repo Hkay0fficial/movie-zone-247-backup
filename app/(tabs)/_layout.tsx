@@ -3037,12 +3037,12 @@ function CustomTabBar() {
         onSelect={(movie) => {
           setSearchVisible(false); // Close search when movie is selected
           setSearchAutoFocus(false);
-          if ("seasons" in movie) {
-            router.push("/(tabs)/saved");
-            setTimeout(() => {
-              DeviceEventEmitter.emit("openSeriesPreview", movie);
-              DeviceEventEmitter.emit("seriesSearchClosed");
-            }, 100);
+          const isActuallySeries = ("seasons" in movie) || ("episodes" in movie) || ("isMiniSeries" in movie && !!(movie as any).isMiniSeries);
+          if (isActuallySeries) {
+            router.push({
+              pathname: "/(tabs)/saved",
+              params: { seriesId: movie.id }
+            });
           } else {
             router.push({
               pathname: "/(tabs)",

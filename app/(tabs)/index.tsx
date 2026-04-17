@@ -46,6 +46,7 @@ import * as ScreenOrientation from "expo-screen-orientation";
 import * as Haptics from "expo-haptics";
 import * as Application from "expo-application";
 import * as MediaLibrary from "expo-media-library";
+import * as Updates from "expo-updates";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
@@ -5938,8 +5939,24 @@ export default function HomeScreen() {
     };
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    try {
+      if (!__DEV__) {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          Alert.alert(
+            "Update Available", 
+            "A new hotfix or update is available! Downloading now...",
+            [{ text: "OK" }]
+          );
+          await Updates.fetchUpdateAsync();
+          Updates.reloadAsync();
+        }
+      }
+    } catch (e) {
+      console.log("Update check failed or DEV mode", e);
+    }
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
