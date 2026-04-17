@@ -961,8 +961,10 @@ function SeriesPreviewModal({
   ).slice(0, 6);
 
   // Helper for background download status
-  const seriesDownloadPct = activeDownloads[series.id]?.progress;
-  const isThisDownloading = seriesDownloadPct !== undefined;
+  // Helper for background download status - checks both general series or current episode
+  const activeDl = activeDownloads[activeEpisodeId] || activeDownloads[series.id];
+  const seriesDownloadPct = activeDl?.progress;
+  const isThisDownloading = activeDl !== undefined;
   const seriesInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -1052,8 +1054,13 @@ function SeriesPreviewModal({
   useEffect(() => {
     if (episodes && episodes.length > 0) {
       setActiveEpisodes(episodes);
+      // Initialize activeEpisodeId to the first episode if not set
+      if (!activeEpisodeId) {
+        setActiveEpisodeId(episodes[0].id);
+        setActivePartId(episodes[0].id);
+      }
     }
-  }, [episodes]);
+  }, [episodes, activeEpisodeId]);
 
   // Intelligent fallback: Calculate total duration if missing in DB
   const computedTotalDuration = useMemo(() => {
@@ -1223,8 +1230,9 @@ function SeriesPreviewModal({
   };
 
   const handleDownload = () => {
-    // If already downloading the active episode, toggle pause/resume
-    if (activeDownloads[activeEpisodeId]) {
+    // If already downloading the active episode, toggle pause/resume instead of opening modal
+    const activeDl = activeDownloads[activeEpisodeId];
+    if (activeDl) {
       toggleDownloadPause(activeEpisodeId);
       return;
     }
@@ -1277,6 +1285,7 @@ function SeriesPreviewModal({
         return;
       }
       setActiveEpisodeId(nextEp.id);
+      setActivePartId(nextEp.id);
       setPlayerTitle(nextEp.title);
       setSelectedVideoUrl(nextEp.videoUrl);
     }
@@ -1292,6 +1301,7 @@ function SeriesPreviewModal({
         return;
       }
       setActiveEpisodeId(prevEp.id);
+      setActivePartId(prevEp.id);
       setPlayerTitle(prevEp.title);
       setSelectedVideoUrl(prevEp.videoUrl);
     }
@@ -1658,12 +1668,12 @@ function SeriesPreviewModal({
                       },
                     ]}
                   >
-                    {activeDownloads[activeEpisodeId] ? (
+                    {activeDl ? (
                       <View style={{ alignItems: "center", justifyContent: "center" }}>
                         <Ionicons
-                          name={activeDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"}
+                          name={activeDl?.isPaused ? "play" : "pause"}
                           size={20}
-                          color={activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"}
+                          color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
                         />
                       </View>
                     ) : episodeDownloads[activeEpisodeId] ? (
@@ -1683,13 +1693,13 @@ function SeriesPreviewModal({
                   <Text
                     style={[
                       styles.previewActionLabel,
-                      isThisDownloading && { color: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" },
+                      isThisDownloading && { color: activeDl?.isPaused ? "#ef4444" : "#22c55e" },
                     ]}
                   >
-                    {activeDownloads[activeEpisodeId]
-                      ? activeDownloads[activeEpisodeId]?.isPaused
-                        ? `Paused (${Math.round(activeDownloads[activeEpisodeId].progress)}%)`
-                        : `${Math.round(activeDownloads[activeEpisodeId].progress)}% • ${activeDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
+                    {activeDl
+                      ? activeDl?.isPaused
+                        ? `Paused (${Math.round(activeDl.progress)}%)`
+                        : `${Math.round(activeDl.progress)}% • ${activeDl.speedString?.split('•')[1]?.trim() || 'Starting...'}`
                       : episodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
                   </Text>
                 </TouchableOpacity>
@@ -2022,22 +2032,38 @@ function SeriesPreviewModal({
                                   <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>SAVED OFFLINE</Text>
                                 </View>
                               ) : activeDownloads[ep.id] ? (
-                                <View style={{ 
-                                  backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-                                  borderWidth: 1, 
-                                  borderColor: 'rgba(34, 197, 94, 0.3)', 
-                                  borderRadius: 8, 
-                                  flex: 1, 
-                                  paddingVertical: 7, 
-                                  alignItems: 'center' 
-                                }}>
-                                  <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                                <TouchableOpacity 
+                                  activeOpacity={0.7}
+                                  onPress={(e) => { e.stopPropagation(); toggleDownloadPause(ep.id); }}
+                                  style={{ 
+                                    backgroundColor: activeDownloads[ep.id].isPaused ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.12)', 
+                                    borderWidth: 1, 
+                                    borderColor: activeDownloads[ep.id].isPaused ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.4)', 
+                                    borderRadius: 8, 
+                                    flex: 1, 
+                                    paddingVertical: 7, 
+                                    alignItems: 'center',
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                  }}>
+                                  <Ionicons 
+                                    name={activeDownloads[ep.id].isPaused ? "play" : "pause"} 
+                                    size={14} 
+                                    color={activeDownloads[ep.id].isPaused ? "#ef4444" : "#22c55e"} 
+                                  />
+                                  <Text style={{ 
+                                    color: activeDownloads[ep.id].isPaused ? "#ef4444" : "#22c55e", 
+                                    fontSize: 11, 
+                                    fontWeight: '900', 
+                                    letterSpacing: 0.5 
+                                  }}>
                                     {activeDownloads[ep.id].isPaused 
                                       ? `PAUSED (${Math.round(activeDownloads[ep.id].progress)}%)` 
                                       : `${Math.round(activeDownloads[ep.id].progress)}% • ${activeDownloads[ep.id].speedString?.split('•')[1]?.trim() || 'STAGING...'}`
                                     }
                                   </Text>
-                                </View>
+                                </TouchableOpacity>
                               ) : (
                                 <TouchableOpacity 
                                   style={{ 
