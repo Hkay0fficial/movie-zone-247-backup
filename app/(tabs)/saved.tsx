@@ -962,7 +962,9 @@ function SeriesPreviewModal({
 
   // Helper for background download status
   // Helper for background download status - checks both general series or current episode
-  const activeDl = activeDownloads[activeEpisodeId] || activeDownloads[series.id];
+  const activeDl = activeDownloads[activeEpisodeId] || 
+                   activeDownloads[series.id] || 
+                   Object.values(activeDownloads).find(d => d.item?.id === series.id);
   const seriesDownloadPct = activeDl?.progress;
   const isThisDownloading = activeDl !== undefined;
   const seriesInputRef = useRef<TextInput>(null);
