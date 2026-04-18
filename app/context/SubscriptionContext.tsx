@@ -292,6 +292,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setEpisodeDownloads(JSON.parse(savedEpisodeDownloads));
         }
 
+        // Re-hydrate active downloads metadata to survive app restarts
+        const savedMetadata = await AsyncStorage.getItem('active_downloads_metadata');
+        if (savedMetadata) {
+          const metadata = JSON.parse(savedMetadata);
+          setActiveDownloads(prev => ({ ...prev, ...metadata }));
+          // Ensure these IDs are also in the queue if not already there
+          setDownloadQueue(prev => {
+            const keys = Object.keys(metadata);
+            const next = [...prev];
+            keys.forEach(k => { if (!next.includes(k)) next.push(k); });
+            return next;
+          });
+        }
+
         // Restore daily download counter — reset automatically if it's a new day
         const today = new Date().toISOString().split('T')[0];
         const storedDate = await AsyncStorage.getItem('download_date');
@@ -512,7 +526,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   };
 
-  const removeDownload = (id: string) => {
+  const removeDownload = async (id: string) => {
     setDownloadedMovies(prev => prev.filter(m => m.id !== id));
     // Also remove associated episodes if any
     setEpisodeDownloads(prev => {
@@ -524,6 +538,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       return next;
     });
+
+    // Cleanup active downloads metadata if any
+    const m = await AsyncStorage.getItem('active_downloads_metadata');
+    if (m) {
+      const nextMeta = JSON.parse(m);
+      if (nextMeta[id]) {
+        delete nextMeta[id];
+        await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
+      }
+    }
   };
 
   const toggleFavorite = (item: Movie | Series) => {
@@ -565,34 +589,59 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const startInternalAppDownload = async (item: Movie | Series) => {
     const title = item.title || "Unknown Movie";
-    setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'internal' } }));
+    const meta = { progress: 0, item, mode: 'internal' as const };
+    setActiveDownloads(prev => ({ ...prev, [item.id]: meta }));
     setDownloadQueue(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
+
+    // Persist
+    const currentMeta = await AsyncStorage.getItem('active_downloads_metadata');
+    const nextMeta = currentMeta ? JSON.parse(currentMeta) : {};
+    nextMeta[item.id] = meta;
+    await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
   };
 
   const startExternalGalleryDownload = async (item: Movie | Series) => {
     const title = item.title || "Unknown Movie";
-    setActiveDownloads(prev => ({ ...prev, [item.id]: { progress: 0, item, mode: 'external' } }));
+    const meta = { progress: 0, item, mode: 'external' as const };
+    setActiveDownloads(prev => ({ ...prev, [item.id]: meta }));
     setDownloadQueue(prev => [...prev, item.id]);
+
+    // Persist
+    const currentMeta = await AsyncStorage.getItem('active_downloads_metadata');
+    const nextMeta = currentMeta ? JSON.parse(currentMeta) : {};
+    nextMeta[item.id] = meta;
+    await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
   };
 
   const startInternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
     const title = episodeTitle || series.title || "Unknown Episode";
-    setActiveDownloads(prev => ({ 
-      ...prev, 
-      [queueId]: { progress: 0, item: series, mode: 'internal', episodeId, episodeUrl, episodeTitle: title } 
-    }));
+    const meta = { progress: 0, item: series, mode: 'internal' as const, episodeId, episodeUrl, episodeTitle: title };
+    setActiveDownloads(prev => ({ ...prev, [queueId]: meta }));
     setDownloadQueue(prev => prev.includes(queueId) ? prev : [...prev, queueId]);
+    
+    // Persist metadata
+    const currentMeta = await AsyncStorage.getItem('active_downloads_metadata');
+    const nextMeta = currentMeta ? JSON.parse(currentMeta) : {};
+    nextMeta[queueId] = meta;
+    await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
   };
 
   const startExternalEpisodeDownload = async (series: Series, episodeId: string, episodeUrl: string, episodeTitle: string) => {
     const queueId = episodeId;
     const title = episodeTitle || series.title || "Unknown Episode";
+    const meta = { progress: 0, item: series, mode: 'external' as const, episodeId, episodeUrl, episodeTitle: title };
     setActiveDownloads(prev => ({ 
       ...prev, 
-      [queueId]: { progress: 0, item: series, mode: 'external', episodeId, episodeUrl, episodeTitle: title } 
+      [queueId]: meta 
     }));
     setDownloadQueue(prev => prev.includes(queueId) ? prev : [...prev, queueId]);
+
+    // Persist
+    const currentMeta = await AsyncStorage.getItem('active_downloads_metadata');
+    const nextMeta = currentMeta ? JSON.parse(currentMeta) : {};
+    nextMeta[queueId] = meta;
+    await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
   };
 
   // ── Pause / Resume ────────────────────────────────────────────────────────
@@ -664,6 +713,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
     setDownloadQueue(prev => prev.filter(qId => qId !== id));
     downloadNotificationManager.dismiss(id);
+
+    // Cleanup persistent metadata
+    try {
+      const m = await AsyncStorage.getItem('active_downloads_metadata');
+      if (m) {
+        const nextMeta = JSON.parse(m);
+        if (nextMeta[id]) {
+          delete nextMeta[id];
+          await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to cleanup metadata on cancel:", e);
+    }
   };
 
   // Notification Response Listener for Background Interactivity (Pause / Cancel)
@@ -1013,9 +1076,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         showModal('error', 'Unexpected Error', errorMsg);
         downloadNotificationManager.notifyError(errorTitle, errorMsg);
       } finally {
-        const cleanup = () => {
+        const cleanup = async () => {
           delete resumablesRef.current[nextId];
           pausedRef.current.delete(nextId);
+
+          // Cleanup persistent metadata
+          try {
+            const m = await AsyncStorage.getItem('active_downloads_metadata');
+            if (m) {
+              const nextMeta = JSON.parse(m);
+              if (nextMeta[nextId]) {
+                delete nextMeta[nextId];
+                await AsyncStorage.setItem('active_downloads_metadata', JSON.stringify(nextMeta));
+              }
+            }
+          } catch (e) { console.error("Metadata cleanup failed", e); }
+
           setActiveDownloads(prev => {
             // Safety: If it's still < 100%, a NEW download of the same ID might have started.
             // Don't clear it in that case!
@@ -1029,7 +1105,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           isProcessingQueue.current = false;
         };
 
-        // Minimal delay just to ensure state settling, no longer need 3s without GlobalDownloadBar
+        // Minimal delay just to ensure state settling
         setTimeout(cleanup, 200);
       }
     };
