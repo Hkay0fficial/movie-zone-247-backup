@@ -6,8 +6,8 @@ import {
   Series, 
   HeroMovie,
   resolveCDNUrl,
-  
 } from '../../constants/movieData';
+import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 
@@ -118,8 +118,8 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             })),
             freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             description: data.synopsis || data.description || '',
-            videoUrl: resolveCDNUrl(data.videoUrl || (data.episodeList && data.episodeList[0]?.url) || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined), false),
-            previewUrl: resolveCDNUrl(data.previewUrl || '', false),
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.episodeList && data.episodeList[0]?.url) || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined)),
+            previewUrl: resolveCDNUrl(data.previewUrl || ''),
             totalDuration: data.duration && data.duration !== '0:00' ? data.duration : (data.totalDuration || '0:00'),
             previewDuration: data.previewDuration,
             episodeDuration: data.episodeDuration || '45m',
@@ -140,10 +140,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             vj: data.vj || 'Unknown VJ',
             poster: data.coverUrl || data.posterUrl || data.poster || 'https://images.unsplash.com/photo-1485846234645-a62644f84728',
             description: data.synopsis || data.description || 'Newly uploaded movie.',
-            videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined), false),
-            previewUrl: resolveCDNUrl(data.previewUrl || '', false),
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined)),
+            previewUrl: resolveCDNUrl(data.previewUrl || ''),
             duration: data.duration || '0:00',
             previewDuration: data.previewDuration,
+            episodeList: (data.episodeList || []).map((ep: any) => ({
+              ...ep,
+              url: resolveCDNUrl(ep.url)
+            })),
+            freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             isFree: data.isFree || false,
             isHero: data.isHero || false,
             heroType: data.heroType || 'video',
