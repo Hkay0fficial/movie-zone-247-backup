@@ -711,13 +711,17 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       delete resumablesRef.current[id];
     }
     pausedRef.current.delete(id);
+    setDownloadQueue(prev => prev.filter(qId => qId !== id));
+    downloadNotificationManager.dismiss(id);
+
+    // Force immediate UI update
     setActiveDownloads(prev => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
-    setDownloadQueue(prev => prev.filter(qId => qId !== id));
-    downloadNotificationManager.dismiss(id);
+
+    // Cleanup persistent metadata
 
     // Cleanup persistent metadata
     try {
@@ -1084,16 +1088,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           } catch (e) { console.error("Metadata cleanup failed", e); }
 
           setActiveDownloads(prev => {
-            // Safety: If it's still < 100%, a NEW download of the same ID might have started.
-            // Don't clear it in that case!
-            if (prev[nextId] && prev[nextId].progress < 100) return prev;
+            // Only skip clearing if a NEW download for the SAME ID is already active in the queue
+            // (e.g. if the user restarted it immediately). 
+            // In most cases (cancel/fail), we must clear it.
             const next = { ...prev };
             delete next[nextId];
             return next;
           });
-          // Remove ONLY this nextId from the queue, don't just slice(1)
+          // Remove ONLY this nextId from the queue
           setDownloadQueue(prev => prev.filter(id => id !== nextId));
           isProcessingQueue.current = false;
+          
+          // Explicitly trigger next item to avoid stalls
+          processQueue();
         };
 
         // Minimal delay just to ensure state settling
