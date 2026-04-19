@@ -2159,27 +2159,31 @@ function CustomTabBar() {
   const notifications = useMemo(() => {
     let baseData = [...MOCK_NOTIFICATIONS];
     
-    // Inject latest live releases if any
-    if (liveMovies.length > 0 || liveSeries.length > 0) {
+    // Inject latest 5 live releases instead of the entire catalog
+    const recentMovies = liveMovies.slice(0, 5);
+    const recentSeries = liveSeries.slice(0, 5);
+
+    if (recentMovies.length > 0 || recentSeries.length > 0) {
+      const latestItemId = recentMovies[0]?.id || recentSeries[0]?.id || "none";
       const liveNotif: Notification = {
-        id: "live_n1",
+        id: `live_new_${latestItemId}`,
         type: "movie",
         icon: "film",
         title: "New Release",
-        message: liveMovies.length > 0 
-          ? `🎬 "${liveMovies[0].title}" ${liveMovies.length > 1 ? `and ${liveMovies.length - 1} more` : ''} now streaming!`
-          : `📺 New series available from The Movie Zone!`,
+        message: recentMovies.length > 0 
+          ? `🎬 "${recentMovies[0].title}" ${recentMovies.length > 1 ? `and ${recentMovies.length - 1} more` : ''} now streaming!`
+          : `Showcasing the latest releases!`,
         time: "Just Now",
-        image: liveMovies[0]?.poster || liveSeries[0]?.poster,
+        image: recentMovies[0]?.poster || recentSeries[0]?.poster,
         isNew: true,
-        movieId: liveMovies[0]?.id,
+        movieId: recentMovies[0]?.id,
         sectionTitle: "New Releases",
-        count: liveMovies.length + liveSeries.length,
-        moviesCount: liveMovies.length,
-        seriesCount: liveSeries.length,
-        moviesList: liveMovies.map(m => ({ id: m.id, title: m.title })),
-        seriesList: liveSeries.map((s: Series) => ({ id: s.id, title: s.title })),
-        vjsDetailed: Array.from(new Set([...liveMovies.map((m: Movie) => m.vj), ...liveSeries.map((s: Series) => s.vj)])).map((vj: string, i: number) => ({ id: `v_live_${i}`, name: vj.replace('VJ ', ''), count: (liveMovies.filter((m: Movie) => m.vj === vj).length + liveSeries.filter((s: Series) => s.vj === vj).length) })),
+        count: recentMovies.length + recentSeries.length,
+        moviesCount: recentMovies.length,
+        seriesCount: recentSeries.length,
+        moviesList: recentMovies.map(m => ({ id: m.id, title: m.title })),
+        seriesList: recentSeries.map((s: Series) => ({ id: s.id, title: s.title })),
+        vjsDetailed: Array.from(new Set([...recentMovies.map((m: Movie) => m.vj), ...recentSeries.map((s: Series) => s.vj)])).map((vj: string, i: number) => ({ id: `v_live_${i}`, name: vj.replace('VJ ', ''), count: (recentMovies.filter((m: Movie) => m.vj === vj).length + recentSeries.filter((s: Series) => s.vj === vj).length) })),
       };
       
       // Prepend to top
@@ -2518,13 +2522,13 @@ function CustomTabBar() {
     const hasSeries = item.seriesList && item.seriesList.length > 0;
     const isTrendingVj = item.vjsDetailed && item.vjsDetailed.length > 0;
 
-    if (item.title === "New Release" || item.title === "Trending Now" || item.title === "K-Drama" || isTrendingVj || item.id === "live_n1") {
+    if (item.title === "New Release" || item.title === "Trending Now" || item.title === "K-Drama" || isTrendingVj || item.id?.startsWith("live_new_")) {
       let gridData: (Movie | Series)[] = [];
       
       const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
       const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
 
-      if (item.id === "live_n1") {
+      if (item.id?.startsWith("live_new_")) {
         gridData = [...liveMovies, ...liveSeries];
       } else if (movieIds.size > 0 || seriesIds.size > 0) {
         // Collect specifically listed items first
@@ -2599,6 +2603,7 @@ function CustomTabBar() {
         data={globalGridData}
         onClose={() => setGlobalGridVisible(false)}
         onSelect={(m) => {
+          setGlobalGridVisible(false);
           DeviceEventEmitter.emit("movieSelected", m);
         }}
       />

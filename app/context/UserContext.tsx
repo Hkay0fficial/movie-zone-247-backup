@@ -95,10 +95,30 @@ async function ensureUserDocument(user: User) {
   }
 }
 
+import { registerForPushNotificationsAsync } from '../../lib/notifications';
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
+
+  // Push Notification Registration
+  useEffect(() => {
+    if (user && !user.isAnonymous) {
+      const registerToken = async () => {
+        try {
+          const token = await registerForPushNotificationsAsync();
+          if (token) {
+            const userRef = doc(db, 'users', user.uid);
+            await setDoc(userRef, { pushToken: token }, { merge: true });
+          }
+        } catch (error) {
+          console.error('Failed to register push token:', error);
+        }
+      };
+      registerToken();
+    }
+  }, [user]);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;

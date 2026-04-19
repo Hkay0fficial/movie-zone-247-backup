@@ -38,7 +38,7 @@ export const initNotifications = () => {
 };
 
 export async function registerForPushNotificationsAsync() {
-  if (shouldSkip || !Notifications) return;
+  if (shouldSkip || !Notifications) return null;
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -57,8 +57,20 @@ export async function registerForPushNotificationsAsync() {
       finalStatus = status;
     }
     if (finalStatus !== 'granted') {
-      return;
+      return null;
     }
+    
+    try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      return token;
+    } catch (e) {
+      console.error('Failed to get push token:', e);
+      return null;
+    }
+  } else {
+    console.log('Must use physical device for Push Notifications');
+    return null;
   }
 }
 

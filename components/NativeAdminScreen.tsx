@@ -215,7 +215,7 @@ export default function NativeAdminScreen() {
 
   // --- Announcements State ---
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [annForm, setAnnForm] = useState({ subject: '', category: 'General' });
+  const [annForm, setAnnForm] = useState({ subject: '', category: 'General', imageUrl: '' });
   const [annSearchQuery, setAnnSearchQuery] = useState('');
 
   // --- Settings State ---
@@ -919,14 +919,15 @@ export default function NativeAdminScreen() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             subject: annForm.subject, 
-            category: annForm.category 
+            category: annForm.category,
+            imageUrl: annForm.imageUrl || null
           }),
         });
       } catch (pushErr) {
         console.warn("Push notification API failed, but record was saved:", pushErr);
       }
 
-      setAnnForm({ subject: '', category: 'General' });
+      setAnnForm({ subject: '', category: 'General', imageUrl: '' });
       fetchAnnouncements();
       Alert.alert('Success', 'Broadcasted everywhere!');
     } catch (err) {
@@ -1420,6 +1421,15 @@ export default function NativeAdminScreen() {
               placeholderTextColor="#475569"
               value={annForm.subject}
               onChangeText={s => setAnnForm(prev => ({ ...prev, subject: s }))}
+            />
+
+            <Text style={styles.label}>Banner Image URL (Optional)</Text>
+            <TextInput 
+              style={styles.input} 
+              placeholder="https://example.com/banner.jpg" 
+              placeholderTextColor="#475569"
+              value={annForm.imageUrl}
+              onChangeText={u => setAnnForm(prev => ({ ...prev, imageUrl: u }))}
             />
 
             <Text style={styles.label}>Broadcast Category</Text>
