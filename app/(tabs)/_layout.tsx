@@ -2159,10 +2159,9 @@ function CustomTabBar() {
   const notifications = useMemo(() => {
     let baseData = [...MOCK_NOTIFICATIONS];
     
-    // Inject latest live releases if any within the last 48 hours
-    const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
-    const recentMovies = liveMovies.filter(m => (m as any).createdAt >= fortyEightHoursAgo);
-    const recentSeries = liveSeries.filter(s => (s as any).createdAt >= fortyEightHoursAgo);
+    // Inject latest 5 live releases instead of the entire catalog
+    const recentMovies = liveMovies.slice(0, 5);
+    const recentSeries = liveSeries.slice(0, 5);
 
     if (recentMovies.length > 0 || recentSeries.length > 0) {
       const latestItemId = recentMovies[0]?.id || recentSeries[0]?.id || "none";
@@ -2173,7 +2172,7 @@ function CustomTabBar() {
         title: "New Release",
         message: recentMovies.length > 0 
           ? `🎬 "${recentMovies[0].title}" ${recentMovies.length > 1 ? `and ${recentMovies.length - 1} more` : ''} now streaming!`
-          : `📺 "${recentSeries[0]?.title}" ${recentSeries.length > 1 ? `and ${recentSeries.length - 1} more series` : ''} now streaming!`,
+          : `Showcasing the latest releases!`,
         time: "Just Now",
         image: recentMovies[0]?.poster || recentSeries[0]?.poster,
         isNew: true,
@@ -2604,6 +2603,7 @@ function CustomTabBar() {
         data={globalGridData}
         onClose={() => setGlobalGridVisible(false)}
         onSelect={(m) => {
+          setGlobalGridVisible(false);
           DeviceEventEmitter.emit("movieSelected", m);
         }}
       />
