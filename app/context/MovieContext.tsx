@@ -38,15 +38,15 @@ interface MovieContextType {
   mostViewedSeries: Series[];
   mostDownloadedSeries: Series[];
   
-  mostViewed: Movie[];
-  mostDownloaded: Movie[];
+  mostViewed: (Movie | Series)[];
+  mostDownloaded: (Movie | Series)[];
   latest: Movie[];
-  continueWatching: Movie[];
-  favourites: Movie[];
-  myList: Movie[];
-  watchLater: Movie[];
-  youMayAlsoLike: Movie[];
-  lastWatched: Movie[];
+  continueWatching: (Movie | Series & { position: number; timestamp: number })[];
+  favourites: (Movie | Series)[];
+  myList: (Movie | Series)[];
+  watchLater: (Movie | Series)[];
+  youMayAlsoLike: (Movie | Series)[];
+  lastWatched: (Movie | Series)[];
   actionMovies: Movie[];
   scifiMovies: Movie[];
   romanceMovies: Movie[];
@@ -235,11 +235,38 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const newReleases = allContent
       .filter((m: any) => (m.createdAt || 0) >= thirtyDaysAgo)
       .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-    const trending = [...actualLiveMovies];
-    const mostViewed = [...actualLiveMovies];
-    const mostDownloaded = [...actualLiveMovies];
+    // ── Smart Discovery Rows ──
+    const trending = [...allContent]
+      .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
+      .slice(0, 15);
+
+    const mostViewed = [...allContent]
+      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+      .slice(0, 15);
+
+    const mostDownloaded = [...allContent]
+      .sort((a: any, b: any) => (b.downloads || 0) - (a.downloads || 0))
+      .slice(0, 15);
+
     // Latest = full movie catalog (movies only), sorted newest-first
     const latest = [...actualLiveMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    // ── Personalized Rows ──
+    // You May Also Like: Suggest based on genres in watch history
+    const watchedGenres = new Set<string>();
+    Object.values(profile.watchHistory || {}).forEach((h: any) => {
+      if (h.category) watchedGenres.add(h.category);
+    });
+    
+    let youMayAlsoLike = allContent
+      .filter(m => watchedGenres.has(m.category || ''))
+      .filter(m => !profile.watchHistory?.[m.id]) // Don't suggest what they already watched
+      .slice(0, 15);
+
+    if (youMayAlsoLike.length < 5) {
+      // Fallback: Just some random trending items if history is thin
+      youMayAlsoLike = [...trending].reverse().slice(0, 15);
+    }
     
     // ── Personalized Rows ──
     // Continue Watching: Map watchHistory IDs to full objects, sorted by timestamp
@@ -247,7 +274,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       .map(([key, history]) => {
         const movieId = key.includes('_') ? key.split('_')[0] : key;
         const item = allContent.find(m => m.id === movieId);
-        return item ? { ...item, ...history } : null;
+        return item ? { ...item, ...history } as any : null;
       })
       .filter((m): m is any => m !== null)
       .sort((a, b) => b.timestamp - a.timestamp)
@@ -256,7 +283,6 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const favourites = myFavorites;
     const myList = myFavorites;
     const watchLater: Movie[] = [];
-    const youMayAlsoLike = [...actualLiveMovies];
     const lastWatched = continueWatching.length > 0 ? [continueWatching[0]] : [];
     
     // Auto category filter

@@ -59,6 +59,7 @@ export interface Series {
   heroPhotoUrl?: string;
   bunnyVideoId?: string;
   bunnyLibraryId?: string;
+  createdAt?: number;
 }
 
 export function shortenGenre(genre: string): string {

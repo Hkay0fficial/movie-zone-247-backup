@@ -24,6 +24,8 @@ import { getDownloadUrlVariants } from '../../constants/bunnyConfig';
 import { useSubscription } from './SubscriptionContext';
 import { downloadNotificationManager } from '@/lib/notificationHelper';
 import { addNotificationResponseListener } from '@/lib/notifications';
+import { db } from '../../constants/firebaseConfig';
+import { doc, updateDoc, increment } from 'firebase/firestore';
 
 const {
   documentDirectory,
@@ -209,6 +211,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       progress: 0, speedString: '', isPaused: false,
       mode, url, item: series, isEpisode: true,
     });
+
+    // Increment download count in Firestore
+    if (series.id) {
+      updateDoc(doc(db, 'series', series.id), {
+        downloads: increment(1)
+      }).catch(e => console.warn('Failed to increment series downloads:', e));
+    }
   };
 
   const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external') => {
@@ -221,6 +230,14 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       poster: movie.poster || '', progress: 0, speedString: '', isPaused: false,
       mode, url, item: movie, isEpisode: false,
     });
+
+    // Increment download count in Firestore
+    if (movie.id) {
+      const collectionName = (movie as any).episodes ? 'series' : 'movies';
+      updateDoc(doc(db, collectionName, movie.id), {
+        downloads: increment(1)
+      }).catch(e => console.warn('Failed to increment movie downloads:', e));
+    }
   };
 
   const pauseDownload = (id: string) => {

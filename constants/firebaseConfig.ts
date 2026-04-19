@@ -21,11 +21,12 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Initialize services with Native Persistence for React Native
 let authInstance: Auth;
 try {
+  // Use initializeAuth with native persistence for Expo
   authInstance = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
+    persistence: (getReactNativePersistence as any)(AsyncStorage)
   });
 } catch (e) {
-  // If already initialized
+  // If already initialized (common during Fast Refresh), get existing instance
   const { getAuth } = require('firebase/auth');
   authInstance = getAuth(app);
 }
