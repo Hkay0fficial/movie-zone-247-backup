@@ -35,6 +35,33 @@ export const initNotifications = () => {
       shouldShowList: true,
     }),
   });
+
+  // Register Interactive Categories
+  Notifications.setNotificationCategoryAsync('new_release', [
+    {
+      identifier: 'watch_now',
+      buttonTitle: '🎬 WATCH NOW',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: 'add_to_list',
+      buttonTitle: '➕ MY LIST',
+      options: { opensAppToForeground: true },
+    },
+  ]);
+
+  Notifications.setNotificationCategoryAsync('general_alert', [
+    {
+      identifier: 'view_details',
+      buttonTitle: '🔍 VIEW DETAILS',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: 'dismiss',
+      buttonTitle: 'Dismiss',
+      options: { isDestructive: true, opensAppToForeground: false },
+    },
+  ]);
 };
 
 export async function registerForPushNotificationsAsync() {

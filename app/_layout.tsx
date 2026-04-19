@@ -54,10 +54,14 @@ export default function RootLayout() {
     // Listen for notification clicks (background/killed state)
     const responseSubscription = addNotificationResponseListener(response => {
       const data = response.notification.request.content.data;
+      const actionId = response.actionIdentifier;
+
       if (data?.movieId) {
+        // If it's a 'New Release' or 'Alert', open the details page
+        // Standard tapping (DefaultIdentifier) or specific buttons (watch_now, view_details)
         router.push({
           pathname: '/(tabs)',
-          params: { movieId: String(data.movieId), autoplay: 'true' }
+          params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
         });
       }
     });
