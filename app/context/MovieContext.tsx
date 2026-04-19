@@ -334,7 +334,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const heroMovies: HeroMovie[] = [
       ...adminHeroMovies,
       ...newReleaseFallback,
-    ];
+    ].slice(0, 8);
 
     // Rebuild ALL_ROWS dynamically based on the Admin Portal's Layout Manager
     let allRows: { title: string; data: (Movie | Series)[] }[] = [];
