@@ -19,6 +19,7 @@ import {
   Image,
 } from 'react-native';
 import { useSubscription } from '@/app/context/SubscriptionContext';
+import { useDownloads } from '@/app/context/DownloadContext';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +31,7 @@ const EXPANDED_WIDTH = SCREEN_WIDTH * 0.92; // Slightly wider for two buttons
 const COLLAPSED_SIZE = 54;
 
 export default function GlobalDownloadBar() {
-  const { activeDownloads, downloadQueue } = useSubscription();
+  const { activeDownloads, downloadQueue } = useDownloads();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 

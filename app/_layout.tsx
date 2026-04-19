@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SubscriptionProvider } from '@/app/context/SubscriptionContext';
 import { MovieProvider } from '@/app/context/MovieContext';
 import { UserProvider } from '@/app/context/UserContext';
+import { DownloadProvider } from '@/app/context/DownloadContext';
 import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener } from '../lib/notifications';
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
 import VersionLockGuard from '../components/VersionLockGuard';
@@ -77,22 +78,24 @@ export default function RootLayout() {
       <UserProvider>
         <SubscriptionProvider>
           <MovieProvider>
-            <View style={{ flex: 1 }}>
-              <Stack>
-                <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <InAppNotification 
-                notification={activeNotification} 
-                onClose={() => setActiveNotification(null)} 
-              />
+            <DownloadProvider>
+              <View style={{ flex: 1 }}>
+                <Stack>
+                  <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                </Stack>
+                <InAppNotification 
+                  notification={activeNotification} 
+                  onClose={() => setActiveNotification(null)} 
+                />
 
-              <VersionLockGuard />
-            </View>
-            <StatusBar style="auto" />
+                <VersionLockGuard />
+              </View>
+              <StatusBar style="auto" />
+            </DownloadProvider>
           </MovieProvider>
         </SubscriptionProvider>
       </UserProvider>

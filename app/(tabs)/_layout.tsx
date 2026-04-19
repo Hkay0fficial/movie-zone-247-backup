@@ -41,6 +41,7 @@ import {
 import { GridModal, GridCard } from "../../components/GridComponents";
 import { useMovies } from "@/app/context/MovieContext";
 import { useSubscription } from "@/app/context/SubscriptionContext";
+import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
@@ -1997,7 +1998,8 @@ function SearchOverlay({
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
   const { liveMovies, liveSeries } = useMovies();
-  const { allMoviesFree, eventMessage, activeDownloads, playingNow, playerMode, setPlayerMode, playerTitle, selectedVideoUrl } = useSubscription();
+  const { allMoviesFree, eventMessage, playingNow, playerMode, setPlayerMode, playerTitle, selectedVideoUrl } = useSubscription();
+  const { activeDownloads } = useDownloads();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();

@@ -451,6 +451,17 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices();
+      
+      // Force account picker by clearing any cached Google session first
+      try {
+        const isSignedIn = await GoogleSignin.isSignedIn();
+        if (isSignedIn) {
+          await GoogleSignin.signOut();
+        }
+      } catch (e) {
+        // Ignore sign-out errors since we're just making sure it's clear
+      }
+
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || (userInfo as any).idToken;
       

@@ -86,6 +86,7 @@ import {
 } from "../../components/GridComponents";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useMovies } from "@/app/context/MovieContext";
+import { useDownloads } from "@/app/context/DownloadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "../context/UserContext";
 import { doc, updateDoc, increment, serverTimestamp, setDoc, collection, addDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
@@ -2070,6 +2071,7 @@ export function SeriesPreviewContent({
   const wavePulseAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const playPulse = useRef(new Animated.Value(1)).current;
+  const downloadPulse = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const myListScale = useRef(new Animated.Value(1)).current;
 
@@ -2099,7 +2101,14 @@ export function SeriesPreviewContent({
       ),
       Animated.loop(
         Animated.timing(shimmerAnim, { toValue: 2, duration: 4500, easing: Easing.linear, useNativeDriver: true })
-      )
+      ),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(downloadPulse, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+          Animated.timing(downloadPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.delay(100),
+        ])
+      ),
     ]).start();
   }, []);
 
@@ -2318,6 +2327,49 @@ export function SeriesPreviewContent({
               <Text style={[styles.previewActionLabel, isFavorite && { color: "#FFC107" }]}>My List</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity 
+              style={styles.previewActionCol} 
+              onPress={() => handleDownload()}
+            >
+              <View 
+                style={[
+                  styles.previewActionIconBg, 
+                  (activeDownloads[activeEpisodeId] || episodeDownloads[activeEpisodeId]) && { 
+                    borderColor: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
+                    backgroundColor: activeDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
+                  }
+                ]}
+              >
+                {activeDownloads[activeEpisodeId] ? (
+                  <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
+                    <Ionicons 
+                      name={activeDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"} 
+                      size={20} 
+                      color={activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"} 
+                    />
+                  </Animated.View>
+                ) : episodeDownloads[activeEpisodeId] ? (
+                  <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                ) : (
+                  <Ionicons name="download-outline" size={22} color="#fff" />
+                )}
+              </View>
+              <Text 
+                style={[
+                  styles.previewActionLabel, 
+                  (activeDownloads[activeEpisodeId] || episodeDownloads[activeEpisodeId]) && { 
+                    color: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" 
+                  }
+                ]}
+              >
+                {activeDownloads[activeEpisodeId]
+                  ? activeDownloads[activeEpisodeId]?.isPaused
+                    ? `Paused (${Math.round(activeDownloads[activeEpisodeId].progress)}%)`
+                    : `${Math.round(activeDownloads[activeEpisodeId].progress)}% • ${activeDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
+                  : episodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.previewActionCol} onPress={() => handleShare(series)}>
               <View style={styles.previewActionIconBg}><Ionicons name="share-social-outline" size={22} color="#fff" /></View>
               <Text style={styles.previewActionLabel}>Share</Text>
@@ -2417,29 +2469,28 @@ export function MoviePreviewContent({
   const {
     subscriptionBundle,
     setSubscriptionBundle,
-    recordExternalDownload,
-    recordInAppDownload,
-    getRemainingDownloads,
-    getExternalDownloadLimit,
     allMoviesFree,
-    eventMessage,
     isGuest,
     favorites,
     toggleFavorite,
-    activeDownloads,
-    downloadedMovies,
-    episodeDownloads,
-    startExternalGalleryDownload,
-    startInternalAppDownload,
-    startInternalEpisodeDownload,
-    startExternalEpisodeDownload,
-    toggleDownloadPause,
     recordTrialUsage,
     isDeviceBlocked,
     activeDeviceIds,
     removeDevice,
     deviceLimit,
   } = useSubscription();
+
+  const {
+    activeDownloads,
+    downloadedMovies,
+    episodeDownloads,
+    downloadMovie,
+    downloadEpisode,
+    pauseDownload,
+    resumeDownload,
+    getRemainingDownloads,
+    getExternalDownloadLimit,
+  } = useDownloads();
   const isPaid = subscriptionBundle !== 'None';
   const [previewQuery, setPreviewQuery] = useState("");
   const [browseSectionModal, setBrowseSectionModal] = useState<{
@@ -2540,9 +2591,9 @@ export function MoviePreviewContent({
   const previewInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
   const playPulse = useRef(new Animated.Value(1)).current;
+  const downloadPulse = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const myListScale = useRef(new Animated.Value(1)).current;
-  const downloadPulse = useRef(new Animated.Value(1)).current;
   const modalScrollRef = useRef<ScrollView>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -2693,11 +2744,18 @@ export function MoviePreviewContent({
             easing: Easing.linear,
             useNativeDriver: true,
           })
-        )
+        ),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(downloadPulse, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+            Animated.timing(downloadPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.delay(100),
+          ])
+        ),
       ]).start();
     };
     startAnims();
-  }, []);
+  }, [otherPartsWaveAnim, otherPartsShimmerAnim]);
 
   const handleMyList = () => {
     if (isGuest) {
@@ -2758,14 +2816,13 @@ export function MoviePreviewContent({
     if (movie) {
       setShowDownloadModal(false);
       if (selectedEpisodeForDownload) {
-        startInternalEpisodeDownload(
+        downloadEpisode(
           "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any, 
-          selectedEpisodeForDownload.id, 
-          selectedEpisodeForDownload.videoUrl || "", 
-          selectedEpisodeForDownload.title
+          selectedEpisodeForDownload, 
+          'internal'
         );
       } else {
-        startInternalAppDownload(movie as any);
+        downloadMovie(movie as any, 'internal');
       }
     }
   };
@@ -3673,24 +3730,23 @@ export function MoviePreviewContent({
                       return (
                         <TouchableOpacity
                           style={styles.previewActionCol}
-                          onPress={handleDownload}
+                          onPress={() => handleDownload()}
                         >
-                          <Animated.View
+                          <View
                             style={[
                               styles.previewActionIconBg,
                               isDl && { borderColor: activeDl?.isPaused ? "#ef4444" : "#22c55e", backgroundColor: activeDl?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)" },
                               isDownloaded && !isDl && { borderColor: "#10b981", backgroundColor: "rgba(16,185,129,0.12)" },
-                              { transform: [{ scale: downloadPulse }] },
                             ]}
                           >
-                     {isDl ? (
-                              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                            {isDl ? (
+                              <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
                                 <Ionicons
                                   name={activeDl?.isPaused ? "play" : "pause"}
                                   size={20}
                                   color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
                                 />
-                              </View>
+                              </Animated.View>
                             ) : isDownloaded ? (
                               <Ionicons name="checkmark-circle" size={22} color="#10b981" />
                             ) : (
@@ -3700,7 +3756,7 @@ export function MoviePreviewContent({
                                 color="#fff"
                               />
                             )}
-                          </Animated.View>
+                          </View>
                           <Text
                             style={[
                               styles.previewActionLabel,
@@ -4185,14 +4241,13 @@ export function MoviePreviewContent({
                         const targetItem = selectedEpisodeForDownload || movie;
                         recordExternalDownload(targetTitle);
                         if (selectedEpisodeForDownload) {
-                          startExternalEpisodeDownload(
+                          downloadEpisode(
                             "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
-                            selectedEpisodeForDownload.id,
-                            selectedEpisodeForDownload.videoUrl || "",
-                            selectedEpisodeForDownload.title
+                            selectedEpisodeForDownload,
+                            'external'
                           );
                         } else {
-                          startExternalGalleryDownload(targetItem);
+                          downloadMovie(targetItem as any, 'external');
                         }
                       }}
                       activeOpacity={0.7}

@@ -14,6 +14,11 @@ export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true)
   const origin = 'https://themoviezone247.com';
   const cdnBase = `https://${BUNNY_CONFIG.PULL_ZONE}`;
   
+  // Ensure protocol
+  if (url.startsWith('//')) {
+    url = 'https:' + url;
+  }
+
   if (url.startsWith(origin)) {
     url = url.replace(origin, cdnBase);
   }
@@ -36,13 +41,36 @@ export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true)
   }
 
   // Safety Fallback: If downloading (forceHLS=false) but we only have an HLS link,
-  // try to "un-convert" it back to MP4 for the gallery downloader.
+  // try to "un-convert" it back to MP4 for the downloader.
   if (!forceHLS && url.includes('b-cdn.net') && url.includes('playlist.m3u8')) {
     // Bunny Stream typically has a play_720p.mp4 or similar. 
-    // If we don't know the resolution, 720p is the most common default, 
-    // but we can also try the base URL which sometimes works for direct delivery.
-    return url.replace('playlist.m3u8', 'play_720p.mp4');
+    return url.replace('/playlist.m3u8', '/play_720p.mp4').replace('playlist.m3u8', 'play_720p.mp4');
   }
 
   return url;
+};
+
+/**
+ * Returns a list of possible download URL variants for a given original URL.
+ * Helps the download engine try different resolutions (720p, 480p, 1080p, etc.) if the primary one fails.
+ */
+export const getDownloadUrlVariants = (url: string | undefined): string[] => {
+  if (!url) return [];
+  
+  const baseMp4 = resolveCDNUrl(url, false);
+  if (!baseMp4) return [];
+
+  // If it's a standard Bunny play_720p.mp4 style link
+  if (baseMp4.includes('play_720p.mp4')) {
+    return [
+      baseMp4,
+      baseMp4.replace('play_720p.mp4', 'play_480p.mp4'),
+      baseMp4.replace('play_720p.mp4', 'play_1080p.mp4'),
+      baseMp4.replace('play_720p.mp4', 'play_360p.mp4'),
+      baseMp4.replace('play_720p.mp4', 'play.mp4'), // High bitrate original
+    ];
+  }
+
+  // If it's a generic .mp4 link
+  return [baseMp4];
 };

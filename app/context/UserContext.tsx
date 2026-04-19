@@ -101,7 +101,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | undefined;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      // Clean up previous profile listener before setting a new one
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = undefined;
+      }
+
       setUser(currentUser);
 
       if (currentUser) {
@@ -114,7 +122,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         // Now listen for live updates
         const userDocRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+        unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setProfile({
@@ -138,16 +146,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             });
           }
           setLoading(false);
+        }, (error) => {
+          console.error("UserContext profile listener error:", error);
         });
-
-        return () => unsubscribeProfile();
       } else {
         setProfile(DEFAULT_PROFILE);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   const savePlaybackProgress = async (movieId: string, position: number, episodeId?: string) => {

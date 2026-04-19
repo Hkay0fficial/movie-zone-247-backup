@@ -25,6 +25,7 @@ import {
 } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useMovies } from "@/app/context/MovieContext";
+import { useDownloads } from "@/app/context/DownloadContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useUser } from "../context/UserContext";
@@ -920,23 +921,23 @@ function SeriesPreviewModal({
   const {
     isGuest,
     subscriptionBundle,
-    recordInAppDownload,
     isPaid,
-    recordExternalDownload,
-    getRemainingDownloads,
-    getExternalDownloadLimit,
     allMoviesFree,
     toggleFavorite,
     favorites,
-    activeDownloads,
-    episodeDownloads,
-    startExternalGalleryDownload,
-    startInternalAppDownload,
-    startInternalEpisodeDownload,
-    startExternalEpisodeDownload,
-    toggleDownloadPause,
     recordTrialUsage,
   } = useSubscription();
+
+  const {
+    activeDownloads,
+    episodeDownloads,
+    downloadMovie,
+    downloadEpisode,
+    pauseDownload,
+    resumeDownload,
+    getRemainingDownloads,
+    getExternalDownloadLimit,
+  } = useDownloads();
 
   const { profile } = useUser();
 
@@ -991,7 +992,14 @@ function SeriesPreviewModal({
             easing: Easing.linear,
             useNativeDriver: true,
           })
-        )
+        ),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(downloadPulse, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+            Animated.timing(downloadPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.delay(100),
+          ])
+        ),
       ]).start();
     };
     startAnims();
@@ -1004,6 +1012,7 @@ function SeriesPreviewModal({
   }, [series?.id]);
   const insets = useSafeAreaInsets();
   const playPulse = useRef(new Animated.Value(1)).current;
+  const downloadPulse = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const myListScale = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -1264,9 +1273,9 @@ function SeriesPreviewModal({
       setShowDownloadModal(false);
       const epToDownload = selectedEpisodeForDownload || activeEpisode;
       if (epToDownload) {
-        startInternalEpisodeDownload(series, epToDownload.id, epToDownload.videoUrl || previewVideoUrl || '', epToDownload.title);
+        downloadEpisode(series, epToDownload, 'internal');
       } else {
-        startInternalAppDownload(series);
+        downloadMovie(series, 'internal');
       }
     }
   };
@@ -1659,25 +1668,25 @@ function SeriesPreviewModal({
                 {/* DOWNLOAD */}
                 <TouchableOpacity
                   style={styles.previewActionCol}
-                  onPress={handleDownload}
+                  onPress={() => handleDownload()}
                 >
                   <View
                     style={[
                       styles.previewActionIconBg,
-                      isThisDownloading && { 
-                        borderColor: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
-                        backgroundColor: activeDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
+                      (activeDl || episodeDownloads[activeEpisodeId]) && { 
+                        borderColor: activeDl?.isPaused ? "#ef4444" : "#22c55e",
+                        backgroundColor: activeDl?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
                       },
                     ]}
                   >
                     {activeDl ? (
-                      <View style={{ alignItems: "center", justifyContent: "center" }}>
+                      <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
                         <Ionicons
                           name={activeDl?.isPaused ? "play" : "pause"}
                           size={20}
                           color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
                         />
-                      </View>
+                      </Animated.View>
                     ) : episodeDownloads[activeEpisodeId] ? (
                       <Ionicons
                         name="checkmark-circle"
@@ -1695,7 +1704,9 @@ function SeriesPreviewModal({
                   <Text
                     style={[
                       styles.previewActionLabel,
-                      isThisDownloading && { color: activeDl?.isPaused ? "#ef4444" : "#22c55e" },
+                      (activeDl || episodeDownloads[activeEpisodeId]) && { 
+                        color: activeDl?.isPaused ? "#ef4444" : "#22c55e" 
+                      },
                     ]}
                   >
                     {activeDl

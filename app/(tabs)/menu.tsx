@@ -32,6 +32,7 @@ import { Modal } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useUser } from '../context/UserContext';
 import { useMovies } from '../context/MovieContext';
+import { useDownloads } from '../context/DownloadContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AboutSection } from '../../components/menu/AboutSection';
@@ -81,6 +82,8 @@ const MENU_ITEMS: MenuItem[] = [
 ];
 
 // ─── Menu Screen ──────────────────────────────────────────────────────────────
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
 export default function MenuScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
@@ -276,17 +279,23 @@ export default function MenuScreen() {
   // Subscription State
   const {
     subscriptionBundle, setSubscriptionBundle,
-    downloadsUsedToday, getExternalDownloadLimit, getRemainingDownloads,
-    recordExternalDownload, recordInAppDownload,
-    downloadedMovies, removeDownload,
-    toggleFavorite,
-    favorites,
-    activeDownloads,
     subscriptionExpiresAt,
     isPaid,
     isGuest,
     paymentMethod: contextPaymentMethod,
+    favorites,
+    toggleFavorite,
   } = useSubscription();
+
+  const {
+    downloadsUsedToday,
+    getExternalDownloadLimit,
+    getRemainingDownloads,
+    downloadedMovies,
+    removeDownload,
+    activeDownloads,
+    episodeDownloads,
+  } = useDownloads();
 
   const isSubscribed = isPaid;
   const remainingDays = isSubscribed && subscriptionExpiresAt 
@@ -1578,6 +1587,9 @@ export default function MenuScreen() {
         <LogoutButton
           onPress={async () => {
             try {
+              try {
+                await GoogleSignin.signOut();
+              } catch (e) {}
               await signOut(auth);
               router.replace('/login');
             } catch (e) {

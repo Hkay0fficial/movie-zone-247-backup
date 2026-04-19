@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
  */
 class DownloadNotificationManager {
   private lastUpdate: Record<string, number> = {};
+  private lastPausedState: Record<string, boolean> = {};
   private activeNotifications: Set<string> = new Set();
   private UPDATE_THROTTLE_MS = 1000; // 1 second between system tray updates
 
@@ -62,12 +63,14 @@ class DownloadNotificationManager {
     const now = Date.now();
     const last = this.lastUpdate[id] || 0;
 
-    // Throttle updates unless 0, 100, or a pause toggle occurred
-    if (progress > 0 && progress < 100 && now - last < this.UPDATE_THROTTLE_MS) {
+    // Bypass throttle for: first update (0%), completion (100%), or pause state toggle
+    const pauseStateChanged = this.lastPausedState[id] !== isPaused;
+    if (progress > 0 && progress < 100 && !pauseStateChanged && now - last < this.UPDATE_THROTTLE_MS) {
       return;
     }
 
     this.lastUpdate[id] = now;
+    this.lastPausedState[id] = isPaused;
     this.activeNotifications.add(id);
 
     const isComplete = progress === 100;
@@ -77,8 +80,8 @@ class DownloadNotificationManager {
     if (isPaused) statusLabel = 'Paused';
     if (isComplete) statusLabel = 'Complete';
 
-    // Body text combines status and subtext
-    const bodyText = `${statusLabel} (${progress}%) ${subtext ? '• ' + (subtext.includes('•') ? subtext.split('•')[1].trim() : subtext) : ''}`;
+    // Body text combines status, percentage and additional info (speed/size)
+    const bodyText = `${statusLabel} (${progress}%) ${subtext ? '• ' + subtext : ''}`;
 
     const content: Notifications.NotificationContentInput = {
       title: title, // Main title is the MovieName
@@ -104,6 +107,7 @@ class DownloadNotificationManager {
   async dismiss(id: string) {
     this.activeNotifications.delete(id);
     delete this.lastUpdate[id];
+    delete this.lastPausedState[id];
     await Notifications.dismissNotificationAsync(`download_${id}`);
   }
 
