@@ -15,6 +15,7 @@ import { DownloadProvider } from '@/app/context/DownloadContext';
 import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener } from '../lib/notifications';
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
 import VersionLockGuard from '../components/VersionLockGuard';
+import OTAUpdateGuard from '../components/OTAUpdateGuard';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -93,6 +94,7 @@ export default function RootLayout() {
                 />
 
                 <VersionLockGuard />
+                <OTAUpdateGuard />
               </View>
               <StatusBar style="auto" />
             </DownloadProvider>

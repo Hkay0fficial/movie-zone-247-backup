@@ -363,34 +363,39 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       const visibleSections = appLayout.filter(s => s.isVisible);
       allRows = visibleSections.map(section => {
         let sectionData: any[] = [];
-        if (section.filterType === 'newReleases') {
+        const type = section.filterType;
+        
+        if (type === 'newReleases') {
           sectionData = newReleases;
-        } else if (section.filterType === 'trending') {
-          sectionData = trending; // Using basic trending var fallback
-        } else if (section.filterType === 'free') {
-          sectionData = freeMovies; 
-        } else if (section.filterType === 'genre') {
+        } else if (type === 'trending') {
+          sectionData = trending;
+        } else if (type === 'free') {
+          sectionData = freeMovies;
+        } else if (type === 'continueWatching') {
+          sectionData = continueWatching;
+        } else if (type === 'favourites') {
+          sectionData = favourites;
+        } else if (type === 'myList') {
+          sectionData = myList;
+        } else if (type === 'watchLater') {
+          sectionData = watchLater;
+        } else if (type === 'youMayAlsoLike') {
+          sectionData = youMayAlsoLike;
+        } else if (type === 'mostViewed') {
+          sectionData = mostViewed;
+        } else if (type === 'mostDownloaded') {
+          sectionData = mostDownloaded;
+        } else if (type === 'latest') {
+          sectionData = latest;
+        } else if (type === 'lastWatched') {
+          sectionData = lastWatched;
+        } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
           sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => m.genre?.toLowerCase().includes(val));
-        } else {
-          sectionData = newReleases; // Guarantee an array
         }
+        
         return { title: section.title, data: sectionData };
-      });
-      
-      // Inject standard persistence categories (these are hardcoded to follow standard Netflix conventions)
-      const personalRows = [
-        { title: 'Continue Watching',  data: continueWatching },
-        { title: 'Favourites',         data: favourites        },
-        { title: 'My List',            data: myList           },
-        { title: 'Watch Later',        data: watchLater       },
-      ].filter(row => row.data.length > 0);
-
-      // Splice them neatly underneath the very first row (usually New Releases)
-      allRows.splice(1, 0, ...personalRows);
-      if (lastWatched.length > 0) {
-        allRows.push({ title: 'Last Watched', data: lastWatched });
-      }
+      }).filter(row => row.data.length > 0);
 
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
@@ -454,7 +459,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       globalSettings,
       appUpdateConfig
     };
-  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig]);
+  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig, myFavorites, profile]);
 
   return (
     <MovieContext.Provider value={contextValue}>

@@ -2462,8 +2462,19 @@ export function MoviePreviewContent({
     allRows: ALL_ROWS, 
     allSeries: ALL_SERIES, 
     heroMovies: HERO_MOVIES,
-    movies: MOVIES
+    youMayAlsoLike: liveYouMayAlsoLike,
+    trending: liveTrending,
+    mostViewed: liveMostViewed,
+    mostDownloaded: liveMostDownloaded,
+    newReleases: liveNewReleases,
   } = useMovies();
+
+  const YOU_MAY_ALSO_LIKE = liveYouMayAlsoLike.slice(0, 12);
+  const TRENDING = liveTrending.slice(0, 12);
+  const MOST_VIEWED = liveMostViewed.slice(0, 12);
+  const MOST_DOWNLOADED = liveMostDownloaded.slice(0, 12);
+  const NEW_RELEASES = liveNewReleases.slice(0, 12);
+
   const { profile, user } = useUser();
   const [browseSection, setBrowseSection] = useState(ALL_ROWS[0]?.title ?? 'New Releases');
   const {

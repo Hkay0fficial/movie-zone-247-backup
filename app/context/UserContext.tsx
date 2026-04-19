@@ -104,16 +104,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Push Notification Registration
   useEffect(() => {
-    if (user && !user.isAnonymous) {
+    if (user) {
       const registerToken = async () => {
         try {
           const token = await registerForPushNotificationsAsync();
           if (token) {
+            console.log('Push token successfully obtained:', token);
             const userRef = doc(db, 'users', user.uid);
             await setDoc(userRef, { pushToken: token }, { merge: true });
+            console.log('Push token successfully saved to Firestore for user:', user.uid);
+          } else {
+            console.warn('registerForPushNotificationsAsync returned no token.');
           }
         } catch (error) {
-          console.error('Failed to register push token:', error);
+          console.error('Failed to register/save push token:', error);
         }
       };
       registerToken();
