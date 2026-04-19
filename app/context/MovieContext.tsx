@@ -8,6 +8,8 @@ import {
   resolveCDNUrl,
 } from '../../constants/movieData';
 import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
+import { SubscriptionProvider, useSubscription } from './SubscriptionContext';
+import { useUser } from './UserContext';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 
@@ -214,6 +216,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const { favorites: myFavorites } = useSubscription();
+  const { profile } = useUser();
+
   // Merge live data with mock data so the beautiful UI stays populated
   const contextValue = useMemo(() => {
     const actualLiveMovies = globalSettings.allMoviesFree 
@@ -223,9 +228,11 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ? liveSeries.map(s => ({ ...s, isFree: true }))
       : liveSeries;
 
+    const allContent = [...actualLiveMovies, ...actualLiveSeries];
+
     // New Releases = items uploaded in the last 30 days (movies + series), newest first
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const newReleases = [...actualLiveMovies, ...actualLiveSeries]
+    const newReleases = allContent
       .filter((m: any) => (m.createdAt || 0) >= thirtyDaysAgo)
       .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
     const trending = [...actualLiveMovies];
@@ -233,12 +240,24 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const mostDownloaded = [...actualLiveMovies];
     // Latest = full movie catalog (movies only), sorted newest-first
     const latest = [...actualLiveMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-    const continueWatching: Movie[] = []; // Live data doesn't have continue watching state yet
-    const favourites: Movie[] = [];
-    const myList: Movie[] = [];
+    
+    // ── Personalized Rows ──
+    // Continue Watching: Map watchHistory IDs to full objects, sorted by timestamp
+    const continueWatching = Object.entries(profile.watchHistory || {})
+      .map(([key, history]) => {
+        const movieId = key.includes('_') ? key.split('_')[0] : key;
+        const item = allContent.find(m => m.id === movieId);
+        return item ? { ...item, ...history } : null;
+      })
+      .filter((m): m is any => m !== null)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 15);
+
+    const favourites = myFavorites;
+    const myList = myFavorites;
     const watchLater: Movie[] = [];
     const youMayAlsoLike = [...actualLiveMovies];
-    const lastWatched: Movie[] = [];
+    const lastWatched = continueWatching.length > 0 ? [continueWatching[0]] : [];
     
     // Auto category filter
     const actionMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('action'))];
@@ -365,10 +384,13 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         { title: 'Favourites',         data: favourites        },
         { title: 'My List',            data: myList           },
         { title: 'Watch Later',        data: watchLater       },
-      ];
+      ].filter(row => row.data.length > 0);
+
       // Splice them neatly underneath the very first row (usually New Releases)
       allRows.splice(1, 0, ...personalRows);
-      allRows.push({ title: 'Last Watched', data: lastWatched });
+      if (lastWatched.length > 0) {
+        allRows.push({ title: 'Last Watched', data: lastWatched });
+      }
 
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
@@ -393,7 +415,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         { title: 'Drama',              data: dramaMovies      },
         { title: 'Indian Movies',      data: indianMovies     },
         { title: 'VJ Collection',      data: vjCollection     },
-      ];
+      ].filter(row => row.data.length > 0);
     }
 
     return {
