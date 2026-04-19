@@ -320,9 +320,12 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   heroMetaText: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.95)",
     fontSize: 12,
     fontWeight: "600",
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   heroMetaDot: {
     width: 3,
