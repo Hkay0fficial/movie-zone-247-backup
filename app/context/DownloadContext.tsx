@@ -137,11 +137,18 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const sub = addNotificationResponseListener(response => {
       const actionId = response.actionIdentifier;
-      const id = response.notification.request.content.data?.movieId;
+      const data = response.notification.request.content.data;
+      const id = data?.movieId;
       if (!id) return;
+
       if (actionId === 'pause') pauseDownload(id);
       else if (actionId === 'resume') resumeDownload(id);
       else if (actionId === 'cancel') cancelDownload(id);
+      else {
+        // Default tap action
+        const { DeviceEventEmitter } = require('react-native');
+        DeviceEventEmitter.emit("movieSelected", { id });
+      }
     });
     return () => { if (sub?.remove) sub.remove(); };
   }, []);
@@ -163,8 +170,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isMovieDownloaded = (id: string) => downloadedMovies.some(m => m.id === id);
 
   const updateNotification = (id: string, title: string, progress: number, speed: string, done: boolean, isPaused = false) => {
-    const poster = entriesRef.current[id]?.poster || '';
-    downloadNotificationManager.updateProgress(id, title, progress, speed, poster, isPaused)
+    const entry = entriesRef.current[id];
+    const poster = entry?.poster || '';
+    const movieId = entry?.movieId || id;
+    downloadNotificationManager.updateProgress(id, title, progress, speed, poster, isPaused, movieId)
       .catch(e => console.warn('[Notif] Update failed:', e));
   };
 
