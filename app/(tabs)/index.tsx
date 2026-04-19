@@ -28,7 +28,8 @@ import {
   AppState,
   LayoutAnimation,
   UIManager,
-  NativeModules
+  NativeModules,
+  ActivityIndicator
 } from "react-native";
 
 
@@ -89,8 +90,22 @@ import { useMovies } from "@/app/context/MovieContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "../context/UserContext";
-import { doc, updateDoc, increment, serverTimestamp, setDoc, collection, addDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  increment, 
+  serverTimestamp, 
+  setDoc, 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot 
+} from 'firebase/firestore';
 import { db, auth } from "../../constants/firebaseConfig";
+import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { formatRelativeTime } from "../../utils/TimeUtils";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
@@ -1982,10 +1997,12 @@ const GENRE_DESC: Record<string, string> = {
   History:
     "A cinematic window into the events and figures that shaped our world.",
 };
-function movieDesc(genre: string, title: string): string {
+function movieDesc(genre?: string, title?: string): string {
+  const g = genre || "General";
+  const t = title || "The Movie";
   return (
-    GENRE_DESC[genre] ??
-    `${title} is a critically acclaimed ${genre} film you won't want to miss.`
+    GENRE_DESC[g] ??
+    `${t} is a critically acclaimed ${g} film you won't want to miss.`
   );
 }
 
@@ -2559,9 +2576,9 @@ export function MoviePreviewContent({
 
     // Apply Filter: VJ
     if (hSelectedVJ) {
-      const vjLower = hSelectedVJ.toLowerCase();
+      const vjLower = (hSelectedVJ || "").toLowerCase();
       pool = pool.filter(
-        (item) => item.vj.toLowerCase() === vjLower || item.vj.toLowerCase() === "vj " + vjLower
+        (item) => (item.vj || "").toLowerCase() === vjLower || (item.vj || "").toLowerCase() === "vj " + vjLower
       );
     }
 
@@ -2959,14 +2976,16 @@ export function MoviePreviewContent({
   const desc = (movie as any).description || movieDesc(movie.genre, movie.title);
 
   // Related movies: same primary genre, excluding the current movie
-  const primaryGenre = movie.genre.split(" · ")[0].trim().toLowerCase();
+  const primaryGenre = movie.genre?.split(" · ")[0]?.trim()?.toLowerCase() || 'general';
   const related = React.useMemo(() => {
     const seen = new Set<string>();
     seen.add(movie.id);
     const pool: (Movie | Series)[] = [];
+    if (!movie.genre) return []; // Skip related if no genre info
+    
     for (const row of ALL_ROWS) {
       for (const m of row.data) {
-        if (!seen.has(m.id) && m.genre.toLowerCase().includes(primaryGenre)) {
+        if (!seen.has(m.id) && m.genre?.toLowerCase().includes(primaryGenre)) {
           seen.add(m.id);
           pool.push(m);
         }
@@ -3006,7 +3025,8 @@ export function MoviePreviewContent({
 
   // Helper to get a "base" title for fuzzy matching (e.g., "Movie Part 2" -> "Movie")
   // and stripping VJ names/years
-  const getCanonicalTitle = (title: string) => {
+  const getCanonicalTitle = (title: string | undefined): string => {
+    if (!title) return "";
     return title
       .toLowerCase()
       // 1. Strip common VJ suffixes (e.g., "by vj junior", "vj emmy")
@@ -3066,7 +3086,7 @@ export function MoviePreviewContent({
       if ("seasons" in movie) return []; // Don't do title matching for series
 
       const base = getCanonicalTitle(movie.title);
-      if (base.length < 3) return []; // Avoid matching very short titles like "A"
+      if (!base || base.length < 3) return []; // Avoid matching very short titles like "A"
 
       const matchedParts = allPool.filter((m): m is Movie => {
         if ("seasons" in m) return false;
@@ -3183,13 +3203,13 @@ export function MoviePreviewContent({
   const relatedMovies = React.useMemo(() => {
     if (!movie) return [];
     const partIds = new Set(movieParts.map(p => p.id));
-    const partTitles = new Set(movieParts.map(p => p.title.toLowerCase().trim()));
-    const movieTitle = movie.title.toLowerCase().trim();
+    const partTitles = new Set(movieParts.map(p => p.title?.toLowerCase().trim() || ""));
+    const movieTitle = movie.title?.toLowerCase().trim() || "";
 
     // Filter YOU_MAY_ALSO_LIKE for movies of the same genre, or just return the list
     // AND exclude movies that are already identified as "Other Parts" (by ID or Title)
     return YOU_MAY_ALSO_LIKE.filter(m => {
-      const mTitle = m.title.toLowerCase().trim();
+      const mTitle = m.title?.toLowerCase().trim() || "";
       return m.id !== movie.id && 
              !partIds.has(m.id) && 
              mTitle !== movieTitle &&
@@ -3208,13 +3228,13 @@ export function MoviePreviewContent({
         if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
 
         // 2. Section Matches
-        const sectionMatches = ALL_ROWS.filter(r => r.title.toLowerCase().includes(searchQ)).flatMap(r => r.data);
+        const sectionMatches = ALL_ROWS.filter(r => r.title?.toLowerCase().includes(searchQ)).flatMap(r => r.data);
 
         // 3. Regional & Type Mapping
-        const regionalMatches = [];
-        if (searchQ.includes("chinese")) regionalMatches.push(...allPool.filter(m => m.genre.toLowerCase().includes("chinese")));
-        if (searchQ.includes("filipino")) regionalMatches.push(...allPool.filter(m => m.genre.toLowerCase().includes("filipino")));
-        if (searchQ.includes("korean")) regionalMatches.push(...allPool.filter(m => m.genre.toLowerCase().includes("korean")));
+        const regionalMatches: (Movie | Series)[] = [];
+        if (searchQ.includes("chinese")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("chinese")));
+        if (searchQ.includes("filipino")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("filipino")));
+        if (searchQ.includes("korean")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("korean")));
         if (searchQ === "mini series") regionalMatches.push(...allPool.filter(m => "isMiniSeries" in m && m.isMiniSeries));
         if (searchQ === "series") regionalMatches.push(...allPool.filter(m => "seasons" in m && !("isMiniSeries" in m && m.isMiniSeries)));
 
@@ -3222,11 +3242,11 @@ export function MoviePreviewContent({
         const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
         const fuzzyMatches = allPool.filter((m) => {
           return (
-            m.title.toLowerCase().includes(searchQ) ||
-            m.genre.toLowerCase().includes(searchQ) ||
+            (m.title || "").toLowerCase().includes(searchQ) ||
+            (m.genre || "").toLowerCase().includes(searchQ) ||
             String(m.year).includes(searchQ) ||
-            m.vj.toLowerCase().includes(vjSearchQuery) ||
-            m.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
+            (m.vj || "").toLowerCase().includes(vjSearchQuery) ||
+            (m.title || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
           );
         });
 
@@ -5167,35 +5187,7 @@ export function MoviePreviewContent({
   );
 }
 
-export function MoviePreviewModal(props: any) {
-  if (!props.movie) return null;
-  return (
-    <Modal
-      visible={!!props.movie && props.visible !== false}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={props.onClose}
-    >
-      <MoviePreviewContent {...props} />
-    </Modal>
-  );
-}
 
-export function SeriesPreviewModal(props: any) {
-  if (!props.series) return null;
-  return (
-    <Modal
-      visible={!!props.series}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={props.onClose}
-    >
-      <SeriesPreviewContent movie={props.series} {...props} />
-    </Modal>
-  );
-}
 
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
 export function MovieCard({
@@ -5835,6 +5827,8 @@ export default function HomeScreen() {
 
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
+  const [loadingDeepLink, setLoadingDeepLink] = useState(false);
+  const lastProcessedId = useRef<string | null>(null);
   const { movieId, autoplay, playMovieId } = useLocalSearchParams();
 
   useEffect(() => {
@@ -5877,19 +5871,27 @@ export default function HomeScreen() {
 
   // Handle deep link (movieId) from search params or notifications
   useEffect(() => {
-    if ((movieId || playMovieId) && isFocused) {
-      let found: (Movie | Series) | undefined;
+    const handleDeepLink = async () => {
       const targetId = playMovieId || movieId;
       
+      // Prevent redundant processing if this ID was just handled
+      if (!targetId || !isFocused || lastProcessedId.current === String(targetId)) return;
+      
+      // Clear params IMMEDIATELY to prevent useLocalSearchParams from re-triggering this effect
+      // while we are still processing the fetch.
+      router.setParams({ movieId: undefined, playMovieId: undefined, autoplay: undefined } as any);
+      lastProcessedId.current = String(targetId);
+
+      let found: (Movie | Series) | undefined;
+      
       // 1. If playing a downloaded item, check the downloads list first
-      // (This is critical for episodes, which have unique IDs not present in global rows)
       if (playMovieId) {
         found = downloadedMovies.find(d => String(d.id) === String(playMovieId));
       }
 
-      // 2. Search in all movie rows if not found or if it's a general info link
+      // 2. Search in all movie rows if not found
       if (!found) {
-        for (const row of ALL_ROWS) {
+        for (const row of liveRows) {
           found = row.data.find(m => String(m.id) === String(targetId));
           if (found) break;
         }
@@ -5897,37 +5899,72 @@ export default function HomeScreen() {
       
       // 3. Search in series
       if (!found) {
-        found = ALL_SERIES.find(s => String(s.id) === String(targetId));
+        found = liveSeries.find(s => String(s.id) === String(targetId));
+      }
+
+      // 4. 🔥 CRITICAL FALLBACK: Fetch from Firestore if not found in local cache
+      if (!found) {
+        setLoadingDeepLink(true);
+        try {
+          console.log(`Deep link target ID ${targetId} not in cache. Fetching from Firestore...`);
+          const movieDoc = await getDoc(doc(db, 'movies', String(targetId)));
+          if (movieDoc.exists()) {
+            found = { id: movieDoc.id, ...movieDoc.data() } as any;
+          } else {
+            const seriesDoc = await getDoc(doc(db, 'series', String(targetId)));
+            if (seriesDoc.exists()) {
+              found = { id: seriesDoc.id, ...seriesDoc.data() } as any;
+            } else {
+              Alert.alert("Content Not Found", "This item may have been removed or is not available yet.");
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching deep link data:", error);
+        } finally {
+          setLoadingDeepLink(false);
+          // Small delay before allowing another ID to ensure state settles
+          setTimeout(() => { if (lastProcessedId.current === String(targetId)) lastProcessedId.current = null; }, 2000);
+        }
       }
 
       if (found) {
         if (playMovieId) {
-          // Direct Play Logic (for Downloads)
-          // Find in downloadedMovies for localUri
           const dl = downloadedMovies.find(d => String(d.id) === String(playMovieId));
           const playItem = { ...found, videoUrl: dl?.localUri || (found as Movie).videoUrl };
-          
           setPlayerTitle(found.title);
           setSelectedVideoUrl(playItem.videoUrl);
           setPlayingNow(playItem as Movie);
           setPlayerMode('full');
-          
-          // Clear param
-          router.setParams({ playMovieId: undefined } as any);
         } else {
-          // Open the movie detail
-          setNavigationStack([{ type: 'movie', movie: found }]);
+          // Open the movie detail alone in the stack to prevent layering
+          // Deduplication Guard: Check if the top item is already this movie
+          setNavigationStack(prev => {
+            if (prev.length > 0) {
+              const top = prev[prev.length - 1];
+              if (top.type === 'movie' && String(top.movie.id) === String(found.id)) return prev;
+            }
+            return [{ type: 'movie', movie: found! }];
+          });
           
-          // If autoplay is requested and it's a movie (not a series), trigger the player
           if (autoplay === 'true' && !("seasons" in found)) {
              setPlayingNow(found as Movie);
           }
-          // Clearparams
-          router.setParams({ movieId: undefined, autoplay: undefined } as any);
         }
       }
+    };
+
+    handleDeepLink();
+  }, [movieId, playMovieId, autoplay, isFocused, liveRows, liveSeries, downloadedMovies]);
+
+  // Keep screen on during video playback
+  useEffect(() => {
+    if (playerMode === 'full') {
+      activateKeepAwakeAsync();
+    } else {
+      deactivateKeepAwake();
     }
-  }, [movieId, playMovieId, autoplay, isFocused, ALL_ROWS, ALL_SERIES, downloadedMovies]);
+    return () => { deactivateKeepAwake(); };
+  }, [playerMode]);
 
   // Derived state to determine if the hero video should actually be muted
   const isHeroMuted = useMemo(() => {
@@ -5981,13 +6018,14 @@ export default function HomeScreen() {
         if (isSeries) {
           router.push(`/(tabs)/saved?seriesId=${m.id}`);
         } else {
-          if (m.autoPlay) {
-            // Directly play for downloaded items (internal storage)
-            const playItem = { ...m, videoUrl: (m as any).localUri || m.videoUrl };
-            setPlayingNow(playItem as any);
-          } else {
-            setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
-          }
+          // Deduplication Guard: Don't push if the same movie is already at the top
+          setNavigationStack((prev) => {
+            if (prev.length > 0) {
+              const top = prev[prev.length - 1];
+              if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+            }
+            return [...prev, { type: 'movie', movie: m }];
+          });
         }
       },
     );
@@ -6165,7 +6203,13 @@ export default function HomeScreen() {
             if (isSeries) {
               router.push(`/(tabs)/saved?seriesId=${m.id}`);
             } else {
-               setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+               setNavigationStack((prev) => {
+                 if (prev.length > 0) {
+                   const top = prev[prev.length - 1];
+                   if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                 }
+                 return [...prev, { type: 'movie', movie: m }];
+               });
             }
           }}
           isMuted={isHeroMuted}
@@ -6187,7 +6231,13 @@ export default function HomeScreen() {
               if (isSeries) {
                 router.push(`/(tabs)/saved?seriesId=${m.id}`);
               } else {
-                 setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                 setNavigationStack((prev) => {
+                   if (prev.length > 0) {
+                     const top = prev[prev.length - 1];
+                     if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                   }
+                   return [...prev, { type: 'movie', movie: m }];
+                 });
               }
             }}
           />
@@ -6198,15 +6248,25 @@ export default function HomeScreen() {
 
       {/* Unified Navigation Stack (Single Modal Pattern) */}
       <Modal
-        visible={navigationStack.length > 0 && playerMode !== 'full'}
+        visible={(navigationStack.length > 0 && playerMode !== 'full') || loadingDeepLink}
         animationType="slide"
         transparent
         statusBarTranslucent
         onRequestClose={() => {
+          if (loadingDeepLink) return;
           setNavigationStack((prev) => prev.slice(0, -1));
         }}
       >
-        <View style={StyleSheet.absoluteFill}>
+        {loadingDeepLink ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }]}>
+             <View style={{ backgroundColor: '#1a1a2e', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 15, elevation: 12 }}>
+               <ActivityIndicator size="large" color="#5B5FEF" />
+               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 24 }}>Verifying Content...</Text>
+               <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>This will only take a moment</Text>
+             </View>
+          </View>
+        ) : (
+          <View style={StyleSheet.absoluteFill}>
           {navigationStack.map((item, index) => {
             const onClose = () => {
               setNavigationStack((prev) => {
@@ -6231,7 +6291,13 @@ export default function HomeScreen() {
                     if (isSeries) {
                       router.push(`/(tabs)/saved?seriesId=${m.id}`);
                     } else {
-                      setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                      setNavigationStack((prev) => {
+                        if (prev.length > 0) {
+                          const top = prev[prev.length - 1];
+                          if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                        }
+                        return [...prev, { type: 'movie', movie: m }];
+                      });
                     }
                   }}
                 />
@@ -6250,7 +6316,13 @@ export default function HomeScreen() {
                   if (isSeries) {
                     router.push(`/(tabs)/saved?seriesId=${m.id}`);
                   } else {
-                    setNavigationStack((prev) => [...prev, { type: 'movie', movie: m }]);
+                    setNavigationStack((prev) => {
+                      if (prev.length > 0) {
+                        const top = prev[prev.length - 1];
+                        if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                      }
+                      return [...prev, { type: 'movie', movie: m }];
+                    });
                   }
                 }}
                 onSeeAll={(title: string, data: (Movie | Series)[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
@@ -6272,6 +6344,7 @@ export default function HomeScreen() {
             );
           })}
         </View>
+      )}
       </Modal>
 
 

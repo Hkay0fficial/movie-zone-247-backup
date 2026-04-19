@@ -148,8 +148,11 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       else if (actionId === 'cancel') cancelDownload(id);
       else {
         // Default tap action
-        const { DeviceEventEmitter } = require('react-native');
-        DeviceEventEmitter.emit("movieSelected", { id });
+        const { router } = require('expo-router');
+        router.push({
+          pathname: '/(tabs)',
+          params: { movieId: id }
+        });
       }
     });
     return () => { if (sub?.remove) sub.remove(); };

@@ -503,10 +503,9 @@ function NotificationOverlay({
                                       setLastViewedItemId(subItem.id);
                                       setReopenOnBack(true);
 
-                                      // "Command" the app to navigate or select
+                                      // "Command" the app to navigate
                                       if (expandedType === 'movies') {
-                                        const fullMovie = TOTAL_LIVE_ITEMS.find((m: any) => m.id === subItem.id);
-                                        DeviceEventEmitter.emit("movieSelected", fullMovie || { id: subItem.id, title: subItem.title });
+                                        router.setParams({ movieId: subItem.id } as any);
                                       } else {
                                         DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
                                       }
@@ -2548,8 +2547,7 @@ function CustomTabBar() {
     }
 
     if (item.movieId) {
-      const fullMovie = ALL_ITEMS.find(m => m.id === item.movieId);
-      DeviceEventEmitter.emit("movieSelected", fullMovie || { id: item.movieId });
+      router.setParams({ movieId: item.movieId } as any);
       setNotificationVisible(false);
     } else if (item.sectionTitle) {
       setNotificationVisible(false);
