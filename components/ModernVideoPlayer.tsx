@@ -21,6 +21,7 @@ import {
   Modal,
   AppState,
 } from "react-native";
+import * as SystemUI from "expo-system-ui";
 import { useIsFocused } from "@react-navigation/native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { BlurView } from "expo-blur";
@@ -47,10 +48,13 @@ const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
 
   try {
     if (visibility === 'hidden') {
+      // Global SystemUI disable often helps on Android 15/Modal edge cases
+      await SystemUI.setEnabledAsync(false).catch(() => {});
       await NavigationBar.setBehaviorAsync('sticky-immersive');
       await NavigationBar.setBackgroundColorAsync('transparent');
       await NavigationBar.setVisibilityAsync('hidden');
     } else {
+      await SystemUI.setEnabledAsync(true).catch(() => {});
       await NavigationBar.setBehaviorAsync('inset-touch');
       await NavigationBar.setVisibilityAsync('visible');
     }
@@ -210,8 +214,12 @@ export default function ModernVideoPlayer({
       ).start();
     } else {
       lockPulseAnim.setValue(1);
+      // Ensure bars are re-hidden when controls disappear
+      if (showControls === false && playerMode === 'full') {
+        safeSetNavigationBar('hidden');
+      }
     }
-  }, [isLocked]);
+  }, [isLocked, showControls, playerMode]);
 
   // Progress Saving
   useEffect(() => {
@@ -723,6 +731,11 @@ export default function ModernVideoPlayer({
         animationType="fade"
         transparent={false}
         statusBarTranslucent
+        onShow={() => {
+          if (Platform.OS === 'android') {
+            safeSetNavigationBar('hidden');
+          }
+        }}
         onRequestClose={onClose}
         supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
       >
