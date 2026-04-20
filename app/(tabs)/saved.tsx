@@ -1309,7 +1309,9 @@ function SeriesPreviewModal({
       setActiveEpisodeId(nextEp.id);
       setActivePartId(nextEp.id);
       setPlayerTitle(nextEp.title);
-      setSelectedVideoUrl(nextEp.videoUrl);
+      // Prioritize local downloaded file for offline playback
+      const localUri = episodeDownloads[nextEp.id];
+      setSelectedVideoUrl(localUri || nextEp.videoUrl);
     }
   };
 
@@ -1325,7 +1327,9 @@ function SeriesPreviewModal({
       setActiveEpisodeId(prevEp.id);
       setActivePartId(prevEp.id);
       setPlayerTitle(prevEp.title);
-      setSelectedVideoUrl(prevEp.videoUrl);
+      // Prioritize local downloaded file for offline playback
+      const localUri = episodeDownloads[prevEp.id];
+      setSelectedVideoUrl(localUri || prevEp.videoUrl);
     }
   };
 

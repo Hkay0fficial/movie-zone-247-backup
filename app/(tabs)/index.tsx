@@ -2322,7 +2322,9 @@ export function SeriesPreviewContent({
         <TouchableOpacity 
           activeOpacity={0.9}
           onPress={() => {
-            if (setSelectedVideoUrl) setSelectedVideoUrl(activeEpisode.videoUrl || previewVideoUrl || "");
+            // Prioritize local downloaded file for offline playback
+            const localUri = ctxEpisodeDownloads[activeEpisode.id];
+            if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || activeEpisode.videoUrl || previewVideoUrl || "");
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
           }}
@@ -2460,7 +2462,9 @@ export function SeriesPreviewContent({
                   style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
                     setActiveEpisodeId(ep.id);
-                    if (setSelectedVideoUrl) setSelectedVideoUrl(ep.videoUrl);
+                    // Prioritize local downloaded file for offline playback
+                    const localUri = ctxEpisodeDownloads[ep.id];
+                    if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || ep.videoUrl);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
                     if (setPlayerMode) setPlayerMode('full');
                   }}
@@ -3408,9 +3412,18 @@ export function MoviePreviewContent({
   const nextPart = hasNext ? movieParts[currentIndex + 1] : null;
 
   const currentPlayerUrl = React.useMemo(() => {
-    if (activePart) return (activePart as any).videoUrl || selectedVideoUrl;
+    if (activePart) {
+      // Prioritize local downloaded file for offline playback
+      const localUri = episodeDownloads?.[activePart.id];
+      return localUri || (activePart as any).videoUrl || selectedVideoUrl;
+    }
+    // For single movies (no parts), check if the movie itself is downloaded
+    if (movie && !('seasons' in movie)) {
+      const dl = downloadedMovies.find(m => m.id === movie.id);
+      if ((dl as any)?.localUri) return (dl as any).localUri;
+    }
     return selectedVideoUrl;
-  }, [activePart, selectedVideoUrl]);
+  }, [activePart, selectedVideoUrl, episodeDownloads, downloadedMovies, movie]);
 
   const currentPlayerTitle = React.useMemo(() => {
     if (activePart) {
@@ -3434,7 +3447,9 @@ export function MoviePreviewContent({
         return;
       }
       setActivePartId(nextPartItem.id);
-      setSelectedVideoUrl?.(nextPartItem.videoUrl);
+      // Prioritize local downloaded file for offline playback
+      const localUri = episodeDownloads?.[nextPartItem.id];
+      setSelectedVideoUrl?.(localUri || nextPartItem.videoUrl);
       setPlayerTitle?.(movie?.title + " - " + nextPartItem.title);
     }
   };
@@ -3450,7 +3465,9 @@ export function MoviePreviewContent({
         return;
       }
       setActivePartId(prevPartItem.id);
-      setSelectedVideoUrl?.(prevPartItem.videoUrl);
+      // Prioritize local downloaded file for offline playback
+      const localUri = episodeDownloads?.[prevPartItem.id];
+      setSelectedVideoUrl?.(localUri || prevPartItem.videoUrl);
       setPlayerTitle?.(movie?.title + " - " + prevPartItem.title);
     }
   };
@@ -3734,7 +3751,15 @@ export function MoviePreviewContent({
                     }
                     // For series, prioritize the first episode, otherwise the standard movie URL
                     const firstPart = movieParts?.[0];
-                    const finalUrl = (firstPart && (episodeDownloads?.[firstPart.id] || firstPart.videoUrl)) || (movie as any).videoUrl;
+                    // Prioritize local downloaded file for offline playback
+                    let finalUrl: string | undefined;
+                    if (firstPart) {
+                      finalUrl = episodeDownloads?.[firstPart.id] || firstPart.videoUrl;
+                    } else {
+                      // Single movie: check if it's downloaded locally
+                      const dl = downloadedMovies.find(m => m.id === movie.id);
+                      finalUrl = (dl as any)?.localUri || (movie as any).videoUrl;
+                    }
                     
                     setSelectedVideoUrl?.(finalUrl);
                     setPlayerTitle?.(movie.title + (firstPart ? " - " + (firstPart.title || "Part 1") : ""));
@@ -4296,7 +4321,9 @@ export function MoviePreviewContent({
                               return;
                             }
                             setActivePartId(mp.id);
-                            setSelectedVideoUrl?.(mp.videoUrl);
+                            // Prioritize local downloaded file for offline playback
+                            const localUri = episodeDownloads?.[mp.id];
+                            setSelectedVideoUrl?.(localUri || mp.videoUrl);
                             setPlayerTitle?.(mp.title);
                             setPlayerMode?.('full');
                           }}
