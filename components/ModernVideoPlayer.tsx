@@ -30,6 +30,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import * as Haptics from "expo-haptics";
 import * as Brightness from "expo-brightness";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { useKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
@@ -109,6 +110,7 @@ export default function ModernVideoPlayer({
 }: ModernVideoPlayerProps) {
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
   const insets = useSafeAreaInsets();
+  useKeepAwake();
   
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
@@ -168,6 +170,8 @@ export default function ModernVideoPlayer({
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
         }
         await safeSetNavigationBar('hidden');
+        // Double-check visibility after a short delay to ensure it sticks
+        setTimeout(() => safeSetNavigationBar('hidden'), 500);
       } else {
         StatusBar.setHidden(false, 'fade');
         if (Platform.OS !== "web") {
