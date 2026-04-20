@@ -1279,14 +1279,25 @@ function SeriesPreviewModal({
     setShowDownloadModal(true);
   };
 
-  const startDownloadFlow = () => {
+  const startDownloadFlow = (type: 'internal' | 'external' = 'internal') => {
     if (series) {
+      if (type === 'external' && !isPaid) {
+        setShowDownloadModal(false);
+        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+        return;
+      }
+      if (type === 'external' && getRemainingDownloads() === 0) {
+        setShowDownloadModal(false);
+        onShowPremium?.();
+        return;
+      }
+
       setShowDownloadModal(false);
       const epToDownload = selectedEpisodeForDownload || activeEpisode;
       if (epToDownload) {
-        downloadEpisode(series, epToDownload, 'internal');
+        downloadEpisode(series, epToDownload, type);
       } else {
-        downloadMovie(series, 'internal');
+        downloadMovie(series, type);
       }
     }
   };
@@ -1913,9 +1924,23 @@ function SeriesPreviewModal({
                         {series.title.toUpperCase()} OTHER EPISODES
                       </Text>
                       <View style={{ flex: 1 }} />
+                      <TouchableOpacity 
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8 }}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          episodes.forEach((ep: any) => {
+                            if (!episodeDownloads[ep.id] && !activeDownloads[ep.id]) {
+                              downloadEpisode(series, ep, 'internal');
+                            }
+                          });
+                        }}
+                      >
+                        <Ionicons name="download-outline" size={12} color="#fff" />
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', marginLeft: 4 }}>DL ALL</Text>
+                      </TouchableOpacity>
                       <View style={styles.epCountPillPremium}>
                         <Text style={styles.epCountTextPremium}>
-                          EP {episodes.length - 1}
+                          EP {episodes.length - (activeEpisodeId ? 1 : 0)}
                         </Text>
                       </View>
                       <Ionicons
@@ -2490,7 +2515,7 @@ function SeriesPreviewModal({
                 <View style={styles.downloadActions}>
                   <TouchableOpacity
                     style={styles.downloadPrimaryBtn}
-                    onPress={startDownloadFlow}
+                    onPress={() => startDownloadFlow('internal')}
                     activeOpacity={0.8}
                   >
                     <LinearGradient
@@ -2513,28 +2538,7 @@ function SeriesPreviewModal({
                       styles.downloadSecondaryBtn,
                       (!isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.4 }),
                     ]}
-                    onPress={() => {
-                      if (!isPaid) {
-                         setShowDownloadModal(false);
-                         Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
-                         return;
-                      }
-                      if (getRemainingDownloads() === 0) {
-                         setShowDownloadModal(false);
-                         onShowPremium?.();
-                         return;
-                      }
-                      setShowDownloadModal(false);
-                      if (selectedEpisodeForDownload) {
-                        downloadEpisode(
-                          series as Series,
-                          selectedEpisodeForDownload,
-                          'external'
-                        );
-                      } else {
-                        downloadMovie(series as any, 'external');
-                      }
-                    }}
+                    onPress={() => startDownloadFlow('external')}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="folder-outline" size={20} color="#94a3b8" />

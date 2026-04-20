@@ -2702,6 +2702,39 @@ export function SeriesPreviewContent({
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={[
+                  styles.downloadSecondaryBtn,
+                  (!isPaid && getRemainingDownloads() === 0) && { opacity: 0.5 }
+                ]}
+                onPress={() => {
+                  if (!isPaid) {
+                    setShowDownloadModal(false);
+                    onShowPremium();
+                    return;
+                  }
+                  if (getRemainingDownloads() === 0) {
+                     setShowDownloadModal(false);
+                     onShowPremium();
+                     return;
+                  }
+                  setShowDownloadModal(false);
+                  if (selectedEpisodeForDownload) {
+                    downloadEpisode(series, selectedEpisodeForDownload, 'external');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="download-outline" size={22} color="#94a3b8" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.downloadSecondaryBtnText}>External Download</Text>
+                  <Text style={styles.downloadSecondarySubText}>Use ADM, IDM, etc.</Text>
+                </View>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{getRemainingDownloads()} LEFT</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={styles.downloadCancelLink}
                 onPress={() => setShowDownloadModal(false)}
               >
