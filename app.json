@@ -36,6 +36,7 @@
         "WRITE_SETTINGS"
       ],
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false
     },
     "web": {
