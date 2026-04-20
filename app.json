@@ -2,7 +2,7 @@
   "expo": {
     "name": "THE MOVIE ZONE 24/7 UG",
     "slug": "movie-zone-24-7",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "movieapp",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.moviezone247.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "blockedPermissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
