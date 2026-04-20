@@ -77,28 +77,54 @@ export default function InAppNotification({ notification, onClose }: InAppNotifi
           onPress={handlePress} 
           activeOpacity={0.9}
         >
-          <View style={styles.iconContainer}>
-            {notification.imageUrl ? (
-              <Image source={{ uri: notification.imageUrl }} style={styles.image} />
-            ) : (
-              <View style={styles.defaultIcon}>
-                <Ionicons name="notifications" size={24} color="#6366f1" />
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.textContainer}>
-            <View style={styles.header}>
-              <Text style={styles.appTitle}>THE MOVIE ZONE</Text>
-              <Text style={styles.timeLabel}>Now</Text>
+          <View style={styles.mainRow}>
+             <View style={styles.iconContainer}>
+              {notification.imageUrl ? (
+                <Image source={{ uri: notification.imageUrl }} style={styles.image} />
+              ) : (
+                <View style={styles.defaultIcon}>
+                  <Ionicons name="notifications" size={24} color="#6366f1" />
+                </View>
+              )}
             </View>
-            <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
-            <Text style={styles.body} numberOfLines={2}>{notification.body}</Text>
+            
+            <View style={styles.textContainer}>
+              <View style={styles.header}>
+                <Text style={styles.appTitle}>THE MOVIE ZONE</Text>
+                <Text style={styles.timeLabel}>Now</Text>
+              </View>
+              <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
+              <Text style={styles.body} numberOfLines={2}>{notification.body}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={dismiss}>
+              <Ionicons name="close" size={20} color="#94a3b8" />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={dismiss}>
-            <Ionicons name="close" size={20} color="#94a3b8" />
-          </TouchableOpacity>
+          {/* New Interactive Actions Section */}
+          {notification.data?.movieId && (
+            <View style={styles.actionRow}>
+               <TouchableOpacity 
+                style={[styles.actionBtn, styles.primaryAction]} 
+                onPress={handlePress}
+               >
+                 <Ionicons name="play" size={16} color="#fff" />
+                 <Text style={styles.actionText}>WATCH NOW</Text>
+               </TouchableOpacity>
+               
+               <TouchableOpacity 
+                style={[styles.actionBtn, styles.secondaryAction]} 
+                onPress={() => {
+                   // Logic for Add to List could go here, or just view details
+                   handlePress();
+                }}
+               >
+                 <Ionicons name="add" size={18} color="#fff" />
+                 <Text style={styles.actionText}>MY LIST</Text>
+               </TouchableOpacity>
+            </View>
+          )}
         </TouchableOpacity>
       </BlurView>
     </Animated.View>
@@ -126,8 +152,42 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   content: {
+    paddingVertical: 4,
+  },
+  mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  actionBtn: {
+    flex: 1,
+    height: 36,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  primaryAction: {
+    backgroundColor: '#6366f1',
+  },
+  secondaryAction: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  actionText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   iconContainer: {
     marginRight: 12,

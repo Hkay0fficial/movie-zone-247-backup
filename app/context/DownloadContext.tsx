@@ -22,6 +22,7 @@ import { Alert, Platform } from 'react-native';
 import { Movie, Series, getStreamUrl } from '../../constants/movieData';
 import { getDownloadUrlVariants } from '../../constants/bunnyConfig';
 import { useSubscription } from './SubscriptionContext';
+import * as Notifications from 'expo-notifications';
 import { downloadNotificationManager } from '@/lib/notificationHelper';
 import { addNotificationResponseListener } from '@/lib/notifications';
 import { db } from '../../constants/firebaseConfig';
@@ -140,18 +141,22 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const sub = addNotificationResponseListener(response => {
       const actionId = response.actionIdentifier;
       const data = response.notification.request.content.data;
-      const id = data?.movieId;
+      const id = data?.downloadId || data?.movieId;
+      const parentId = data?.movieId; // Use specifically for routing
       if (!id) return;
 
-      if (actionId === 'pause') pauseDownload(id);
-      else if (actionId === 'resume') resumeDownload(id);
-      else if (actionId === 'cancel') cancelDownload(id);
-      else {
-        // Default tap action
+      if (actionId === 'pause') {
+        pauseDownload(id);
+      } else if (actionId === 'resume') {
+        resumeDownload(id);
+      } else if (actionId === 'cancel') {
+        cancelDownload(id);
+      } else if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        // Default tap action (tapping the main body of the notification)
         const { router } = require('expo-router');
         router.push({
           pathname: '/(tabs)',
-          params: { movieId: id }
+          params: { movieId: parentId || id }
         });
       }
     });
@@ -294,7 +299,20 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteDownload = async (id: string) => {
-    // TBD: File system cleanup
+    try {
+      const movie = downloadedMovies.find(m => m.id === id);
+      const epUri = episodeDownloads[id];
+      const uri = movie?.localUri || epUri;
+      
+      if (uri) {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      }
+      
+      removeDownload(id);
+      console.log(`[DownloadContext] Deleted ${id} from storage.`);
+    } catch (e) {
+      console.warn('[DownloadContext] Delete error:', e);
+    }
   };
 
   // ── Queue processor ─────────────────────────────────────────────────────────

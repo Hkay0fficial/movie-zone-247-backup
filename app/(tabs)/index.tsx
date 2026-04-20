@@ -2056,25 +2056,24 @@ export function SeriesPreviewContent({
   const { profile, user } = useUser();
   const {
     subscriptionBundle,
-    recordExternalDownload,
-    recordInAppDownload,
-    getRemainingDownloads,
-    getExternalDownloadLimit,
     allMoviesFree,
     isGuest,
     favorites,
     toggleFavorite,
-    activeDownloads,
-    downloadedMovies,
-    episodeDownloads,
-    startExternalGalleryDownload,
-    startInternalAppDownload,
-    startInternalEpisodeDownload,
-    startExternalEpisodeDownload,
-    toggleDownloadPause,
     recordTrialUsage,
     isDeviceBlocked,
   } = useSubscription();
+
+  const {
+    activeDownloads: ctxActiveDownloads,
+    downloadedMovies: ctxDownloadedMovies,
+    episodeDownloads: ctxEpisodeDownloads,
+    downloadEpisode,
+    pauseDownload,
+    resumeDownload,
+    deleteDownload,
+    getRemainingDownloads,
+  } = useDownloads();
 
   const isPaid = subscriptionBundle !== 'None';
   const scrollRef = useRef<ScrollView>(null);
@@ -2087,6 +2086,40 @@ export function SeriesPreviewContent({
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [containerWidth, setContainerWidth] = useState(0);
+
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
+  const [alreadyDownloadedState, setAlreadyDownloadedState] = useState<{ visible: boolean, episode?: any, localItem?: any }>({ visible: false });
+
+  const handleDownload = (episode?: any) => {
+    if (!series) return;
+    
+    // Use the currently selected episode if none passed
+    const targetEp = episode || episodes.find((e: any) => e.id === activeEpisodeId);
+    if (!targetEp) return;
+
+    // If actively downloading this episode, toggle pause/resume
+    const activeDl = ctxActiveDownloads[targetEp.id];
+    if (activeDl) {
+      activeDl.isPaused ? resumeDownload(targetEp.id) : pauseDownload(targetEp.id);
+      return;
+    }
+
+    // If already downloaded, show options modal
+    const isDownloaded = !!ctxEpisodeDownloads[targetEp.id];
+    if (isDownloaded) {
+      setAlreadyDownloadedState({ visible: true, episode: targetEp, localItem: { localUri: ctxEpisodeDownloads[targetEp.id] } });
+      return;
+    }
+
+    if (getRemainingDownloads() === 0 && !isPaid) {
+      onShowPremium();
+      return;
+    }
+    
+    setSelectedEpisodeForDownload(targetEp);
+    setShowDownloadModal(true);
+  };
 
   const wavePulseAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -2354,21 +2387,21 @@ export function SeriesPreviewContent({
               <View 
                 style={[
                   styles.previewActionIconBg, 
-                  (activeDownloads[activeEpisodeId] || episodeDownloads[activeEpisodeId]) && { 
-                    borderColor: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
-                    backgroundColor: activeDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
+                  (ctxActiveDownloads[activeEpisodeId] || ctxEpisodeDownloads[activeEpisodeId]) && { 
+                    borderColor: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
+                    backgroundColor: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
                   }
                 ]}
               >
-                {activeDownloads[activeEpisodeId] ? (
+                {ctxActiveDownloads[activeEpisodeId] ? (
                   <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
                     <Ionicons 
-                      name={activeDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"} 
+                      name={ctxActiveDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"} 
                       size={20} 
-                      color={activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"} 
+                      color={ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"} 
                     />
                   </Animated.View>
-                ) : episodeDownloads[activeEpisodeId] ? (
+                ) : ctxEpisodeDownloads[activeEpisodeId] ? (
                   <Ionicons name="checkmark-circle" size={22} color="#10b981" />
                 ) : (
                   <Ionicons name="download-outline" size={22} color="#fff" />
@@ -2377,16 +2410,16 @@ export function SeriesPreviewContent({
               <Text 
                 style={[
                   styles.previewActionLabel, 
-                  (activeDownloads[activeEpisodeId] || episodeDownloads[activeEpisodeId]) && { 
-                    color: activeDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" 
+                  (ctxActiveDownloads[activeEpisodeId] || ctxEpisodeDownloads[activeEpisodeId]) && { 
+                    color: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" 
                   }
                 ]}
               >
-                {activeDownloads[activeEpisodeId]
-                  ? activeDownloads[activeEpisodeId]?.isPaused
-                    ? `Paused (${Math.round(activeDownloads[activeEpisodeId].progress)}%)`
-                    : `${Math.round(activeDownloads[activeEpisodeId].progress)}% • ${activeDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
-                  : episodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
+                {ctxActiveDownloads[activeEpisodeId]
+                  ? ctxActiveDownloads[activeEpisodeId]?.isPaused
+                    ? `Paused (${Math.round(ctxActiveDownloads[activeEpisodeId].progress)}%)`
+                    : `${Math.round(ctxActiveDownloads[activeEpisodeId].progress)}% • ${ctxActiveDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
+                  : ctxEpisodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
               </Text>
             </TouchableOpacity>
 
@@ -2397,28 +2430,88 @@ export function SeriesPreviewContent({
           </View>
 
           <View style={styles.episodesSection}>
-            <Text style={styles.relatedTitle}>Episodes</Text>
-            {episodes.map((ep, idx) => (
-              <TouchableOpacity
-                key={ep.id}
-                style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }]}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.relatedTitle}>Episodes</Text>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}
                 onPress={() => {
-                  setActiveEpisodeId(ep.id);
-                  if (setSelectedVideoUrl) setSelectedVideoUrl(ep.videoUrl);
-                  if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
-                  if (setPlayerMode) setPlayerMode('full');
+                  episodes.forEach((ep: any) => {
+                    const isDl = ctxActiveDownloads[ep.id];
+                    const isDownloaded = ctxEpisodeDownloads[ep.id];
+                    if (!isDl && !isDownloaded) {
+                      if (isGuest) onShowPremium();
+                      else downloadEpisode(series, ep, 'internal');
+                    }
+                  });
                 }}
               >
-                <View style={styles.epThumbWrapPremiumLarge}>
-                  <Image source={{ uri: ep.thumbnail }} style={styles.epThumb} />
-                </View>
-                <View style={styles.epInfoPremium}>
-                  <Text style={styles.epTitlePremium}>{ep.displayIndex}. {ep.title}</Text>
-                  <Text style={styles.epSubPremiumSmall}>{ep.duration}</Text>
-                </View>
-                <Ionicons name="play-circle-outline" size={24} color="rgba(255,255,255,0.5)" />
+                <Ionicons name="download-outline" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Download All</Text>
               </TouchableOpacity>
-            ))}
+            </View>
+            {episodes.map((ep: any, idx: number) => {
+              const activeDl = ctxActiveDownloads[ep.id];
+              const isDl = !!activeDl;
+              const isDownloaded = !!ctxEpisodeDownloads[ep.id];
+
+              return (
+                <TouchableOpacity
+                  key={ep.id}
+                  style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                  onPress={() => {
+                    setActiveEpisodeId(ep.id);
+                    if (setSelectedVideoUrl) setSelectedVideoUrl(ep.videoUrl);
+                    if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
+                    if (setPlayerMode) setPlayerMode('full');
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.epThumbWrapPremiumLarge}>
+                      <Image source={{ uri: ep.thumbnail }} style={styles.epThumb} />
+                    </View>
+                    <View style={styles.epInfoPremium}>
+                      <Text style={styles.epTitlePremium}>{ep.displayIndex}. {ep.title}</Text>
+                      <Text style={styles.epSubPremiumSmall}>{ep.duration}</Text>
+                    </View>
+                  </View>
+                  <View style={{ paddingHorizontal: 12 }}>
+                    <TouchableOpacity 
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        if (isDl) {
+                           activeDl.isPaused ? resumeDownload(ep.id) : pauseDownload(ep.id);
+                        } else if (isDownloaded) {
+                          setAlreadyDownloadedState({ visible: true, episode: ep, localItem: { localUri: ctxEpisodeDownloads[ep.id] } });
+                        } else {
+                           if (isGuest) onShowPremium();
+                           else downloadEpisode(series, ep, 'internal');
+                        }
+                      }}
+                      style={{ padding: 4 }}
+                    >
+                      {isDl ? (
+                        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                           <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
+                              <Ionicons
+                                name={activeDl?.isPaused ? "play-circle" : "pause-circle"}
+                                size={28}
+                                color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
+                              />
+                           </Animated.View>
+                           <Text style={{ color: activeDl?.isPaused ? "#ef4444" : "#22c55e", fontSize: 9, fontWeight: '900' }}>
+                             {activeDl?.isPaused ? `PAUSED (${activeDl.progress}%)` : `${activeDl.progress}% • ${activeDl.speedString?.split('•')[1]?.trim() || '...'}`}
+                           </Text>
+                        </View>
+                      ) : isDownloaded ? (
+                        <Ionicons name="checkmark-circle" size={26} color="#10b981" />
+                      ) : (
+                        <Ionicons name="download-outline" size={26} color="#94a3b8" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
           
           {related.length > 0 && (
@@ -2435,6 +2528,186 @@ export function SeriesPreviewContent({
           )}
         </View>
       </ScrollView>
+
+      {/* ── ALREADY DOWNLOADED MODAL FOR SERIES ── */}
+      <Modal
+        visible={alreadyDownloadedState.visible && playerMode !== 'full'}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAlreadyDownloadedState({ visible: false })}
+      >
+        <View style={styles.downloadModalCentering}>
+          <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+            activeOpacity={1}
+            onPress={() => setAlreadyDownloadedState({ visible: false })}
+          />
+          <View
+            style={[
+              styles.downloadModalContent,
+              { width: 300, backgroundColor: "#1e293b", padding: 0 },
+            ]}
+          >
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Ionicons name="checkmark-circle" size={40} color="#10b981" style={{ marginBottom: 10 }} />
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
+                Already Downloaded
+              </Text>
+              <Text style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", lineHeight: 20 }}>
+                "{alreadyDownloadedState.episode?.title || series.title}" is already saved in My Downloads.
+              </Text>
+            </View>
+            
+            <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" }}>
+              <TouchableOpacity
+                style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                onPress={() => {
+                  setAlreadyDownloadedState({ visible: false });
+                  if ((alreadyDownloadedState.localItem as any)?.localUri) {
+                    if (setSelectedVideoUrl) setSelectedVideoUrl((alreadyDownloadedState.localItem as any).localUri);
+                    if (setPlayerTitle) setPlayerTitle(series.title + " - " + alreadyDownloadedState.episode?.title);
+                    if (setPlayerMode) setPlayerMode('full');
+                  }
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="play" size={18} color="#10b981" />
+                  <Text style={{ color: "#10b981", fontSize: 16, fontWeight: "600" }}>Play Offline</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                onPress={async () => {
+                  if (!isPaid) {
+                     setAlreadyDownloadedState({ visible: false });
+                     Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                     return;
+                  }
+                  if (getRemainingDownloads() === 0) {
+                     setAlreadyDownloadedState({ visible: false });
+                     onShowPremium();
+                     return;
+                  }
+
+                  // Check permissions first in the UI
+                  const { status } = await MediaLibrary.requestPermissionsAsync(true);
+                  if (status !== 'granted') {
+                    setAlreadyDownloadedState({ visible: false });
+                    Alert.alert("Permission Denied", "Please allow gallery access to save videos as MP4 files.");
+                    return;
+                  }
+
+                  setAlreadyDownloadedState({ visible: false });
+                  if (alreadyDownloadedState.episode) {
+                    downloadEpisode(series, alreadyDownloadedState.episode, 'external');
+                  }
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="download" size={18} color="#3b82f6" />
+                  <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>External Downloads</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                onPress={() => {
+                  setAlreadyDownloadedState({ visible: false });
+                  const id = alreadyDownloadedState.episode?.id || series.id;
+                  deleteDownload(id);
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                  <Text style={{ color: "#ef4444", fontSize: 16, fontWeight: "600" }}>Delete from Device</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 16, alignItems: "center" }}
+                onPress={() => setAlreadyDownloadedState({ visible: false })}
+              >
+                <Text style={{ color: "#94a3b8", fontSize: 16, fontWeight: "500" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── DOWNLOAD TYPE MODAL FOR SERIES ── */}
+      <Modal
+        visible={showDownloadModal && playerMode !== 'full'}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDownloadModal(false)}
+      >
+        <View style={styles.downloadModalCentering}>
+          <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.6)" }]}
+            activeOpacity={1}
+            onPress={() => setShowDownloadModal(false)}
+          />
+          <Animated.View
+            style={[
+              styles.downloadModalContent,
+              {
+                transform: [
+                  {
+                    scale: waveAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [1, 1.02, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.downloadModalHeader}>
+              <View style={styles.downloadIconRing}>
+                <Ionicons name="cloud-download" size={32} color="#5B5FEF" />
+              </View>
+              <Text style={styles.downloadModalTitle}>Choose Download Type</Text>
+              <Text style={styles.downloadModalSub}>
+                How would you like to save "{selectedEpisodeForDownload?.title || series.title}"?
+              </Text>
+            </View>
+
+            <View style={styles.downloadOptions}>
+              <TouchableOpacity
+                style={styles.downloadPrimaryBtn}
+                onPress={() => {
+                  setShowDownloadModal(false);
+                  if (selectedEpisodeForDownload) {
+                    downloadEpisode(series, selectedEpisodeForDownload, 'internal');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={["#5B5FEF", "#3b82f6"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+                />
+                <Ionicons name="phone-portrait-outline" size={22} color="#fff" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.downloadPrimaryBtnText}>Save in App</Text>
+                  <Text style={styles.downloadPrimarySubText}>Watch offline anytime</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.downloadCancelLink}
+                onPress={() => setShowDownloadModal(false)}
+              >
+                <Text style={styles.downloadCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+  
     </View>
   );
 }
@@ -2519,6 +2792,7 @@ export function MoviePreviewContent({
     downloadEpisode,
     pauseDownload,
     resumeDownload,
+    deleteDownload,
     getRemainingDownloads,
     getExternalDownloadLimit,
   } = useDownloads();
@@ -2812,13 +3086,11 @@ export function MoviePreviewContent({
   const handleDownload = (episode?: any) => {
     if (!movie) return;
 
-    // If already downloading, toggle pause/resume instead of opening modal
-    const activeDl = activeDownloads[movie.id] || Object.values(activeDownloads).find(d => (d as any)?.item?.id === movie.id);
+    // If already downloading requested item, toggle pause/resume
+    const targetId = episode?.id || movie.id;
+    const activeDl = activeDownloads[targetId];
     if (activeDl) {
-      const id = Object.keys(activeDownloads).find(
-        k => (activeDownloads[k] as any)?.item?.id === movie.id
-      ) || movie.id;
-      toggleDownloadPause(id);
+      activeDl.isPaused ? resumeDownload(targetId) : pauseDownload(targetId);
       return;
     }
 
@@ -4109,22 +4381,38 @@ export function MoviePreviewContent({
                             {/* Episode Action Row (Unified Download) */}
                             <View style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                               {activeDownloads[mp.id] !== undefined ? (
-                                <View style={{ 
-                                  backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-                                  borderWidth: 1, 
-                                  borderColor: 'rgba(34, 197, 94, 0.3)', 
-                                  borderRadius: 8, 
-                                  flex: 1, 
-                                  paddingVertical: 7, 
-                                  alignItems: 'center' 
-                                }}>
-                                  <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                                <TouchableOpacity 
+                                  style={{ 
+                                    backgroundColor: activeDownloads[mp.id].isPaused ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)', 
+                                    borderWidth: 1, 
+                                    borderColor: activeDownloads[mp.id].isPaused ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)', 
+                                    borderRadius: 8, 
+                                    flex: 1, 
+                                    paddingVertical: 7, 
+                                    alignItems: 'center',
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                  }}
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    activeDownloads[mp.id].isPaused ? resumeDownload(mp.id) : pauseDownload(mp.id);
+                                  }}
+                                >
+                                  <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
+                                    <Ionicons 
+                                      name={activeDownloads[mp.id].isPaused ? "play" : "pause"} 
+                                      size={14} 
+                                      color={activeDownloads[mp.id].isPaused ? "#ef4444" : "#22c55e"} 
+                                    />
+                                  </Animated.View>
+                                  <Text style={{ color: activeDownloads[mp.id].isPaused ? "#ef4444" : "#22c55e", fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                                     {activeDownloads[mp.id].isPaused 
                                       ? `PAUSED (${activeDownloads[mp.id].progress}%)` 
                                       : `${activeDownloads[mp.id].progress}% • ${activeDownloads[mp.id].speedString?.split('•')[1]?.trim() || 'STAGING...'}`
                                     }
                                   </Text>
-                                </View>
+                                </TouchableOpacity>
                               ) : episodeDownloads[mp.id] ? (
                                 <View style={{ 
                                   backgroundColor: 'rgba(16, 185, 129, 0.12)', 
@@ -4273,7 +4561,6 @@ export function MoviePreviewContent({
                         setShowDownloadModal(false);
                         const targetTitle = selectedEpisodeForDownload?.title || movie.title;
                         const targetItem = selectedEpisodeForDownload || movie;
-                        recordExternalDownload(targetTitle);
                         if (selectedEpisodeForDownload) {
                           downloadEpisode(
                             "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
@@ -4420,22 +4707,34 @@ export function MoviePreviewContent({
                         setAlreadyDownloadedState({ visible: false });
                         const targetTitle = alreadyDownloadedState.episode?.title || movie.title;
                         const targetItem = alreadyDownloadedState.episode || movie;
-                        recordExternalDownload(targetTitle);
                         if (alreadyDownloadedState.episode) {
-                          startExternalEpisodeDownload(
+                          downloadEpisode(
                             "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
-                            alreadyDownloadedState.episode.id,
-                            alreadyDownloadedState.episode.videoUrl || "",
-                            alreadyDownloadedState.episode.title
+                            alreadyDownloadedState.episode,
+                            'external'
                           );
                         } else {
-                          startExternalGalleryDownload(targetItem);
+                          downloadMovie(targetItem as any, 'external');
                         }
                       }}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Ionicons name="download" size={18} color="#3b82f6" />
                         <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>External Downloads</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{ paddingVertical: 16, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}
+                      onPress={() => {
+                        setAlreadyDownloadedState({ visible: false });
+                        const id = alreadyDownloadedState.episode?.id || movie.id;
+                        deleteDownload(id);
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                        <Text style={{ color: "#ef4444", fontSize: 16, fontWeight: "600" }}>Delete from Device</Text>
                       </View>
                     </TouchableOpacity>
 

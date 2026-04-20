@@ -712,9 +712,18 @@ export default function ModernVideoPlayer({
 
   if (playerMode === 'full') {
     return (
-      <Animated.View style={[styles.fullContainer, { elevation: 9999, zIndex: 9999 }]}>
-        {playerContent}
-      </Animated.View>
+      <Modal
+        visible={true}
+        animationType="fade"
+        transparent={false}
+        statusBarTranslucent
+        onRequestClose={onClose}
+        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+      >
+        <Animated.View style={[styles.fullContainer, { elevation: 9999, zIndex: 9999 }]}>
+          {playerContent}
+        </Animated.View>
+      </Modal>
     );
   }
 

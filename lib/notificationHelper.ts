@@ -86,7 +86,7 @@ class DownloadNotificationManager {
     const content: Notifications.NotificationContentInput = {
       title: title, // Main title is the MovieName
       body: bodyText,
-      data: { movieId: movieId || id, type: 'download' }, // Add data for tap support
+      data: { movieId: movieId || id, downloadId: id, type: 'download' }, // Add data for tap support
       sound: isComplete ? 'default' : false,
       sticky: !isComplete, 
       categoryIdentifier: isComplete ? undefined : (isPaused ? 'download_paused' : 'download_active'),
