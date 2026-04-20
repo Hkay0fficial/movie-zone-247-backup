@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.moviezone247.app",
-      "versionCode": 9,
+      "versionCode": 10,
       "blockedPermissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {

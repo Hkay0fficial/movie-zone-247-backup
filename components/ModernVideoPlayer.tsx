@@ -25,6 +25,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import * as ScreenOrientation from "expo-screen-orientation";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Haptics from "expo-haptics";
@@ -46,7 +47,8 @@ const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
 
   try {
     if (visibility === 'hidden') {
-      await NavigationBar.setBehaviorAsync('overlay-swipe');
+      await NavigationBar.setBehaviorAsync('sticky-immersive');
+      await NavigationBar.setBackgroundColorAsync('transparent');
       await NavigationBar.setVisibilityAsync('hidden');
     } else {
       await NavigationBar.setBehaviorAsync('inset-touch');
@@ -724,6 +726,7 @@ export default function ModernVideoPlayer({
         onRequestClose={onClose}
         supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
       >
+        <ExpoStatusBar hidden={true} />
         <Animated.View style={[styles.fullContainer, { elevation: 9999, zIndex: 9999 }]}>
           {playerContent}
         </Animated.View>
