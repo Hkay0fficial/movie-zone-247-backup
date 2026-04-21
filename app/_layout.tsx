@@ -35,6 +35,7 @@ function ModernVideoPlayerWrapper() {
     setPlayingNow, playingNow,
     playerPos, playerSize
   } = useSubscription();
+  const router = useRouter();
 
   return (
     <ModernVideoPlayer
@@ -47,8 +48,19 @@ function ModernVideoPlayerWrapper() {
       playerPos={playerPos}
       playerSize={playerSize}
       onClose={() => {
+        // Detect if we are playing a local download
+        const isLocal = selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http');
+        
         setPlayerMode('closed');
         setPlayingNow(null);
+
+        if (isLocal && playerMode === 'full') {
+          // Auto-restore logic: Navigate to menu tab with section param for instant open
+          router.push({
+            pathname: '/(tabs)/menu',
+            params: { section: '5' }
+          });
+        }
       }}
     />
   );
@@ -101,6 +113,11 @@ export default function RootLayout() {
       console.log('Notification received:', notification);
       
       const content = notification.request.content;
+
+      // Ignore download progress notifications for the in-app banner
+      // as they update frequently and cause the banner to stay stuck.
+      if (content.data?.type === 'download') return;
+
       setActiveNotification({
         title: content.title || 'Notification',
         body: content.body || '',

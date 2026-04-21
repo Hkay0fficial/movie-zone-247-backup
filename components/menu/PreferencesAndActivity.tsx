@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter, TextInput, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter, TextInput, ScrollView, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './menu.styles';
 import { useRouter } from 'expo-router';
@@ -87,6 +87,22 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
 }) => {
   const router = useRouter();
   const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
+
+  const [isLoading, setIsLoading] = React.useState(true);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    // Artificial delay to show premium skeleton loader and prevent "bumping"
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Combine notifications with active downloads
   const allNotifications = React.useMemo(() => {
@@ -231,85 +247,102 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
         )}
 
         <View style={{ marginTop: 8 }}>
-          {filteredDownloads.length > 0 ? (
-            filteredDownloads.map((m, index) => {
-              const isSelected = selectedIds.has((m as any).id);
-              return (
-                <TouchableOpacity 
-                  key={(m as any).id ?? `dl-${index}`} 
-                  style={[styles.downloadCard, isEditMode && { paddingLeft: 8 }]}
-                  activeOpacity={isEditMode ? 0.7 : 1}
-                  onPress={() => isEditMode && toggleSelect((m as any).id)}
-                >
-                  {isEditMode && (
-                    <View style={{ marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons 
-                        name={isSelected ? "checkbox" : "square-outline"} 
-                        size={22} 
-                        color={isSelected ? "#5B5FEF" : "rgba(255,255,255,0.3)"} 
-                      />
-                    </View>
-                  )}
-                  <View style={styles.downloadPosterContainer}>
-                    <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
-                    <View style={styles.vjBadgeSmall}>
-                      <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
-                    </View>
-                    <View style={styles.genreBadgeSmall}>
-                      <Text style={styles.genreBadgeTextSmall}>
-                        {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
-                      </Text>
-                    </View>
-                  </View>
+          {isLoading ? (
+            <View style={{ gap: 12 }}>
+              {[1, 2, 3].map((i) => (
+                <View key={`sk-${i}`} style={[styles.downloadCard, { opacity: 0.3 }]}>
+                  <View style={[styles.downloadPosterContainer, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
                   <View style={styles.downloadInfo}>
-                    <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
-                    <Text style={styles.downloadMeta}>
-                      {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
-                    </Text>
-                    {!isEditMode && (
-                      <View style={styles.downloadActionRow}>
-                        <TouchableOpacity 
-                          style={styles.downloadPlayBtn}
-                          onPress={() => {
-                            // Trigger global playback immediately
-                            // This ensures the player covers the menu without closing it
-                            setPlayerTitle(m.title);
-                            setSelectedVideoUrl(m.localUri || m.videoUrl);
-                            setPlayingNow(m as any);
-                            setPlayerMode('full');
-                          }}
-                        >
-                          <Ionicons name="play" size={12} color="#fff" />
-                          <Text style={styles.downloadPlayText}>PLAY</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.downloadDeleteBtn}
-                          onPress={() => {
-                            Alert.alert(
-                              'Remove Download',
-                              `Remove "${m.title}" from your downloads?`,
-                              [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
-                              ]
-                            );
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                    <View style={{ height: 16, width: '60%', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, marginBottom: 8 }} />
+                    <View style={{ height: 12, width: '40%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 4 }} />
                   </View>
-                </TouchableOpacity>
-              );
-            })
-          ) : (
-            <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
-              <Ionicons name="cloud-download-outline" size={48} color="rgba(255,255,255,0.1)" />
-              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>
-                No downloads yet. Save movies or series for offline viewing.
-              </Text>
+                </View>
+              ))}
             </View>
+          ) : (
+            <Animated.View style={{ opacity: fadeAnim }}>
+              {filteredDownloads.length > 0 ? (
+                filteredDownloads.map((m, index) => {
+                  const isSelected = selectedIds.has((m as any).id);
+                  return (
+                    <TouchableOpacity 
+                      key={(m as any).id ?? `dl-${index}`} 
+                      style={[styles.downloadCard, isEditMode && { paddingLeft: 8 }]}
+                      activeOpacity={isEditMode ? 0.7 : 1}
+                      onPress={() => isEditMode && toggleSelect((m as any).id)}
+                    >
+                      {isEditMode && (
+                        <View style={{ marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons 
+                            name={isSelected ? "checkbox" : "square-outline"} 
+                            size={22} 
+                            color={isSelected ? "#5B5FEF" : "rgba(255,255,255,0.3)"} 
+                          />
+                        </View>
+                      )}
+                      <View style={styles.downloadPosterContainer}>
+                        <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                        <View style={styles.vjBadgeSmall}>
+                          <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                        </View>
+                        <View style={styles.genreBadgeSmall}>
+                          <Text style={styles.genreBadgeTextSmall}>
+                            {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.downloadInfo}>
+                        <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                        <Text style={styles.downloadMeta}>
+                          {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
+                        </Text>
+                        {!isEditMode && (
+                          <View style={styles.downloadActionRow}>
+                            <TouchableOpacity 
+                              style={styles.downloadPlayBtn}
+                              onPress={() => {
+                                // Trigger global playback immediately
+                                // We close the settings modal to prevent it from overlapping the player
+                                setPlayerTitle(m.title);
+                                setSelectedVideoUrl(m.localUri || m.videoUrl);
+                                setPlayingNow(m as any);
+                                setPlayerMode('full');
+                                onCloseSettings();
+                              }}
+                            >
+                              <Ionicons name="play" size={12} color="#fff" />
+                              <Text style={styles.downloadPlayText}>PLAY</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={styles.downloadDeleteBtn}
+                              onPress={() => {
+                                Alert.alert(
+                                  'Remove Download',
+                                  `Remove "${m.title}" from your downloads?`,
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
+                                  ]
+                                );
+                              }}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+                  <Ionicons name="cloud-download-outline" size={48} color="rgba(255,255,255,0.1)" />
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>
+                    No downloads yet. Save movies or series for offline viewing.
+                  </Text>
+                </View>
+              )}
+            </Animated.View>
           )}
         </View>
 
