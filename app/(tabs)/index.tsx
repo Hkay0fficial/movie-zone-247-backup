@@ -6373,8 +6373,10 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
 
-    // Global UI Sync: Hide Tab Bar and Home Header when detail stack is open
-    DeviceEventEmitter.emit("setDetailStackVisible", isVisible);
+    // Global UI Sync: Hide Tab Bar and Home Header when detail stack is open (only if focused)
+    if (isFocused) {
+      DeviceEventEmitter.emit("setDetailStackVisible", isVisible);
+    }
 
     // Restoration Burst when it enters
     if (isVisible && Platform.OS === 'android') {

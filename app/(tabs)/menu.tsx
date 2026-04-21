@@ -25,7 +25,8 @@ import { INDIAN_MOVIES, ALL_ROWS, MOST_DOWNLOADED, FAVOURITES, shortenGenre, Ser
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, serverTimestamp, where } from 'firebase/firestore';
@@ -86,6 +87,7 @@ const MENU_ITEMS: MenuItem[] = [
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export default function MenuScreen() {
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [aboutVisible, setAboutVisible] = React.useState(false);
@@ -121,12 +123,14 @@ export default function MenuScreen() {
 
   // One Window Architecture: Global UI Visibility
   React.useEffect(() => {
-    if (selectedItem) {
-      DeviceEventEmitter.emit('setDetailStackVisible', true);
-    } else {
-      DeviceEventEmitter.emit('setDetailStackVisible', false);
+    if (isFocused) {
+      if (selectedItem) {
+        DeviceEventEmitter.emit('setDetailStackVisible', true);
+      } else {
+        DeviceEventEmitter.emit('setDetailStackVisible', false);
+      }
     }
-  }, [selectedItem]);
+  }, [selectedItem, isFocused]);
 
   // Handle Android Hardware Back Button
   React.useEffect(() => {

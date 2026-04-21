@@ -529,9 +529,12 @@ export default function SeriesScreen() {
   }, []);
 
   // Global UI Sync: hide header/tab bar when series preview is open
+  // Only emit when focused to avoid background tabs interfering
   useEffect(() => {
-    DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0);
-  }, [seriesStack.length]);
+    if (isFocused) {
+      DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0);
+    }
+  }, [seriesStack.length, isFocused]);
 
   return (
     <View 
@@ -551,61 +554,67 @@ export default function SeriesScreen() {
         backgroundColor="transparent"
       />
 
-      {/* Spacer for header - reduced to align categories directly below header pill */}
-      <View style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight! + 48 : 40, paddingBottom: 0 }} />
-
-      {/* Categories Horizontal Scroll - Hidden if searching or filters visible */}
-      {!isFiltersVisible && !query && !isSearchActive && (
-        <Animated.View style={{ 
-          opacity: categoriesAnim,
-          maxHeight: categoriesAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 100]
-          }),
-          overflow: "hidden"
-        }}>
-          <View style={{ paddingBottom: 2 }}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
-            >
-              {SERIES_CATEGORIES.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.browseFilterPill,
-                    activeCategory === category && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
-                  ]}
-                  onPress={() => setActiveCategory(category)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.browseFilterPillText,
-                      activeCategory === category && { color: '#fff', fontWeight: '800' }
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </Animated.View>
+      {/* Spacer for header - hidden when series detail is open */}
+      {seriesStack.length === 0 && (
+        <View style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight! + 48 : 40, paddingBottom: 0 }} />
       )}
 
-      {/* Clear Filters below header if active and filters hidden */}
-      {hasActiveFilters && !isFiltersVisible && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-start' }}>
-          <TouchableOpacity
-            style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-            onPress={clearFilters}
-          >
-            <Ionicons name="close-circle" size={12} color="#ef4444" style={{ marginRight: 4 }} />
-            <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '800' }]}>Clear</Text>
-          </TouchableOpacity>
-        </View>
+      {seriesStack.length === 0 && (
+        <>
+          {/* Categories Horizontal Scroll - Hidden if searching or filters visible */}
+          {!isFiltersVisible && !query && !isSearchActive && (
+            <Animated.View style={{ 
+              opacity: categoriesAnim,
+              maxHeight: categoriesAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 100]
+              }),
+              overflow: "hidden"
+            }}>
+              <View style={{ paddingBottom: 2 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+                >
+                  {SERIES_CATEGORIES.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.browseFilterPill,
+                        activeCategory === category && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
+                      ]}
+                      onPress={() => setActiveCategory(category)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.browseFilterPillText,
+                          activeCategory === category && { color: '#fff', fontWeight: '800' }
+                        ]}
+                      >
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Clear Filters below header if active and filters hidden */}
+          {hasActiveFilters && !isFiltersVisible && (
+            <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-start' }}>
+              <TouchableOpacity
+                style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                onPress={clearFilters}
+              >
+                <Ionicons name="close-circle" size={12} color="#ef4444" style={{ marginRight: 4 }} />
+                <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '800' }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       )}
 
       {/* Expanded Filter Area - Hidden if searching */}
