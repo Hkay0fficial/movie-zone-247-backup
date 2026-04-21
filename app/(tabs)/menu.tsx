@@ -286,6 +286,7 @@ export default function MenuScreen() {
     favorites,
     toggleFavorite,
     deviceId,
+    activeDeviceIds,
     removeDevice,
   } = useSubscription();
 
@@ -642,7 +643,6 @@ export default function MenuScreen() {
 
   const [activeDevices, setActiveDevices] = React.useState<any[]>([]);
 
-  const { activeDeviceIds, removeDevice } = useSubscription();
 
   React.useEffect(() => {
     // Map the string array to device viewer objects
