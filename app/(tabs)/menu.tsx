@@ -14,6 +14,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Linking,
+  BackHandler,
 } from 'react-native';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
@@ -114,6 +115,29 @@ export default function MenuScreen() {
     });
     return () => sub.remove();
   }, []);
+
+  // One Window Architecture: Global UI Visibility
+  React.useEffect(() => {
+    if (selectedItem) {
+      DeviceEventEmitter.emit('setDetailStackVisible', true);
+    } else {
+      DeviceEventEmitter.emit('setDetailStackVisible', false);
+    }
+  }, [selectedItem]);
+
+  // Handle Android Hardware Back Button
+  React.useEffect(() => {
+    const onBackPress = () => {
+      if (selectedItem) {
+        handleSettingsDone();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [selectedItem, selectedSubItem, selectedSecurityItem, showRatingPreview, showBillingHistory]);
   
   const SUB_ITEM_ICONS: Record<string, string> = {
     'Personal Info': 'person-outline',
@@ -1138,15 +1162,19 @@ export default function MenuScreen() {
         scrollViewHeight={scrollViewHeight}
         setScrollViewHeight={setScrollViewHeight}
       />
-      <Modal 
-        visible={!!selectedItem} 
-        transparent 
-        animationType="fade" 
-        onRequestClose={handleSettingsDone}
-        statusBarTranslucent={true}
-      >
-        <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15,15,25,0.98)' }]} />
+      {selectedItem && (
+        <View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { 
+              zIndex: 1000, 
+              backgroundColor: '#0f0f14',
+              marginTop: Platform.OS === 'android' ? 0 : 0 // Ensure full coverage
+            }
+          ]}
+        >
+          <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15,15,25,0.98)' }]} />
 
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
@@ -1361,8 +1389,9 @@ export default function MenuScreen() {
           </View>
           </KeyboardAvoidingView>
 
-        </BlurView>
-      </Modal>
+          </BlurView>
+        </View>
+      )}
 
 
       <SubscriptionModals
