@@ -6419,9 +6419,8 @@ export default function HomeScreen() {
       setIsNotificationVisible(visible);
     });
     return () => {
-      subscription.remove();
-      responseSubscription.remove();
-      localNotifSub.remove();
+      searchSub.remove();
+      notificationSub.remove();
     };
   }, []);
 
