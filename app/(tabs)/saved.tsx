@@ -528,6 +528,11 @@ export default function SeriesScreen() {
     };
   }, []);
 
+  // Global UI Sync: hide header/tab bar when series preview is open
+  useEffect(() => {
+    DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0);
+  }, [seriesStack.length]);
+
   return (
     <View 
       style={styles.container}
@@ -1011,6 +1016,17 @@ function SeriesPreviewModal({
       scrollRef.current.scrollTo({ y: 0, animated: false });
     }
   }, [series?.id]);
+
+  // Handle Android hardware back button (replaces Modal's onRequestClose)
+  useEffect(() => {
+    const onBackPress = () => {
+      if (playerMode === 'full') return false; // Let player handle it
+      onClose();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [onClose, playerMode]);
   const insets = useSafeAreaInsets();
   const playPulse = useRef(new Animated.Value(1)).current;
   const downloadPulse = useRef(new Animated.Value(1)).current;
@@ -1390,12 +1406,11 @@ function SeriesPreviewModal({
   }, []);
 
   return (
-    <Modal
-      visible={playerMode !== 'full'}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        { zIndex: 1000, elevation: 1000 },
+      ]}
     >
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
         <StatusBar
@@ -2927,7 +2942,7 @@ function SeriesPreviewModal({
       </View>
 
       {/* FloatingPlayer moved to parent level for persistence */}
-    </Modal>
+    </View>
   );
 }
 

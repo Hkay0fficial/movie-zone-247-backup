@@ -41,8 +41,7 @@ import {
   Feather
 } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import * as NavigationBar from 'expo-navigation-bar';
-import * as SystemUI from 'expo-system-ui';
+// import * as NavigationBar from 'expo-navigation-bar'; // Removed to prevent crash if native module is missing
 import * as ScreenOrientation from "expo-screen-orientation";
 
 import * as Haptics from "expo-haptics";
@@ -170,33 +169,6 @@ function useSafeCastState() {
     console.warn("Google Cast hook error:", e);
     return null;
   }
-}
-
-function ModalSystemUIRestorer() {
-  const { playerMode } = useSubscription();
-
-  useEffect(() => {
-    if (playerMode === 'closed' || playerMode === 'mini') {
-      const restore = async () => {
-        if (Platform.OS === 'android') {
-          try {
-            await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
-            await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-            await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-          } catch (e) {}
-        }
-      };
-      restore();
-      const interval = setInterval(restore, 600);
-      const timeout = setTimeout(() => clearInterval(interval), 2000);
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [playerMode]);
-
-  return null;
 }
 
 
@@ -6362,35 +6334,6 @@ export default function HomeScreen() {
   }, [isUserMuted, navigationStack.length, isFocused, isSearchVisible, isNotificationVisible]);
 
   const bannerAnim = useRef(new Animated.Value(0)).current;
-  const stackAnim = useRef(new Animated.Value(SCREEN_H)).current; // Start hidden (off-screen bottom)
-
-  useEffect(() => {
-    const isVisible = navigationStack.length > 0 || loadingDeepLink;
-    Animated.timing(stackAnim, {
-      toValue: isVisible ? 0 : SCREEN_H,
-      duration: 350,
-      easing: Easing.out(Easing.back(0.5)),
-      useNativeDriver: true,
-    }).start();
-
-    // Global UI Sync: Hide Tab Bar and Home Header when detail stack is open
-    DeviceEventEmitter.emit("setDetailStackVisible", isVisible);
-
-    // Restoration Burst when it enters
-    if (isVisible && Platform.OS === 'android') {
-      const restore = async () => {
-        if (playerMode !== 'full') {
-          await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-          await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
-          StatusBar.setHidden(false);
-        }
-      };
-      restore();
-      setTimeout(restore, 100);
-      setTimeout(restore, 500);
-    }
-  }, [navigationStack.length, loadingDeepLink, playerMode]);
 
   useEffect(() => {
     if (allMoviesFree || eventMessage) {
@@ -6419,24 +6362,10 @@ export default function HomeScreen() {
       setIsNotificationVisible(visible);
     });
     return () => {
-      subscription.remove();
-      responseSubscription.remove();
-      localNotifSub.remove();
+      searchSub.remove();
+      notificationSub.remove();
     };
   }, []);
-
-  // ORientation Guard: Force Portrait whenever the full-screen player is NOT active
-  // This prevents the 'Landscape Preview' bug
-  useEffect(() => {
-    const lockPortrait = async () => {
-      if (playerMode !== 'full' && Platform.OS !== 'web') {
-        try {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        } catch (e) {}
-      }
-    };
-    lockPortrait();
-  }, [playerMode]);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -6451,6 +6380,7 @@ export default function HomeScreen() {
         if (isSeries) {
           router.push(`/(tabs)/saved?seriesId=${m.id}`);
         } else {
+          // Deduplication Guard: Don't push if the same movie is already at the top
           setNavigationStack((prev) => {
             if (prev.length > 0) {
               const top = prev[prev.length - 1];
@@ -6461,20 +6391,6 @@ export default function HomeScreen() {
         }
       },
     );
-
-    // Enhanced Back Handler: Prioritize closing the player
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (playerMode === 'full') {
-        setPlayerMode('closed');
-        return true;
-      }
-      if (navigationStack.length > 0) {
-        setNavigationStack(prev => prev.slice(0, -1));
-        return true;
-      }
-      return false;
-    });
-
     const sectionSub = DeviceEventEmitter.addListener(
       "sectionSelected",
       (title: string) => {
@@ -6486,9 +6402,8 @@ export default function HomeScreen() {
       sub.remove();
       movieSub.remove();
       sectionSub.remove();
-      backHandler.remove();
     };
-  }, [playerMode, navigationStack.length]);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -6693,17 +6608,16 @@ export default function HomeScreen() {
         <View style={{ height: 110 }} />
       </Animated.ScrollView>
 
-      {/* Unified Navigation Stack (Single Window Pattern) */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            backgroundColor: '#0a0a0f', 
-            zIndex: 1000, 
-            elevation: 10,
-            transform: [{ translateY: stackAnim }] 
-          }
-        ]}
+      {/* Unified Navigation Stack (Single Modal Pattern) */}
+      <Modal
+        visible={(navigationStack.length > 0 && playerMode !== 'full') || loadingDeepLink}
+        animationType="slide"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (loadingDeepLink) return;
+          setNavigationStack((prev) => prev.slice(0, -1));
+        }}
       >
         {loadingDeepLink ? (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }]}>
@@ -6714,11 +6628,7 @@ export default function HomeScreen() {
              </View>
           </View>
         ) : (
-          <View 
-            horizontal={false}
-            style={StyleSheet.absoluteFill} 
-            pointerEvents={playerMode === 'full' ? 'none' : 'auto'}
-          >
+          <View style={StyleSheet.absoluteFill}>
           {navigationStack.map((item, index) => {
             const onClose = () => {
               setNavigationStack((prev) => {
@@ -6797,7 +6707,7 @@ export default function HomeScreen() {
           })}
         </View>
       )}
-      </Animated.View>
+      </Modal>
 
 
       {/* Premium Access Modal */}

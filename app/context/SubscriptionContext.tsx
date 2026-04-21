@@ -4,8 +4,10 @@ import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
-import { Platform } from 'react-native';
+import { Platform, Animated, Dimensions } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // Define the limits per plan type
 const planLimits: Record<string, number> = {
@@ -53,6 +55,8 @@ interface SubscriptionContextType {
   setPlayerTitle: (title: string) => void;
   selectedVideoUrl: string;
   setSelectedVideoUrl: (url: string) => void;
+  playerPos: Animated.ValueXY;
+  playerSize: Animated.Value;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -321,6 +325,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const isPaid = subscriptionBundle !== 'None';
   const deviceLimit = planDeviceLimits[subscriptionBundle] || 1;
 
+  // Global Player Animated Values
+  const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
+  const playerSize = React.useMemo(() => new Animated.Value(SCREEN_W), []);
+
   return (
     <SubscriptionContext.Provider value={{
       subscriptionBundle,
@@ -347,6 +355,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setPlayerTitle,
       selectedVideoUrl,
       setSelectedVideoUrl,
+      playerPos,
+      playerSize,
     }}>
       {children}
     </SubscriptionContext.Provider>

@@ -16,6 +16,10 @@ import { initNotifications, registerForPushNotificationsAsync, addNotificationLi
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
 import VersionLockGuard from '../components/VersionLockGuard';
 import OTAUpdateGuard from '../components/OTAUpdateGuard';
+import ModernVideoPlayer from '../components/ModernVideoPlayer';
+import { useSubscription } from '@/app/context/SubscriptionContext';
+import { resolveCDNUrl } from '@/constants/bunnyConfig';
+import * as NavigationBar from 'expo-navigation-bar';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -23,6 +27,60 @@ export const unstable_settings = {
 
 // Bootstrap notification settings
 initNotifications();
+
+function ModernVideoPlayerWrapper() {
+  const { 
+    playerMode, setPlayerMode, 
+    playerTitle, selectedVideoUrl,
+    setPlayingNow, playingNow,
+    playerPos, playerSize
+  } = useSubscription();
+
+  return (
+    <ModernVideoPlayer
+      playerMode={playerMode}
+      setPlayerMode={setPlayerMode}
+      videoUrl={resolveCDNUrl(selectedVideoUrl)}
+      title={playerTitle}
+      playingNow={playingNow}
+      setPlayingNow={setPlayingNow}
+      playerPos={playerPos}
+      playerSize={playerSize}
+      onClose={() => {
+        setPlayerMode('closed');
+        setPlayingNow(null);
+      }}
+    />
+  );
+}
+
+function SystemUIGuard() {
+  const { playerMode } = useSubscription();
+  
+  useEffect(() => {
+    if (playerMode === 'closed' || playerMode === 'mini') {
+      const resetUI = async () => {
+        if (Platform.OS === 'android') {
+          try {
+            await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
+            await NavigationBar.setVisibilityAsync('visible').catch(() => {});
+            await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+            await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+          } catch (e) {}
+        }
+      };
+      resetUI();
+      const interval = setInterval(resetUI, 500);
+      const timeout = setTimeout(() => clearInterval(interval), 2500);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [playerMode]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -96,6 +154,9 @@ export default function RootLayout() {
                   notification={activeNotification} 
                   onClose={() => setActiveNotification(null)} 
                 />
+
+                <ModernVideoPlayerWrapper />
+                <SystemUIGuard />
 
                 <VersionLockGuard />
                 <OTAUpdateGuard />

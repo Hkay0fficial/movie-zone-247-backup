@@ -16,13 +16,14 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   Image,
   ScrollView,
-  Modal,
   AppState,
 } from "react-native";
 import * as SystemUI from "expo-system-ui";
 import { useIsFocused } from "@react-navigation/native";
+import { Modal as RNModal } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,31 +38,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+// Static dimensions for fallback, but we primarily use useWindowDimensions hook inside component
+const { width: STATIC_W, height: STATIC_H } = Dimensions.get("window");
 
 // ─── Google Cast Safety Guard ───
 const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
-
-// ─── Navigation Bar Safety Guard ───
-const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
-  if (Platform.OS !== 'android') return;
-
-  try {
-    if (visibility === 'hidden') {
-      // Global SystemUI disable often helps on Android 15/Modal edge cases
-      await SystemUI.setEnabledAsync(false).catch(() => {});
-      await NavigationBar.setBehaviorAsync('sticky-immersive');
-      await NavigationBar.setBackgroundColorAsync('transparent');
-      await NavigationBar.setVisibilityAsync('hidden');
-    } else {
-      await SystemUI.setEnabledAsync(true).catch(() => {});
-      await NavigationBar.setBehaviorAsync('inset-touch');
-      await NavigationBar.setVisibilityAsync('visible');
-    }
-  } catch (e) {
-    console.warn("Navigation Bar Error:", e);
-  }
-};
 
 interface ModernVideoPlayerProps {
   playerMode: 'closed' | 'full' | 'mini';
@@ -114,9 +95,66 @@ export default function ModernVideoPlayer({
   playingNow,
   setPlayingNow
 }: ModernVideoPlayerProps) {
+  const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
   const insets = useSafeAreaInsets();
   useKeepAwake();
+  
+  const scrubbingTimeout = useRef<any>(null);
+  const hidingTimeoutsRef = useRef<any[]>([]);
+
+  const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
+    if (Platform.OS !== 'android') return;
+
+    // Clear any pending hiding attempts immediately if we want to show it
+    if (visibility === 'visible') {
+      hidingTimeoutsRef.current.forEach(t => clearTimeout(t));
+      hidingTimeoutsRef.current = [];
+    }
+
+    try {
+      if (visibility === 'hidden') {
+        await NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+        await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+        
+        const t1 = setTimeout(async () => {
+          await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+        }, 300);
+
+        const t2 = setTimeout(async () => {
+          await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+        }, 1000);
+
+        hidingTimeoutsRef.current.push(t1, t2);
+      } else {
+        // Atomic Transition: Shift behavior first
+        await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
+        await NavigationBar.setVisibilityAsync('visible').catch(() => {});
+        
+        // Transparency Lock Burst: Ensuring the OS doesn't force a solid background
+        const restorationInterval = setInterval(async () => {
+          await NavigationBar.setVisibilityAsync('visible').catch(() => {});
+          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+          await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+          StatusBar.setHidden(false);
+        }, 300);
+
+        // Kill the lock after 2 seconds
+        setTimeout(() => {
+          clearInterval(restorationInterval);
+        }, 2100);
+
+        setTimeout(async () => {
+          await NavigationBar.setVisibilityAsync('visible').catch(() => {});
+          await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
+          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+        }, 100);
+      }
+    } catch (e) {
+      console.warn("Navigation Bar Error:", e);
+    }
+  };
   
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
@@ -176,8 +214,6 @@ export default function ModernVideoPlayer({
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
         }
         await safeSetNavigationBar('hidden');
-        // Double-check visibility after a short delay to ensure it sticks
-        setTimeout(() => safeSetNavigationBar('hidden'), 500);
       } else {
         StatusBar.setHidden(false, 'fade');
         if (Platform.OS !== "web") {
@@ -188,7 +224,28 @@ export default function ModernVideoPlayer({
     };
     manageLayout();
     if (playerMode !== 'closed') resetControlsTimer();
-    return () => { if (controlsTimeout.current) clearTimeout(controlsTimeout.current); };
+
+    // Hiding Lockdown Burst: Specifically for the full-screen isolated window
+    let hideInterval: any;
+    if (playerMode === 'full') {
+      const forceHide = async () => {
+        if (Platform.OS === 'android') {
+          await NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+          await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+          StatusBar.setHidden(true);
+        }
+      };
+      
+      forceHide();
+      hideInterval = setInterval(forceHide, 500);
+      setTimeout(() => clearInterval(hideInterval), 3000);
+    }
+
+    return () => { 
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current); 
+      if (hideInterval) clearInterval(hideInterval);
+    };
   }, [playerMode]);
 
   // Handle hardware back button
@@ -221,7 +278,12 @@ export default function ModernVideoPlayer({
     }
   }, [isLocked, showControls, playerMode]);
 
-  // Progress Saving
+  // Re-hide on App State change (e.g. returning from background)
+  useEffect(() => {
+    if (playerMode === 'full' && appState === 'active') {
+       safeSetNavigationBar('hidden');
+    }
+  }, [appState, playerMode]);
   useEffect(() => {
     if (playerMode !== 'closed' && movieId && videoUrl) {
       const saved = getPlaybackProgress(movieId, episodeId);
@@ -290,6 +352,11 @@ export default function ModernVideoPlayer({
       showControlsRef.current = false;
       Animated.timing(controlsOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start();
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      
+      // If we are hiding controls, force-hide the nav bar again (reinforcement)
+      if (playerMode === 'full') {
+        safeSetNavigationBar('hidden');
+      }
     } else {
       resetControlsTimer();
     }
@@ -719,49 +786,78 @@ export default function ModernVideoPlayer({
               </View>
             </TouchableOpacity>
           )}
-
         </View>
     </TouchableWithoutFeedback>
   );
 
-  if (playerMode === 'full') {
+  const renderPlayer = () => {
+    const containerStyle: any = {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: SCREEN_W,
+      height: SCREEN_H,
+      zIndex: 10000,
+      backgroundColor: '#000',
+    };
+
     return (
-      <Modal
-        visible={true}
-        animationType="fade"
-        transparent={false}
-        statusBarTranslucent
-        onShow={() => {
-          if (Platform.OS === 'android') {
-            safeSetNavigationBar('hidden');
-          }
-        }}
-        onRequestClose={onClose}
-        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
-      >
-        <ExpoStatusBar hidden={true} />
-        <Animated.View style={[styles.fullContainer, { elevation: 9999, zIndex: 9999 }]}>
+      <View style={containerStyle}>
+        <ExpoStatusBar hidden={true} translucent />
+        <Animated.View style={[styles.fullContainer, { elevation: 10000, zIndex: 10000 }]}>
           {playerContent}
         </Animated.View>
-      </Modal>
+      </View>
+    );
+  };
+
+  if (playerMode === 'closed') {
+    return (
+      <View style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }} pointerEvents="none">
+        <ExpoStatusBar hidden={false} translucent style="light" />
+      </View>
     );
   }
 
-  return (
-    <Animated.View 
-      style={[
-        styles.miniContainer,
-        { 
-          width: playerSize, 
-          height: playerSize.interpolate({ inputRange: [120, SCREEN_W], outputRange: [120 * (9/16), SCREEN_W * (9/16)] }),
-          transform: playerPos.getTranslateTransform()
-        }
-      ]}
-      pointerEvents="box-none"
-    >
-      {playerContent}
-    </Animated.View>
-  );
+  if (playerMode === 'full') {
+    return (
+      <View 
+        style={[
+          StyleSheet.absoluteFill, 
+          { 
+            backgroundColor: '#000', 
+            zIndex: 2147483647, 
+            elevation: 1000 
+          }
+        ]}
+        onLayout={() => {
+          if (Platform.OS === 'android') {
+            NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+            NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+            StatusBar.setHidden(true);
+          }
+        }}
+      >
+        <ExpoStatusBar hidden={true} translucent />
+        {renderPlayer()}
+      </View>
+    );
+  }
+
+  if (playerMode === 'mini') {
+    return (
+      <View style={[styles.miniContainer, { 
+        left: playerPos.x, 
+        top: playerPos.y,
+        width: playerSize,
+        height: Animated.multiply(playerSize, 9/16)
+      }]} {...panResponder.current.panHandlers}>
+         {renderPlayer()}
+      </View>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({

@@ -2021,6 +2021,7 @@ function CustomTabBar() {
   const [isStateLoaded, setIsStateLoaded] = useState(false);
   const [isUpdateApplied, setIsUpdateApplied] = useState(false);
   const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
+  const [isDetailStackVisible, setIsDetailStackVisible] = useState(false);
 
   // Load persisted states on mount
   useEffect(() => {
@@ -2127,7 +2128,7 @@ function CustomTabBar() {
   }, [isMenuHeaderBlurred]);
 
   const dynamicBarBottom = Platform.OS === 'android' 
-    ? (hasThreeButtonNav ? 50 : (insets.bottom > 0 ? insets.bottom : 16))
+    ? (hasThreeButtonNav ? 54 : (insets.bottom > 0 ? insets.bottom + 4 : 20))
     : 28;
 
   const dynamicSearchBottom = Platform.OS === 'ios' ? 20 : 16;
@@ -2393,9 +2394,14 @@ function CustomTabBar() {
       setGlobalGridData([...liveMovies, ...liveSeries]);
       setGlobalGridVisible(true);
     });
+    const sub3 = DeviceEventEmitter.addListener("setDetailStackVisible", (visible: boolean) => {
+      setIsDetailStackVisible(visible);
+    });
+
     return () => {
       sub.remove();
       sub2.remove();
+      sub3.remove();
     };
   }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries]);
 
@@ -2606,7 +2612,7 @@ function CustomTabBar() {
         }}
       />
       {/* Background for 3-button nav */}
-      {Platform.OS === 'android' && hasThreeButtonNav && (
+      {Platform.OS === 'android' && hasThreeButtonNav && !isDetailStackVisible && (
         <View 
           style={{
             position: 'absolute',
@@ -2626,7 +2632,7 @@ function CustomTabBar() {
         </View>
       )}
 
-      {!searchVisible && (
+      {!searchVisible && !isDetailStackVisible && (
         <View style={[
           styles.topBarWrapper, 
           (active("/") || active("/menu")) ? { 
@@ -3184,7 +3190,7 @@ isUpdateLocked={updateDismissCount >= 3}
         </SafeAreaView>
       </Modal>
 
-      {!showInPlaceSearch && (
+      {!showInPlaceSearch && !isDetailStackVisible && (
         <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : Math.max(16, insets.bottom + 12) }]} pointerEvents="box-none">
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
@@ -3232,18 +3238,7 @@ isUpdateLocked={updateDismissCount >= 3}
 
       {/* In-place search handled inline in header */}
       
-      {/* Global Video Player Placeholder — Renders Above Everything */}
-      <ModernVideoPlayer
-        playerMode={playerMode}
-        setPlayerMode={setPlayerMode}
-        videoUrl={resolveCDNUrl(selectedVideoUrl)}
-        title={playerTitle}
-        onClose={() => setPlayerMode('closed')}
-        playerPos={new Animated.ValueXY({ x: 0, y: 0 })} // Default values for global player
-        playerSize={new Animated.Value(SCREEN_W)} // Default values for global player
-        movieId={playingNow?.id}
-        playingNow={playingNow}
-      />
+
     </>
   );
 }
