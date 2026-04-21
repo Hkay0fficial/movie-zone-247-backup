@@ -3,33 +3,46 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Platform } fr
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Application from 'expo-application';
 
-// HARDCODED CURRENT VERSION
-// Update this string to '2', '3', etc., before building each production APK!
-export const CURRENT_APP_VERSION = "1"; 
+/**
+ * Compares two semantic version strings (e.g., '1.2.1' and '1.2.0')
+ * Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
+ */
+function compareVersions(v1: string, v2: string): number {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const a = parts1[i] || 0;
+    const b = parts2[i] || 0;
+    if (a > b) return 1;
+    if (a < b) return -1;
+  }
+  return 0;
+}
 
 export default function VersionLockGuard() {
-  const { minAppVersion } = useSubscription();
+  const { latestVersion, forceUpdate, updateMessage } = useSubscription();
   const [isLocked, setIsLocked] = useState(false);
+  const currentVersion = Application.nativeApplicationVersion || "1.0.0";
 
   useEffect(() => {
-    if (minAppVersion && minAppVersion.trim() !== '') {
+    if (latestVersion && latestVersion.trim() !== '' && forceUpdate) {
       try {
-        // Strip non-digits for a safe integer comparison (e.g., '1.0.5' -> 105 or just use major versions like '2')
-        // For simplicity, we recommend using pure integers for your version codes.
-        const minVersionInt = parseInt(minAppVersion.replace(/\D/g,''), 10);
-        const currentVersionInt = parseInt(CURRENT_APP_VERSION.replace(/\D/g,''), 10);
-        
-        if (minVersionInt > currentVersionInt) {
+        // If the store version is greater than the current version, trigger full lock
+        if (compareVersions(latestVersion, currentVersion) > 0) {
           setIsLocked(true);
         } else {
           setIsLocked(false);
         }
       } catch (e) {
-        console.error("Error parsing versions", e);
+        console.error("Error comparing versions:", e);
       }
+    } else {
+      setIsLocked(false);
     }
-  }, [minAppVersion]);
+  }, [latestVersion, forceUpdate, currentVersion]);
 
   if (!isLocked) return null;
 
@@ -39,29 +52,41 @@ export default function VersionLockGuard() {
         <LinearGradient colors={['#0F0F1A', '#1A1A2E']} style={StyleSheet.absoluteFillObject} />
         
         <View style={styles.container}>
-          <Ionicons name="cloud-download-outline" size={80} color="#3b82f6" style={{ marginBottom: 20 }} />
+          <View style={styles.iconContainer}>
+            <Ionicons name="cloud-download" size={50} color="#3b82f6" />
+          </View>
+          
           <Text style={styles.title}>Update Required</Text>
+          
           <Text style={styles.subtitle}>
-            A newer version of THE MOVIE ZONE 24/7 is available. You are currently running an unsupported version. Please update the app to continue securely formatting.
+            {updateMessage || "A newer version of THE MOVIE ZONE 24/7 is available. You are currently running an unsupported version. Please update the app to continue."}
           </Text>
           
           <TouchableOpacity 
             style={styles.updateButton}
             activeOpacity={0.8}
             onPress={() => {
-              // Direct the user to the generic playstore link
               const url = Platform.OS === 'android' 
-                ? 'market://details?id=com.serunkumaharuna.app'
-                : 'https://play.google.com/store/apps/details?id=com.serunkumaharuna.app';
+                ? 'market://details?id=com.moviezone247.app'
+                : 'https://play.google.com/store/apps/details?id=com.moviezone247.app';
               
               Linking.openURL(url).catch(() => {
-                Linking.openURL('https://play.google.com/store/apps/details?id=com.serunkumaharuna.app');
+                Linking.openURL('https://play.google.com/store/apps/details?id=com.moviezone247.app');
               });
             }}
           >
-            <LinearGradient colors={['#3b82f6', '#2563eb']} style={StyleSheet.absoluteFillObject} />
-            <Text style={styles.updateButtonText}>Update Now</Text>
+            <LinearGradient 
+              colors={['#3b82f6', '#2563eb']} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 0 }} 
+              style={StyleSheet.absoluteFillObject} 
+            />
+            <Text style={styles.updateButtonText}>Update to v{latestVersion}</Text>
           </TouchableOpacity>
+
+          <Text style={styles.versionInfo}>
+            Current: v{currentVersion} • Latest: v{latestVersion}
+          </Text>
         </View>
       </View>
     </Modal>
@@ -81,7 +106,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 24,
+    borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     width: '100%',
@@ -92,8 +117,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 20,
   },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '900',
     color: '#ffffff',
     textAlign: 'center',
@@ -101,24 +137,38 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#94a3b8',
     textAlign: 'center',
     marginBottom: 36,
     lineHeight: 22,
+    paddingHorizontal: 10,
   },
   updateButton: {
     width: '100%',
-    height: 56,
-    borderRadius: 16,
+    height: 60,
+    borderRadius: 18,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   updateButtonText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
     letterSpacing: 0.5,
+  },
+  versionInfo: {
+    marginTop: 20,
+    fontSize: 11,
+    color: 'rgba(148, 163, 184, 0.5)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   }
 });
