@@ -47,6 +47,9 @@ interface SubscriptionContextType {
   removeDevice: (id: string) => Promise<void>;
   deviceLimit: number;
   minAppVersion: string;
+  latestVersion: string;
+  forceUpdate: boolean;
+  updateMessage: string;
   playingNow: Movie | Series | null;
   setPlayingNow: (m: Movie | Series | null) => void;
   playerMode: 'closed' | 'full' | 'mini';
@@ -67,6 +70,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [allMoviesFree, setAllMoviesFree] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
   const [minAppVersion, setMinAppVersion] = useState('');
+  const [latestVersion, setLatestVersion] = useState('');
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
   const [isGuest, setIsGuest] = useState(true);
   const [playingNow, setPlayingNow] = useState<Movie | Series | null>(null);
   const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
@@ -259,6 +265,18 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'appVersion'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setLatestVersion(data.latestVersion || '');
+        setForceUpdate(data.forceUpdate || false);
+        setUpdateMessage(data.updateMessage || '');
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
     if (userTimerRef.current) {
       clearInterval(userTimerRef.current);
       userTimerRef.current = null;
@@ -347,6 +365,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       removeDevice,
       deviceLimit,
       minAppVersion,
+      latestVersion,
+      forceUpdate,
+      updateMessage,
       playingNow,
       setPlayingNow,
       playerMode,
