@@ -130,7 +130,6 @@ export default function RootLayout() {
     });
 
     return () => {
-      subscription.remove();
       responseSubscription.remove();
       localNotifSub.remove();
     };

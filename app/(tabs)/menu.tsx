@@ -309,6 +309,8 @@ export default function MenuScreen() {
     paymentMethod: contextPaymentMethod,
     favorites,
     toggleFavorite,
+    deviceId,
+    removeDevice,
   } = useSubscription();
 
   const {
@@ -1616,6 +1618,16 @@ export default function MenuScreen() {
         <LogoutButton
           onPress={async () => {
             try {
+              // 1. Clear device footprint before signing out
+              if (deviceId) {
+                try {
+                  await removeDevice(deviceId);
+                } catch (e) {
+                  console.error('Failed to remove device on logout:', e);
+                }
+              }
+
+              // 2. Perform standard sign-outs
               try {
                 await GoogleSignin.signOut();
               } catch (e) {}
