@@ -4,6 +4,34 @@ export const BUNNY_CONFIG = {
 };
 
 /**
+ * Returns the best available preview clip URL for a movie or series.
+ *
+ * Priority:
+ *  1. Admin-set `previewUrl` (custom clip — mp4 / HLS)
+ *  2. Bunny auto-generated `preview.webp` (animated, derived from bunnyVideoId)
+ *  3. null — no preview available
+ *
+ * The returned `type` tells the caller which component to use:
+ *  - 'webp'  → React Native <Image> (supports animated WebP natively)
+ *  - 'video' → expo-av <Video>
+ */
+export const getPreviewClipUrl = (
+  item: any
+): { url: string; type: 'video' | 'webp' } | null => {
+  if (item?.previewUrl) {
+    return { url: resolveCDNUrl(item.previewUrl), type: 'video' };
+  }
+  if (item?.bunnyVideoId) {
+    const pullZone = BUNNY_CONFIG.PULL_ZONE;
+    return {
+      url: `https://${pullZone}/${item.bunnyVideoId}/preview.webp`,
+      type: 'webp',
+    };
+  }
+  return null;
+};
+
+/**
  * Resolves a URL through the Bunny CDN if it belongs to the origin domain.
  * @param url The original URL.
  * @param forceHLS If true (default), converts MP4 to HLS for better mobile playback.

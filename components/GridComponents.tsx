@@ -12,6 +12,7 @@ import {
   TextInput,
   Modal,
   SafeAreaView,
+  Animated as RNAnimated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -19,8 +20,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series, shortenGenre } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
+import { getPreviewClipUrl } from "@/constants/bunnyConfig";
+import { Video, ResizeMode } from "expo-av";
 
 const { width: SCREEN_W } = Dimensions.get("window");
+
 
 // ─── Grid Card Component (matches home screen MovieCard exactly) ───────────────
 export function GridCard({
@@ -39,17 +43,75 @@ export function GridCard({
   const { isPaid } = useSubscription();
   const isLocked = !isPaid && !movie.isFree;
 
+  const [showPreview, setShowPreview] = useState(false);
+  const previewOpacity = useRef(new RNAnimated.Value(0)).current;
+  const previewClip = getPreviewClipUrl(movie);
+
+  const startPreview = () => {
+    if (!previewClip) return;
+    setShowPreview(true);
+    RNAnimated.timing(previewOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const stopPreview = () => {
+    RNAnimated.timing(previewOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => setShowPreview(false));
+  };
+
   return (
     <TouchableOpacity
       style={[styles.gridCard, { width: cardWidth }]}
       onPress={onPress}
+      onLongPress={startPreview}
+      onPressOut={stopPreview}
+      delayLongPress={400}
       activeOpacity={0.85}
     >
-      {/* Poster */}
+      {/* Static Poster */}
       <Image
         source={{ uri: movie.poster }}
         style={styles.gridPoster}
       />
+
+      {/* Preview Overlay (animated WebP or Video) */}
+      {showPreview && previewClip && (
+        <RNAnimated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { opacity: previewOpacity, zIndex: 10 },
+          ]}
+          pointerEvents="none"
+        >
+          {previewClip.type === 'webp' ? (
+            <Image
+              source={{ uri: previewClip.url }}
+              style={[styles.gridPoster, { position: 'absolute', top: 0, left: 0, right: 0 }]}
+              resizeMode="cover"
+            />
+          ) : (
+            <Video
+              source={{ uri: previewClip.url }}
+              style={[styles.gridPoster, { position: 'absolute', top: 0, left: 0, right: 0 }]}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay
+              isLooping
+              isMuted
+            />
+          )}
+          {/* PREVIEW badge */}
+          <View style={styles.previewBadge}>
+            <View style={styles.previewDot} />
+            <Text style={styles.previewBadgeText}>PREVIEW</Text>
+          </View>
+        </RNAnimated.View>
+      )}
 
       {/* VJ Badge — top-right, identical to home screen */}
       <View style={styles.vjBadge}>
@@ -91,6 +153,7 @@ export function GridCard({
     </TouchableOpacity>
   );
 }
+
 
 // ─── Grid Modal Component ─────────────────────────────────────────────────────
 export function GridContent({
@@ -318,6 +381,35 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     textAlign: 'center',
+  },
+
+  // Preview badge (shown during long-press preview)
+  previewBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 60, 60, 0.5)',
+    gap: 4,
+  },
+  previewDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#ff3c3c',
+  },
+  previewBadgeText: {
+    color: '#fff',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
 
   // Modal Header Styles
