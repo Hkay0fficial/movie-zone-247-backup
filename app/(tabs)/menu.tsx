@@ -112,8 +112,23 @@ export default function MenuScreen() {
         setNavigationStack(prev => [...prev, { type: 'movie', movie: m }]);
       }
     });
-    return () => sub.remove();
+
+    return () => {
+      sub.remove();
+    };
   }, []);
+
+  // Instant restoration via URL params
+  React.useEffect(() => {
+    if (params.section) {
+      const item = MENU_ITEMS.find(i => i.id === params.section);
+      if (item) {
+        setSelectedItem(item);
+        // Clear param after opening to avoid re-opening on every mount/update if navigated back
+        router.setParams({ section: undefined });
+      }
+    }
+  }, [params.section]);
   
   const SUB_ITEM_ICONS: Record<string, string> = {
     'Personal Info': 'person-outline',

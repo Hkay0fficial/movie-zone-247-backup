@@ -32,6 +32,7 @@ const COLLAPSED_SIZE = 54;
 
 export default function GlobalDownloadBar() {
   const { activeDownloads, downloadQueue } = useDownloads();
+  const { playerMode } = useSubscription();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -125,6 +126,8 @@ export default function GlobalDownloadBar() {
     }
   }, [isDownloading]);
 
+  // Hide the bar if we are in full screen player mode or no downloads are active
+  if (playerMode === 'full') return null;
   if (!isDownloading && (slideAnim as any)._value <= -140) return null;
 
   const clampedProgress = Math.max(0, Math.min(100, progress));
