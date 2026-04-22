@@ -39,9 +39,7 @@ export function GridCard({
   const paddingSpace = hPad * 2 + (columns - 1) * gap;
   const cardWidth = (SCREEN_W - paddingSpace) / columns;
   const { isPaid } = useSubscription();
-  const { profile } = useUser();
   const isLocked = !isPaid && !movie.isFree;
-  const isViewed = !!profile.watchHistory[movie.id];
 
   return (
     <TouchableOpacity
@@ -56,11 +54,6 @@ export function GridCard({
       />
 
       {/* View Indicator (Checkmark) - top-left */}
-      {isViewed && (
-        <View style={[styles.lockBadge, { backgroundColor: '#10b981', left: 6 }]}>
-          <Ionicons name="checkmark-sharp" size={10} color="#fff" />
-        </View>
-      )}
 
       {/* VJ Badge — top-right, identical to home screen */}
       <View style={styles.vjBadge}>
@@ -69,7 +62,7 @@ export function GridCard({
 
       {/* Lock — top-left (offset if viewed) */}
       {isLocked && (
-        <View style={[styles.lockBadge, isViewed && { left: 28 }]}>
+        <View style={styles.lockBadge}>
           <Ionicons name="lock-closed" size={9} color="#fff" />
         </View>
       )}
@@ -81,11 +74,18 @@ export function GridCard({
         </Text>
       </View>
 
-      {"seasons" in movie && (
+      {"seasons" in movie ? (
         <View style={styles.epBadgePremium}>
           <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
           <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
         </View>
+      ) : (
+        ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+          <View style={styles.epBadgePremium}>
+            <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
+            <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+          </View>
+        )
       )}
 
       {/* Card info */}

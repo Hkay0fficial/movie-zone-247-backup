@@ -2293,9 +2293,25 @@ function CustomTabBar() {
         setInPlaceSearchQuery("");
         DeviceEventEmitter.emit("seriesSearchClosed");
         Keyboard.dismiss();
-        return true; // Prevent default behavior
+        return true; 
       }
-      return false; // allow default behavior
+      if (globalGridVisible) {
+        setGlobalGridVisible(false);
+        if (reopenOnBack) {
+          setNotificationVisible(true);
+          setReopenOnBack(false);
+        }
+        return true;
+      }
+      if (notificationVisible) {
+        setNotificationVisible(false);
+        return true;
+      }
+      if (searchVisible) {
+        setSearchVisible(false);
+        return true;
+      }
+      return false; 
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -2304,7 +2320,7 @@ function CustomTabBar() {
     );
 
     return () => backHandler.remove();
-  }, [showInPlaceSearch]);
+  }, [showInPlaceSearch, notificationVisible, searchVisible, globalGridVisible, reopenOnBack]);
 
   useEffect(() => {
     if (!active("/(tabs)/saved") && showInPlaceSearch) {
@@ -2545,6 +2561,7 @@ function CustomTabBar() {
       }
 
       if (gridData.length > 0) {
+        setReopenOnBack(true);
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
         setGlobalGridVisible(true);
@@ -2554,9 +2571,11 @@ function CustomTabBar() {
     }
 
     if (item.movieId) {
+      setReopenOnBack(true); // Ensure we come back here
       router.setParams({ movieId: item.movieId } as any);
       setNotificationVisible(false);
     } else if (item.sectionTitle) {
+      setReopenOnBack(true);
       setNotificationVisible(false);
       setTimeout(() => {
         DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
@@ -2606,9 +2625,16 @@ function CustomTabBar() {
         visible={globalGridVisible}
         title={globalGridTitle}
         data={globalGridData}
-        onClose={() => setGlobalGridVisible(false)}
+        onClose={() => {
+          setGlobalGridVisible(false);
+          if (reopenOnBack) {
+            setNotificationVisible(true);
+            setReopenOnBack(false);
+          }
+        }}
         onSelect={(m) => {
           setGlobalGridVisible(false);
+          setReopenOnBack(true); // Keep the chain going if they open a movie from the grid
           DeviceEventEmitter.emit("movieSelected", m);
         }}
       />

@@ -6,8 +6,8 @@ service cloud.firestore {
     // Helper: Check if user has an admin role
     function isAdmin() {
       return request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'Admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
@@ -16,7 +16,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // --- Public Content ---
+    // --- Public Content (Everyone can see these) ---
     match /movies/{movieId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -37,17 +37,24 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- User Profiles & Data ---
     match /users/{userId} {
       // Users can read/write their own profile. Admins can do everything.
       allow read, write: if request.auth.uid == userId || isAdmin();
       
-      // Allow searching for users by username or phone number (used in menu.tsx)
-      // Note: This allows listing but we restrict fields in the query usually.
-      // For higher security, we could use a custom function or index.
-      allow list: if isAuthenticated(); 
+      // Allow searching for users (used in search features)
+      allow list: if isAuthenticated() || isAdmin(); 
       
       match /notifications/{notifId} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /favorites/{favId} {
         allow read, write: if request.auth.uid == userId || isAdmin();
       }
       
@@ -71,7 +78,6 @@ service cloud.firestore {
 
     // --- Administrative & Billing ---
     match /payments/{paymentId} {
-      // Users can see their own payments. Admin writes them via Cloud Functions/Admin SDK.
       allow read: if (isAuthenticated() && resource.data.uid == request.auth.uid) || isAdmin();
       allow write: if isAdmin();
     }
@@ -84,7 +90,7 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Default deny
+    // Default deny for everything else
     match /{path=**} {
       allow read, write: if false;
     }

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { Platform, Animated, Dimensions } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
@@ -202,26 +202,31 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const savedFavorites = await AsyncStorage.getItem('my_list_movies');
-        if (savedFavorites) {
-          setFavorites(JSON.parse(savedFavorites));
-        }
-      } catch (e) {
-        console.error('Failed to load local data', e);
-      } finally {
-        setIsInitialized(true);
-      }
+    let unsubFavs: (() => void) | undefined;
+
+    if (auth.currentUser && !isGuest) {
+      const favsRef = collection(db, 'users', auth.currentUser.uid, 'favorites');
+      unsubFavs = onSnapshot(favsRef, (snap) => {
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Movie | Series)));
+        setFavorites(list);
+      }, (err) => console.error("Favorites snapshot error:", err));
+    } else {
+      // For guests or logged out, try to load from local storage as fallback
+      AsyncStorage.getItem('my_list_movies').then(val => {
+        if (val) setFavorites(JSON.parse(val));
+      });
+    }
+
+    return () => {
+      if (unsubFavs) unsubFavs();
     };
-    loadData();
-  }, []);
+  }, [auth.currentUser, isGuest]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isGuest && favorites.length > 0) {
       AsyncStorage.setItem('my_list_movies', JSON.stringify(favorites));
     }
-  }, [favorites, isInitialized]);
+  }, [favorites, isGuest]);
 
   const timerRef = useRef<any>(null);
   const userTimerRef = useRef<any>(null);
@@ -327,12 +332,37 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const toggleFavorite = (item: Movie | Series) => {
-    setFavorites(prev => {
-      const exists = prev.some(m => m.id === item.id);
-      if (exists) return prev.filter(m => m.id !== item.id);
-      return [item, ...prev];
-    });
+  const toggleFavorite = async (item: Movie | Series) => {
+    if (!auth.currentUser || isGuest) {
+      // Local only for guests
+      setFavorites(prev => {
+        const exists = prev.some(m => m.id === item.id);
+        if (exists) return prev.filter(m => m.id !== item.id);
+        return [item, ...prev];
+      });
+      return;
+    }
+
+    const docRef = doc(db, 'users', auth.currentUser.uid, 'favorites', item.id);
+    const exists = favorites.some(m => m.id === item.id);
+
+    try {
+      if (exists) {
+        await deleteDoc(docRef);
+      } else {
+        await setDoc(docRef, {
+          id: item.id,
+          title: item.title,
+          poster: item.poster || (item as any).banner || '',
+          type: 'seasons' in item ? 'series' : 'movie',
+          genres: item.genres || [],
+          year: item.year || '',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      console.error("Error toggling favorite:", err);
+    }
   };
 
   const removeDevice = async (targetId: string) => {

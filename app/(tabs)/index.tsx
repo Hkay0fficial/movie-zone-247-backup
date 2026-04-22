@@ -852,6 +852,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
   },
+  cardProgressBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  cardProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#ef4444',
+  },
 
   // ── See-All Grid Modal ──
   gridModalContainer: { flex: 1, backgroundColor: "#0a0a0f" },
@@ -2216,11 +2228,18 @@ export function SeriesPreviewContent({
 
   const episodes = useMemo(() => {
     if (series.episodeList && series.episodeList.length > 0) {
+      const multiplier = series.episodesPerPart || 1;
       return series.episodeList.map((ep: any, index: number) => {
         const isFree = index < (series.freeEpisodesCount || 0) || series.isFree;
+        let displayIdx: any = index + 1;
+        if (multiplier > 1) {
+          const start = (index * multiplier) + 1;
+          const end = (index + 1) * multiplier;
+          displayIdx = `${start}-${end}`;
+        }
         return {
           id: `${series.id}-ep-${index}`,
-          displayIndex: index + 1,
+          displayIndex: displayIdx,
           title: ep.title,
           duration: series.episodeDuration || "45m",
           isPremium: !isFree,
@@ -3399,19 +3418,29 @@ export function MoviePreviewContent({
 
     // 1. Check for Series episodes (NEW feature)
     if ((movie as any).episodeList && (movie as any).episodeList.length > 0) {
-       parts = (movie as any).episodeList.map((ep: any, index: number) => ({
-         id: `${movie.id}-ep-${index}`,
-         displayIndex: index + 1,
-         title: ep.title,
-         videoUrl: ep.url,
-         poster: movie.poster,
-         duration: ep.duration || (movie as any).duration || "", 
-         vj: movie.vj,
-         year: movie.year,
-         genre: movie.genre,
-         rating: movie.rating,
-         isFree: index < ((movie as any).freeEpisodesCount || 0) || movie.isFree,
-      }));
+       const multiplier = (movie as any).episodesPerPart || 1;
+       parts = (movie as any).episodeList.map((ep: any, index: number) => {
+         const isFree = index < ((movie as any).freeEpisodesCount || 0) || movie.isFree;
+         let displayIdx: any = index + 1;
+         if (multiplier > 1) {
+           const start = (index * multiplier) + 1;
+           const end = (index + 1) * multiplier;
+           displayIdx = `${start}-${end}`;
+         }
+         return {
+           id: `${movie.id}-ep-${index}`,
+           displayIndex: displayIdx,
+           title: ep.title,
+           videoUrl: ep.url,
+           poster: movie.poster,
+           duration: ep.duration || (movie as any).duration || "", 
+           vj: movie.vj,
+           year: movie.year,
+           genre: movie.genre,
+           rating: movie.rating,
+           isFree: isFree,
+         };
+       });
     } 
     // 2. Try explicit parts field (Movies legacy feature)
     else if ((movie as Movie).parts && (movie as Movie).parts!.length > 0) {
@@ -4042,7 +4071,7 @@ export function MoviePreviewContent({
                               paddingVertical: 3,
                             }}>
                               <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
-                                EP {currentIndex + 1} / {movieParts.length}
+                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {movieParts.length * ((movie as any).episodesPerPart || 1)}
                               </Text>
                             </View>
                           )}
@@ -4063,7 +4092,7 @@ export function MoviePreviewContent({
                         borderColor: 'rgba(91, 95, 239, 0.4)', borderRadius: 6,
                         paddingHorizontal: 8, paddingVertical: 3,
                       }}>
-                        <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>PART {currentIndex + 1}</Text>
+                        <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>PART {movieParts[currentIndex]?.displayIndex || currentIndex + 1}</Text>
                       </View>
                     )}
                   </View>
@@ -4365,7 +4394,7 @@ export function MoviePreviewContent({
                           <View style={{ flex: 1 }} />
                           <View style={styles.epCountPillPremium}>
                             <Text style={styles.epCountTextPremium}>
-                              {"seasons" in movie ? `${movieParts.length} EP` : `EP ${movieParts.length}`}
+                              {"seasons" in movie ? `${movieParts.length * ((movie as any).episodesPerPart || 1)} EP` : `EP ${movieParts.length * ((movie as any).episodesPerPart || 1)}`}
                             </Text>
                           </View>
                           <Ionicons
@@ -5612,9 +5641,7 @@ export function MovieCard({
   onPress: () => void;
 }) {
   const { isPaid } = useSubscription();
-  const { profile } = useUser();
   const isLocked = !isPaid && !movie.isFree;
-  const isViewed = !!profile.watchHistory[movie.id];
 
   return (
     <TouchableOpacity
@@ -5625,19 +5652,13 @@ export function MovieCard({
       <View>
         <Image source={{ uri: movie.poster }} style={styles.cardPoster} />
         
-        {/* View Indicator (Checkmark) - top-left */}
-        {isViewed && (
-          <View style={[styles.lockBadge, { backgroundColor: '#10b981', left: 6 }]}>
-            <Ionicons name="checkmark-sharp" size={10} color="#fff" />
-          </View>
-        )}
 
         <View style={styles.vjBadge}>
           <Text style={styles.vjBadgeText}>{movie.vj}</Text>
         </View>
 
         {isLocked && (
-          <View style={[styles.lockBadge, isViewed && { left: 28 }]}>
+          <View style={styles.lockBadge}>
              <Ionicons name="lock-closed" size={9} color="#fff" />
           </View>
         )}
@@ -5646,10 +5667,24 @@ export function MovieCard({
             {"seasons" in movie ? (movie.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(movie.genre)}
           </Text>
         </View>
-        {"seasons" in movie && (
+        {"seasons" in movie ? (
           <View style={styles.epBadgePremium}>
             <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
             <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
+          </View>
+        ) : (
+          ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+            <View style={styles.epBadgePremium}>
+               <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
+               <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+            </View>
+          )
+        )}
+
+        {/* Progress Bar for Continue Watching / Last Watched */}
+        {(movie as any).position > 0 && (movie as any).durationMillis > 0 && (
+          <View style={styles.cardProgressBarContainer}>
+            <View style={[styles.cardProgressBarFill, { width: `${Math.min(100, ((movie as any).position / (movie as any).durationMillis) * 100)}%` }]} />
           </View>
         )}
       </View>
@@ -5773,7 +5808,7 @@ function MovieRow({
       </View>
       <FlatList
         data={data}
-        keyExtractor={(m) => m.id}
+        keyExtractor={(m, index) => (m.id || `fallback-id-${index}`)}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowList}
@@ -6476,6 +6511,17 @@ export default function HomeScreen() {
   }, [playerMode]);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(bgScale, {
+      toValue: navigationStack.length > 0 ? 0.95 : 1,
+      friction: 9,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [navigationStack.length]);
+
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("homeTabPress", () => {
@@ -6638,6 +6684,13 @@ export default function HomeScreen() {
 
       <Animated.ScrollView
         ref={scrollRef}
+        style={{ 
+          transform: [{ scale: bgScale }],
+          opacity: bgScale.interpolate({
+            inputRange: [0.95, 1],
+            outputRange: [0.6, 1]
+          })
+        }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110, paddingTop: 0 }} // Removed top padding for full-screen hero
         onScroll={Animated.event(

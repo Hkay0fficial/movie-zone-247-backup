@@ -289,8 +289,8 @@ export default function ModernVideoPlayer({
   useEffect(() => {
     if (playerMode !== 'closed' && movieId && videoUrl) {
       const saved = getPlaybackProgress(movieId, episodeId);
-      if (saved && saved.position > 10000) { 
-        setTimeout(() => videoRef.current?.setPositionAsync(saved.position), 1000);
+      if (saved && saved.position > 3000) { 
+        setTimeout(() => videoRef.current?.setPositionAsync(saved.position), 800);
       }
     }
   }, [movieId, episodeId, videoUrl, playerMode]);

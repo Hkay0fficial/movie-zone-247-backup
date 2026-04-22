@@ -161,8 +161,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         }
       });
       
-      setLiveMovies(fetchedMovies);
-      setLiveSeries(fetchedSeries);
+      // 🟢 Global Deduplication: Ensure no duplicate IDs enter the system
+      const uniqueMovies = fetchedMovies.filter((item, index, self) => 
+        index === self.findIndex((t) => t.id === item.id)
+      );
+      const uniqueSeries = fetchedSeries.filter((item, index, self) => 
+        index === self.findIndex((t) => t.id === item.id)
+      );
+      
+      setLiveMovies(uniqueMovies);
+      setLiveSeries(uniqueSeries);
       setLoading(false);
     }, (error) => {
       console.warn("Firestore listener error (MovieContext):", error);
@@ -421,7 +429,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => m.genre?.toLowerCase().includes(val));
         }
         
-        return { title: section.title, data: sectionData };
+        // Final safety dedup for each row
+        const uniqueSectionData = sectionData.filter((item, index, self) => 
+          index === self.findIndex((t) => t.id === item.id)
+        );
+        
+        return { title: section.title, data: uniqueSectionData };
       }).filter(row => row.data.length > 0);
 
     } else {
@@ -447,7 +460,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         { title: 'Drama',              data: dramaMovies      },
         { title: 'Indian Movies',      data: indianMovies     },
         { title: 'VJ Collection',      data: vjCollection     },
-      ].filter(row => row.data.length > 0);
+      ].map(row => ({
+        ...row,
+        data: row.data.filter((item, index, self) => index === self.findIndex((t) => t.id === item.id))
+      })).filter(row => row.data.length > 0);
     }
 
     return {
