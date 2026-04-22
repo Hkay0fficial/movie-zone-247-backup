@@ -6869,17 +6869,23 @@ export default function HomeScreen() {
       </Animated.ScrollView>
 
       {/* Unified Navigation Stack (Single Window Pattern) */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            backgroundColor: '#0a0a0f', 
-            zIndex: 1000, 
-            elevation: 10,
-            transform: [{ translateY: stackAnim }] 
-          }
-        ]}
+      <Modal
+        visible={navigationStack.length > 0 || loadingDeepLink}
+        animationType="none"
+        transparent={true}
+        statusBarTranslucent
       >
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { 
+              backgroundColor: '#0a0a0f', 
+              zIndex: 1000, 
+              elevation: 10,
+              transform: [{ translateY: stackAnim }] 
+            }
+          ]}
+        >
         {loadingDeepLink ? (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }]}>
              <View style={{ backgroundColor: '#1a1a2e', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 15, elevation: 12 }}>
@@ -6987,6 +6993,7 @@ export default function HomeScreen() {
         </View>
       )}
       </Animated.View>
+      </Modal>
 
 
       {/* Premium Access Modal */}
