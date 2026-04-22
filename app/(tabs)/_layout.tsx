@@ -2331,9 +2331,6 @@ function CustomTabBar() {
   const [expandedType, setExpandedType] = useState<"movies" | "series" | "vjs" | null>(null);
   const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
   const [reopenOnBack, setReopenOnBack] = useState(false);
-  const [reopenGridOnBack, setReopenGridOnBack] = useState(false);
-  const [lastGridTitle, setLastGridTitle] = useState("");
-  const [lastGridData, setLastGridData] = useState<(Movie | Series)[]>([]);
   const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
