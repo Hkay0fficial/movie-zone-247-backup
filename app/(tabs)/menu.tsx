@@ -1017,7 +1017,7 @@ export default function MenuScreen() {
     if (isGuest) {
       setShowGuestPlanModal(true);
     } else {
-      setSelectedItem(MENU_ITEMS[0]); // Open Account
+      setSelectedItem(menuItems[0]); // Open Account
       setSelectedSubItem('Personal Info');
     }
   };
@@ -1165,7 +1165,7 @@ export default function MenuScreen() {
       restoreScrollPosition();
     } else if (selectedItem?.id === '3') {
       if (cameFromSubscription) {
-        setSelectedItem(MENU_ITEMS.find(m => m.id === '2') || null);
+        setSelectedItem(menuItems.find(m => m.id === '2') || null);
         setCameFromSubscription(false);
         restoreScrollPosition();
       } else {
@@ -1340,7 +1340,7 @@ export default function MenuScreen() {
                     setSelectedItem={setSelectedItem}
                     handleShowPaymentModal={handleShowPaymentModal}
                     toggleSettingsModal={toggleSettingsModal}
-                    MENU_ITEMS={MENU_ITEMS}
+                    menuItems={menuItems}
                   />
                 )}
                 {selectedItem?.id === '3' && ( // Choose Your Plan
