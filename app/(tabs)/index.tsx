@@ -5611,7 +5611,9 @@ export function MovieCard({
   onPress: () => void;
 }) {
   const { isPaid } = useSubscription();
+  const { profile } = useUser();
   const isLocked = !isPaid && !movie.isFree;
+  const isViewed = !!profile.watchHistory[movie.id];
 
   return (
     <TouchableOpacity
@@ -5621,12 +5623,20 @@ export function MovieCard({
     >
       <View>
         <Image source={{ uri: movie.poster }} style={styles.cardPoster} />
+        
+        {/* View Indicator (Checkmark) - top-left */}
+        {isViewed && (
+          <View style={[styles.lockBadge, { backgroundColor: '#10b981', left: 6 }]}>
+            <Ionicons name="checkmark-sharp" size={10} color="#fff" />
+          </View>
+        )}
+
         <View style={styles.vjBadge}>
           <Text style={styles.vjBadgeText}>{movie.vj}</Text>
         </View>
 
         {isLocked && (
-          <View style={styles.lockBadge}>
+          <View style={[styles.lockBadge, isViewed && { left: 28 }]}>
              <Ionicons name="lock-closed" size={9} color="#fff" />
           </View>
         )}

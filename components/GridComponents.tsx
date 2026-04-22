@@ -12,6 +12,7 @@ import {
   TextInput,
   Modal,
   SafeAreaView,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -19,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series, shortenGenre } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
+import { useUser } from "@/app/context/UserContext";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -37,7 +39,9 @@ export function GridCard({
   const paddingSpace = hPad * 2 + (columns - 1) * gap;
   const cardWidth = (SCREEN_W - paddingSpace) / columns;
   const { isPaid } = useSubscription();
+  const { profile } = useUser();
   const isLocked = !isPaid && !movie.isFree;
+  const isViewed = !!profile.watchHistory[movie.id];
 
   return (
     <TouchableOpacity
@@ -51,14 +55,21 @@ export function GridCard({
         style={styles.gridPoster}
       />
 
+      {/* View Indicator (Checkmark) - top-left */}
+      {isViewed && (
+        <View style={[styles.lockBadge, { backgroundColor: '#10b981', left: 6 }]}>
+          <Ionicons name="checkmark-sharp" size={10} color="#fff" />
+        </View>
+      )}
+
       {/* VJ Badge — top-right, identical to home screen */}
       <View style={styles.vjBadge}>
         <Text style={styles.vjBadgeText}>{movie.vj}</Text>
       </View>
 
-      {/* Lock — top-left */}
+      {/* Lock — top-left (offset if viewed) */}
       {isLocked && (
-        <View style={styles.lockBadge}>
+        <View style={[styles.lockBadge, isViewed && { left: 28 }]}>
           <Ionicons name="lock-closed" size={9} color="#fff" />
         </View>
       )}
@@ -127,6 +138,9 @@ export function GridContent({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={StyleSheet.absoluteFill} />
+      </TouchableWithoutFeedback>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView style={{ flex: 1 }}>
         

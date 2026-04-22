@@ -2548,6 +2548,7 @@ function CustomTabBar() {
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
         setGlobalGridVisible(true);
+        setNotificationVisible(false); // Auto-close overlay when opening grid
         return;
       }
     }
