@@ -46,13 +46,16 @@ interface MovieContextType {
   myList: (Movie | Series)[];
   watchLater: (Movie | Series)[];
   youMayAlsoLike: (Movie | Series)[];
+  youMayAlsoLikeMovies: Movie[];
+  youMayAlsoLikeSeries: Series[];
   lastWatched: (Movie | Series)[];
   actionMovies: Movie[];
   scifiMovies: Movie[];
   romanceMovies: Movie[];
   kDramaMovies: Movie[];
   vjCollection: Movie[];
-  allMovies: (Movie | Series)[];
+  allMovies: Movie[];
+  allSeries: Series[];
   globalSettings: {
     allMoviesFree: boolean;
     eventMessage: string;
@@ -267,14 +270,38 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (h.category) watchedGenres.add(h.category);
     });
     
+    // Mixed recommendation list
     let youMayAlsoLike = allContent
       .filter(m => watchedGenres.has(m.category || ''))
-      .filter(m => !profile.watchHistory?.[m.id]) // Don't suggest what they already watched
+      .filter(m => !profile.watchHistory?.[m.id]) 
       .slice(0, 15);
 
     if (youMayAlsoLike.length < 5) {
-      // Fallback: Just some random trending items if history is thin
       youMayAlsoLike = [...trending].reverse().slice(0, 15);
+    }
+
+    // Dedicated Series recommendation list (NO MOVIES)
+    let youMayAlsoLikeSeries = actualLiveSeries
+      .filter(s => watchedGenres.has(s.genre || ''))
+      .filter(s => !profile.watchHistory?.[s.id])
+      .slice(0, 15);
+    
+    if (youMayAlsoLikeSeries.length < 5) {
+      youMayAlsoLikeSeries = actualLiveSeries
+        .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+        .slice(0, 15);
+    }
+
+    // Dedicated Movie recommendation list (NO SERIES)
+    let youMayAlsoLikeMovies = actualLiveMovies
+      .filter(m => watchedGenres.has(m.genre || ''))
+      .filter(m => !profile.watchHistory?.[m.id])
+      .slice(0, 15);
+    
+    if (youMayAlsoLikeMovies.length < 5) {
+      youMayAlsoLikeMovies = actualLiveMovies
+        .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+        .slice(0, 15);
     }
     
     // ── Personalized Rows ──
@@ -308,11 +335,13 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const kDramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('korean') || m.genre?.toLowerCase().includes('kdrama') || m.genre?.toLowerCase().includes('k-drama'))];
     const vjCollection: Movie[] = [];
 
-    const allSeries = [...liveSeries];
-    const newSeries = [...liveSeries];
-    const trendingSeries = [...liveSeries];
-    const mostViewedSeries = [...liveSeries];
-    const mostDownloadedSeries = [...liveSeries];
+    const allSeries = [...actualLiveSeries];
+    const newSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 15);
+    const trendingSeries = [...actualLiveSeries]
+      .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
+      .slice(0, 15);
+    const mostViewedSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 15);
+    const mostDownloadedSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.downloads || 0) - (a.downloads || 0)).slice(0, 15);
 
     // Build live hero items — only content explicitly marked as hero by admin
     const adminHeroMovies: HeroMovie[] = [
@@ -482,6 +511,8 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       myList,
       watchLater,
       youMayAlsoLike,
+      youMayAlsoLikeMovies,
+      youMayAlsoLikeSeries,
       lastWatched,
       actionMovies,
       scifiMovies,

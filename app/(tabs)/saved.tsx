@@ -261,7 +261,7 @@ export default function SeriesScreen() {
     trendingSeries: TRENDING_SERIES,
     mostViewedSeries: MOST_VIEWED_SERIES,
     newSeries: NEW_SERIES,
-    youMayAlsoLike: YOU_MAY_ALSO_LIKE_SERIES
+    youMayAlsoLikeSeries: YOU_MAY_ALSO_LIKE_SERIES
   } = useMovies();
   // removed recordExternalDownload
   const [activeBrowseFilter, setActiveBrowseFilter] =
@@ -962,7 +962,7 @@ function SeriesPreviewModal({
     mostViewedSeries: MOST_VIEWED_SERIES,
     mostDownloadedSeries: MOST_DOWNLOADED_SERIES,
     newSeries: NEW_SERIES,
-    youMayAlsoLike: YOU_MAY_ALSO_LIKE_SERIES
+    youMayAlsoLikeSeries: YOU_MAY_ALSO_LIKE_SERIES
   } = useMovies();
 
   const handlePlayEpisode = () => {
