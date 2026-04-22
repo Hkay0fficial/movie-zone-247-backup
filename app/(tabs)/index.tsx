@@ -6100,6 +6100,15 @@ function HeroBanner({
 
           {/* New Metadata Row */}
           <View style={styles.heroMetadataRow}>
+            {/* NEW Badge */}
+            {(movie as any).isNewRelease && (
+              <>
+                <View style={{ backgroundColor: '#f43f5e', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 }}>NEW</Text>
+                </View>
+              </>
+            )}
+
             {/* Type Badge (Series/Mini Series) */}
             {(movie as any).type && (movie as any).type !== 'Movie' && (
               <>
@@ -6109,15 +6118,13 @@ function HeroBanner({
                 <View style={styles.heroMetaDot} />
               </>
             )}
-            <Text style={styles.heroMetaText}>
-              {movie.genre}
+
+            <Text numberOfLines={1} style={[styles.heroMetaText, { flex: 1 }]}>
+              {movie.genre} 
+              {movie.year && ` • ${movie.year}`}
+              {movie.vj && ` • ${movie.vj}`}
+              {movie.duration && ` • ${movie.duration}`}
             </Text>
-            <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{movie.year}</Text>
-            <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{movie.vj}</Text>
-            <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{movie.duration}</Text>
           </View>
 
           {/* New Action Row - Redesigned to match Home Preview */}
@@ -6215,6 +6222,119 @@ function HeroBanner({
   );
 }
 // ─── Home Screen ──────────────────────────────────────────────────────────────
+const ModernLoader = ({ message, subMessage }: { message?: string; subMessage?: string }) => {
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(5, 5, 10, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
+      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+      
+      <View style={{ alignItems: 'center' }}>
+        {/* Glow Effect */}
+        <View style={{ 
+          position: 'absolute', 
+          width: 140, 
+          height: 140, 
+          borderRadius: 70, 
+          backgroundColor: 'rgba(91, 95, 239, 0.15)',
+          shadowColor: '#5B5FEF',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 30,
+        }} />
+
+        {/* Rotating Gradient Ring */}
+        <Animated.View style={{ 
+          width: 100, 
+          height: 100, 
+          borderRadius: 50, 
+          borderWidth: 3, 
+          borderColor: 'transparent',
+          borderTopColor: '#5B5FEF',
+          borderRightColor: '#5B5FEF',
+          transform: [{ rotate: spin }] 
+        }} />
+
+        {/* Inner Pulsing Circle */}
+        <Animated.View style={{ 
+          position: 'absolute', 
+          top: 25,
+          width: 50, 
+          height: 50, 
+          borderRadius: 25, 
+          backgroundColor: '#1a1a2e',
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          transform: [{ scale: pulseAnim }]
+        }}>
+          <Ionicons name="film" size={24} color="#5B5FEF" />
+        </Animated.View>
+
+        <View style={{ marginTop: 40, alignItems: 'center' }}>
+          <Text style={{ 
+            color: '#fff', 
+            fontSize: 20, 
+            fontWeight: '900', 
+            letterSpacing: 2, 
+            textTransform: 'uppercase',
+            textShadowColor: 'rgba(91, 95, 239, 0.4)',
+            textShadowOffset: { width: 0, height: 2 },
+            textShadowRadius: 10
+          }}>
+            {message || "Loading"}
+          </Text>
+          
+          <View style={{ 
+            height: 2, 
+            width: 60, 
+            backgroundColor: '#5B5FEF', 
+            marginTop: 12, 
+            borderRadius: 1,
+            opacity: 0.8 
+          }} />
+
+          <Text style={{ 
+            color: 'rgba(255, 255, 255, 0.5)', 
+            fontSize: 13, 
+            fontWeight: '600', 
+            marginTop: 15,
+            textAlign: 'center',
+            lineHeight: 20
+          }}>
+            {subMessage || "Please wait..."}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig } = useMovies();
@@ -6247,6 +6367,7 @@ export default function HomeScreen() {
   const [isUserMuted, setIsUserMuted] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  const [isStackLoading, setIsStackLoading] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
 
@@ -6483,6 +6604,7 @@ export default function HomeScreen() {
     const movieSub = DeviceEventEmitter.addListener(
       "movieSelected",
       (m: (Movie | Series) & { autoPlay?: boolean }) => {
+        setIsStackLoading(true);
         const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
         if (isSeries) {
           router.push(`/(tabs)/saved?seriesId=${m.id}`);
@@ -6495,6 +6617,7 @@ export default function HomeScreen() {
             return [...prev, { type: 'movie', movie: m }];
           });
         }
+        setTimeout(() => setIsStackLoading(false), 1200);
       },
     );
 
@@ -6852,9 +6975,15 @@ export default function HomeScreen() {
                 isFocused={isFocused}
                 appState={appState}
               />
-
             );
           })}
+          
+          {isStackLoading && (
+            <ModernLoader 
+              message="Opening Content..."
+              subMessage="Preparing your viewing experience"
+            />
+          )}
         </View>
       )}
       </Animated.View>

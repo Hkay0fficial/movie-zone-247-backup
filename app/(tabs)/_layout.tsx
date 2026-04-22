@@ -2332,6 +2332,8 @@ function CustomTabBar() {
   const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
   const [reopenOnBack, setReopenOnBack] = useState(false);
   const [reopenGridOnBack, setReopenGridOnBack] = useState(false);
+  const [lastGridTitle, setLastGridTitle] = useState("");
+  const [lastGridData, setLastGridData] = useState<(Movie | Series)[]>([]);
   const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
   const [seriesCount, setSeriesCount] = useState<number | null>(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -2381,15 +2383,7 @@ function CustomTabBar() {
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("previewClosed", () => {
-      if (reopenGridOnBack) {
-        setReopenGridOnBack(false);
-        // We ensure reopenOnBack is true so that closing the grid 
-        // will return to the notification list.
-        setReopenOnBack(true); 
-        setTimeout(() => {
-          setGlobalGridVisible(true);
-        }, 300);
-      } else if (reopenOnBack) {
+      if (reopenOnBack) {
         if (lastViewedItemId) {
           toggleCheckedItem(lastViewedItemId);
           setLastViewedItemId(null);
@@ -2412,7 +2406,7 @@ function CustomTabBar() {
       sub2.remove();
       sub3.remove();
     };
-  }, [reopenOnBack, reopenGridOnBack, lastViewedItemId, liveMovies, liveSeries]);
+  }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries]);
 
   useEffect(() => {
     notifications.forEach(item => {
@@ -2557,8 +2551,7 @@ function CustomTabBar() {
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
         setGlobalGridVisible(true);
-        setReopenOnBack(true);
-        setNotificationVisible(false);
+        setNotificationVisible(false); // Auto-close overlay when opening grid
         return;
       }
     }
@@ -2616,18 +2609,10 @@ function CustomTabBar() {
         visible={globalGridVisible}
         title={globalGridTitle}
         data={globalGridData}
+        onClose={() => setGlobalGridVisible(false)}
         onSelect={(m) => {
           setGlobalGridVisible(false);
-          setReopenGridOnBack(true); // Re-open grid when preview closes
           DeviceEventEmitter.emit("movieSelected", m);
-        }}
-        onClose={() => {
-          setGlobalGridVisible(false);
-          if (reopenOnBack) {
-            // If we came from a notification, return to it
-            setTimeout(() => setNotificationVisible(true), 300);
-            setReopenOnBack(false);
-          }
         }}
       />
       {/* Background for 3-button nav */}
