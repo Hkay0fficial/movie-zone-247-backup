@@ -20,12 +20,12 @@ import { BlurView } from 'expo-blur';
  * When a new update is found and downloaded, it prompts the user to reload the app.
  */
 export default function OTAUpdateGuard() {
+  const { playerMode } = useSubscription();
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const checkUpdates = async () => {
-    // Skip update checks in development mode for better performance
     if (__DEV__) return;
 
     try {
@@ -41,15 +41,19 @@ export default function OTAUpdateGuard() {
     } catch (e: any) {
       console.warn("OTA Check Error:", e);
       setIsDownloading(false);
-      // We don't set error state here to avoid blocking users on network failure
     }
   };
 
+  // Auto-reload when safe
   useEffect(() => {
-    // Initial check on mount
+    if (updateAvailable && (playerMode === 'closed' || playerMode === 'mini')) {
+      Updates.reloadAsync();
+    }
+  }, [updateAvailable, playerMode]);
+
+  useEffect(() => {
     checkUpdates();
 
-    // Check again when app comes back to foreground
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
         checkUpdates();

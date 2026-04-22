@@ -2083,13 +2083,18 @@ export function SeriesPreviewContent({
   } = useMovies();
   const { profile, user } = useUser();
   const {
-    subscriptionBundle,
     allMoviesFree,
+    subscriptionBundle,
     isGuest,
-    favorites,
     toggleFavorite,
+    favorites,
+    checkDeviceLimit,
     recordTrialUsage,
     isDeviceBlocked,
+    activeDeviceIds,
+    removeDevice,
+    deviceLimit,
+    setIsPreview,
   } = useSubscription();
 
   const {
@@ -2352,6 +2357,7 @@ export function SeriesPreviewContent({
           onPress={() => {
             // Prioritize local downloaded file for offline playback
             const localUri = ctxEpisodeDownloads[activeEpisode.id];
+            if (setIsPreview) setIsPreview(true);
             if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || activeEpisode.videoUrl || previewVideoUrl || "");
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
@@ -2847,6 +2853,7 @@ export function MoviePreviewContent({
     activeDeviceIds,
     removeDevice,
     deviceLimit,
+    setIsPreview,
   } = useSubscription();
 
   const {
@@ -3933,6 +3940,7 @@ export function MoviePreviewContent({
                           const titleToPlay = currentPlayerTitle;
 
                           if (videoUri) {
+                            setIsPreview?.(true);
                             setSelectedVideoUrl?.(videoUri);
                             setPlayerTitle?.(titleToPlay);
                             setPlayingNow?.(movie as Movie);
@@ -5580,6 +5588,21 @@ export function MoviePreviewContent({
 
 
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
+export function MoviePreviewModal(props: any) {
+  if (!props.movie) return null;
+  return (
+    <Modal
+      visible={!!props.movie}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={props.onClose}
+    >
+      <MoviePreviewContent {...props} />
+    </Modal>
+  );
+}
+
 export function MovieCard({
   movie,
   onPress,
@@ -6051,14 +6074,14 @@ function HeroBanner({
 
           {/* Indicators moved to bottom of content */}
           <View style={styles.videoDotsInline}>
-            {LIVE_HERO_MOVIES.map((_, i) => (
+            {LIVE_HERO_MOVIES.slice(0, 8).map((_, i) => (
               <TouchableOpacity
                 key={i}
                 onPress={() => goTo(i)}
                 hitSlop={{ top: 15, bottom: 15, left: 10, right: 10 }}
               >
                 <View
-                  style={[styles.dot, i === videoIdx && styles.dotActive]}
+                  style={[styles.dot, i === (videoIdx % 8) && styles.dotActive]}
                 />
               </TouchableOpacity>
             ))}
@@ -6203,7 +6226,8 @@ export default function HomeScreen() {
     playerTitle,
     setPlayerTitle,
     selectedVideoUrl,
-    setSelectedVideoUrl
+    setSelectedVideoUrl,
+    setIsPreview
   } = useSubscription();
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
@@ -6480,7 +6504,15 @@ export default function HomeScreen() {
       "sectionSelected",
       (title: string) => {
         const found = ALL_ROWS.find((r) => r.title === title);
-        if (found) setNavigationStack(prev => [...prev, { type: 'grid', title: found.title, data: found.data }]);
+        if (found) {
+          setNavigationStack(prev => {
+            if (prev.length > 0) {
+              const top = prev[prev.length - 1];
+              if (top.type === 'grid' && top.title === found.title) return prev;
+            }
+            return [...prev, { type: 'grid', title: found.title, data: found.data }];
+          });
+        }
       },
     );
     return () => {
@@ -6673,7 +6705,15 @@ export default function HomeScreen() {
             key={row.title}
             title={row.title}
             data={row.data}
-            onSeeAll={() => setNavigationStack(prev => [...prev, { type: 'grid', title: row.title, data: row.data }])}
+            onSeeAll={() => {
+              setNavigationStack(prev => {
+                if (prev.length > 0) {
+                  const top = prev[prev.length - 1];
+                  if (top.type === 'grid' && top.title === row.title) return prev;
+                }
+                return [...prev, { type: 'grid', title: row.title, data: row.data }];
+              });
+            }}
             onSelect={(m) => {
               const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
               if (isSeries) {
@@ -6778,7 +6818,15 @@ export default function HomeScreen() {
                     });
                   }
                 }}
-                onSeeAll={(title: string, data: (Movie | Series)[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
+                onSeeAll={(title: string, data: (Movie | Series)[]) => {
+                  setNavigationStack((prev) => {
+                    if (prev.length > 0) {
+                      const top = prev[prev.length - 1];
+                      if (top.type === 'grid' && top.title === title) return prev;
+                    }
+                    return [...prev, { type: 'grid', title, data }];
+                  });
+                }}
                 playingNow={playingNow}
                 setPlayingNow={setPlayingNow}
                 setPlayerMode={setPlayerMode}

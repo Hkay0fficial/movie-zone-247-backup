@@ -515,7 +515,7 @@ export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { allRows: ALL_ROWS } = useMovies();
-  const { isGuest } = useSubscription();
+  const { isGuest, isPreview, setIsPreview } = useSubscription();
   const [query, setQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
@@ -657,6 +657,8 @@ export default function CategoryScreen() {
                 playerTitle={playerTitle}
                 playerPos={playerPos}
                 playerSize={playerSize}
+                isPreview={isPreview}
+                setIsPreview={setIsPreview}
               />
             );
           })}
@@ -682,6 +684,8 @@ export default function CategoryScreen() {
           playerTitle={playerTitle}
           playerPos={playerPos}
           playerSize={playerSize}
+          isPreview={isPreview}
+          setIsPreview={setIsPreview}
         />
       )}
 
@@ -730,7 +734,11 @@ export default function CategoryScreen() {
         title={playerTitle}
         playerPos={playerPos}
         playerSize={playerSize}
-        onClose={() => setPlayerMode('closed')}
+        isPreview={isPreview}
+        onClose={() => {
+          setPlayerMode('closed');
+          setIsPreview(false);
+        }}
       />
     </View>
   );

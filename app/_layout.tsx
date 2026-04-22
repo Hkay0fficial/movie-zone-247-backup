@@ -33,7 +33,8 @@ function ModernVideoPlayerWrapper() {
     playerMode, setPlayerMode, 
     playerTitle, selectedVideoUrl,
     setPlayingNow, playingNow,
-    playerPos, playerSize
+    playerPos, playerSize, isPreview,
+    setIsPreview
   } = useSubscription();
   const router = useRouter();
 
@@ -47,12 +48,13 @@ function ModernVideoPlayerWrapper() {
       setPlayingNow={setPlayingNow}
       playerPos={playerPos}
       playerSize={playerSize}
+      isPreview={isPreview}
       onClose={() => {
         // Detect if we are playing a local download
         const isLocal = selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http');
-        
         setPlayerMode('closed');
         setPlayingNow(null);
+        setIsPreview(false);
 
         if (isLocal && playerMode === 'full') {
           // Auto-restore logic: Navigate to menu tab with section param for instant open

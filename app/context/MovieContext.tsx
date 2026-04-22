@@ -187,6 +187,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
 
         setAppUpdateConfig({
           latestVersion,
+          latestBuild: data.latestBuild || '0',
           updateMessage: data.updateMessage || 'A new update is available with improvements and bug fixes.',
           forceUpdate: data.forceUpdate || false,
           isUpdateAvailable
@@ -379,7 +380,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const heroMovies: HeroMovie[] = [
       ...adminHeroMovies,
       ...newReleaseFallback,
-    ].slice(0, 8);
+    ].slice(0, 20);
 
     // Rebuild ALL_ROWS dynamically based on the Admin Portal's Layout Manager
     let allRows: { title: string; data: (Movie | Series)[] }[] = [];

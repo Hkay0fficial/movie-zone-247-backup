@@ -48,6 +48,7 @@ interface SubscriptionContextType {
   deviceLimit: number;
   minAppVersion: string;
   latestVersion: string;
+  latestBuild: string;
   forceUpdate: boolean;
   updateMessage: string;
   playingNow: Movie | Series | null;
@@ -60,6 +61,8 @@ interface SubscriptionContextType {
   setSelectedVideoUrl: (url: string) => void;
   playerPos: Animated.ValueXY;
   playerSize: Animated.Value;
+  isPreview: boolean;
+  setIsPreview: (v: boolean) => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -71,6 +74,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [eventMessage, setEventMessage] = useState('');
   const [minAppVersion, setMinAppVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
+  const [latestBuild, setLatestBuild] = useState('');
   const [forceUpdate, setForceUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [isGuest, setIsGuest] = useState(true);
@@ -78,6 +82,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
   const [playerTitle, setPlayerTitle] = useState('');
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [favorites, setFavorites] = useState<(Movie | Series)[]>([]);
@@ -269,6 +274,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (snap.exists()) {
         const data = snap.data();
         setLatestVersion(data.latestVersion || '');
+        setLatestBuild(data.latestBuild || '0');
         setForceUpdate(data.forceUpdate || false);
         setUpdateMessage(data.updateMessage || '');
       }
@@ -366,6 +372,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       deviceLimit,
       minAppVersion,
       latestVersion,
+      latestBuild,
       forceUpdate,
       updateMessage,
       playingNow,
@@ -378,6 +385,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSelectedVideoUrl,
       playerPos,
       playerSize,
+      isPreview,
+      setIsPreview,
     }}>
       {children}
     </SubscriptionContext.Provider>

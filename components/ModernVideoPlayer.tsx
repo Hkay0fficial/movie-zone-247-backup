@@ -68,6 +68,7 @@ interface ModernVideoPlayerProps {
   episodeId?: string;
   playingNow?: Movie | Series | null;
   setPlayingNow?: (m: Movie | Series | null) => void;
+  isPreview?: boolean;
 }
 
 export default function ModernVideoPlayer({
@@ -93,7 +94,8 @@ export default function ModernVideoPlayer({
   movieId,
   episodeId,
   playingNow,
-  setPlayingNow
+  setPlayingNow,
+  isPreview
 }: ModernVideoPlayerProps) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
@@ -510,9 +512,18 @@ export default function ModernVideoPlayer({
           resizeMode={ResizeMode.COVER}
           shouldPlay={playerMode !== 'closed' && isFocused && appState === 'active'}
           useNativeControls={false}
+          isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
           onPlaybackStatusUpdate={s => {
             setStatus(s);
             statusRef.current = s;
+
+            // 40-second cutoff for previews (all users as requested)
+            if (isPreview && s.isLoaded && s.positionMillis >= 40000) {
+              videoRef.current?.pauseAsync();
+              // Prevent further playback of this preview
+              return;
+            }
+
             if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
               onNext();
             }
