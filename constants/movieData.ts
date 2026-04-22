@@ -152,6 +152,14 @@ export const getStreamUrl = (item: Movie | Series | any): string => {
   return '';
 };
 
+/**
+ * Resolves the preview clip URL for a movie or series.
+ */
+export function getPreviewClipUrl(item: Movie | Series): string | null {
+  if (!item) return null;
+  return item.previewUrl || null;
+}
+
 // ─── Per-section lists ────────────────────────────────────────────────────────
 // --- Internal Raw Data (Containing both Free and Paid) ---
 const _RAW_NEW_RELEASES: Movie[] = [];

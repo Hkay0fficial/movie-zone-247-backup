@@ -6563,7 +6563,7 @@ export default function HomeScreen() {
     const sectionSub = DeviceEventEmitter.addListener(
       "sectionSelected",
       (title: string) => {
-        const found = ALL_ROWS.find((r) => r.title === title);
+        const found = liveRows.find((r) => r.title === title);
         if (found) {
           setNavigationStack(prev => {
             if (prev.length > 0) {

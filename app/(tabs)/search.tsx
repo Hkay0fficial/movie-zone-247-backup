@@ -16,13 +16,14 @@ import {
   Keyboard,
   Easing,
   DeviceEventEmitter,
+  ActivityIndicator,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ALL_ROWS, ALL_SERIES, Movie, Series } from '@/constants/movieData';
+import { Movie, Series } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
 import { useUser } from '../context/UserContext';
 
@@ -64,7 +65,7 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { allRows: ALL_ROWS, allSeries: ALL_SERIES } = useMovies();
+  const { allMovies, allSeries, loading } = useMovies();
   const { profile } = useUser();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(Movie | Series)[]>([]);
@@ -76,26 +77,15 @@ export default function SearchScreen() {
     const seen = new Set<string>();
     const pool: (Movie | Series)[] = [];
     
-    // Add all structured rows (movies + featured series)
-    ALL_ROWS.forEach(row => {
-      row.data.forEach(item => {
-        if (!seen.has(item.id)) {
-          seen.add(item.id);
-          pool.push(item);
-        }
-      });
-    });
-
-    // Explicitly add all series (some might not be in featured rows)
-    ALL_SERIES.forEach(item => {
-      if (!seen.has(item.id)) {
+    [...(allMovies || []), ...(allSeries || [])].forEach(item => {
+      if (item && item.id && !seen.has(item.id)) {
         seen.add(item.id);
         pool.push(item);
       }
     });
 
     return pool;
-  }, []);
+  }, [allMovies, allSeries]);
 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
@@ -105,22 +95,21 @@ export default function SearchScreen() {
     }
 
     const q = text.toLowerCase().trim();
-    const filtered = allContent.filter(item => 
-      item.title.toLowerCase().includes(q) ||
-      item.genre.toLowerCase().includes(q) ||
-      item.vj.toLowerCase().includes(q) ||
-      String(item.year).includes(q)
-    );
+    const filtered = allContent.filter(item => {
+      const title = item.title?.toLowerCase() || '';
+      const genre = item.genre?.toLowerCase() || '';
+      const vj = item.vj?.toLowerCase() || '';
+      const year = String(item.year || '');
+      
+      return title.includes(q) ||
+             genre.includes(q) ||
+             vj.includes(q) ||
+             year.includes(q);
+    });
     setResults(filtered);
   }, [allContent]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
@@ -154,7 +143,12 @@ export default function SearchScreen() {
           <Image source={{ uri: profile.profilePhoto }} style={styles.profilePic} />
         </Animated.View>
 
-        {query.trim() === '' ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#5B5FEF" />
+            <Text style={styles.loadingText}>Loading library...</Text>
+          </View>
+        ) : query.trim() === '' ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <LinearGradient
@@ -436,6 +430,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

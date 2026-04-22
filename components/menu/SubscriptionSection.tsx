@@ -52,7 +52,7 @@ interface SubscriptionSectionProps {
   setSelectedItem: (item: any) => void;
   handleShowPaymentModal: (show: boolean) => void;
   toggleSettingsModal: (item: any) => void;
-  MENU_ITEMS: any[];
+  menuItems: any[];
 }
 
 export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
@@ -79,7 +79,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
   setSelectedItem,
   handleShowPaymentModal,
   toggleSettingsModal,
-  MENU_ITEMS,
+  menuItems,
 }) => {
   if (showBillingHistory) {
     return (
@@ -131,7 +131,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
           <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>No Active Subscription</Text>
           <TouchableOpacity
             style={{ backgroundColor: '#f59e0b', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
-            onPress={() => toggleSettingsModal(MENU_ITEMS.find(m => m.id === '3') || null)}
+            onPress={() => toggleSettingsModal(menuItems.find(m => m.id === '3') || null)}
           >
             <Text style={{ color: '#fff', fontWeight: '900' }}>CHOOSE A PLAN</Text>
           </TouchableOpacity>
@@ -410,7 +410,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
           <View style={[styles.settingsList, { backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 20, marginTop: 12 }]}>
             {[
               { label: 'Billing History', icon: 'receipt-outline', color: '#818cf8', action: () => { setSavedScrollPosition(currentScrollY); setShowBillingHistory(true); } },
-              { label: 'Upgrade Plan', icon: 'options-outline', color: '#f59e0b', action: () => { setSavedScrollPosition(currentScrollY); setCameFromSubscription(true); setSelectedItem(MENU_ITEMS.find(m => m.id === '3') || null); } }
+              { label: 'Upgrade Plan', icon: 'options-outline', color: '#f59e0b', action: () => { setSavedScrollPosition(currentScrollY); setCameFromSubscription(true); setSelectedItem(menuItems.find(m => m.id === '3') || null); } }
             ].map((item, index, l) => (
               <TouchableOpacity key={item.label} style={[styles.settingsRow, index === l.length - 1 && { borderBottomWidth: 0 }, { height: 56, paddingHorizontal: 16 }]} onPress={item.action}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>

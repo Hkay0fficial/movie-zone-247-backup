@@ -13,12 +13,14 @@ import {
   Modal,
   SafeAreaView,
   TouchableWithoutFeedback,
+  Animated,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Movie, Series, shortenGenre } from "@/constants/movieData";
+import { Movie, Series, shortenGenre, getPreviewClipUrl } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useUser } from "@/app/context/UserContext";
 
@@ -42,13 +44,13 @@ export function GridCard({
   const isLocked = !isPaid && !movie.isFree;
 
   const [showPreview, setShowPreview] = useState(false);
-  const previewOpacity = useRef(new RNAnimated.Value(0)).current;
+  const previewOpacity = useRef(new Animated.Value(0)).current;
   const previewClip = getPreviewClipUrl(movie);
 
   const startPreview = () => {
     if (!previewClip) return;
     setShowPreview(true);
-    RNAnimated.timing(previewOpacity, {
+    Animated.timing(previewOpacity, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
@@ -56,7 +58,7 @@ export function GridCard({
   };
 
   const stopPreview = () => {
-    RNAnimated.timing(previewOpacity, {
+    Animated.timing(previewOpacity, {
       toValue: 0,
       duration: 200,
       useNativeDriver: true,
@@ -79,9 +81,8 @@ export function GridCard({
       />
 
       {/* Preview Overlay (animated WebP or Video) */}
-      <AnimatePresence>
         {showPreview && previewClip && (
-          <RNAnimated.View
+          <Animated.View
             style={[
               StyleSheet.absoluteFill,
               {
@@ -119,9 +120,8 @@ export function GridCard({
                 height: 40,
               }}
             />
-          </RNAnimated.View>
+          </Animated.View>
         )}
-      </AnimatePresence>
 
       {/* View Indicator (Checkmark) - top-left */}
 

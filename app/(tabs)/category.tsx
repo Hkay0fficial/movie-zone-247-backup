@@ -17,6 +17,7 @@ import {
   Animated,
   Keyboard,
   Easing,
+  ActivityIndicator,
 } from "react-native";
 
 // ─── Marquee Placeholder Component ─────────────────────────────────────────────
@@ -354,7 +355,7 @@ function VJRequestModal({
   genre: string;
   onSelectMovie: (m: Movie | Series) => void;
 }) {
-  const { allRows: ALL_ROWS } = useMovies();
+  const { allMovies, allSeries, loading } = useMovies();
   const [search, setSearch] = useState("");
   const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -367,17 +368,22 @@ function VJRequestModal({
   // Movies for the selected VJ + specific genre (or 'all' for general requests)
   const genreMovies = React.useMemo(() => {
     if (!selectedVJ) return [];
-    const all = ALL_ROWS.flatMap((r) => r.data);
-    const unique = Array.from(new Map(all.map((m) => [m.id, m])).values());
+    const pool = [...(allMovies || []), ...(allSeries || [])];
+    const seen = new Set();
+    const unique = pool.filter(m => {
+      if (!m.id || seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
 
     return unique.filter((m) => {
       const matchVJ = m.vj
-        .toLowerCase()
+        ?.toLowerCase()
         .includes(selectedVJ.toLowerCase().replace("vj ", ""));
       if (genre === "all" || genre === "request") return matchVJ;
-      return matchVJ && m.genre.toLowerCase().includes(genre.toLowerCase());
+      return matchVJ && m.genre?.toLowerCase().includes(genre.toLowerCase());
     });
-  }, [selectedVJ, genre]);
+  }, [selectedVJ, genre, allMovies, allSeries]);
 
   useEffect(() => {
     // Keyboard listeners removed in favor of KeyboardAvoidingView
@@ -514,7 +520,7 @@ function GenreCard({ item, onPress }: { item: any; onPress: () => void }) {
 export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { allRows: ALL_ROWS } = useMovies();
+  const { allMovies, allSeries, loading } = useMovies();
   const { isGuest, isPreview, setIsPreview } = useSubscription();
   const [query, setQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -554,10 +560,23 @@ export default function CategoryScreen() {
 
   const gridMovies = React.useMemo(() => {
     if (!selectedItem) return [];
-    const all = ALL_ROWS.flatMap((r) => r.data);
-    const unique = Array.from(new Map(all.map((m) => [m.id, m])).values());
-    return unique.filter((m) => m.genre.includes(selectedItem.name));
-  }, [selectedItem]);
+    const pool = [...(allMovies || []), ...(allSeries || [])];
+    const seen = new Set();
+    const unique = pool.filter(m => {
+      if (!m.id || seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+    return unique.filter((m) => m.genre?.toLowerCase().includes(selectedItem.name.toLowerCase()));
+  }, [selectedItem, allMovies, allSeries]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#E50914" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
