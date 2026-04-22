@@ -12,7 +12,6 @@ import {
   TextInput,
   Modal,
   SafeAreaView,
-  Animated as RNAnimated,
   TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,12 +20,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series, shortenGenre } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
-import { getPreviewClipUrl } from "@/constants/bunnyConfig";
-import { Video, ResizeMode } from "expo-av";
 import { useUser } from "@/app/context/UserContext";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-
 
 // ─── Grid Card Component (matches home screen MovieCard exactly) ───────────────
 export function GridCard({
@@ -76,44 +72,56 @@ export function GridCard({
       delayLongPress={400}
       activeOpacity={0.85}
     >
-      {/* Static Poster */}
+      {/* Poster */}
       <Image
         source={{ uri: movie.poster }}
         style={styles.gridPoster}
       />
 
       {/* Preview Overlay (animated WebP or Video) */}
-      {showPreview && previewClip && (
-        <RNAnimated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { opacity: previewOpacity, zIndex: 10 },
-          ]}
-          pointerEvents="none"
-        >
-          {previewClip.type === 'webp' ? (
-            <Image
-              source={{ uri: previewClip.url }}
-              style={[styles.gridPoster, { position: 'absolute', top: 0, left: 0, right: 0 }]}
-              resizeMode="cover"
+      <AnimatePresence>
+        {showPreview && previewClip && (
+          <RNAnimated.View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: previewOpacity,
+                backgroundColor: "#000",
+                zIndex: 10,
+                borderRadius: 12,
+                overflow: "hidden",
+              },
+            ]}
+          >
+            {previewClip.endsWith(".mp4") ? (
+              <Video
+                source={{ uri: previewClip }}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isMuted
+                isLooping
+              />
+            ) : (
+              <Image
+                source={{ uri: previewClip }}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            {/* Soft gradient to blend with the card bottom info if needed */}
+            <LinearGradient
+              colors={["transparent", "rgba(10,10,15,0.8)"]}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 40,
+              }}
             />
-          ) : (
-            <Video
-              source={{ uri: previewClip.url }}
-              style={[styles.gridPoster, { position: 'absolute', top: 0, left: 0, right: 0 }]}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay
-              isLooping
-              isMuted
-            />
-          )}
-          {/* PREVIEW badge */}
-          <View style={styles.previewBadge}>
-            <View style={styles.previewDot} />
-            <Text style={styles.previewBadgeText}>PREVIEW</Text>
-          </View>
-        </RNAnimated.View>
-      )}
+          </RNAnimated.View>
+        )}
+      </AnimatePresence>
 
       {/* View Indicator (Checkmark) - top-left */}
 
@@ -164,7 +172,6 @@ export function GridCard({
     </TouchableOpacity>
   );
 }
-
 
 // ─── Grid Modal Component ─────────────────────────────────────────────────────
 export function GridContent({
@@ -395,35 +402,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     textAlign: 'center',
-  },
-
-  // Preview badge (shown during long-press preview)
-  previewBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 60, 60, 0.5)',
-    gap: 4,
-  },
-  previewDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#ff3c3c',
-  },
-  previewBadgeText: {
-    color: '#fff',
-    fontSize: 7,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
 
   // Modal Header Styles

@@ -46,6 +46,7 @@ interface SubscriptionContextType {
   activeDeviceIds: string[];
   removeDevice: (id: string) => Promise<void>;
   deviceLimit: number;
+  customExternalLimit: number;
   minAppVersion: string;
   latestVersion: string;
   latestBuild: string;
@@ -77,6 +78,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [latestBuild, setLatestBuild] = useState('');
   const [forceUpdate, setForceUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
+  const [customExternalLimit, setCustomExternalLimit] = useState(0);
+  const [customDeviceLimit, setCustomDeviceLimit] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
   const [playingNow, setPlayingNow] = useState<Movie | Series | null>(null);
   const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
@@ -130,10 +133,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             const fetchedActiveDevices = userData.activeDeviceIds || [];
             setActiveDeviceIds(fetchedActiveDevices);
+            
+            const extLimit = userData.customExternalLimit || 0;
+            const devLimit = userData.customDeviceLimit || 0;
+            setCustomExternalLimit(extLimit);
+            setCustomDeviceLimit(devLimit);
 
             // Device limit check
             if (user && !user.isAnonymous && bundle !== 'None' && deviceId) {
-              const limit = planDeviceLimits[bundle] || 1;
+              const baseLimit = planDeviceLimits[bundle] || 1;
+              const limit = devLimit > 0 ? devLimit : baseLimit;
               const isAllowed = fetchedActiveDevices.includes(deviceId);
 
               if (isAllowed) {
@@ -377,7 +386,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const isPaid = subscriptionBundle !== 'None';
-  const deviceLimit = planDeviceLimits[subscriptionBundle] || 1;
+  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (planDeviceLimits[subscriptionBundle] || 1);
 
   // Global Player Animated Values
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
@@ -400,6 +409,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       activeDeviceIds,
       removeDevice,
       deviceLimit,
+      customExternalLimit,
       minAppVersion,
       latestVersion,
       latestBuild,

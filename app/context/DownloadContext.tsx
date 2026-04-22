@@ -166,6 +166,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // ── Logic Helpers ───────────────────────────────────────────────────────────
   const getExternalDownloadLimit = () => {
     if (isGuest) return 1; // 1 Free Trial
+    if ((useSubscription() as any).customExternalLimit > 0) return (useSubscription() as any).customExternalLimit;
     const limits: Record<string, number> = {
       '1 week': 1, '2 weeks': 2, '1 Month': 3, '2 months': 5, 'Premium': 10, 'VIP': 999, 'None': 0
     };
