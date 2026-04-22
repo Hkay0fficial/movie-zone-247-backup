@@ -13,6 +13,7 @@ import {
   Modal,
   SafeAreaView,
   Animated as RNAnimated,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -22,6 +23,7 @@ import { Movie, Series, shortenGenre } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { getPreviewClipUrl } from "@/constants/bunnyConfig";
 import { Video, ResizeMode } from "expo-av";
+import { useUser } from "@/app/context/UserContext";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -113,12 +115,14 @@ export function GridCard({
         </RNAnimated.View>
       )}
 
+      {/* View Indicator (Checkmark) - top-left */}
+
       {/* VJ Badge — top-right, identical to home screen */}
       <View style={styles.vjBadge}>
         <Text style={styles.vjBadgeText}>{movie.vj}</Text>
       </View>
 
-      {/* Lock — top-left */}
+      {/* Lock — top-left (offset if viewed) */}
       {isLocked && (
         <View style={styles.lockBadge}>
           <Ionicons name="lock-closed" size={9} color="#fff" />
@@ -132,11 +136,18 @@ export function GridCard({
         </Text>
       </View>
 
-      {"seasons" in movie && (
+      {"seasons" in movie ? (
         <View style={styles.epBadgePremium}>
           <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
           <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
         </View>
+      ) : (
+        ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+          <View style={styles.epBadgePremium}>
+            <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
+            <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+          </View>
+        )
       )}
 
       {/* Card info */}
@@ -190,6 +201,9 @@ export function GridContent({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={StyleSheet.absoluteFill} />
+      </TouchableWithoutFeedback>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView style={{ flex: 1 }}>
         

@@ -35,6 +35,7 @@ interface SupportSectionProps {
   pickMedia: (type: 'image' | 'video') => Promise<void>;
   removeMedia: (uri: string) => void;
   userName: string;
+  dynamicFaqs: any[];
 }
 
 export const SupportSection: React.FC<SupportSectionProps> = ({
@@ -63,6 +64,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
   pickMedia,
   removeMedia,
   userName,
+  dynamicFaqs,
 }) => {
   if (showRatingPreview) {
     return (
@@ -189,7 +191,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
     );
   }
 
-  const faqs = [
+  const defaultFaqs = [
     { q: 'How do I download movies for offline viewing?', a: 'Tap the download icon on any movie or series. Downloads are available for Premium subscribers. Find your downloads in the "My Downloads" section under your profile.' },
     { q: 'Why is my video buffering or lagging?', a: 'Check your internet connection first. We recommend at least 5 Mbps for HD streaming.' },
     { q: 'Can I watch on multiple devices?', a: 'Premium plans allow up to 3 simultaneous streams. Basic plans allow 1 device at a time. You can manage active sessions under Account → Password & Security → Login Activity.' },
@@ -198,6 +200,8 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
     { q: 'Is my payment information secure?', a: 'Yes. We do not store card details on our servers. All payments are processed through secure, encrypted payment gateways (MTN, Airtel, Card).' },
     { q: 'How do I update my email or password?', a: 'Go to Profile → Account → Personal Info to update your email. For password changes go to Account → Password & Security → Change Password.' },
   ];
+
+  const faqs = dynamicFaqs && dynamicFaqs.length > 0 ? dynamicFaqs : defaultFaqs;
 
   return (
     <View style={styles.settingsContentSection}>

@@ -71,7 +71,7 @@ interface MenuItem {
   color: string;
 }
 
-const MENU_ITEMS: MenuItem[] = [
+const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: '1', title: 'My Account', subtitle: 'Manage your profile & security', icon: 'person-outline', color: '#818cf8' },
   { id: 'admin', title: 'Admin Panel', subtitle: 'Content management dashboard', icon: 'shield-checkmark-outline', color: '#ef4444' },
   { id: '2', title: 'My Subscription', subtitle: 'Plan, billing, renewal', icon: 'diamond-outline', color: '#f59e0b' },
@@ -101,6 +101,27 @@ export default function MenuScreen() {
   const [localRating, setLocalRating] = React.useState(0);
   const [isLocalRatingSubmitted, setIsLocalRatingSubmitted] = React.useState(false);
   const [hasDismissedReviewReminder, setHasDismissedReviewReminder] = React.useState(false);
+  const [menuItems, setMenuItems] = React.useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  const [dynamicFaqs, setDynamicFaqs] = React.useState<any[]>([]);
+  const [isMenuLoading, setIsMenuLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const configRef = doc(db, "config", "app_profile");
+    const unsub = onSnapshot(configRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.menuItems) {
+          setMenuItems(data.menuItems.filter((item: any) => item.isVisible !== false));
+        }
+        if (data.faqs) {
+          setDynamicFaqs(data.faqs);
+        }
+      }
+      setIsMenuLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
   const aboutScrollRef = React.useRef<ScrollView>(null);
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
   const [selectedSubItem, setSelectedSubItem] = React.useState<string | null>(null);
@@ -149,7 +170,7 @@ export default function MenuScreen() {
   // Instant restoration via URL params
   React.useEffect(() => {
     if (params.section) {
-      const item = MENU_ITEMS.find(i => i.id === params.section);
+      const item = menuItems.find(i => i.id === params.section);
       if (item) {
         setSelectedItem(item);
         // Clear param after opening to avoid re-opening on every mount/update if navigated back
@@ -268,10 +289,10 @@ export default function MenuScreen() {
     }
     
     if (notif.type === 'subscription') {
-      const subItem = MENU_ITEMS.find(i => i.id === '2');
+      const subItem = menuItems.find(i => i.id === '2');
       if (subItem) setSelectedItem(subItem);
     } else if (notif.type === 'security') {
-      const accItem = MENU_ITEMS.find(i => i.id === '1');
+      const accItem = menuItems.find(i => i.id === '1');
       if (accItem) {
         setSelectedItem(accItem);
         setSelectedSubItem('Password & Security');
@@ -770,7 +791,7 @@ export default function MenuScreen() {
       }, 800);
     }
     if (params.upgrade === 'true') {
-      setSelectedItem(MENU_ITEMS.find(m => m.id === '3') || null);
+      setSelectedItem(menuItems.find(m => m.id === '3') || null);
     }
   }, [params.showAbout, params.upgrade]);
 
@@ -1381,6 +1402,7 @@ export default function MenuScreen() {
                     pickMedia={pickMedia}
                     removeMedia={removeMedia}
                     userName={userName}
+                    dynamicFaqs={dynamicFaqs}
                   />
                 )}
                 <AboutSection selectedItem={selectedItem} />
@@ -1610,17 +1632,17 @@ export default function MenuScreen() {
               setShowGuestPlanModal(true);
             } else if (isSubscribed) {
               // If already subscribed, show subscription details
-              setSelectedItem(MENU_ITEMS.find(m => m.id === '2') || null);
+              setSelectedItem(menuItems.find(m => m.id === '2') || null);
             } else {
               // If not subscribed, show plans
-              setSelectedItem(MENU_ITEMS.find(m => m.id === '3') || null);
+              setSelectedItem(menuItems.find(m => m.id === '3') || null);
             }
           }}
         />
 
         {/* ── Settings List ── */}
         <SettingsList
-          menuItems={MENU_ITEMS}
+          menuItems={menuItems}
           userEmail={userEmail}
           onItemPress={(item) => {
             if (isGuest && (item.id === '1' || item.id === '2')) {

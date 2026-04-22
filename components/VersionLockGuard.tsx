@@ -23,15 +23,19 @@ function compareVersions(v1: string, v2: string): number {
 }
 
 export default function VersionLockGuard() {
-  const { latestVersion, forceUpdate, updateMessage } = useSubscription();
+  const { latestVersion, latestBuild, forceUpdate, updateMessage } = useSubscription();
   const [isLocked, setIsLocked] = useState(false);
   const currentVersion = Application.nativeApplicationVersion || "1.0.0";
+  const currentBuild = Application.nativeBuildVersion || "0";
 
   useEffect(() => {
     if (latestVersion && latestVersion.trim() !== '' && forceUpdate) {
       try {
-        // If the store version is greater than the current version, trigger full lock
-        if (compareVersions(latestVersion, currentVersion) > 0) {
+        const verCompare = compareVersions(latestVersion, currentVersion);
+        const buildCompare = Number(latestBuild) > Number(currentBuild);
+
+        // Lock if (Store Version is higher) OR (Store Version is same AND Build Number is higher)
+        if (verCompare > 0 || (verCompare === 0 && buildCompare)) {
           setIsLocked(true);
         } else {
           setIsLocked(false);
@@ -42,7 +46,7 @@ export default function VersionLockGuard() {
     } else {
       setIsLocked(false);
     }
-  }, [latestVersion, forceUpdate, currentVersion]);
+  }, [latestVersion, latestBuild, forceUpdate, currentVersion, currentBuild]);
 
   if (!isLocked) return null;
 

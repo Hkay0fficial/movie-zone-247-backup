@@ -14,14 +14,8 @@ import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-ic
 import {
   Series,
   Movie,
-  ALL_SERIES,
-  
   ALL_GENRES,
   ALL_VJS,
-  TRENDING_SERIES,
-  MOST_VIEWED_SERIES,
-  MOST_DOWNLOADED_SERIES,
-  NEW_SERIES,
 } from "@/constants/movieData";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useMovies } from "@/app/context/MovieContext";
@@ -261,7 +255,14 @@ const SERIES_CATEGORIES = [
 // ─── Series Screen ────────────────────────────────────────────────────────────
 export default function SeriesScreen() {
   const router = useRouter();
-  const { allSeries: ALL_SERIES, mostDownloadedSeries: MOST_DOWNLOADED_SERIES } = useMovies();
+  const { 
+    allSeries: ALL_SERIES, 
+    mostDownloadedSeries: MOST_DOWNLOADED_SERIES,
+    trendingSeries: TRENDING_SERIES,
+    mostViewedSeries: MOST_VIEWED_SERIES,
+    newSeries: NEW_SERIES,
+    youMayAlsoLike: YOU_MAY_ALSO_LIKE_SERIES
+  } = useMovies();
   // removed recordExternalDownload
   const [activeBrowseFilter, setActiveBrowseFilter] =
     useState<string>("Status");
@@ -955,6 +956,14 @@ function SeriesPreviewModal({
   } = useDownloads();
 
   const { profile } = useUser();
+  const { 
+    allSeries: ALL_SERIES,
+    trendingSeries: TRENDING_SERIES,
+    mostViewedSeries: MOST_VIEWED_SERIES,
+    mostDownloadedSeries: MOST_DOWNLOADED_SERIES,
+    newSeries: NEW_SERIES,
+    youMayAlsoLike: YOU_MAY_ALSO_LIKE_SERIES
+  } = useMovies();
 
   const handlePlayEpisode = () => {
     const canWatch = allMoviesFree || (series as any).isFree || isPaid;
@@ -1057,11 +1066,18 @@ function SeriesPreviewModal({
 
   const episodes = useMemo(() => {
     if (series.episodeList && series.episodeList.length > 0) {
+      const multiplier = series.episodesPerPart || 1;
       return series.episodeList.map((ep: any, index: number) => {
         const isFree = index < (series.freeEpisodesCount || 0) || series.isFree;
+        let displayIdx: any = index + 1;
+        if (multiplier > 1) {
+          const start = (index * multiplier) + 1;
+          const end = (index + 1) * multiplier;
+          displayIdx = `${start}-${end}`;
+        }
         return {
           id: `${series.id}-ep-${index}`,
-          displayIndex: index + 1,
+          displayIndex: displayIdx,
           title: ep.title,
           duration: series.episodeDuration || "45m",
           isPremium: !isFree,
@@ -1654,7 +1670,7 @@ function SeriesPreviewModal({
 
                   <View style={[styles.epTitleBadge, { backgroundColor: 'rgba(91, 95, 239, 0.2)', borderColor: 'rgba(91, 95, 239, 0.4)' }]}>
                     <Text style={[styles.epTitleBadgeText, { color: '#818cf8' }]}>
-                      EP {currentIndex >= 0 ? currentIndex + 1 : 1} / {episodes.length}
+                      EP {episodes[currentIndex]?.displayIndex || (currentIndex >= 0 ? currentIndex + 1 : 1)} / {episodes.length * (series.episodesPerPart || 1)}
                     </Text>
                   </View>
                 </View>
@@ -1964,7 +1980,7 @@ function SeriesPreviewModal({
                       </TouchableOpacity>
                       <View style={styles.epCountPillPremium}>
                         <Text style={styles.epCountTextPremium}>
-                          EP {episodes.length - (activeEpisodeId ? 1 : 0)}
+                          EP {episodes.length * (series.episodesPerPart || 1)}
                         </Text>
                       </View>
                       <Ionicons
@@ -2222,7 +2238,7 @@ function SeriesPreviewModal({
                   </TouchableOpacity>
                 </View>
                 <FlatList
-                  data={ALL_SERIES.slice(0, 8)}
+                  data={YOU_MAY_ALSO_LIKE_SERIES.filter(s => s.id !== series.id).slice(0, 8)}
                   keyExtractor={(s) => "s-yml-" + s.id}
                   horizontal
                   showsHorizontalScrollIndicator={false}

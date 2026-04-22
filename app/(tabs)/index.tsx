@@ -31,6 +31,7 @@ import {
   NativeModules,
   ActivityIndicator
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 import { 
@@ -850,6 +851,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
+  },
+  cardProgressBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  cardProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#ef4444',
   },
 
   // ── See-All Grid Modal ──
@@ -2083,13 +2096,18 @@ export function SeriesPreviewContent({
   } = useMovies();
   const { profile, user } = useUser();
   const {
-    subscriptionBundle,
     allMoviesFree,
+    subscriptionBundle,
     isGuest,
-    favorites,
     toggleFavorite,
+    favorites,
+    checkDeviceLimit,
     recordTrialUsage,
     isDeviceBlocked,
+    activeDeviceIds,
+    removeDevice,
+    deviceLimit,
+    setIsPreview,
   } = useSubscription();
 
   const {
@@ -2210,11 +2228,18 @@ export function SeriesPreviewContent({
 
   const episodes = useMemo(() => {
     if (series.episodeList && series.episodeList.length > 0) {
+      const multiplier = series.episodesPerPart || 1;
       return series.episodeList.map((ep: any, index: number) => {
         const isFree = index < (series.freeEpisodesCount || 0) || series.isFree;
+        let displayIdx: any = index + 1;
+        if (multiplier > 1) {
+          const start = (index * multiplier) + 1;
+          const end = (index + 1) * multiplier;
+          displayIdx = `${start}-${end}`;
+        }
         return {
           id: `${series.id}-ep-${index}`,
-          displayIndex: index + 1,
+          displayIndex: displayIdx,
           title: ep.title,
           duration: series.episodeDuration || "45m",
           isPremium: !isFree,
@@ -2352,6 +2377,7 @@ export function SeriesPreviewContent({
           onPress={() => {
             // Prioritize local downloaded file for offline playback
             const localUri = ctxEpisodeDownloads[activeEpisode.id];
+            if (setIsPreview) setIsPreview(true);
             if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || activeEpisode.videoUrl || previewVideoUrl || "");
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
@@ -2847,6 +2873,7 @@ export function MoviePreviewContent({
     activeDeviceIds,
     removeDevice,
     deviceLimit,
+    setIsPreview,
   } = useSubscription();
 
   const {
@@ -3391,19 +3418,29 @@ export function MoviePreviewContent({
 
     // 1. Check for Series episodes (NEW feature)
     if ((movie as any).episodeList && (movie as any).episodeList.length > 0) {
-       parts = (movie as any).episodeList.map((ep: any, index: number) => ({
-         id: `${movie.id}-ep-${index}`,
-         displayIndex: index + 1,
-         title: ep.title,
-         videoUrl: ep.url,
-         poster: movie.poster,
-         duration: ep.duration || (movie as any).duration || "", 
-         vj: movie.vj,
-         year: movie.year,
-         genre: movie.genre,
-         rating: movie.rating,
-         isFree: index < ((movie as any).freeEpisodesCount || 0) || movie.isFree,
-      }));
+       const multiplier = (movie as any).episodesPerPart || 1;
+       parts = (movie as any).episodeList.map((ep: any, index: number) => {
+         const isFree = index < ((movie as any).freeEpisodesCount || 0) || movie.isFree;
+         let displayIdx: any = index + 1;
+         if (multiplier > 1) {
+           const start = (index * multiplier) + 1;
+           const end = (index + 1) * multiplier;
+           displayIdx = `${start}-${end}`;
+         }
+         return {
+           id: `${movie.id}-ep-${index}`,
+           displayIndex: displayIdx,
+           title: ep.title,
+           videoUrl: ep.url,
+           poster: movie.poster,
+           duration: ep.duration || (movie as any).duration || "", 
+           vj: movie.vj,
+           year: movie.year,
+           genre: movie.genre,
+           rating: movie.rating,
+           isFree: isFree,
+         };
+       });
     } 
     // 2. Try explicit parts field (Movies legacy feature)
     else if ((movie as Movie).parts && (movie as Movie).parts!.length > 0) {
@@ -3933,6 +3970,7 @@ export function MoviePreviewContent({
                           const titleToPlay = currentPlayerTitle;
 
                           if (videoUri) {
+                            setIsPreview?.(true);
                             setSelectedVideoUrl?.(videoUri);
                             setPlayerTitle?.(titleToPlay);
                             setPlayingNow?.(movie as Movie);
@@ -4033,7 +4071,7 @@ export function MoviePreviewContent({
                               paddingVertical: 3,
                             }}>
                               <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
-                                EP {currentIndex + 1} / {movieParts.length}
+                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {movieParts.length * ((movie as any).episodesPerPart || 1)}
                               </Text>
                             </View>
                           )}
@@ -4054,7 +4092,7 @@ export function MoviePreviewContent({
                         borderColor: 'rgba(91, 95, 239, 0.4)', borderRadius: 6,
                         paddingHorizontal: 8, paddingVertical: 3,
                       }}>
-                        <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>PART {currentIndex + 1}</Text>
+                        <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '900' }}>PART {movieParts[currentIndex]?.displayIndex || currentIndex + 1}</Text>
                       </View>
                     )}
                   </View>
@@ -4356,7 +4394,7 @@ export function MoviePreviewContent({
                           <View style={{ flex: 1 }} />
                           <View style={styles.epCountPillPremium}>
                             <Text style={styles.epCountTextPremium}>
-                              {"seasons" in movie ? `${movieParts.length} EP` : `EP ${movieParts.length}`}
+                              {"seasons" in movie ? `${movieParts.length * ((movie as any).episodesPerPart || 1)} EP` : `EP ${movieParts.length * ((movie as any).episodesPerPart || 1)}`}
                             </Text>
                           </View>
                           <Ionicons
@@ -5580,6 +5618,21 @@ export function MoviePreviewContent({
 
 
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
+export function MoviePreviewModal(props: any) {
+  if (!props.movie) return null;
+  return (
+    <Modal
+      visible={!!props.movie}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={props.onClose}
+    >
+      <MoviePreviewContent {...props} />
+    </Modal>
+  );
+}
+
 export function MovieCard({
   movie,
   onPress,
@@ -5598,6 +5651,8 @@ export function MovieCard({
     >
       <View>
         <Image source={{ uri: movie.poster }} style={styles.cardPoster} />
+        
+
         <View style={styles.vjBadge}>
           <Text style={styles.vjBadgeText}>{movie.vj}</Text>
         </View>
@@ -5612,10 +5667,24 @@ export function MovieCard({
             {"seasons" in movie ? (movie.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(movie.genre)}
           </Text>
         </View>
-        {"seasons" in movie && (
+        {"seasons" in movie ? (
           <View style={styles.epBadgePremium}>
             <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
             <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
+          </View>
+        ) : (
+          ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+            <View style={styles.epBadgePremium}>
+               <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
+               <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+            </View>
+          )
+        )}
+
+        {/* Progress Bar for Continue Watching / Last Watched */}
+        {(movie as any).position > 0 && (movie as any).durationMillis > 0 && (
+          <View style={styles.cardProgressBarContainer}>
+            <View style={[styles.cardProgressBarFill, { width: `${Math.min(100, ((movie as any).position / (movie as any).durationMillis) * 100)}%` }]} />
           </View>
         )}
       </View>
@@ -5739,7 +5808,7 @@ function MovieRow({
       </View>
       <FlatList
         data={data}
-        keyExtractor={(m) => m.id}
+        keyExtractor={(m, index) => (m.id || `fallback-id-${index}`)}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowList}
@@ -6051,14 +6120,14 @@ function HeroBanner({
 
           {/* Indicators moved to bottom of content */}
           <View style={styles.videoDotsInline}>
-            {LIVE_HERO_MOVIES.map((_, i) => (
+            {LIVE_HERO_MOVIES.slice(0, 8).map((_, i) => (
               <TouchableOpacity
                 key={i}
                 onPress={() => goTo(i)}
                 hitSlop={{ top: 15, bottom: 15, left: 10, right: 10 }}
               >
                 <View
-                  style={[styles.dot, i === videoIdx && styles.dotActive]}
+                  style={[styles.dot, i === (videoIdx % 8) && styles.dotActive]}
                 />
               </TouchableOpacity>
             ))}
@@ -6203,7 +6272,8 @@ export default function HomeScreen() {
     playerTitle,
     setPlayerTitle,
     selectedVideoUrl,
-    setSelectedVideoUrl
+    setSelectedVideoUrl,
+    setIsPreview
   } = useSubscription();
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
@@ -6212,6 +6282,7 @@ export default function HomeScreen() {
   const [isUserMuted, setIsUserMuted] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  const [isStackLoading, setIsStackLoading] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
 
@@ -6440,6 +6511,17 @@ export default function HomeScreen() {
   }, [playerMode]);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(bgScale, {
+      toValue: navigationStack.length > 0 ? 0.95 : 1,
+      friction: 9,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [navigationStack.length]);
+
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("homeTabPress", () => {
@@ -6448,6 +6530,7 @@ export default function HomeScreen() {
     const movieSub = DeviceEventEmitter.addListener(
       "movieSelected",
       (m: (Movie | Series) & { autoPlay?: boolean }) => {
+        setIsStackLoading(true);
         const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
         if (isSeries) {
           router.push(`/(tabs)/saved?seriesId=${m.id}`);
@@ -6460,6 +6543,7 @@ export default function HomeScreen() {
             return [...prev, { type: 'movie', movie: m }];
           });
         }
+        setTimeout(() => setIsStackLoading(false), 1200);
       },
     );
 
@@ -6480,7 +6564,15 @@ export default function HomeScreen() {
       "sectionSelected",
       (title: string) => {
         const found = ALL_ROWS.find((r) => r.title === title);
-        if (found) setNavigationStack(prev => [...prev, { type: 'grid', title: found.title, data: found.data }]);
+        if (found) {
+          setNavigationStack(prev => {
+            if (prev.length > 0) {
+              const top = prev[prev.length - 1];
+              if (top.type === 'grid' && top.title === found.title) return prev;
+            }
+            return [...prev, { type: 'grid', title: found.title, data: found.data }];
+          });
+        }
       },
     );
     return () => {
@@ -6592,6 +6684,13 @@ export default function HomeScreen() {
 
       <Animated.ScrollView
         ref={scrollRef}
+        style={{ 
+          transform: [{ scale: bgScale }],
+          opacity: bgScale.interpolate({
+            inputRange: [0.95, 1],
+            outputRange: [0.6, 1]
+          })
+        }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110, paddingTop: 0 }} // Removed top padding for full-screen hero
         onScroll={Animated.event(
@@ -6673,7 +6772,15 @@ export default function HomeScreen() {
             key={row.title}
             title={row.title}
             data={row.data}
-            onSeeAll={() => setNavigationStack(prev => [...prev, { type: 'grid', title: row.title, data: row.data }])}
+            onSeeAll={() => {
+              setNavigationStack(prev => {
+                if (prev.length > 0) {
+                  const top = prev[prev.length - 1];
+                  if (top.type === 'grid' && top.title === row.title) return prev;
+                }
+                return [...prev, { type: 'grid', title: row.title, data: row.data }];
+              });
+            }}
             onSelect={(m) => {
               const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
               if (isSeries) {
@@ -6778,7 +6885,15 @@ export default function HomeScreen() {
                     });
                   }
                 }}
-                onSeeAll={(title: string, data: (Movie | Series)[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
+                onSeeAll={(title: string, data: (Movie | Series)[]) => {
+                  setNavigationStack((prev) => {
+                    if (prev.length > 0) {
+                      const top = prev[prev.length - 1];
+                      if (top.type === 'grid' && top.title === title) return prev;
+                    }
+                    return [...prev, { type: 'grid', title, data }];
+                  });
+                }}
                 playingNow={playingNow}
                 setPlayingNow={setPlayingNow}
                 setPlayerMode={setPlayerMode}
@@ -6793,9 +6908,19 @@ export default function HomeScreen() {
                 isFocused={isFocused}
                 appState={appState}
               />
-
             );
           })}
+          
+          {isStackLoading && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
+               <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+               <View style={{ backgroundColor: 'rgba(26,26,46,0.85)', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 15 }}>
+                 <ActivityIndicator size="large" color="#5B5FEF" />
+                 <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>Opening Content...</Text>
+                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 8, textAlign: 'center', fontWeight: '600' }}>Preparing your viewing experience</Text>
+               </View>
+            </View>
+          )}
         </View>
       )}
       </Animated.View>
