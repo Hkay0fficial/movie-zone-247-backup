@@ -14,6 +14,7 @@ import * as Updates from 'expo-updates';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useSubscription } from '@/app/context/SubscriptionContext';
 
 /**
  * OTAUpdateGuard monitors for Over-The-Air (EAS) updates.
