@@ -41,10 +41,35 @@ export function GridCard({
   const { isPaid } = useSubscription();
   const isLocked = !isPaid && !movie.isFree;
 
+  const [showPreview, setShowPreview] = useState(false);
+  const previewOpacity = useRef(new RNAnimated.Value(0)).current;
+  const previewClip = getPreviewClipUrl(movie);
+
+  const startPreview = () => {
+    if (!previewClip) return;
+    setShowPreview(true);
+    RNAnimated.timing(previewOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const stopPreview = () => {
+    RNAnimated.timing(previewOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => setShowPreview(false));
+  };
+
   return (
     <TouchableOpacity
       style={[styles.gridCard, { width: cardWidth }]}
       onPress={onPress}
+      onLongPress={startPreview}
+      onPressOut={stopPreview}
+      delayLongPress={400}
       activeOpacity={0.85}
     >
       {/* Poster */}
@@ -52,6 +77,51 @@ export function GridCard({
         source={{ uri: movie.poster }}
         style={styles.gridPoster}
       />
+
+      {/* Preview Overlay (animated WebP or Video) */}
+      <AnimatePresence>
+        {showPreview && previewClip && (
+          <RNAnimated.View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: previewOpacity,
+                backgroundColor: "#000",
+                zIndex: 10,
+                borderRadius: 12,
+                overflow: "hidden",
+              },
+            ]}
+          >
+            {previewClip.endsWith(".mp4") ? (
+              <Video
+                source={{ uri: previewClip }}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isMuted
+                isLooping
+              />
+            ) : (
+              <Image
+                source={{ uri: previewClip }}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            {/* Soft gradient to blend with the card bottom info if needed */}
+            <LinearGradient
+              colors={["transparent", "rgba(10,10,15,0.8)"]}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 40,
+              }}
+            />
+          </RNAnimated.View>
+        )}
+      </AnimatePresence>
 
       {/* View Indicator (Checkmark) - top-left */}
 
