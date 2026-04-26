@@ -110,7 +110,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             id: doc.id,
             title: data.title || 'Unknown Series',
             genre: data.genre || 'Drama',
-            seasons: data.seasons || 1,
+            seasons: data.season || data.seasons || 1,
             year: data.year ? parseInt(data.year) : 2024,
             rating: data.rating || '8.0',
             vj: data.vj || 'Unknown VJ',
@@ -316,8 +316,8 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 15);
 
-    const favourites = myFavorites;
-    const myList = myFavorites;
+    const favourites = myFavorites.map((fav: any) => allContent.find(m => m.id === fav.id)).filter(Boolean) as (Movie | Series)[];
+    const myList = favourites;
     const watchLater: Movie[] = [];
     const lastWatched = continueWatching.length > 0 ? [continueWatching[0]] : [];
     
@@ -496,7 +496,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     }
 
     return {
-      movies: newReleases, // Merged for UI
+      movies: allContent, // Merged for UI
       series: allSeries,   // Merged for UI
       liveMovies,          // Raw live data
       liveSeries,          // Raw live data

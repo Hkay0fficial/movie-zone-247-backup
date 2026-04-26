@@ -161,7 +161,7 @@ export default function RootLayout() {
           <MovieProvider>
             <DownloadProvider>
               <View style={{ flex: 1 }}>
-                <Stack>
+                <Stack screenOptions={{ gestureEnabled: false }}>
                   <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
                   <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
                   <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />

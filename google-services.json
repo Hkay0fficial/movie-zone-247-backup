@@ -33,59 +33,6 @@
           ]
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:1005273436856:android:ac860bb07d4332884f1a4d",
-        "android_client_info": {
-          "package_name": "com.themoviezone247.official"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "1005273436856-0rrf2a337f9bu4qtprhsl85gohv6conu.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.themoviezone247.official",
-            "certificate_hash": "c6c59098e47a2805282c9d6c4522c4923bbbb2fa"
-          }
-        },
-        {
-          "client_id": "1005273436856-h4l49mn4apimtigk089ceq9c51gf12hl.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.themoviezone247.official",
-            "certificate_hash": "274e20f727ed543903cc42fa8e32f600f6acf5d7"
-          }
-        },
-        {
-          "client_id": "1005273436856-smad21qu9mv29u9mhn5npq16fk0i35jk.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.themoviezone247.official",
-            "certificate_hash": "7c7df7856bfc680a4704c9daa9ccc52f5b9f14db"
-          }
-        },
-        {
-          "client_id": "1005273436856-83fq66f6lm9apceurva91um85udoqu9n.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyB-XeDajr3OJ0Ety4YdlaKzmBVdYJxXZI4"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "1005273436856-83fq66f6lm9apceurva91um85udoqu9n.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
     }
   ],
   "configuration_version": "1"

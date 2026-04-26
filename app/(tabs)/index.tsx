@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   eventBannerContainer: {
     marginHorizontal: 20,
     marginTop: Platform.OS === 'ios' ? 64 : 74,
-    marginBottom: -50, 
+    marginBottom: 10, 
     height: 40,
     borderRadius: 20,
     overflow: "hidden",
@@ -2406,19 +2406,70 @@ export function SeriesPreviewContent({
         </TouchableOpacity>
 
         <View style={styles.previewContent}>
-          <View style={[styles.previewTags, { alignItems: 'center' }]}>
+          <View style={styles.previewTags}>
             <View style={styles.epTitleBadge}><Text style={styles.epTitleBadgeText}>{series.genre}</Text></View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+              <Text style={[styles.previewMetaText, { color: '#f59e0b' }]}>{series.vj}</Text>
+              <View style={styles.previewDot} />
               <Text style={styles.previewMetaText}>{series.year}</Text>
               <View style={styles.previewDot} />
               <Text style={styles.previewMetaText}>{computedTotalDuration}</Text>
+              {series.episodeDuration && (
+                <>
+                  <View style={styles.previewDot} />
+                  <Ionicons name="play-outline" size={10} color="#475569" />
+                  <Text style={styles.previewMetaText}>{series.episodeDuration}/ep</Text>
+                </>
+              )}
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 }}>
-            <Text style={styles.previewTitle}>{series.title}</Text>
-            <View style={styles.epTitleBadge}>
-              <Text style={styles.epTitleBadgeText}>{series.isMiniSeries ? "Mini Series" : "Series"}</Text>
+          <View style={{ marginVertical: 12 }}>
+            <Text style={[styles.previewTitle, { marginBottom: 10 }]}>{series.title}</Text>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* Series Type Badge (RED) */}
+              <View style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.4)',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}>
+                <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '900' }}>
+                  {series.isMiniSeries ? "Mini Series" : "Series"}
+                </Text>
+              </View>
+
+              {/* Season Badge (GOLD) */}
+              <View style={{
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                borderWidth: 1,
+                borderColor: 'rgba(245, 158, 11, 0.4)',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}>
+                <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '900' }}>
+                  Season {series.seasons || 1}
+                </Text>
+              </View>
+
+              {/* EP Badge (PURPLE) */}
+              <View style={{
+                backgroundColor: 'rgba(91, 95, 239, 0.2)',
+                borderWidth: 1,
+                borderColor: 'rgba(91, 95, 239, 0.4)',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}>
+                <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
+                  EP {currentIndex + 1} / {episodes.length}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -2803,6 +2854,67 @@ export function SeriesPreviewContent({
   );
 }
 
+export function CategoryBar({ 
+  activeCategory, 
+  onSelect 
+}: { 
+  activeCategory: string; 
+  onSelect: (cat: string) => void; 
+}) {
+  const categories = ["MOVIES", "SERIES", "PLAY NOW", "CINEMA", "MY LIST"];
+  
+  return (
+    <View style={{ marginVertical: 12 }}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+      >
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat;
+          return (
+            <TouchableOpacity
+              key={cat}
+              onPress={() => onSelect(cat)}
+              activeOpacity={0.8}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: isActive ? '#5B5FEF' : 'rgba(255,255,255,0.05)',
+                borderWidth: 1,
+                borderColor: isActive ? '#5B5FEF' : 'rgba(255,255,255,0.1)',
+                minWidth: 80,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{
+                color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
+                fontSize: 12,
+                fontWeight: '900',
+                letterSpacing: 0.5,
+              }}>
+                {cat}
+              </Text>
+              {isActive && (
+                <View style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#fff',
+                }} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 export function MoviePreviewContent({
   movie,
   onClose,
@@ -2842,6 +2954,7 @@ export function MoviePreviewContent({
 }) {
 
   const router = useRouter();
+  const [selectedSeason, setSelectedSeason] = useState(1);
   const { 
     allRows: ALL_ROWS, 
     allSeries: ALL_SERIES, 
@@ -2851,6 +2964,8 @@ export function MoviePreviewContent({
     mostViewed: liveMostViewed,
     mostDownloaded: liveMostDownloaded,
     newReleases: liveNewReleases,
+    liveMovies,
+    liveSeries,
   } = useMovies();
 
   const YOU_MAY_ALSO_LIKE = liveYouMayAlsoLike.slice(0, 12);
@@ -3007,10 +3122,8 @@ export function MoviePreviewContent({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only trigger if horizontal swipe is significantly greater than vertical
-        // and dx is positive (swipe right)
         return (
-          gestureState.dx > 10 && 
+          gestureState.dx > 50 && 
           Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2
         );
       },
@@ -3370,7 +3483,21 @@ export function MoviePreviewContent({
     const seen = new Set<string>();
     const pool: (Movie | Series)[] = [];
     
-    // 1. All from rows (deduped)
+    // 1. RAW LIVE DATA from context (MOST COMPREHENSIVE)
+    for (const m of liveMovies) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        pool.push(m);
+      }
+    }
+    for (const s of liveSeries) {
+      if (!seen.has(s.id)) {
+        seen.add(s.id);
+        pool.push(s);
+      }
+    }
+
+    // 2. Extra safety: All from rows (deduped)
     for (const row of ALL_ROWS) {
       for (const m of row.data) {
         if (!seen.has(m.id)) {
@@ -3380,15 +3507,8 @@ export function MoviePreviewContent({
       }
     }
 
-    // 2. Explicitly add all from ALL_SERIES
-    for (const s of ALL_SERIES) {
-      if (!seen.has(s.id)) {
-        seen.add(s.id);
-        pool.push(s);
-      }
-    }
     return pool;
-  }, []);
+  }, [liveMovies, liveSeries, ALL_ROWS]);
 
   // Helper to get a "base" title for fuzzy matching (e.g., "Movie Part 2" -> "Movie")
   // and stripping VJ names/years
@@ -3419,7 +3539,24 @@ export function MoviePreviewContent({
     // 1. Check for Series episodes (NEW feature)
     if ((movie as any).episodeList && (movie as any).episodeList.length > 0) {
        const multiplier = (movie as any).episodesPerPart || 1;
-       parts = (movie as any).episodeList.map((ep: any, index: number) => {
+       let list = (movie as any).episodeList;
+
+       // Attempt to filter by season if requested
+       if ("seasons" in movie && movie.seasons > 1) {
+         const filteredList = list.filter((ep: any) => {
+           const title = (ep.title || "").toLowerCase();
+           // Heuristic: check for "S1", "S01", "Season 1"
+           const sMatch = title.match(/s(\d+)/i) || title.match(/season\s*(\d+)/i);
+           if (sMatch) return parseInt(sMatch[1]) === selectedSeason;
+           // Fallback: if no season tag but multiple seasons exist, 
+           // we might need to assume distribution if the list is sorted
+           return true; 
+         });
+         // Only use filtered list if it actually found something, otherwise show all
+         if (filteredList.length > 0) list = filteredList;
+       }
+
+       parts = list.map((ep: any, index: number) => {
          const isFree = index < ((movie as any).freeEpisodesCount || 0) || movie.isFree;
          let displayIdx: any = index + 1;
          if (multiplier > 1) {
@@ -3428,7 +3565,7 @@ export function MoviePreviewContent({
            displayIdx = `${start}-${end}`;
          }
          return {
-           id: `${movie.id}-ep-${index}`,
+           id: `${movie.id}-ep-${index}-${selectedSeason}`,
            displayIndex: displayIdx,
            title: ep.title,
            videoUrl: ep.url,
@@ -4017,8 +4154,8 @@ export function MoviePreviewContent({
 
                     {/* Compact meta: VJ · year · duration */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <Ionicons name="mic-outline" size={11} color="#475569" />
-                      <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.vj}</Text>
+                      <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+                      <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
                       <View style={styles.previewDot} />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
                       <View style={styles.previewDot} />
@@ -4082,6 +4219,22 @@ export function MoviePreviewContent({
                   {/* Title row + rating + Part badge (like series Ep/Season badges) */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 0 }}>
                     <Text style={[styles.previewTitle, { marginBottom: 0, flex: undefined }]}>{movie.title}</Text>
+
+                    {/* TOTAL COUNT Badge (New) */}
+                    {movieParts.length > 1 && (
+                      <View style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        borderRadius: 6,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                      }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '800' }}>
+                          {movieParts.length} {movieParts.length === 1 ? 'PART' : 'PARTS'}
+                        </Text>
+                      </View>
+                    )}
 
 
 
@@ -4306,6 +4459,69 @@ export function MoviePreviewContent({
                       <Text style={styles.previewActionLabel}>Share</Text>
                     </TouchableOpacity>
                   </View>
+
+                {/* ── SEASONS SECTION (For Series) ── */}
+                {"seasons" in movie && movie.seasons > 0 && (
+                  <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+                      <View style={{ 
+                        width: 4, 
+                        height: 20, 
+                        backgroundColor: '#5B5FEF', 
+                        borderRadius: 2 
+                      }} />
+                      <Text style={{ 
+                        color: '#fff', 
+                        fontSize: 16, 
+                        fontWeight: '800', 
+                        letterSpacing: 0.5 
+                      }}>
+                        {movie.isMiniSeries ? "MINI SERIES" : "SERIES SEASONS"}
+                      </Text>
+                      <View style={{
+                        backgroundColor: 'rgba(91, 95, 239, 0.15)',
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: 'rgba(91, 95, 239, 0.3)'
+                      }}>
+                        <Text style={{ color: '#5B5FEF', fontSize: 10, fontWeight: '900' }}>
+                          {movie.seasons} {movie.seasons === 1 ? 'SEASON' : 'SEASONS'}
+                        </Text>
+                      </View>
+                    </View>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 10 }}
+                    >
+                      {Array.from({ length: movie.seasons }, (_, i) => i + 1).map((sNum) => (
+                        <TouchableOpacity
+                          key={`season-${sNum}`}
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: 12,
+                            backgroundColor: sNum === selectedSeason ? 'rgba(91, 95, 239, 0.2)' : 'rgba(255,255,255,0.05)',
+                            borderWidth: 1,
+                            borderColor: sNum === selectedSeason ? '#5B5FEF' : 'rgba(255,255,255,0.1)',
+                          }}
+                          activeOpacity={0.7}
+                          onPress={() => setSelectedSeason(sNum)}
+                        >
+                          <Text style={{ 
+                            color: sNum === selectedSeason ? '#fff' : 'rgba(255,255,255,0.5)', 
+                            fontSize: 14, 
+                            fontWeight: '700' 
+                          }}>
+                            Season {sNum}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
                 {/* ── OTHER PARTS SECTION (For Movie Parts) ── */}
                 {movieParts.length > 1 && (
@@ -5117,7 +5333,7 @@ export function MoviePreviewContent({
                   <FlatList
                     data={previewSearchResults}
                     keyExtractor={(m) => "ps-" + m.id}
-                    numColumns={3}
+                    numColumns={2}
                     scrollEnabled={false}
                     contentContainerStyle={[styles.gridList, { paddingTop: -5 }]}
                     columnWrapperStyle={styles.gridRow}
@@ -5127,7 +5343,7 @@ export function MoviePreviewContent({
                         onPress={() => {
                           DeviceEventEmitter.emit("movieSelected", item);
                         }}
-                        columns={3}
+                        columns={2}
                       />
                     )}
                     keyboardShouldPersistTaps="always"
@@ -5694,7 +5910,7 @@ export function MovieCard({
         </Text>
         <Text style={styles.cardMetadata} numberOfLines={1}>
           {"seasons" in movie
-            ? `${movie.year} · ${(movie.isMiniSeries ? "Mini Series" : `Season ${movie.seasons}`)}`
+            ? `${movie.year} · Season ${movie.seasons}`
             : `${movie.year} · ${movie.duration}`}
         </Text>
       </View>
@@ -5947,7 +6163,7 @@ function HeroBanner({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponderCapture: (_, g) =>
-        Math.abs(g.dx) > 20 && Math.abs(g.dx) > Math.abs(g.dy),
+        Math.abs(g.dx) > 50 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderRelease: (_, g) => {
         if (g.dx < -50) goNext();
         else if (g.dx > 50) goPrev();
@@ -6150,7 +6366,10 @@ function HeroBanner({
             <View style={styles.heroMetaDot} />
             <Text style={styles.heroMetaText}>{movie.year}</Text>
             <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{movie.vj}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+              <Text style={[styles.heroMetaText, { color: '#f59e0b' }]}>{movie.vj}</Text>
+            </View>
             <View style={styles.heroMetaDot} />
             <Text style={styles.heroMetaText}>{movie.duration}</Text>
           </View>
@@ -6252,7 +6471,26 @@ function HeroBanner({
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig } = useMovies();
+  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig, myList } = useMovies();
+  const allPool = useMemo(() => {
+    const pool: (Movie | Series)[] = [];
+    const seen = new Set<string>();
+    liveRows.forEach((row) => {
+      row.data.forEach((item) => {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          pool.push(item);
+        }
+      });
+    });
+    liveSeries.forEach((s) => {
+      if (!seen.has(s.id)) {
+        seen.add(s.id);
+        pool.push(s);
+      }
+    });
+    return pool;
+  }, [liveRows, liveSeries]);
   const { 
     allMoviesFree, 
     eventMessage, 
@@ -6265,6 +6503,7 @@ export default function HomeScreen() {
     remainingDays,
     isSubscribed,
     downloadedMovies,
+    favorites,
     playingNow,
     setPlayingNow,
     playerMode,

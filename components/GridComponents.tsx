@@ -77,7 +77,7 @@ export function GridCard({
       {/* Poster */}
       <Image
         source={{ uri: movie.poster }}
-        style={styles.gridPoster}
+        style={[styles.gridPoster, { height: cardWidth * 1.5 }]}
       />
 
       {/* Preview Overlay (animated WebP or Video) */}

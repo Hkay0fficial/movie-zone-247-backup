@@ -10,6 +10,10 @@ export default ({ config }) => {
       package: IS_TEST ? "com.themoviezone247.staging" : "com.moviezone247.app",
       googleServicesFile: IS_TEST ? "./google-services-test.json" : "./google-services.json",
     },
+    ios: {
+      ...config.ios,
+      bundleIdentifier: IS_TEST ? "com.themoviezone247.staging" : "com.moviezone247.app",
+    },
     // Use the generated Beta icon for the test version
     icon: IS_TEST ? "./assets/images/test-icon.png" : "./assets/images/icon.png",
     splash: {

@@ -234,7 +234,7 @@ function SeriesCard({ item, onPress }: { item: Series; onPress: () => void }) {
           style={styles.cardMetadata}
           numberOfLines={1}
         >
-          {item.year} · {item.isMiniSeries ? "Mini Series" : `Season ${item.seasons}`}
+          {item.year} · Season {item.seasons}
         </Text>
       </View>
     </TouchableOpacity>
@@ -304,6 +304,7 @@ export default function SeriesScreen() {
 
   const [activePartId, setActivePartId] = useState("");
   const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState(1);
 
   // Real Multi-Filters
   const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
@@ -1033,6 +1034,7 @@ function SeriesPreviewModal({
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ y: 0, animated: false });
     }
+    setSelectedSeason(1);
   }, [series?.id]);
 
   // Handle Android hardware back button (replaces Modal's onRequestClose)
@@ -1054,6 +1056,7 @@ function SeriesPreviewModal({
   const [containerWidth, setContainerWidth] = useState(0);
   const [seriesQuery, setSeriesQuery] = useState("");
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>("");
+  const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
   // Derive a consistent video preview URL for this series
   // Priority: actual uploaded series preview > main video > fallback demo reel
@@ -1067,7 +1070,20 @@ function SeriesPreviewModal({
   const episodes = useMemo(() => {
     if (series.episodeList && series.episodeList.length > 0) {
       const multiplier = series.episodesPerPart || 1;
-      return series.episodeList.map((ep: any, index: number) => {
+      let list = series.episodeList;
+
+      // Attempt to filter by season if multiple seasons exist
+      if (series.seasons > 1) {
+        const filteredList = list.filter((ep: any) => {
+          const title = (ep.title || "").toLowerCase();
+          const sMatch = title.match(/s(\d+)/i) || title.match(/season\s*(\d+)/i);
+          if (sMatch) return parseInt(sMatch[1]) === selectedSeason;
+          return true;
+        });
+        if (filteredList.length > 0) list = filteredList;
+      }
+
+      return list.map((ep: any, index: number) => {
         const isFree = index < (series.freeEpisodesCount || 0) || series.isFree;
         let displayIdx: any = index + 1;
         if (multiplier > 1) {
@@ -1076,7 +1092,7 @@ function SeriesPreviewModal({
           displayIdx = `${start}-${end}`;
         }
         return {
-          id: `${series.id}-ep-${index}`,
+          id: `${series.id}-ep-${index}-${selectedSeason}`,
           displayIndex: displayIdx,
           title: ep.title,
           duration: series.episodeDuration || "45m",
@@ -1088,11 +1104,11 @@ function SeriesPreviewModal({
       });
     }
   
-    const count = series.episodes; // Use dynamic count from series data
+    const count = series.episodes; 
     return Array.from({ length: count }, (_, i) => {
       const isFree = i < (series.freeEpisodesCount || 0) || series.isFree;
       return {
-        id: `${series.id}-ep-${i}`,
+        id: `${series.id}-ep-${i}-${selectedSeason}`,
         displayIndex: i + 1,
         title: `${series.title} - Ep ${i + 1}${isFree ? " (Preview)" : ""}`,
         duration: series.episodeDuration || "45m",
@@ -1102,7 +1118,7 @@ function SeriesPreviewModal({
         description: `This exciting episode follows the journey in ${series.title}. Join the adventure as characters face new challenges and unexpected turns in this highly acclaimed series.`,
       };
     });
-  }, [series, previewVideoUrl]);
+  }, [series, previewVideoUrl, selectedSeason]);
 
   useEffect(() => {
     if (episodes && episodes.length > 0) {
@@ -1630,8 +1646,8 @@ function SeriesPreviewModal({
                 
                 {/* Compact Metadata (VJ, Year, Duration) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="mic-outline" size={11} color="#475569" />
-                  <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{series.vj}</Text>
+                  <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+                  <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{series.vj}</Text>
                   
                   <View style={styles.previewDot} />
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{series.year}</Text>
@@ -1662,8 +1678,8 @@ function SeriesPreviewModal({
                     </Text>
                   </View>
 
-                  <View style={[styles.epTitleBadge, { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: 'rgba(255, 193, 7, 0.3)' }]}>
-                    <Text style={[styles.epTitleBadgeText, { color: '#FFC107' }]}>
+                  <View style={[styles.epTitleBadge, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}>
+                    <Text style={[styles.epTitleBadgeText, { color: '#f59e0b' }]}>
                       {`Season ${series.seasons || 1}`}
                     </Text>
                   </View>
@@ -1920,6 +1936,7 @@ function SeriesPreviewModal({
                       ]}
                     />
                   ))}
+
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => {

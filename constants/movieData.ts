@@ -64,7 +64,8 @@ export interface Series {
   episodesPerPart?: number;
 }
 
-export function shortenGenre(genre: string): string {
+export function shortenGenre(genre?: string): string {
+  if (!genre) return '';
   const g = genre.split(' · ')[0].trim();
   const map: Record<string, string> = {
     'Thriller': 'Thrill',

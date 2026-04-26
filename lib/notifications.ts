@@ -19,12 +19,7 @@ if (!shouldSkip) {
 }
 
 export const initNotifications = () => {
-  if (shouldSkip || !Notifications) {
-    if (isAndroid && isExpoGo) {
-       console.log('Push notifications disabled: Expo Go SDK 53+ does not support remote notifications on Android. Use a development build.');
-    }
-    return;
-  }
+  if (!Notifications) return;
 
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -38,11 +33,16 @@ export const initNotifications = () => {
 };
 
 export async function registerForPushNotificationsAsync() {
-  if (shouldSkip || !Notifications) return null;
+  if (!Notifications) return null;
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'The Movie Zone 24/7',
+      name: 'General Notifications',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+
+    await Notifications.setNotificationChannelAsync('movie_updates_v2', {
+      name: 'New Movie Alerts',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#5B5FEF',
@@ -92,6 +92,14 @@ export async function registerForPushNotificationsAsync() {
     
     try {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+      
+      // On Android, use getDevicePushTokenAsync for native FCM tokens which support images much better
+      if (Platform.OS === 'android') {
+        const deviceToken = (await Notifications.getDevicePushTokenAsync()).data;
+        console.log('Registered Native FCM Token:', deviceToken);
+        return deviceToken;
+      }
+
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
       return token;
     } catch (e) {
