@@ -867,29 +867,50 @@ export default function ModernVideoPlayer({
 
                     <View style={{ flex: 1 }} />
 
-                    <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.speedBtn}>
-                      <Text style={styles.speedText}>{playbackSpeed}x</Text>
-                    </TouchableOpacity>
+                    {/* Circular Action Buttons Group */}
+                    <View style={styles.actionsGroup}>
+                      
+                      {/* PIP Button */}
+                      <View style={styles.btnWithLabel}>
+                        <TouchableOpacity 
+                          onPress={() => {
+                            setPlayerMode('mini');
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }} 
+                          style={styles.circleBtn}
+                        >
+                          <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <Text style={styles.circleBtnLabel}>PIP</Text>
+                      </View>
 
-                    <TouchableOpacity 
-                      onPress={() => {
-                        if (videoResizeMode === ResizeMode.CONTAIN) setVideoResizeMode(ResizeMode.COVER);
-                        else if (videoResizeMode === ResizeMode.COVER) setVideoResizeMode(ResizeMode.STRETCH);
-                        else setVideoResizeMode(ResizeMode.CONTAIN);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }} 
-                      style={styles.miniBtn}
-                    >
-                      <MaterialCommunityIcons 
-                        name={
-                          videoResizeMode === ResizeMode.CONTAIN ? "arrow-expand-all" : 
-                          videoResizeMode === ResizeMode.COVER ? "arrow-collapse-all" : 
-                          "aspect-ratio"
-                        } 
-                        size={22} 
-                        color="#fff" 
-                      />
-                    </TouchableOpacity>
+                      {/* RATIO Button */}
+                      <View style={styles.btnWithLabel}>
+                        <TouchableOpacity 
+                          onPress={() => {
+                            if (videoResizeMode === ResizeMode.CONTAIN) setVideoResizeMode(ResizeMode.COVER);
+                            else if (videoResizeMode === ResizeMode.COVER) setVideoResizeMode(ResizeMode.STRETCH);
+                            else setVideoResizeMode(ResizeMode.CONTAIN);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }} 
+                          style={styles.circleBtn}
+                        >
+                          <Text style={styles.ratioShortText}>
+                            {videoResizeMode === ResizeMode.CONTAIN ? 'FIT' : videoResizeMode === ResizeMode.COVER ? 'FILL' : 'STR'}
+                          </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.circleBtnLabel}>RATIO</Text>
+                      </View>
+
+                      {/* SPEED Button */}
+                      <View style={styles.btnWithLabel}>
+                        <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.circleBtn}>
+                          <Text style={styles.speedShortText}>{playbackSpeed}x</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.circleBtnLabel}>SPEED</Text>
+                      </View>
+
+                    </View>
                   </View>
                 )}
               </View>
@@ -1324,7 +1345,42 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   miniBtn: {
-    opacity: 0.8,
+    padding: 8,
+  },
+  actionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  btnWithLabel: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  circleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circleBtnLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  ratioShortText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  speedShortText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   verticalIndicatorLeft: {
     position: 'absolute',
