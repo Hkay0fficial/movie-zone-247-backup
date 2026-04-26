@@ -1119,7 +1119,7 @@ export default function ModernVideoPlayer({
         top: playerPos.y,
         width: playerSize,
         height: Animated.multiply(playerSize, 9/16)
-      }]} {...panResponder.current.panHandlers}>
+      }]} {...panResponder.panHandlers}>
          {renderPlayer()}
       </View>
     );
