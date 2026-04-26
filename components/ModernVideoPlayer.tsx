@@ -39,7 +39,7 @@ import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
 // react-native-google-cast uses requireNativeComponent which crashes on web export.
 // Import conditionally — on web we get no-op stubs so the OTA export succeeds.
-import { Platform } from 'react-native';
+// (Platform is already imported above via react-native)
 const _castModule = Platform.OS !== 'web' ? require('react-native-google-cast') : null;
 const GoogleCast = _castModule?.default ?? null;
 const CastButton = _castModule?.CastButton ?? (() => null);
