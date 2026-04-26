@@ -3018,7 +3018,7 @@ export function MoviePreviewContent({
     data: (Movie | Series)[];
   } | null>(null);
   const [activeBrowseFilter, setActiveBrowseFilter] =
-    useState<string>("By VJ,s");
+    useState<string>("VJ,s");
   const [hSelectedType, setHSelectedType] = useState<string | null>(null);
   const [hSelectedGenre, setHSelectedGenre] = useState<string | null>(null);
   const [hSelectedYear, setHSelectedYear] = useState<string | null>(null);

@@ -159,35 +159,33 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <UserProvider>
-        <SubscriptionProvider>
-          <MovieProvider>
-            <DownloadProvider>
-              <View style={{ flex: 1 }}>
-                <Stack screenOptions={{ gestureEnabled: false }}>
-                  <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-                </Stack>
-                <InAppNotification 
-                  notification={activeNotification} 
-                  onClose={() => setActiveNotification(null)} 
-                />
+    <UserProvider>
+      <SubscriptionProvider>
+        <MovieProvider>
+          <DownloadProvider>
+            <View style={{ flex: 1 }}>
+              <Stack screenOptions={{ gestureEnabled: false }}>
+                <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <InAppNotification 
+                notification={activeNotification} 
+                onClose={() => setActiveNotification(null)} 
+              />
 
-                <ModernVideoPlayerWrapper />
-                <SystemUIGuard />
+              <ModernVideoPlayerWrapper />
+              <SystemUIGuard />
 
-                <VersionLockGuard />
-                <OTAUpdateGuard />
-              </View>
-              <StatusBar style="auto" />
-            </DownloadProvider>
-          </MovieProvider>
-        </SubscriptionProvider>
-      </UserProvider>
-    </ThemeProvider>
+              <VersionLockGuard />
+              <OTAUpdateGuard />
+            </View>
+            <StatusBar style="auto" />
+          </DownloadProvider>
+        </MovieProvider>
+      </SubscriptionProvider>
+    </UserProvider>
   );
 }

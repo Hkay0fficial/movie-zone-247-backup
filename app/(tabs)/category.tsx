@@ -102,11 +102,11 @@ const { width: W } = Dimensions.get("window");
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Genre data ───────────────────────────────────────────────────────────────
+// NOTE: All IDs must be unique to avoid duplicate key errors in FlatList
 const GENRES = [
   {
     id: "1",
     name: "Action",
-    count: 48,
     color: "#ef4444",
     image:
       "https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=500&q=70",
@@ -114,7 +114,6 @@ const GENRES = [
   {
     id: "2",
     name: "Comedy",
-    count: 35,
     color: "#f97316",
     image:
       "https://images.unsplash.com/photo-1605809825458-7c870ad8ab43?w=500&q=70",
@@ -122,7 +121,6 @@ const GENRES = [
   {
     id: "3",
     name: "Drama",
-    count: 62,
     color: "#a855f7",
     image:
       "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=70",
@@ -130,7 +128,6 @@ const GENRES = [
   {
     id: "4",
     name: "Sci-Fi",
-    count: 29,
     color: "#3b82f6",
     image:
       "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=70",
@@ -138,7 +135,6 @@ const GENRES = [
   {
     id: "5",
     name: "Horror",
-    count: 24,
     color: "#6366f1",
     image:
       "https://images.unsplash.com/photo-1505635552518-3448ff116dd3?w=500&q=70",
@@ -146,7 +142,6 @@ const GENRES = [
   {
     id: "6",
     name: "Romance",
-    count: 31,
     color: "#ec4899",
     image:
       "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&q=70",
@@ -154,7 +149,6 @@ const GENRES = [
   {
     id: "7",
     name: "Thriller",
-    count: 44,
     color: "#6b7280",
     image:
       "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=70",
@@ -162,39 +156,34 @@ const GENRES = [
   {
     id: "8",
     name: "Animation",
-    count: 19,
     color: "#14b8a6",
     image:
       "https://images.unsplash.com/photo-1560472355-109703aa3edc?w=500&q=70",
   },
   {
-    id: "16",
+    id: "9",
     name: "Documentary",
-    count: 22,
     color: "#10b981",
     image:
       "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=500&q=70",
   },
   {
-    id: "17",
+    id: "10",
     name: "Indian Movies",
-    count: 38,
     color: "#eab308",
     image:
       "https://images.unsplash.com/photo-1628126235206-5260b9ea6441?w=500&q=70",
   },
   {
-    id: "18",
+    id: "11",
     name: "Anime",
-    count: 26,
     color: "#0ea5e9",
     image:
       "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&q=70",
   },
   {
-    id: "19",
+    id: "12",
     name: "Fantasy",
-    count: 17,
     color: "#8b5cf6",
     image:
       "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=70",
@@ -202,7 +191,6 @@ const GENRES = [
   {
     id: "13",
     name: "Crime",
-    count: 33,
     color: "#475569",
     image:
       "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500&q=70",
@@ -210,7 +198,6 @@ const GENRES = [
   {
     id: "14",
     name: "Mystery",
-    count: 21,
     color: "#78716c",
     image:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&q=70",
@@ -218,7 +205,6 @@ const GENRES = [
   {
     id: "15",
     name: "Biography",
-    count: 15,
     color: "#d97706",
     image:
       "https://images.unsplash.com/photo-1501426026826-31c667bdf23d?w=500&q=70",
@@ -226,77 +212,9 @@ const GENRES = [
   {
     id: "16",
     name: "Sport",
-    count: 14,
     color: "#059669",
     image:
       "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=500&q=70",
-  },
-];
-
-const UGANDAN_VJS = [
-  {
-    id: "v1",
-    name: "VJ Junior",
-    count: 125,
-    color: "#ef4444",
-    image:
-      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500&q=70",
-  },
-  {
-    id: "v2",
-    name: "VJ Emmy",
-    count: 98,
-    color: "#3b82f6",
-    image:
-      "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&q=70",
-  },
-  {
-    id: "v3",
-    name: "VJ Ice P",
-    count: 87,
-    color: "#10b981",
-    image:
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=70",
-  },
-  {
-    id: "v4",
-    name: "VJ Ivo",
-    count: 76,
-    color: "#a855f7",
-    image:
-      "https://images.unsplash.com/photo-1514525253361-b83f85df025c?w=500&q=70",
-  },
-  {
-    id: "v5",
-    name: "VJ Kevo",
-    count: 64,
-    color: "#f59e0b",
-    image:
-      "https://images.unsplash.com/photo-1459749411177-042180ce673c?w=500&q=70",
-  },
-  {
-    id: "v6",
-    name: "VJ Cab",
-    count: 52,
-    color: "#ec4899",
-    image:
-      "https://images.unsplash.com/photo-1501386761578-e95c670f34a3?w=500&q=70",
-  },
-  {
-    id: "v7",
-    name: "VJ Little T",
-    count: 45,
-    color: "#06b6d4",
-    image:
-      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=500&q=70",
-  },
-  {
-    id: "v8",
-    name: "VJ Mark",
-    count: 38,
-    color: "#8b5cf6",
-    image:
-      "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=500&q=70",
   },
 ];
 
@@ -365,6 +283,10 @@ function VJRequestModal({
     vj.toLowerCase().includes(search.toLowerCase()),
   );
 
+  // Normalise a VJ name to its core part: strip "vj " prefix (any casing)
+  const normaliseVJ = (name: string) =>
+    name.replace(/^vj\s+/i, "").toLowerCase().trim();
+
   // Movies for the selected VJ + specific genre (or 'all' for general requests)
   const genreMovies = React.useMemo(() => {
     if (!selectedVJ) return [];
@@ -376,10 +298,11 @@ function VJRequestModal({
       return true;
     });
 
+    const vjCore = normaliseVJ(selectedVJ);
     return unique.filter((m) => {
-      const matchVJ = m.vj
-        ?.toLowerCase()
-        .includes(selectedVJ.toLowerCase().replace("vj ", ""));
+      // Match VJ: compare normalised core names (handles "VJ Junior" vs "Vj Junior" vs "vj junior")
+      const movieVJCore = normaliseVJ(m.vj || "");
+      const matchVJ = movieVJCore.includes(vjCore) || vjCore.includes(movieVJCore);
       if (genre === "all" || genre === "request") return matchVJ;
       return matchVJ && m.genre?.toLowerCase().includes(genre.toLowerCase());
     });
@@ -552,9 +475,18 @@ export default function CategoryScreen() {
     setRequestModalVisible(true);
   };
 
+  // Build genres with live counts from Firestore data
+  const genresWithCounts = React.useMemo(() => {
+    const pool = [...(allMovies || []), ...(allSeries || [])];
+    return GENRES.map(g => ({
+      ...g,
+      count: pool.filter(m => m.genre?.toLowerCase().includes(g.name.toLowerCase())).length,
+    }));
+  }, [allMovies, allSeries]);
+
   const filtered = query.trim()
-    ? GENRES.filter((g) => g.name.toLowerCase().includes(query.toLowerCase()))
-    : GENRES;
+    ? genresWithCounts.filter((g) => g.name.toLowerCase().includes(query.toLowerCase()))
+    : genresWithCounts;
 
   const totalCount = filtered.reduce((acc, g) => acc + g.count, 0);
 

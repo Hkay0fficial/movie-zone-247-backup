@@ -1672,9 +1672,8 @@ function SearchOverlay({
                       marginRight: 6,
                     }}
                   >
-                    {!isPerformingFiltering && <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />}
+                    <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
                   </TouchableOpacity>
-                  {!isPerformingFiltering && (
                     <View
                       style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
                       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
@@ -1728,10 +1727,9 @@ function SearchOverlay({
                         </TouchableOpacity>
                       )}
                     </View>
-                  )}
                 </KeyboardAvoidingView>
 
-              <View style={{ flex: 1, marginTop: isPerformingFiltering ? 0 : 40 }}>
+              <View style={{ flex: 1, marginTop: 40 }}>
               {isFiltering ? (
                 <View style={{ flex: 1 }}>
                   {renderFilters()}
@@ -2659,7 +2657,7 @@ function CustomTabBar() {
         </View>
       )}
 
-      {!searchVisible && !isDetailStackVisible && (
+      {!searchVisible && !isDetailStackVisible && playerMode !== 'full' && (
         <View style={[
           styles.topBarWrapper, 
           (active("/") || active("/menu")) ? { 

@@ -37,6 +37,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
+import GoogleCast, { CastButton, CastContext, useCastSession } from 'react-native-google-cast';
 
 // Static dimensions for fallback, but we primarily use useWindowDimensions hook inside component
 const { width: STATIC_W, height: STATIC_H } = Dimensions.get("window");
@@ -237,6 +238,31 @@ export default function ModernVideoPlayer({
     manageLayout();
     if (playerMode !== 'closed') resetControlsTimer();
 
+    // Auto-animate PIP size/position
+    if (playerMode === 'mini') {
+      Animated.parallel([
+        Animated.spring(playerSize, {
+          toValue: 160,
+          useNativeDriver: false,
+        }),
+        Animated.spring(playerPos, {
+          toValue: { x: SCREEN_W - 180, y: SCREEN_H - 140 },
+          useNativeDriver: false,
+        })
+      ]).start();
+    } else if (playerMode === 'full') {
+      Animated.parallel([
+        Animated.spring(playerSize, {
+          toValue: SCREEN_W,
+          useNativeDriver: false,
+        }),
+        Animated.spring(playerPos, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+        })
+      ]).start();
+    }
+
     // Hiding Lockdown Burst: Specifically for the full-screen isolated window
     let hideInterval: any;
     if (playerMode === 'full') {
@@ -318,6 +344,26 @@ export default function ModernVideoPlayer({
     }
   }, [status.isLoaded, status.isPlaying, movieId, episodeId]);
 
+  // ─── Cast Sync Logic ───
+  const castSession = useCastSession();
+  useEffect(() => {
+    if (CAN_CAST && castSession && videoUrl && playingNow) {
+      castSession.client.loadMedia({
+        mediaInfo: {
+          contentUrl: videoUrl,
+          metadata: {
+            type: 'movie',
+            title: title || playingNow.title,
+            images: playingNow.poster ? [{ url: playingNow.poster }] : [],
+          }
+        },
+        autoplay: true,
+      });
+      // Pause local video if casting
+      videoRef.current?.pauseAsync();
+    }
+  }, [castSession, videoUrl, playingNow]);
+
   // Sync volumeDisplayAnim whenever mute state or volume changes
   useEffect(() => {
     volumeDisplayAnim.setValue(isMuted ? 0 : currentVolumeRef.current);
@@ -381,6 +427,8 @@ export default function ModernVideoPlayer({
       resetControlsTimer();
     }
   };
+
+
 
   // Modern Playback Actions
   const handleTogglePlay = () => {
@@ -628,7 +676,7 @@ export default function ModernVideoPlayer({
   };
 
   if (playerMode === 'closed') return null;
-  const isMini = playerMode === 'mini';
+  const isMini = false; // Forced full-screen in-app as per user request
 
   // Rendering
   const playerContent = (
@@ -656,9 +704,10 @@ export default function ModernVideoPlayer({
           source={{ uri: videoUrl || "" }}
           style={styles.absFill}
           resizeMode={videoResizeMode}
-          shouldPlay={playerMode !== 'closed' && isFocused && appState === 'active'}
+          shouldPlay={playerMode !== 'closed' && isFocused}
           useNativeControls={false}
           allowsPictureInPicture={true}
+          staysActiveInBackground={true}
           isMuted={isMuted}
           volume={isMuted ? 0 : currentVolume}
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
@@ -711,9 +760,7 @@ export default function ModernVideoPlayer({
                         </View>
                       )}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconAction}>
-                      <MaterialCommunityIcons name="cast" size={22} color="#fff" />
-                    </TouchableOpacity>
+
                   </View>
                 </View>
               )}
@@ -870,45 +917,34 @@ export default function ModernVideoPlayer({
                     {/* Circular Action Buttons Group */}
                     <View style={styles.actionsGroup}>
                       
-                      {/* PIP Button */}
-                      <View style={styles.btnWithLabel}>
-                        <TouchableOpacity 
-                          onPress={() => {
-                            setPlayerMode('mini');
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }} 
-                          style={styles.circleBtn}
-                        >
-                          <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={20} color="#fff" />
-                        </TouchableOpacity>
-                        <Text style={styles.circleBtnLabel}>PIP</Text>
-                      </View>
-
                       {/* RATIO Button */}
-                      <View style={styles.btnWithLabel}>
-                        <TouchableOpacity 
-                          onPress={() => {
-                            if (videoResizeMode === ResizeMode.CONTAIN) setVideoResizeMode(ResizeMode.COVER);
-                            else if (videoResizeMode === ResizeMode.COVER) setVideoResizeMode(ResizeMode.STRETCH);
-                            else setVideoResizeMode(ResizeMode.CONTAIN);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }} 
-                          style={styles.circleBtn}
-                        >
-                          <Text style={styles.ratioShortText}>
-                            {videoResizeMode === ResizeMode.CONTAIN ? 'FIT' : videoResizeMode === ResizeMode.COVER ? 'FILL' : 'STR'}
-                          </Text>
-                        </TouchableOpacity>
-                        <Text style={styles.circleBtnLabel}>RATIO</Text>
-                      </View>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          if (videoResizeMode === ResizeMode.CONTAIN) setVideoResizeMode(ResizeMode.COVER);
+                          else if (videoResizeMode === ResizeMode.COVER) setVideoResizeMode(ResizeMode.STRETCH);
+                          else setVideoResizeMode(ResizeMode.CONTAIN);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }} 
+                        style={styles.circleBtn}
+                      >
+                        <MaterialIcons name="aspect-ratio" size={24} color="#fff" />
+                      </TouchableOpacity>
 
                       {/* SPEED Button */}
-                      <View style={styles.btnWithLabel}>
-                        <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.circleBtn}>
-                          <Text style={styles.speedShortText}>{playbackSpeed}x</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.circleBtnLabel}>SPEED</Text>
-                      </View>
+                      <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.circleBtn}>
+                        <MaterialIcons name="speed" size={24} color="#fff" />
+                      </TouchableOpacity>
+
+                      {/* Expand Button */}
+                      <TouchableOpacity 
+                        onPress={() => {
+                          // Already in full, but can be used for orientation toggle
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }} 
+                        style={styles.circleBtn}
+                      >
+                        <MaterialCommunityIcons name="fullscreen" size={24} color="#fff" />
+                      </TouchableOpacity>
 
                     </View>
                   </View>
@@ -1112,18 +1148,9 @@ export default function ModernVideoPlayer({
     );
   }
 
-  if (playerMode === 'mini') {
-    return (
-      <View style={[styles.miniContainer, { 
-        left: playerPos.x, 
-        top: playerPos.y,
-        width: playerSize,
-        height: Animated.multiply(playerSize, 9/16)
-      }]} {...panResponder.panHandlers}>
-         {renderPlayer()}
-      </View>
-    );
-  }
+  // The mini-player (in-app floating window) has been removed as per user request.
+  // The app now uses System PiP (pop-out to home screen) via staysActiveInBackground.
+  return renderPlayer();
 
   return null;
 }
@@ -1172,9 +1199,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1366,12 +1391,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  circleBtnLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 9,
+  actionLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
     fontWeight: '700',
+    marginTop: 6,
     letterSpacing: 0.5,
   },
+
   ratioShortText: {
     color: '#fff',
     fontSize: 10,
