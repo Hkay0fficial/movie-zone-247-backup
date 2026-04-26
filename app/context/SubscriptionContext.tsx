@@ -64,6 +64,8 @@ interface SubscriptionContextType {
   playerSize: Animated.Value;
   isPreview: boolean;
   setIsPreview: (v: boolean) => void;
+  playingEpisodeId: string | null;
+  setPlayingEpisodeId: (id: string | null) => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -89,6 +91,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [favorites, setFavorites] = useState<(Movie | Series)[]>([]);
+  const [playingEpisodeId, setPlayingEpisodeId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
@@ -276,7 +279,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           timerRef.current = setInterval(checkExpiration, 30000);
         }
       }
-    });
+    }, (err) => console.error("SubscriptionContext: Global settings listener error:", err));
     return () => {
       unsub();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -292,7 +295,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setForceUpdate(data.forceUpdate || false);
         setUpdateMessage(data.updateMessage || '');
       }
-    });
+    }, (err) => console.error("SubscriptionContext: Version settings listener error:", err));
     return unsub;
   }, []);
 
@@ -427,6 +430,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       playerSize,
       isPreview,
       setIsPreview,
+      playingEpisodeId,
+      setPlayingEpisodeId,
     }}>
       {children}
     </SubscriptionContext.Provider>

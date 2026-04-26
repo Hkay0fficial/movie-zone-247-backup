@@ -34,7 +34,8 @@ function ModernVideoPlayerWrapper() {
     playerTitle, selectedVideoUrl,
     setPlayingNow, playingNow,
     playerPos, playerSize, isPreview,
-    setIsPreview
+    setIsPreview, playingEpisodeId,
+    setPlayingEpisodeId,
   } = useSubscription();
   const router = useRouter();
 
@@ -49,11 +50,14 @@ function ModernVideoPlayerWrapper() {
       playerPos={playerPos}
       playerSize={playerSize}
       isPreview={isPreview}
+      movieId={playingNow?.id}
+      episodeId={playingEpisodeId || undefined}
       onClose={() => {
         // Detect if we are playing a local download
         const isLocal = selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http');
         setPlayerMode('closed');
         setPlayingNow(null);
+        setPlayingEpisodeId(null);
         setIsPreview(false);
 
         if (isLocal && playerMode === 'full') {

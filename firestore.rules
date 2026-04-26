@@ -28,12 +28,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // --- User Profiles & Legacy Movie App Rules (Keeping for compatibility) ---
+    // --- User Profiles & Legacy Movie App Rules ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();
+      
+      // Explicitly allow sub-collections like favorites/watchHistory
+      match /{allSubcollections=**} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
     }
 
     match /movies/{movieId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }

@@ -20,6 +20,8 @@ interface UserContextType {
   refreshProfile: () => Promise<void>;
   savePlaybackProgress: (movieId: string, position: number, episodeId?: string) => Promise<void>;
   getPlaybackProgress: (movieId: string, episodeId?: string) => { position: number; timestamp: number } | null;
+  removeFromWatchHistory: (movieId: string, episodeId?: string) => Promise<void>;
+  clearWatchHistory: () => Promise<void>;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -188,7 +190,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const savePlaybackProgress = async (movieId: string, position: number, episodeId?: string) => {
     const key = episodeId ? `${movieId}_${episodeId}` : movieId;
     const historyItem: any = { position, timestamp: Date.now() };
-    if (episodeId) historyItem.episodeId = episodeId;
+    if (episodeId !== undefined && episodeId !== null) historyItem.episodeId = episodeId;
 
     // Update local state immediately for snappy UI
     setProfile(prev => ({
@@ -219,6 +221,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return profile.watchHistory[key] || null;
   };
 
+  const removeFromWatchHistory = async (movieId: string, episodeId?: string) => {
+    const key = episodeId ? `${movieId}_${episodeId}` : movieId;
+    
+    // Update local state
+    setProfile(prev => {
+      const nextHistory = { ...prev.watchHistory };
+      delete nextHistory[key];
+      return { ...prev, watchHistory: nextHistory };
+    });
+
+    // Persist to Firestore
+    if (user && !user.isAnonymous) {
+      try {
+        const { deleteField } = require('firebase/firestore');
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+          watchHistory: {
+            [key]: deleteField()
+          }
+        }, { merge: true });
+      } catch (e) {
+        console.error('UserContext: Failed to remove from watch history:', e);
+      }
+    }
+  };
+
+  const clearWatchHistory = async () => {
+    // Update local state
+    setProfile(prev => ({ ...prev, watchHistory: {} }));
+
+    // Persist to Firestore
+    if (user && !user.isAnonymous) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, { watchHistory: {} }, { merge: true });
+      } catch (e) {
+        console.error('UserContext: Failed to clear watch history:', e);
+      }
+    }
+  };
+
   const refreshProfile = async () => {
     if (user) {
       const userDocRef = doc(db, 'users', user.uid);
@@ -245,7 +288,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       loading, 
       refreshProfile, 
       savePlaybackProgress, 
-      getPlaybackProgress 
+      getPlaybackProgress,
+      removeFromWatchHistory,
+      clearWatchHistory
     }}>
       {children}
     </UserContext.Provider>

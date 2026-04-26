@@ -84,7 +84,8 @@
       "reactCompiler": true
     },
     "updates": {
-      "url": "https://u.expo.dev/c9754154-086d-4aae-bf12-6e4eb134cef2"
+      "url": "https://u.expo.dev/c9754154-086d-4aae-bf12-6e4eb134cef2",
+      "checkAutomatically": "NEVER"
     },
     "runtimeVersion": {
       "policy": "appVersion"

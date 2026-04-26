@@ -164,6 +164,8 @@ try {
 }
 
 function useSafeCastState() {
+  return null;
+  /*
   if (!CAN_CAST) return null;
   try {
     return useCastState();
@@ -171,6 +173,7 @@ function useSafeCastState() {
     console.warn("Google Cast hook error:", e);
     return null;
   }
+  */
 }
 
 function ModalSystemUIRestorer() {
@@ -2391,6 +2394,9 @@ export function SeriesPreviewContent({
               shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
               isLooping
               isMuted={isMuted}
+              usePoster={true}
+              posterSource={{ uri: series.poster }}
+              posterStyle={{ resizeMode: 'cover' }}
             />
           ) : (
             <Image source={{ uri: series.poster }} style={styles.previewPoster} />
@@ -2567,10 +2573,12 @@ export function SeriesPreviewContent({
                   style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
                     setActiveEpisodeId(ep.id);
+                    if (setPlayingEpisodeId) setPlayingEpisodeId(ep.id);
                     // Prioritize local downloaded file for offline playback
                     const localUri = ctxEpisodeDownloads[ep.id];
                     if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || ep.videoUrl);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
+                    if (setPlayingNow) setPlayingNow(series);
                     if (setPlayerMode) setPlayerMode('full');
                   }}
                 >
@@ -3175,7 +3183,7 @@ export function MoviePreviewContent({
 
   // ── Real-time Firestore Comments ──
   useEffect(() => {
-    if (!showComments || !movie?.id) return;
+    if (!movie?.id) return;
 
     setIsLoadingComments(true);
     const q = query(
@@ -4018,6 +4026,9 @@ export function MoviePreviewContent({
                         shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
                         isLooping
                         isMuted={isMuted}
+                        usePoster={true}
+                        posterSource={{ uri: movie.poster }}
+                        posterStyle={{ resizeMode: 'cover' }}
                       />
                       {/* Hidden Detector for Full Movie Duration (used if database has 0:00) */}
                       {movie && !("seasons" in movie) && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && (
@@ -4208,7 +4219,7 @@ export function MoviePreviewContent({
                               paddingVertical: 3,
                             }}>
                               <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
-                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {movieParts.length * ((movie as any).episodesPerPart || 1)}
+                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {(movie as any).episodes || (movieParts.length * ((movie as any).episodesPerPart || 1))}
                               </Text>
                             </View>
                           )}
@@ -4610,7 +4621,7 @@ export function MoviePreviewContent({
                           <View style={{ flex: 1 }} />
                           <View style={styles.epCountPillPremium}>
                             <Text style={styles.epCountTextPremium}>
-                              {"seasons" in movie ? `${movieParts.length * ((movie as any).episodesPerPart || 1)} EP` : `EP ${movieParts.length * ((movie as any).episodesPerPart || 1)}`}
+                              {"seasons" in movie ? `${(movie as any).episodes || (movieParts.length * ((movie as any).episodesPerPart || 1))} EP` : `EP ${(movie as any).episodes || (movieParts.length * ((movie as any).episodesPerPart || 1))}`}
                             </Text>
                           </View>
                           <Ionicons
@@ -5113,8 +5124,21 @@ export function MoviePreviewContent({
                       Keyboard.dismiss();
                     }}
                   />
+                  
+                  {/* Fills any gap caused by Android's navigation bar lifting the view */}
+                  <View 
+                    style={{ 
+                      position: 'absolute', 
+                      bottom: 0, 
+                      left: 0, 
+                      right: 0, 
+                      height: 100, 
+                      backgroundColor: '#111827',
+                      zIndex: -1 
+                    }} 
+                  />
                   <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior="padding"
                     keyboardVerticalOffset={0}
                     style={{ flex: 1, justifyContent: "flex-end" }}
                   >
@@ -5131,14 +5155,26 @@ export function MoviePreviewContent({
                     >
                     <View style={{ flex: 1 }}>
                       <View
+                        {...PanResponder.create({
+                          onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+                          onPanResponderRelease: (_, gestureState) => {
+                            if (gestureState.dy > 40) {
+                              setShowComments(false);
+                              Keyboard.dismiss();
+                            }
+                          }
+                        }).panHandlers}
                         style={{
-                          flexDirection: "row",
-                          alignItems: "center",
                           padding: 16,
+                          paddingTop: 12,
                           borderBottomWidth: 1,
                           borderBottomColor: "rgba(255,255,255,0.08)",
                         }}
                       >
+                        <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>
                         <Text
                           style={{
                             color: "#fff",
@@ -5155,6 +5191,7 @@ export function MoviePreviewContent({
                         >
                           <Ionicons name="close" size={22} color="#64748b" />
                         </TouchableOpacity>
+                        </View>
                       </View>
                       {/* Comments list */}
                       <ScrollView
@@ -6213,10 +6250,6 @@ function HeroBanner({
               source={{ 
                 uri: heroSource,
                 overridingExtension: isHLS ? 'm3u8' : undefined,
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
-                  'Referer': 'https://themoviezone247.com/'
-                }
               }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
@@ -6224,6 +6257,9 @@ function HeroBanner({
               isLooping={false}
               isMuted={isMuted}
               onPlaybackStatusUpdate={onStatus}
+              usePoster={true}
+              posterSource={{ uri: movie.poster }}
+              posterStyle={{ resizeMode: 'cover' }}
               onError={(err) => {
                 console.warn("Hero Video Error:", err);
                 goNext();
@@ -6634,6 +6670,7 @@ export default function HomeScreen() {
           setPlayerTitle(found.title);
           setSelectedVideoUrl(playItem.videoUrl);
           setPlayingNow(playItem as Movie);
+          if (setPlayingEpisodeId) setPlayingEpisodeId(null);
           setPlayerMode('full');
         } else {
           // Open the movie detail alone in the stack to prevent layering

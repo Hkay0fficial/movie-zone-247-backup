@@ -147,7 +147,9 @@ export function GridCard({
       {"seasons" in movie ? (
         <View style={styles.epBadgePremium}>
           <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
-          <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
+          <Text style={styles.epBadgeTextPremium}>
+            {Math.max((movie as any).episodes || 0, ((movie as any).episodeList?.length || 0) * ((movie as any).episodesPerPart || 1))} EP
+          </Text>
         </View>
       ) : (
         ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (

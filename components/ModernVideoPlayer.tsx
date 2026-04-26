@@ -177,15 +177,18 @@ export default function ModernVideoPlayer({
   const [isLocked, setIsLocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const playbackSpeedRef = useRef(1.0);
+  const volumeSliderWidthRef = useRef(90);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
+  const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN); // CONTAIN (Fit), COVER (Fill), STRETCH (Stretch)
   
   // Overlays
   const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false);
-  const [showRelatedOverlay, setShowRelatedOverlay] = useState(false);
   const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
   const [showTimerOptions, setShowTimerOptions] = useState(false);
   const [sleepTimerMs, setSleepTimerMs] = useState(0);
+  const [selectedTimerMins, setSelectedTimerMins] = useState(0); // which preset is active
 
   // Modern Gesture States
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
@@ -199,6 +202,12 @@ export default function ModernVideoPlayer({
   const progressBarGlow = useRef(new Animated.Value(0)).current;
   const skipIntroOpacity = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef<number>(0);
+  // Animated values for smooth knob/fill (no React re-render during drag)
+  const scrubAnimPct = useRef(new Animated.Value(0)).current;   // 0..1
+  const volumeAnimPct = useRef(new Animated.Value(1)).current;  // 0..1
+  // Single stable display anim — controls what the slider actually shows
+  const volumeDisplayAnim = useRef(new Animated.Value(1)).current;
+  const currentVolumeRef = useRef(1);
 
   // Refs for logic consistency
   const showControlsRef = useRef(true);
@@ -206,6 +215,7 @@ export default function ModernVideoPlayer({
   const progressBarWidth = useRef(0);
   const scrubPositionRef = useRef(0);
   const statusUpdateRef = useRef<any>(null);
+  const isInteractingRef = useRef(false); // Global lock to prevent main swipe from stealing control touches
 
   // Orientation & Status Bar
   useEffect(() => {
@@ -286,14 +296,17 @@ export default function ModernVideoPlayer({
        safeSetNavigationBar('hidden');
     }
   }, [appState, playerMode]);
+  // Resume from saved progress
   useEffect(() => {
-    if (playerMode !== 'closed' && movieId && videoUrl) {
+    if (playerMode !== 'closed' && movieId && videoUrl && status.isLoaded && !status.isPlaying) {
       const saved = getPlaybackProgress(movieId, episodeId);
-      if (saved && saved.position > 3000) { 
-        setTimeout(() => videoRef.current?.setPositionAsync(saved.position), 800);
+      // Only resume if we haven't already sought (check positionMillis is near 0)
+      if (saved && saved.position > 3000 && status.positionMillis < 2000) { 
+        console.log(`[Mobile] Resuming ${movieId} at ${saved.position}ms`);
+        videoRef.current?.setPositionAsync(saved.position);
       }
     }
-  }, [movieId, episodeId, videoUrl, playerMode]);
+  }, [movieId, episodeId, videoUrl, playerMode, status.isLoaded]);
 
   // Periodic Progress Save
   useEffect(() => {
@@ -304,6 +317,11 @@ export default function ModernVideoPlayer({
       return () => clearInterval(interval);
     }
   }, [status.isLoaded, status.isPlaying, movieId, episodeId]);
+
+  // Sync volumeDisplayAnim whenever mute state or volume changes
+  useEffect(() => {
+    volumeDisplayAnim.setValue(isMuted ? 0 : currentVolumeRef.current);
+  }, [isMuted]);
 
   // Sleep Timer
   useEffect(() => {
@@ -405,22 +423,40 @@ export default function ModernVideoPlayer({
   const gestureStartValueRef = useRef(0);
   const gestureTypeRef = useRef<'brightness' | 'volume' | 'scrub' | null>(null);
 
+  const isScrubbingRef = useRef(false);
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => playerMode === 'full',
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 || Math.abs(g.dy) > 20,
+      // Don't steal touches if timeline/volume is already interacting
+      onStartShouldSetPanResponder: (evt) => {
+        if (playerMode !== 'full' || isLocked || isInteractingRef.current) return false;
+        
+        // Exclude bottom controls area (approx bottom 100px)
+        const { pageY } = evt.nativeEvent;
+        const { height: screenH } = Dimensions.get('window');
+        if (pageY > screenH - 110) return false;
+        
+        return true;
+      },
+      onMoveShouldSetPanResponder: (_, g) => {
+        if (isLocked || isInteractingRef.current) return false;
+        return (Math.abs(g.dx) > 20 || Math.abs(g.dy) > 20);
+      },
       onPanResponderGrant: (evt, g) => {
+        if (isInteractingRef.current) return;
+        isInteractingRef.current = true; // Block other responders while this one is active
         const { locationX, pageX, pageY } = evt.nativeEvent;
         gestureStartXRef.current = pageX;
         gestureStartYRef.current = pageY;
         
+        const { width: currentW } = Dimensions.get('window');
         if (Math.abs(g.dx) > Math.abs(g.dy)) {
           gestureTypeRef.current = 'scrub';
           if (statusRef.current.isLoaded) {
             scrubPositionRef.current = statusRef.current.positionMillis;
           }
         } else {
-          if (pageX < SCREEN_W / 2) {
+          if (pageX < currentW / 2) {
             gestureTypeRef.current = 'brightness';
             Brightness.getBrightnessAsync().then(val => {
               gestureStartValueRef.current = val;
@@ -449,12 +485,14 @@ export default function ModernVideoPlayer({
             setScrubPosition(newPos);
           }
         } else if (gestureTypeRef.current === 'brightness') {
-          const delta = -(g.dy / (SCREEN_H * 0.5));
+          const { height: currentH } = Dimensions.get('window');
+          const delta = -(g.dy / (currentH * 0.5));
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentBrightness(newValue);
           Brightness.setBrightnessAsync(newValue);
         } else if (gestureTypeRef.current === 'volume') {
-          const delta = -(g.dy / (SCREEN_H * 0.5));
+          const { height: currentH } = Dimensions.get('window');
+          const delta = -(g.dy / (currentH * 0.5));
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentVolume(newValue);
           videoRef.current?.setVolumeAsync(newValue);
@@ -468,7 +506,115 @@ export default function ModernVideoPlayer({
         setIsAdjustingBrightness(false);
         setIsAdjustingVolume(false);
         gestureTypeRef.current = null;
+        isScrubbingRef.current = false;
+        isInteractingRef.current = false;
       }
+    })
+  ).current;
+
+  // Timeline specific PanResponder for direct dragging and tapping
+  const timelineWidthRef = useRef(1);
+  const timelinePanResponder = useRef(
+    PanResponder.create({
+      // CAPTURE handlers = highest priority, beats any parent responder
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        isInteractingRef.current = true;
+        isScrubbingRef.current = true;
+        setIsScrubbing(true);
+        const touchX = e.nativeEvent.locationX;
+        const w = Math.max(1, timelineWidthRef.current);
+        const dur = statusRef.current?.durationMillis || 1;
+        const pct = Math.max(0, Math.min(1, touchX / w));
+        const newPos = pct * dur;
+        // Update animated value instantly — no setState, no re-render
+        scrubAnimPct.setValue(pct);
+        scrubPositionRef.current = newPos;
+        setScrubPosition(newPos); // only for time text
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      },
+      onPanResponderMove: (e) => {
+        const touchX = e.nativeEvent.locationX;
+        const w = Math.max(1, timelineWidthRef.current);
+        const dur = statusRef.current?.durationMillis || 1;
+        const pct = Math.max(0, Math.min(1, touchX / w));
+        // Only animated value update — zero React renders
+        scrubAnimPct.setValue(pct);
+        scrubPositionRef.current = pct * dur;
+        // Throttle the time-display state update to every ~4 frames
+        if (Math.abs(scrubPositionRef.current - (scrubPositionRef as any)._lastDisplayed || 0) > (dur / 200)) {
+          (scrubPositionRef as any)._lastDisplayed = scrubPositionRef.current;
+          setScrubPosition(scrubPositionRef.current);
+        }
+      },
+      onPanResponderRelease: (e) => {
+        const touchX = e.nativeEvent.locationX;
+        const w = Math.max(1, timelineWidthRef.current);
+        const dur = statusRef.current?.durationMillis || 1;
+        const pct = Math.max(0, Math.min(1, touchX / w));
+        const finalPos = pct * dur;
+        scrubAnimPct.setValue(pct);
+        setScrubPosition(finalPos);
+        videoRef.current?.setPositionAsync(finalPos);
+        setIsScrubbing(false);
+        isScrubbingRef.current = false;
+        isInteractingRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        setIsScrubbing(false);
+        isScrubbingRef.current = false;
+        isInteractingRef.current = false;
+      },
+      onPanResponderTerminationRequest: () => false,
+    })
+  ).current;
+
+  // Volume PanResponder — capture priority, zero setState during drag
+  const volumePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        isInteractingRef.current = true;
+        const touchX = e.nativeEvent.locationX;
+        const w = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchX / w));
+        // Only update animated values — NO setState, NO re-render
+        volumeDisplayAnim.setValue(vol);
+        volumeAnimPct.setValue(vol);
+        currentVolumeRef.current = vol;
+        // Unmute visually if dragging above 0
+        if (vol > 0 && isMuted) setIsMuted(false);
+      },
+      onPanResponderMove: (e) => {
+        const touchX = e.nativeEvent.locationX;
+        const w = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchX / w));
+        // Pure Animated update — completely skips React render cycle
+        volumeDisplayAnim.setValue(vol);
+        currentVolumeRef.current = vol;
+      },
+      onPanResponderRelease: (e) => {
+        const touchX = e.nativeEvent.locationX;
+        const w = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchX / w));
+        volumeDisplayAnim.setValue(vol);
+        currentVolumeRef.current = vol;
+        // Only NOW commit to React state and actual audio
+        setCurrentVolume(vol);
+        if (vol > 0) setIsMuted(false);
+        videoRef.current?.setVolumeAsync(vol).catch(() => {});
+        isInteractingRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        isInteractingRef.current = false;
+      },
+      onPanResponderTerminationRequest: () => false,
     })
   ).current;
 
@@ -509,9 +655,12 @@ export default function ModernVideoPlayer({
           ref={videoRef}
           source={{ uri: videoUrl || "" }}
           style={styles.absFill}
-          resizeMode={ResizeMode.COVER}
+          resizeMode={videoResizeMode}
           shouldPlay={playerMode !== 'closed' && isFocused && appState === 'active'}
           useNativeControls={false}
+          allowsPictureInPicture={true}
+          isMuted={isMuted}
+          volume={isMuted ? 0 : currentVolume}
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
           onPlaybackStatusUpdate={s => {
             setStatus(s);
@@ -520,7 +669,6 @@ export default function ModernVideoPlayer({
             // 40-second cutoff for previews (all users as requested)
             if (isPreview && s.isLoaded && s.positionMillis >= 40000) {
               videoRef.current?.pauseAsync();
-              // Prevent further playback of this preview
               return;
             }
 
@@ -535,25 +683,41 @@ export default function ModernVideoPlayer({
             <Animated.View style={[styles.absFill, { opacity: controlsOpacity }]} pointerEvents={showControls ? "auto" : "none"}>
               
               {/* Glassmorphic Header */}
-              <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-                <BlurView intensity={25} tint="dark" style={styles.glassHeaderBg} />
-                <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-                  <Ionicons name="chevron-down" size={28} color="#fff" />
-                </TouchableOpacity>
-                <View style={styles.titleArea}>
-                  <Text style={styles.playerTitle} numberOfLines={1}>{title}</Text>
-                  {seriesVj && <Text style={styles.playerSubTitle}>{seriesVj}</Text>}
-                </View>
-                <View style={styles.headerActions}>
-                  <TouchableOpacity onPress={() => setShowTimerOptions(true)} style={styles.iconAction}>
-                    <Ionicons name="alarm-outline" size={22} color={sleepTimerMs > 0 ? "#ef4444" : "#fff"} />
+              {!isLocked && (
+                <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                  <BlurView intensity={25} tint="dark" style={styles.glassHeaderBg} />
+                  <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+                    <Ionicons name="chevron-down" size={28} color="#fff" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconAction}>
-                    <MaterialCommunityIcons name="cast" size={22} color="#fff" />
-                  </TouchableOpacity>
+                  <View style={styles.titleArea}>
+                    <Text style={styles.playerTitle} numberOfLines={1}>{title}</Text>
+                    {seriesVj && <Text style={styles.playerSubTitle}>{seriesVj}</Text>}
+                  </View>
+                  <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={() => setShowTimerOptions(true)} style={[styles.iconAction, { alignItems: 'center' }]}>
+                      <Ionicons 
+                        name="alarm-outline" 
+                        size={22} 
+                        color={sleepTimerMs > 0 ? '#818cf8' : '#fff'} 
+                      />
+                      {sleepTimerMs > 0 && (
+                        <View style={styles.timerBadge}>
+                          <Text style={styles.timerBadgeText}>
+                            {Math.floor(sleepTimerMs / 60000) > 0
+                              ? `${Math.floor(sleepTimerMs / 60000)}m`
+                              : `${Math.floor(sleepTimerMs / 1000)}s`
+                            }
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconAction}>
+                      <MaterialCommunityIcons name="cast" size={22} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-
+              )}
+              
               {/* Central Premium Controls */}
               <View style={styles.centerControls}>
                 {!isLocked ? (
@@ -600,28 +764,92 @@ export default function ModernVideoPlayer({
               <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                 
                 {/* Glowing Progress Bar */}
-                <View style={styles.progressArea}>
-                  <Text style={styles.timeText}>{formatTime(isScrubbing ? scrubPosition : (status.isLoaded ? status.positionMillis : 0))}</Text>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressBase, { width: `${( (isScrubbing ? scrubPosition : (status.isLoaded ? status.positionMillis : 0)) / (status.isLoaded ? status.durationMillis : 1) ) * 100}%` }]}>
-                      <LinearGradient
-                        colors={["#ef4444", "#f87171"]}
-                        start={{ x: 0, y: 0.5 }}
-                        end={{ x: 1, y: 0.5 }}
-                        style={styles.progressFill}
+                {!isLocked && (
+                  <View style={styles.progressArea}>
+                    <Text style={styles.timeText}>{formatTime(isScrubbing ? scrubPosition : (status.isLoaded ? status.positionMillis : 0))}</Text>
+                    <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 15 }}>
+                      <View pointerEvents="none" style={{ justifyContent: 'center' }}>
+                        <View style={styles.progressTrack}>
+                          <Animated.View style={[styles.progressBase, {
+                            width: (isScrubbing
+                              ? scrubAnimPct
+                              : new Animated.Value(
+                                  status.isLoaded && status.durationMillis
+                                    ? status.positionMillis / status.durationMillis
+                                    : 0
+                                )
+                            ).interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
+                          }]}>
+                            <LinearGradient
+                              colors={["#6366f1", "#818cf8"]}
+                              start={{ x: 0, y: 0.5 }}
+                              end={{ x: 1, y: 0.5 }}
+                              style={styles.progressFill}
+                            />
+                            <Animated.View style={[styles.progressGlow, { opacity: progressBarGlow }]} />
+                          </Animated.View>
+                        </View>
+                        {/* Visual Knob - driven by Animated.Value, zero re-renders */}
+                        <Animated.View 
+                          style={[
+                            styles.progressKnob,
+                            { left: (isScrubbing ? scrubAnimPct : 
+                                new Animated.Value(
+                                  status.isLoaded && status.durationMillis 
+                                    ? (status.positionMillis / status.durationMillis) 
+                                    : 0
+                                )
+                              ).interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
+                            }
+                          ]} 
+                        />
+                      </View>
+                      {/* INVISIBLE TOUCH TARGET WITH NO CHILDREN */}
+                      <View 
+                         style={StyleSheet.absoluteFillObject}
+                         {...timelinePanResponder.panHandlers}
+                         onLayout={(e) => timelineWidthRef.current = e.nativeEvent.layout.width}
                       />
-                      <Animated.View style={[styles.progressGlow, { opacity: progressBarGlow }]} />
                     </View>
+                    <Text style={styles.timeText}>{formatTime(status.isLoaded ? status.durationMillis : 0)}</Text>
                   </View>
-                  <Text style={styles.timeText}>{formatTime(status.isLoaded ? status.durationMillis : 0)}</Text>
-                </View>
+                )}
 
                 {/* Bottom Actions Row */}
                 {!isLocked && (
                   <View style={styles.bottomRow}>
-                    <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.footerAction}>
-                      <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity 
+                        onPress={() => setIsMuted(prev => !prev)} 
+                        style={[styles.footerAction, { marginRight: 8 }]}
+                      >
+                        <Ionicons name={isMuted || currentVolume === 0 ? "volume-mute" : "volume-high"} size={22} color={isMuted ? 'rgba(255,255,255,0.4)' : '#fff'} />
+                      </TouchableOpacity>
+                      
+                      {/* Horizontal Volume Slider — smooth Animated, no re-renders during drag */}
+                      <View 
+                        style={styles.miniVolumeSlider}
+                        onLayout={(e) => { volumeSliderWidthRef.current = e.nativeEvent.layout.width; }}
+                        {...volumePanResponder.panHandlers}
+                      >
+                        <View style={styles.miniVolumeTrack}>
+                          <Animated.View style={[styles.miniVolumeFill, {
+                            width: volumeDisplayAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%'],
+                              extrapolate: 'clamp',
+                            })
+                          }]} />
+                        </View>
+                        <Animated.View style={[styles.miniVolumeKnob, {
+                          left: volumeDisplayAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0%', '100%'],
+                            extrapolate: 'clamp',
+                          })
+                        }]} />
+                      </View>
+                    </View>
 
                     <TouchableOpacity onPress={() => setIsLocked(true)} style={styles.footerAction}>
                       <Ionicons name="lock-open-outline" size={22} color="#fff" />
@@ -629,13 +857,13 @@ export default function ModernVideoPlayer({
 
                     <View style={styles.footerDivider} />
 
-                    <TouchableOpacity onPress={() => setShowEpisodesOverlay(true)} style={styles.footerBadge}>
-                      <Text style={styles.badgeText}>Episodes</Text>
-                    </TouchableOpacity>
+                    {((playingNow && ('seasons' in playingNow || playingNow.type === 'Series')) || !!episodeId || (episodes && episodes.length > 1)) && (
+                      <TouchableOpacity onPress={() => setShowEpisodesOverlay(true)} style={styles.footerBadge}>
+                        <Text style={styles.badgeText}>Episodes</Text>
+                      </TouchableOpacity>
+                    )}
 
-                    <TouchableOpacity onPress={() => setShowRelatedOverlay(true)} style={styles.footerBadge}>
-                      <Text style={styles.badgeText}>More Like This</Text>
-                    </TouchableOpacity>
+
 
                     <View style={{ flex: 1 }} />
 
@@ -643,8 +871,24 @@ export default function ModernVideoPlayer({
                       <Text style={styles.speedText}>{playbackSpeed}x</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => setPlayerMode('mini')} style={styles.miniBtn}>
-                      <Ionicons name="contract" size={20} color="#fff" />
+                    <TouchableOpacity 
+                      onPress={() => {
+                        if (videoResizeMode === ResizeMode.CONTAIN) setVideoResizeMode(ResizeMode.COVER);
+                        else if (videoResizeMode === ResizeMode.COVER) setVideoResizeMode(ResizeMode.STRETCH);
+                        else setVideoResizeMode(ResizeMode.CONTAIN);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }} 
+                      style={styles.miniBtn}
+                    >
+                      <MaterialCommunityIcons 
+                        name={
+                          videoResizeMode === ResizeMode.CONTAIN ? "arrow-expand-all" : 
+                          videoResizeMode === ResizeMode.COVER ? "arrow-collapse-all" : 
+                          "aspect-ratio"
+                        } 
+                        size={22} 
+                        color="#fff" 
+                      />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -698,10 +942,10 @@ export default function ModernVideoPlayer({
                     >
                       <Image source={{ uri: ep.poster || "" }} style={styles.epThumb} />
                       <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.epTitle, activeEpisodeId === ep.id && { color: '#ef4444' }]} numberOfLines={1}>{ep.title}</Text>
+                        <Text style={[styles.epTitle, activeEpisodeId === ep.id && { color: '#818cf8' }]} numberOfLines={1}>{ep.title}</Text>
                         <Text style={styles.epSub}>{ep.duration || "..."}</Text>
                       </View>
-                      {activeEpisodeId === ep.id && <Ionicons name="play-circle" size={20} color="#ef4444" />}
+                      {activeEpisodeId === ep.id && <Ionicons name="play-circle" size={20} color="#818cf8" />}
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -709,37 +953,7 @@ export default function ModernVideoPlayer({
             </TouchableOpacity>
           )}
 
-          {showRelatedOverlay && relatedSeries.length > 0 && (
-            <TouchableOpacity 
-              style={[styles.overlayBackdrop]}
-              activeOpacity={1}
-              onPress={() => setShowRelatedOverlay(false)}
-            >
-              <BlurView intensity={80} tint="dark" style={styles.absFill} />
-              <View style={styles.overlayContent}>
-                <View style={styles.overlayHeader}>
-                  <Text style={styles.overlayTitle}>More Like This</Text>
-                  <TouchableOpacity onPress={() => setShowRelatedOverlay(false)} style={styles.overlayClose}>
-                    <Ionicons name="close" size={24} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView contentContainerStyle={{ paddingBottom: 40 }} horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 16 }}>
-                    {relatedSeries.map((s) => (
-                      <TouchableOpacity 
-                        key={s.id} 
-                        style={styles.relatedCard}
-                        onPress={() => { onSelectRelated?.(s); setShowRelatedOverlay(false); }}
-                      >
-                        <Image source={{ uri: s.poster }} style={styles.relatedPoster} />
-                        <Text style={styles.relatedTitle} numberOfLines={1}>{s.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            </TouchableOpacity>
-          )}
+
 
           {showSpeedOverlay && (
             <TouchableOpacity 
@@ -748,24 +962,27 @@ export default function ModernVideoPlayer({
               onPress={() => setShowSpeedOverlay(false)}
             >
               <BlurView intensity={80} tint="dark" style={styles.absFill} />
-              <View style={[styles.overlayContent, { width: '40%', height: 'auto' }]}>
+              <View style={[styles.overlayContent, { width: '40%' }]}>
                 <View style={styles.overlayHeader}>
                   <Text style={styles.overlayTitle}>Playback Speed</Text>
                 </View>
-                {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
-                  <TouchableOpacity 
-                    key={rate} 
-                    style={[styles.speedOption, playbackSpeed === rate && styles.speedOptionActive]}
-                    onPress={() => {
-                      setPlaybackSpeed(rate);
-                      videoRef.current?.setRateAsync(rate, true);
-                      setShowSpeedOverlay(false);
-                    }}
-                  >
-                    <Text style={[styles.speedOptionText, playbackSpeed === rate && { color: '#ef4444' }]}>{rate}x</Text>
-                    {playbackSpeed === rate && <Ionicons name="checkmark" size={20} color="#ef4444" />}
-                  </TouchableOpacity>
-                ))}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
+                    <TouchableOpacity 
+                      key={rate} 
+                      style={[styles.speedOption, playbackSpeed === rate && styles.speedOptionActive]}
+                      onPress={() => {
+                        playbackSpeedRef.current = rate;
+                        setPlaybackSpeed(rate);
+                        videoRef.current?.setRateAsync(rate, true).catch(() => {});
+                        setShowSpeedOverlay(false);
+                      }}
+                    >
+                      <Text style={[styles.speedOptionText, playbackSpeed === rate && { color: '#818cf8' }]}>{rate}x</Text>
+                      {playbackSpeed === rate && <Ionicons name="checkmark" size={20} color="#818cf8" />}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           )}
@@ -777,23 +994,42 @@ export default function ModernVideoPlayer({
               onPress={() => setShowTimerOptions(false)}
             >
               <BlurView intensity={80} tint="dark" style={styles.absFill} />
-              <View style={[styles.overlayContent, { width: '40%', height: 'auto' }]}>
-                <View style={styles.overlayHeader}>
+              <View style={[styles.overlayContent, { width: '40%' }]}>
+                <View style={[styles.overlayHeader, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
                   <Text style={styles.overlayTitle}>Sleep Timer</Text>
+                  {sleepTimerMs > 0 && (
+                    <Text style={styles.timerCountdownLabel}>
+                      ⏱ {Math.floor(sleepTimerMs / 60000)}m {Math.floor((sleepTimerMs % 60000) / 1000)}s remaining
+                    </Text>
+                  )}
                 </View>
-                {[0, 5, 15, 30, 45, 60].map(mins => (
-                  <TouchableOpacity 
-                    key={mins} 
-                    style={[styles.speedOption]}
-                    onPress={() => {
-                      setSleepTimerMs(mins * 60 * 1000);
-                      setShowTimerOptions(false);
-                    }}
-                  >
-                    <Text style={styles.speedOptionText}>{mins === 0 ? 'Off' : `${mins} min`}</Text>
-                    {sleepTimerMs === mins * 60 * 1000 && <Ionicons name="checkmark" size={20} color="#ef4444" />}
-                  </TouchableOpacity>
-                ))}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+                  {[0, 5, 15, 30, 45, 60].map(mins => (
+                    <TouchableOpacity 
+                      key={mins} 
+                      style={[
+                        styles.speedOption,
+                        selectedTimerMins === mins && mins > 0 && styles.speedOptionActive,
+                        selectedTimerMins === mins && mins === 0 && sleepTimerMs === 0 && styles.speedOptionActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedTimerMins(mins);
+                        setSleepTimerMs(mins * 60 * 1000);
+                        setShowTimerOptions(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.speedOptionText,
+                        selectedTimerMins === mins && { color: '#818cf8' }
+                      ]}>
+                        {mins === 0 ? 'Off' : `${mins} min`}
+                      </Text>
+                      {selectedTimerMins === mins && (
+                        <Ionicons name="checkmark" size={20} color="#818cf8" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableOpacity>
           )}
@@ -1032,8 +1268,23 @@ const styles = StyleSheet.create({
   },
   progressGlow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff',
-    opacity: 0.2,
+    backgroundColor: '#818cf8',
+    opacity: 0.3,
+  },
+  progressKnob: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#818cf8',
+    borderWidth: 2,
+    borderColor: '#fff',
+    transform: [{ translateX: -8 }],
+    elevation: 6,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -1143,7 +1394,7 @@ const styles = StyleSheet.create({
   },
   overlayContent: {
     width: '60%',
-    height: '75%',
+    maxHeight: '85%',
     backgroundColor: 'rgba(15, 15, 20, 0.95)',
     borderRadius: 20,
     overflow: 'hidden',
@@ -1225,14 +1476,80 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   speedOptionActive: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(99,102,241,0.12)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366f1',
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   speedOptionText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // ─── Inline Volume Slider ─────────────────────────────────────────
+  miniVolumeSlider: {
+    width: 90,
+    height: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  miniVolumeTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
+  },
+  miniVolumeFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: '#6366f1',
+  },
+  miniVolumeKnob: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#818cf8',
+    borderWidth: 2,
+    borderColor: '#fff',
+    marginLeft: -7,
+    top: '50%',
+    marginTop: -7,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  // ─── Sleep Timer Badge & Countdown ────────────────────────────────
+  timerBadge: {
+    marginTop: 3,
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 26,
+    alignItems: 'center',
+  },
+  timerBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  timerCountdownLabel: {
+    color: '#818cf8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  speedOptionActiveIndigo: {
+    backgroundColor: 'rgba(99,102,241,0.15)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366f1',
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
 });
 

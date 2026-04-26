@@ -1190,7 +1190,7 @@ function SeriesPreviewModal({
 
   // ── Real-time Firestore Comments ──
   useEffect(() => {
-    if (!showComments || !series?.id) return;
+    if (!series?.id) return;
 
     setIsLoadingComments(true);
     const q = query(
@@ -1572,6 +1572,9 @@ function SeriesPreviewModal({
                   shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
                   isLooping
                   isMuted={isMuted}
+                  usePoster={true}
+                  posterSource={{ uri: series.poster }}
+                  posterStyle={{ resizeMode: 'cover' }}
                 />
               ) : (
                 <Image
@@ -1686,7 +1689,7 @@ function SeriesPreviewModal({
 
                   <View style={[styles.epTitleBadge, { backgroundColor: 'rgba(91, 95, 239, 0.2)', borderColor: 'rgba(91, 95, 239, 0.4)' }]}>
                     <Text style={[styles.epTitleBadgeText, { color: '#818cf8' }]}>
-                      EP {episodes[currentIndex]?.displayIndex || (currentIndex >= 0 ? currentIndex + 1 : 1)} / {episodes.length * (series.episodesPerPart || 1)}
+                      EP {episodes[currentIndex]?.displayIndex || (currentIndex >= 0 ? currentIndex + 1 : 1)} / {series.episodes || (episodes.length * (series.episodesPerPart || 1))}
                     </Text>
                   </View>
                 </View>
@@ -1997,7 +2000,7 @@ function SeriesPreviewModal({
                       </TouchableOpacity>
                       <View style={styles.epCountPillPremium}>
                         <Text style={styles.epCountTextPremium}>
-                          EP {episodes.length * (series.episodesPerPart || 1)}
+                          EP {series.episodes || (episodes.length * (series.episodesPerPart || 1))}
                         </Text>
                       </View>
                       <Ionicons
@@ -2785,8 +2788,21 @@ function SeriesPreviewModal({
                     Keyboard.dismiss();
                   }}
                 />
+                
+                {/* Fills any gap caused by Android's navigation bar lifting the view */}
+                <View 
+                  style={{ 
+                    position: 'absolute', 
+                    bottom: 0, 
+                    left: 0, 
+                    right: 0, 
+                    height: 100, 
+                    backgroundColor: '#111827',
+                    zIndex: -1 
+                  }} 
+                />
                 <KeyboardAvoidingView
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  behavior="padding"
                   keyboardVerticalOffset={0}
                   style={{ flex: 1, justifyContent: "flex-end" }}
                 >
@@ -2804,30 +2820,43 @@ function SeriesPreviewModal({
                   <View style={{ flex: 1 }}>
                     {/* Header */}
                     <View
+                      {...PanResponder.create({
+                        onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+                        onPanResponderRelease: (_, gestureState) => {
+                          if (gestureState.dy > 40) {
+                            setShowComments(false);
+                            Keyboard.dismiss();
+                          }
+                        }
+                      }).panHandlers}
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
                         padding: 16,
+                        paddingTop: 12,
                         borderBottomWidth: 1,
                         borderBottomColor: "rgba(255,255,255,0.08)",
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 17,
-                          fontWeight: "800",
-                          flex: 1,
-                        }}
-                      >
-                        💬 Comments ({comments.length})
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setShowComments(false)}
-                        style={{ padding: 4 }}
-                      >
-                        <Ionicons name="close" size={22} color="#64748b" />
-                      </TouchableOpacity>
+                      <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontSize: 17,
+                            fontWeight: "800",
+                            flex: 1,
+                          }}
+                        >
+                          💬 Comments ({comments.length})
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => setShowComments(false)}
+                          style={{ padding: 4 }}
+                        >
+                          <Ionicons name="close" size={22} color="#64748b" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     {/* Comments list */}
                     <ScrollView

@@ -63,6 +63,9 @@ interface PreferencesAndActivityProps {
     latestVersion: string;
     updateMessage: string;
   };
+  watchHistory?: any[];
+  removeFromWatchHistory?: (movieId: string, episodeId?: string) => Promise<void>;
+  clearWatchHistory?: () => Promise<void>;
 }
 
 export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
@@ -84,6 +87,9 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   shortenGenre,
   onCloseSettings,
   appUpdateConfig,
+  watchHistory = [],
+  removeFromWatchHistory,
+  clearWatchHistory,
 }) => {
   const router = useRouter();
   const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
@@ -502,6 +508,95 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
             <View style={{ width: '100%', padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
               <Ionicons name="bookmark-outline" size={48} color="rgba(255,255,255,0.1)" />
               <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14 }}>Watchlist is empty</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Section 10: Watch History ─────────────────────────────────────────────
+  if (selectedItem?.id === '10') {
+    return (
+      <View style={styles.settingsContentSection}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={styles.settingsText}>
+            {watchHistory.length > 0
+              ? `You have ${watchHistory.length} title${watchHistory.length === 1 ? '' : 's'} in your history.`
+              : 'Keep track of everything you have watched.'}
+          </Text>
+          {watchHistory.length > 0 && clearWatchHistory && (
+            <TouchableOpacity onPress={() => {
+              Alert.alert(
+                'Clear History',
+                'Are you sure you want to clear your entire watch history? This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Clear All', style: 'destructive', onPress: () => clearWatchHistory() },
+                ]
+              );
+            }}>
+              <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Clear All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={{ marginTop: 8 }}>
+          {watchHistory.length > 0 ? (
+            watchHistory.map((m, index) => (
+              <TouchableOpacity 
+                key={(m as any).id ?? `hist-${index}`} 
+                style={styles.downloadCard}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setPlayerTitle(m.title);
+                  setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
+                  setPlayingNow(m as any);
+                  setPlayerMode('full');
+                  onCloseSettings();
+                }}
+              >
+                <View style={styles.downloadPosterContainer}>
+                  <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                  <View style={styles.vjBadgeSmall}>
+                    <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                  </View>
+                  {m.position > 0 && (
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                      <View style={{ width: `${Math.min(100, (m.position / (m.duration || m.totalDuration || 1)) * 100)}%`, height: '100%', backgroundColor: '#5B5FEF' }} />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.downloadInfo}>
+                  <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                  <Text style={styles.downloadMeta}>
+                    {m.year} · {m.episodeId ? `EP ${m.episodeId}` : (m.duration || m.totalDuration || 'Movie')}
+                  </Text>
+                  <View style={styles.downloadActionRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.4)" />
+                      <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+                        {getRelativeTime(m.timestamp)}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.downloadDeleteBtn}
+                      onPress={() => {
+                        if (removeFromWatchHistory) {
+                          removeFromWatchHistory(m.id, m.episodeId);
+                        }
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ width: '100%', padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+              <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.1)" />
+              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14 }}>History is empty</Text>
             </View>
           )}
         </View>

@@ -78,7 +78,8 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [downloadedMovies, setDownloadedMovies] = useState<any[]>([]);
   const [downloadsUsedToday, setDownloadsUsedToday] = useState(0);
 
-  const { isPaid, subscriptionBundle, isGuest, recordTrialUsage } = useSubscription();
+  const subscriptionData = useSubscription();
+  const { isPaid, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
 
   // Refs for download engine state
   const entriesRef = useRef<Record<string, DownloadEntry>>({});
@@ -166,7 +167,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // ── Logic Helpers ───────────────────────────────────────────────────────────
   const getExternalDownloadLimit = () => {
     if (isGuest) return 1; // 1 Free Trial
-    if ((useSubscription() as any).customExternalLimit > 0) return (useSubscription() as any).customExternalLimit;
+    if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit;
     const limits: Record<string, number> = {
       '1 week': 1, '2 weeks': 2, '1 Month': 3, '2 months': 5, 'Premium': 10, 'VIP': 999, 'None': 0
     };

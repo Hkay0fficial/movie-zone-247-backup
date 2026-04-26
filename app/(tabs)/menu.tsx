@@ -79,6 +79,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: '5', title: 'Downloads', subtitle: 'Offline movies & series', icon: 'cloud-download-outline', color: '#34d399' },
   { id: '6', title: 'Notifications', subtitle: 'Alerts & recommendations', icon: 'notifications-outline', color: '#f59e0b' },
    { id: '7', title: 'My List', subtitle: 'Your saved movies & series', icon: 'bookmark-outline', color: '#f472b6' },
+   { id: '10', title: 'Watch History', subtitle: 'Continue where you left off', icon: 'time-outline', color: '#6366f1' },
   { id: '8', title: 'Help & Support', subtitle: 'FAQs, feedback, contact us', icon: 'help-circle-outline', color: '#a78bfa' },
   { id: '9', title: 'About', subtitle: 'Version, licenses, legal', icon: 'information-circle-outline', color: '#94a3b8' },
 ];
@@ -198,8 +199,8 @@ export default function MenuScreen() {
   const [cameFromSubscription, setCameFromSubscription] = React.useState(false);
   const [fromNotification, setFromNotification] = React.useState(false);
   const router = useRouter();
-  const { user, profile, loading: userLoading } = useUser();
-  const { appUpdateConfig } = useMovies();
+  const { user, profile, loading: userLoading, removeFromWatchHistory, clearWatchHistory } = useUser();
+  const { appUpdateConfig, continueWatching } = useMovies();
 
   // Profile data from context
   const userName = profile.fullName;
@@ -1374,6 +1375,9 @@ export default function MenuScreen() {
                   shortenGenre={shortenGenre}
                   onCloseSettings={() => setSelectedItem(null)}
                   appUpdateConfig={appUpdateConfig}
+                  watchHistory={continueWatching}
+                  removeFromWatchHistory={removeFromWatchHistory}
+                  clearWatchHistory={clearWatchHistory}
                 />
                 {selectedItem?.id === '8' && ( // Support
                   <SupportSection
