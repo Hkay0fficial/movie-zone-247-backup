@@ -37,7 +37,13 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
-import GoogleCast, { CastButton, CastContext, useCastSession } from 'react-native-google-cast';
+// react-native-google-cast uses requireNativeComponent which crashes on web export.
+// Import conditionally — on web we get no-op stubs so the OTA export succeeds.
+import { Platform } from 'react-native';
+const _castModule = Platform.OS !== 'web' ? require('react-native-google-cast') : null;
+const GoogleCast = _castModule?.default ?? null;
+const CastButton = _castModule?.CastButton ?? (() => null);
+const useCastSession = _castModule?.useCastSession ?? (() => null);
 
 // Static dimensions for fallback, but we primarily use useWindowDimensions hook inside component
 const { width: STATIC_W, height: STATIC_H } = Dimensions.get("window");
