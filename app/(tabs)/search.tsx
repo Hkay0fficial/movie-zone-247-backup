@@ -294,10 +294,8 @@ export default function SearchScreen() {
                   if (isSeries) {
                     router.push(`/(tabs)/saved?seriesId=${item.id}`);
                   } else {
-                    setPlayingNow(item as Movie);
-                    setPlayerTitle(item.title);
-                    setSelectedVideoUrl(getStreamUrl(item as Movie));
-                    setPlayerMode('full');
+                    // Emit selection event to be caught by the Home detail stack
+                    DeviceEventEmitter.emit("movieSelected", item);
                     router.back();
                   }
                 }} 

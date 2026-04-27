@@ -7421,12 +7421,14 @@ export default function HomeScreen() {
                   if (isSeries) {
                     router.push(`/(tabs)/saved?seriesId=${m.id}`);
                   } else {
-                    // Direct to video for More Like This to avoid continuation
-                    setPlayingNow(m as Movie);
-                    setPlayerTitle(m.title);
-                    setSelectedVideoUrl(getStreamUrl(m));
-                    setPlayerMode('full');
-                    setNavigationStack([]); // Close all previews
+                    // Push to stack to show preview instead of direct play
+                    setNavigationStack((prev) => {
+                      if (prev.length > 0) {
+                        const top = prev[prev.length - 1];
+                        if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                      }
+                      return [...prev, { type: 'movie', movie: m }];
+                    });
                   }
                 }}
                 onSeeAll={(title: string, data: (Movie | Series)[]) => {

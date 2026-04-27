@@ -2657,10 +2657,8 @@ function CustomTabBar() {
             router.push(`/(tabs)/saved?seriesId=${m.id}`);
           } else {
             setGlobalGridVisible(false);
-            setPlayingNow(m as Movie);
-            setPlayerTitle(m.title);
-            setSelectedVideoUrl(getStreamUrl(m as Movie));
-            setPlayerMode('full');
+            // Emit to Home stack to show preview
+            DeviceEventEmitter.emit("movieSelected", m);
           }
         }}
       />
@@ -3080,11 +3078,8 @@ function CustomTabBar() {
               params: { seriesId: movie.id }
             });
           } else {
-            // Direct to video for Search to avoid continuation
-            setPlayingNow(movie as Movie);
-            setPlayerTitle(movie.title);
-            setSelectedVideoUrl(getStreamUrl(movie as Movie));
-            setPlayerMode('full');
+            // Emit to Home stack to show preview
+            DeviceEventEmitter.emit("movieSelected", movie);
           }
         }}
         vjOnly={searchVjOnly}
