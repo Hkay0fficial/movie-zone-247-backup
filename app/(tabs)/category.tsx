@@ -16,6 +16,7 @@ import {
   DeviceEventEmitter,
   Easing,
   ViewToken,
+  useWindowDimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,6 +38,7 @@ import {
   ALL_ROWS
 } from "@/constants/movieData";
 
+// ─── Constants ───────────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Skeleton Loader Component ───────────────────────────────────────────────
@@ -118,8 +120,6 @@ const SORT_OPTIONS = [
 ];
 
 const DiscoverSkeleton = React.memo(() => (
-  <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-    <SkeletonLoader width={SCREEN_W} height={SCREEN_H} borderRadius={0} />
     <View style={{ position: 'absolute', bottom: 120, left: 20, right: 20 }}>
       <SkeletonLoader width={200} height={30} style={{ marginBottom: 12 }} />
       <SkeletonLoader width={150} height={15} style={{ marginBottom: 8 }} />
@@ -130,7 +130,6 @@ const DiscoverSkeleton = React.memo(() => (
         <SkeletonLoader width={50} height={50} borderRadius={25} />
       </View>
     </View>
-  </View>
 ));
 
 // ─── Discover Feed Card ────────────────────────────────────────────────────────
@@ -145,12 +144,14 @@ const DiscoverCard = React.memo(({
   onToggleMute,
   playerMode,
   isFocused,
-  isModalOpen
+  isModalOpen,
+  screenWidth,
+  screenHeight,
 }: { 
   item: Movie | Series; 
   index: number; 
   isActive: boolean; 
-  onPress: () => void;
+  onPress: () => void; 
   onSave: () => void;
   isSaved: boolean;
   isMuted: boolean;
@@ -158,6 +159,8 @@ const DiscoverCard = React.memo(({
   playerMode: string;
   isFocused: boolean;
   isModalOpen: boolean;
+  screenWidth: number;
+  screenHeight: number;
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -184,7 +187,7 @@ const DiscoverCard = React.memo(({
   }, [isActive]);
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, { width: screenWidth, height: screenHeight }]}>
       <Image
         source={{ uri: item.poster }}
         style={StyleSheet.absoluteFill}
@@ -195,7 +198,7 @@ const DiscoverCard = React.memo(({
         <View style={styles.videoWrapper}>
           <Video
             source={{ uri: item.previewUrl }}
-            style={styles.previewVideo}
+            style={{ width: screenWidth, height: screenWidth * (9/16) }}
             resizeMode={ResizeMode.CONTAIN}
             shouldPlay={isActive && isFocused && !isModalOpen && playerMode === 'closed'}
             isLooping
@@ -210,7 +213,7 @@ const DiscoverCard = React.memo(({
         style={StyleSheet.absoluteFill}
       />
 
-      <Animated.View style={[styles.cardContent, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+      <Animated.View style={[styles.cardContent, { bottom: screenHeight * 0.18, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         {/* VJ Badge */}
         {item.vj && (
           <View style={styles.vjBadge}>
@@ -281,6 +284,7 @@ const DiscoverCard = React.memo(({
 export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowW, height: windowH } = useWindowDimensions();
   const { allMovies, allSeries, loading } = useMovies();
   const { 
     favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
@@ -413,7 +417,7 @@ export default function CategoryScreen() {
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_H}
+        snapToInterval={windowH}
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
@@ -440,12 +444,14 @@ export default function CategoryScreen() {
             onToggleMute={() => setIsMuted(!isMuted)}
             onPress={() => handleItemPress(item)}
             onSave={() => toggleFavorite(item)}
+            screenWidth={windowW}
+            screenHeight={windowH}
           />
         )}
       />
 
       {/* Top Header Controls */}
-      <View style={[styles.headerControls, { top: insets.top + 10 }]}>
+      <View style={[styles.headerControls, { top: Math.max(insets.top, 24) + 10 }]}>
         <View style={styles.discoverTitleWrap}>
           <Text style={styles.discoverTitle}>DISCOVER</Text>
           <View style={styles.activeDot} />
@@ -700,8 +706,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#0a0a0f",
   },
   cardContainer: {
-    width: SCREEN_W,
-    height: SCREEN_H,
     backgroundColor: '#000',
   },
   videoWrapper: {
@@ -717,7 +721,6 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     position: 'absolute',
-    bottom: 155, // Lifted to clear tab bar
     left: 20,
     right: 20,
   },

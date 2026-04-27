@@ -302,7 +302,7 @@ export default function SeriesScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
-  const [appSections, setAppSections] = useState<any[]>([]);
+  const [appLayout, setAppLayout] = useState<{ quickAccess: any[], sections: any[] }>({ quickAccess: [], sections: [] });
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const { 
@@ -337,7 +337,10 @@ export default function SeriesScreen() {
     const unsub = onSnapshot(layoutRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setAppSections(data.sections || []);
+        setAppLayout({
+          quickAccess: (data.quickAccess || []).filter((s: any) => s.isVisible),
+          sections: (data.sections || []).filter((s: any) => s.isVisible)
+        });
       }
     });
     return () => unsub();
@@ -815,15 +818,15 @@ export default function SeriesScreen() {
           }
         >
           <View style={{ gap: 24, paddingTop: 10 }}>
-            {/* 1. Dynamic Featured Section (Switcher) - Kept as a system row at the top */}
-            {appSections.length > 0 && (
+            {/* 1. Dynamic Quick Access Tabs (Switcher) */}
+            {appLayout.quickAccess.length > 0 && (
               <View>
                 <ScrollView 
                   horizontal 
                   showsHorizontalScrollIndicator={false} 
                   contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}
                 >
-                  {appSections.slice(0, 3).map((section, idx) => (
+                  {appLayout.quickAccess.map((section, idx) => (
                     <TouchableOpacity
                       key={section.id}
                       onPress={() => setFeaturedTab(section.title)}
@@ -841,9 +844,10 @@ export default function SeriesScreen() {
                 
                 <HorizontalSeriesRow 
                   data={(() => {
-                    const activeSec = appSections.slice(0, 3).find(s => s.title === featuredTab) || appSections[0];
+                    const activeSec = appLayout.quickAccess.find(s => s.title === featuredTab) || appLayout.quickAccess[0];
                     if (!activeSec) return NEW_SERIES;
                     
+                    const filterVal = (activeSec.filterValue || '').toLowerCase().trim();
                     switch(activeSec.filterType) {
                       case 'newReleases': return NEW_SERIES;
                       case 'trending': return TRENDING_SERIES;
@@ -851,12 +855,12 @@ export default function SeriesScreen() {
                       case 'mostDownloaded': return MOST_DOWNLOADED_SERIES;
                       case 'miniSeries': return ALL_SERIES.filter(s => s.isMiniSeries === true);
                       case 'genre': return ALL_SERIES.filter(s => 
-                        (s.genre || '').toLowerCase().includes(activeSec.filterValue.toLowerCase().trim()) ||
-                        (s.country || '').toLowerCase().includes(activeSec.filterValue.toLowerCase().trim())
+                        (s.genre || '').toLowerCase().includes(filterVal) ||
+                        (s.country || '').toLowerCase().includes(filterVal)
                       );
                       case 'country': return ALL_SERIES.filter(s => 
-                        (s.country || '').toLowerCase().includes(activeSec.filterValue.toLowerCase().trim()) ||
-                        (s.genre || '').toLowerCase().includes(activeSec.filterValue.toLowerCase().trim())
+                        (s.country || '').toLowerCase().includes(filterVal) ||
+                        (s.genre || '').toLowerCase().includes(filterVal)
                       );
                       default: return NEW_SERIES;
                     }
@@ -867,12 +871,7 @@ export default function SeriesScreen() {
             )}
 
             {/* 2. Admin Managed Dynamic Sections */}
-            {appSections
-              .filter(s => s.isVisible)
-              .map((section, idx) => {
-                // Skip if it's already in the top switcher (first 3) to avoid duplicates
-                if (idx < 3) return null;
-                
+            {appLayout.sections.map((section) => {
                 let sectionData: Series[] = [];
                 const filterVal = (section.filterValue || '').toLowerCase().trim();
                 
