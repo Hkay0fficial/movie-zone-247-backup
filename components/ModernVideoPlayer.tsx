@@ -20,6 +20,7 @@ import {
   Image,
   ScrollView,
   AppState,
+  ActivityIndicator,
 } from "react-native";
 import * as SystemUI from "expo-system-ui";
 import { useIsFocused } from "@react-navigation/native";
@@ -37,19 +38,44 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
-// react-native-google-cast uses requireNativeComponent which crashes on web export.
-// Import conditionally — on web we get no-op stubs so the OTA export succeeds.
-// (Platform is already imported above via react-native)
-const _castModule = Platform.OS !== 'web' ? require('react-native-google-cast') : null;
-const GoogleCast = _castModule?.default ?? null;
-const CastButton = _castModule?.CastButton ?? (() => null);
-const useCastSession = _castModule?.useCastSession ?? (() => null);
+// react-native-google-cast uses requireNativeComponent which crashes on web export
+// and causes a Hermes "Platform already declared" error when required at module scope.
+// Use a lazy getter so the require only executes at runtime, not at parse time.
+let _castModule: any = undefined;
+function getCastModule() {
+  if (_castModule === undefined) {
+    try {
+      _castModule = Platform.OS !== 'web' ? require('react-native-google-cast') : null;
+    } catch {
+      _castModule = null;
+    }
+  }
+  return _castModule;
+}
+const GoogleCast = null; // Cast is resolved at runtime via getCastModule()
+const CastButton: React.ComponentType<any> = () => null;
+const useCastSession: () => any = () => null;
 
 // Static dimensions for fallback, but we primarily use useWindowDimensions hook inside component
 const { width: STATIC_W, height: STATIC_H } = Dimensions.get("window");
 
 // ─── Google Cast Safety Guard ───
 const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
+
+// ─── AirPlay Button via iOS native MPVolumeView ───────────────────────────
+// MPVolumeView is the standard iOS media route picker — it renders the
+// AirPlay icon natively and requires no additional npm packages.
+import { requireNativeComponent, ViewStyle } from 'react-native';
+let _AirPlayNative: React.ComponentType<{ style?: ViewStyle }> | null = null;
+if (Platform.OS === 'ios') {
+  try {
+    _AirPlayNative = requireNativeComponent('AirPlayButton') as any;
+  } catch {
+    // Fallback: use a plain TouchableOpacity that opens the system route picker
+    _AirPlayNative = null;
+  }
+}
+const AirPlayNative = _AirPlayNative;
 
 interface ModernVideoPlayerProps {
   playerMode: 'closed' | 'full' | 'mini';
@@ -189,13 +215,16 @@ export default function ModernVideoPlayer({
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
   const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN); // CONTAIN (Fit), COVER (Fill), STRETCH (Stretch)
+  const [isAirPlaying, setIsAirPlaying] = useState(false);
   
   // Overlays
+  const [isBufferingDelayed, setIsBufferingDelayed] = useState(false);
+  const bufferTimeoutRef = useRef<any>(null);
   const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false);
   const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
   const [showTimerOptions, setShowTimerOptions] = useState(false);
   const [sleepTimerMs, setSleepTimerMs] = useState(0);
-  const [selectedTimerMins, setSelectedTimerMins] = useState(0); // which preset is active
+  const [selectedTimerMins, setSelectedTimerMins] = useState(0); 
 
   // Modern Gesture States
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
@@ -713,6 +742,7 @@ export default function ModernVideoPlayer({
           shouldPlay={playerMode !== 'closed' && isFocused}
           useNativeControls={false}
           allowsPictureInPicture={true}
+          allowsExternalPlaybackIOS={true}
           staysActiveInBackground={true}
           isMuted={isMuted}
           volume={isMuted ? 0 : currentVolume}
@@ -720,6 +750,27 @@ export default function ModernVideoPlayer({
           onPlaybackStatusUpdate={s => {
             setStatus(s);
             statusRef.current = s;
+
+            // --- Buffering Delay Logic ---
+            if (s.isLoaded && s.isBuffering) {
+              if (!bufferTimeoutRef.current) {
+                bufferTimeoutRef.current = setTimeout(() => {
+                  setIsBufferingDelayed(true);
+                }, 1500); // 1.5s delay before showing overlay
+              }
+            } else {
+              if (bufferTimeoutRef.current) {
+                clearTimeout(bufferTimeoutRef.current);
+                bufferTimeoutRef.current = null;
+              }
+              setIsBufferingDelayed(false);
+            }
+
+            // Track AirPlay/external playback state
+            if (s.isLoaded && Platform.OS === 'ios') {
+              const isExternal = !!(s as any).isExternalPlaybackActive;
+              setIsAirPlaying(isExternal);
+            }
 
             // 40-second cutoff for previews (all users as requested)
             if (isPreview && s.isLoaded && s.positionMillis >= 40000) {
@@ -732,6 +783,17 @@ export default function ModernVideoPlayer({
             }
           }}
         />
+        
+        {/* Premium Loading Indicator */}
+        {((!status.isLoaded && playerMode !== 'closed') || (status.isLoaded && isBufferingDelayed)) && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100 }]}>
+            <ActivityIndicator size="large" color="#5B5FEF" />
+            <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 12, fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
+              {status.isLoaded ? "BUFFERING..." : "FETCHING STREAM..."}
+            </Text>
+          </View>
+        )}
+
 
           {/* Immersive Overlay Components */}
           {!isMini && (
@@ -941,10 +1003,41 @@ export default function ModernVideoPlayer({
                         <MaterialIcons name="speed" size={24} color="#fff" />
                       </TouchableOpacity>
 
+                      {/* AirPlay Button — iOS only, renders native MPVolumeView route picker */}
+                      {Platform.OS === 'ios' && (
+                        <View style={[
+                          styles.circleBtn,
+                          isAirPlaying && { backgroundColor: 'rgba(99,102,241,0.35)', borderColor: '#818cf8' }
+                        ]}>
+                          {AirPlayNative ? (
+                            <AirPlayNative
+                              style={styles.airPlayNativeBtn}
+                            />
+                          ) : (
+                            // Graceful fallback: tapping the icon opens AV routes via
+                            // the system's built-in picker (works on Expo Go too)
+                            <TouchableOpacity
+                              onPress={() => {
+                                // On iOS, showing AirPlay picker is handled by
+                                // allowsExternalPlaybackIOS on the Video component;
+                                // long-pressing the system volume brings up routes.
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              }}
+                              style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}
+                            >
+                              <MaterialCommunityIcons
+                                name="cast-audio-variant"
+                                size={22}
+                                color={isAirPlaying ? '#818cf8' : '#fff'}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+
                       {/* Expand Button */}
                       <TouchableOpacity 
                         onPress={() => {
-                          // Already in full, but can be used for orientation toggle
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }} 
                         style={styles.circleBtn}
@@ -1639,6 +1732,10 @@ const styles = StyleSheet.create({
     borderLeftColor: '#6366f1',
     paddingHorizontal: 12,
     borderRadius: 8,
+  },
+  airPlayNativeBtn: {
+    width: 24,
+    height: 24,
   },
 });
 

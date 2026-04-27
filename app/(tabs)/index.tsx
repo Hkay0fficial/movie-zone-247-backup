@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import React, { useRef, useState, useCallback, useEffect, useMemo, memo } from "react";
 import {
   StyleSheet,
   Text,
@@ -202,6 +202,142 @@ function ModalSystemUIRestorer() {
 
   return null;
 }
+
+// ─── Skeleton Loader Component ───────────────────────────────────────────────
+const SkeletonLoader = memo(({ width, height, borderRadius = 12, style, shimmer = true }: { width: any, height: any, borderRadius?: number, style?: any, shimmer?: boolean }) => {
+  const translateX = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    if (shimmer) {
+      Animated.loop(
+        Animated.timing(translateX, {
+          toValue: 2,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [shimmer]);
+
+  return (
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderRadius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      {shimmer && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-1, 2],
+                    outputRange: [-width * 1.5, width * 1.5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'transparent',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+});
+
+const PreviewSkeleton = memo(() => (
+  <View style={{ padding: 20 }}>
+    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+      <SkeletonLoader width={80} height={30} borderRadius={15} />
+      <SkeletonLoader width={60} height={30} borderRadius={15} />
+      <SkeletonLoader width={100} height={30} borderRadius={15} />
+    </View>
+    <SkeletonLoader width="40%" height={20} style={{ marginBottom: 15 }} />
+    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 30 }}>
+      {[1, 2, 3].map((i) => (
+        <SkeletonLoader key={i} width={(SCREEN_W - 60) / 3} height={150} borderRadius={15} />
+      ))}
+    </View>
+    <SkeletonLoader width="30%" height={20} style={{ marginBottom: 15 }} />
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      {[1, 2, 3].map((i) => (
+        <SkeletonLoader key={i} width={(SCREEN_W - 60) / 3} height={150} borderRadius={15} />
+      ))}
+    </View>
+  </View>
+));
+
+const SkeletonRow = memo(() => (
+  <View style={{ marginBottom: 30 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 15 }}>
+      <SkeletonLoader width={140} height={16} />
+      <SkeletonLoader width={60} height={16} />
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+      {[1, 2, 3, 4].map(i => (
+        <View key={i}>
+          <SkeletonLoader width={140} height={200} borderRadius={15} />
+          <SkeletonLoader width={100} height={12} style={{ marginTop: 10 }} />
+          <SkeletonLoader width={60} height={10} style={{ marginTop: 6 }} />
+        </View>
+      ))}
+    </ScrollView>
+  </View>
+));
+
+const HomeSkeleton = memo(() => {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Hero Skeleton */}
+        <View style={{ height: HERO_H, width: '100%', marginBottom: 30 }}>
+          <SkeletonLoader width="100%" height="100%" borderRadius={0} />
+          <LinearGradient
+            colors={['transparent', 'rgba(10,10,15,0.8)', '#0a0a0f']}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200 }}
+          />
+          <View style={{ position: 'absolute', bottom: 40, left: 20, right: 20, gap: 15 }}>
+             <SkeletonLoader width="60%" height={32} />
+             <SkeletonLoader width="40%" height={16} />
+             <View style={{ flexDirection: 'row', gap: 10 }}>
+               <SkeletonLoader width={120} height={45} borderRadius={25} />
+               <SkeletonLoader width={45} height={45} borderRadius={23} />
+               <SkeletonLoader width={45} height={45} borderRadius={23} />
+             </View>
+          </View>
+        </View>
+
+        {/* Rows */}
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </ScrollView>
+    </View>
+  );
+});
 
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -765,6 +901,75 @@ const styles = StyleSheet.create({
   },
   seeAllText: { color: "#fff", fontSize: 11, fontWeight: "800" },
   rowList: { paddingHorizontal: 16, gap: 6 },
+  
+  // ── Premium UI Additions ──
+  badgeWrapper: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginLeft: 8,
+  },
+  badgeText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  premiumEmptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
+  },
+  emptyIconGlow: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(91, 95, 239, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(91, 95, 239, 0.2)',
+  },
+  premiumEmptyTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  premiumEmptyDesc: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  suggestionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  suggestionChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  suggestionChipText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
 
   // ── Movie card ──
   card: {
@@ -2923,7 +3128,7 @@ export function CategoryBar({
   );
 }
 
-export function MoviePreviewContent({
+export const MoviePreviewContent = memo(({
   movie,
   onClose,
   onSwitch,
@@ -2940,7 +3145,8 @@ export function MoviePreviewContent({
   onShowPremium,
   onUpgrade,
   isFocused,
-  appState
+  appState,
+  hideSearchBy
 }: { 
   movie: Movie | Series | null;
   onClose: () => void;
@@ -2959,7 +3165,14 @@ export function MoviePreviewContent({
   onUpgrade: () => void;
   isFocused: boolean;
   appState: string;
-}) {
+  hideSearchBy?: boolean;
+}) => {
+  const [isRenderReady, setIsRenderReady] = useState(false);
+  useEffect(() => {
+    setIsRenderReady(false);
+    const timer = setTimeout(() => setIsRenderReady(true), 250);
+    return () => clearTimeout(timer);
+  }, [movie?.id]);
 
   const router = useRouter();
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -3031,6 +3244,7 @@ export function MoviePreviewContent({
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
   const [detectedDuration, setDetectedDuration] = useState<string | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const getHomeFilteredResults = useCallback(() => {
@@ -4029,7 +4243,14 @@ export function MoviePreviewContent({
                         usePoster={true}
                         posterSource={{ uri: movie.poster }}
                         posterStyle={{ resizeMode: 'cover' }}
+                        onPlaybackStatusUpdate={setPreviewStatus}
                       />
+                      {/* Preview Loading Indicator */}
+                      {previewVideoUrl && ((!previewStatus.isLoaded && playerMode === 'closed') || (previewStatus.isLoaded && previewStatus.isBuffering)) && (
+                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20 }]}>
+                          <ActivityIndicator size="small" color="#5B5FEF" />
+                        </View>
+                      )}
                       {/* Hidden Detector for Full Movie Duration (used if database has 0:00) */}
                       {movie && !("seasons" in movie) && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && (
                         <Video
@@ -4165,15 +4386,13 @@ export function MoviePreviewContent({
 
                     {/* Compact meta: VJ · year · duration */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <Ionicons name="mic-outline" size={11} color="#f59e0b" />
-                      <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
-                      <View style={styles.previewDot} />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
                       <View style={styles.previewDot} />
                       <Ionicons name="time-outline" size={11} color="#475569" />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
                         {computedTotalDuration}
                       </Text>
+                      
 
                       {/* --- Series Info Pills (New Design) --- */}
                       {"seasons" in movie && (
@@ -4248,7 +4467,6 @@ export function MoviePreviewContent({
                     )}
 
 
-
                     {/* Part badge – dynamic based on selected part */}
                     {!('seasons' in movie) && movieParts.length > 0 && (
                       <View style={{
@@ -4283,6 +4501,7 @@ export function MoviePreviewContent({
                       </Text>
                     </View>
                   </TouchableOpacity>
+
                   <View style={styles.previewActions}>
                     {/* MY LIST */}
                     <TouchableOpacity
@@ -4471,6 +4690,8 @@ export function MoviePreviewContent({
                     </TouchableOpacity>
                   </View>
 
+                {isRenderReady ? (
+                  <>
                 {/* ── SEASONS SECTION (For Series) ── */}
                 {"seasons" in movie && movie.seasons > 0 && (
                   <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
@@ -4815,6 +5036,13 @@ export function MoviePreviewContent({
                           </View>
                         </TouchableOpacity>
                       ))}
+                  </View>
+                )}
+                  </>
+                ) : (
+                  <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#5B5FEF" />
+                    <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 10 }}>Preparing content...</Text>
                   </View>
                 )}
                 </View>
@@ -5360,13 +5588,28 @@ export function MoviePreviewContent({
                 ]}
               >
                   {previewSearchResults.length === 0 ? (
-                  <View style={[styles.previewSearchEmpty, { flex: 1 }]}>
-                    <Ionicons name="film-outline" size={40} color="#1e293b" />
-                    <Text style={styles.searchEmptyText}>
-                      No movies match "{previewQuery}"
-                    </Text>
-                  </View>
-                ) : (
+                    <View style={styles.premiumEmptyContainer}>
+                      <View style={styles.emptyIconGlow}>
+                        <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                        <Ionicons name="search-outline" size={50} color="rgba(91,95,239,0.8)" />
+                      </View>
+                      <Text style={styles.premiumEmptyTitle}>No Results Found</Text>
+                      <Text style={styles.premiumEmptyDesc}>
+                        We couldn't find any movies or series matching "{previewQuery}". Try searching for VJs or different genres.
+                      </Text>
+                      <View style={styles.suggestionChips}>
+                        {['Action', 'Comedy', 'VJ Junior', 'Horror'].map((tag) => (
+                          <TouchableOpacity 
+                            key={tag} 
+                            style={styles.suggestionChip}
+                            onPress={() => setPreviewQuery(tag)}
+                          >
+                            <Text style={styles.suggestionChipText}>{tag}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  ) : (
                   <FlatList
                     data={previewSearchResults}
                     keyExtractor={(m) => "ps-" + m.id}
@@ -5378,7 +5621,7 @@ export function MoviePreviewContent({
                       <GridCard
                         movie={item}
                         onPress={() => {
-                          DeviceEventEmitter.emit("movieSelected", item);
+                          onSwitch(item);
                         }}
                         columns={2}
                       />
@@ -5427,245 +5670,247 @@ export function MoviePreviewContent({
                 )}
 
                 {/* ── Browse by Section Header & Filters ── */}
-                <View style={styles.relatedSection}>
-                  <View
-                    style={[
-                      styles.sectionHeaderBadge,
-                      {
-                        alignSelf: "flex-start",
-                        marginLeft: 16,
-                        marginBottom: 5,
-                      },
-                    ]}
-                  >
-                    <BlurView
-                      intensity={65}
-                      tint="dark"
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Text style={styles.rowTitle}>You May Also Search By</Text>
-                  </View>
-                  {/* Scrollable title & filter pills */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.browseFilterScroll}
-                  >
-                    {[
-                      "VJ,s",
-                      "Type",
-                      "Genre",
-                      "Year",
-                      "Section",
-                      "Sort",
-                    ].map((filter) => {
-                      const isActive = activeBrowseFilter === filter;
-                      let label = filter;
-                      let hasValue = false;
-                      if (filter === "VJ,s" && hSelectedVJ) { label = hSelectedVJ; hasValue = true; }
-                      if (filter === "Type" && hSelectedType) { label = hSelectedType === "Movie" ? "Movies" : hSelectedType === "Series" ? "Series" : "Mini Series"; hasValue = true; }
-                      if (filter === "Genre" && hSelectedGenre) { label = hSelectedGenre; hasValue = true; }
-                      if (filter === "Year" && hSelectedYear) { label = hSelectedYear; hasValue = true; }
-                      if (filter === "Section" && hSelectedSection) { label = hSelectedSection; hasValue = true; }
-                      if (filter === "Sort" && hSelectedSort) { label = hSelectedSort; hasValue = true; }
+                {!hideSearchBy && (
+                  <View style={styles.relatedSection}>
+                    <View
+                      style={[
+                        styles.sectionHeaderBadge,
+                        {
+                          alignSelf: "flex-start",
+                          marginLeft: 16,
+                          marginBottom: 5,
+                        },
+                      ]}
+                    >
+                      <BlurView
+                        intensity={65}
+                        tint="dark"
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <Text style={styles.rowTitle}>You May Also Search By</Text>
+                    </View>
+                    {/* Scrollable title & filter pills */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.browseFilterScroll}
+                    >
+                      {[
+                        "VJ,s",
+                        "Type",
+                        "Genre",
+                        "Year",
+                        "Section",
+                        "Sort",
+                      ].map((filter) => {
+                        const isActive = activeBrowseFilter === filter;
+                        let label = filter;
+                        let hasValue = false;
+                        if (filter === "VJ,s" && hSelectedVJ) { label = hSelectedVJ; hasValue = true; }
+                        if (filter === "Type" && hSelectedType) { label = hSelectedType === "Movie" ? "Movies" : hSelectedType === "Series" ? "Series" : "Mini Series"; hasValue = true; }
+                        if (filter === "Genre" && hSelectedGenre) { label = hSelectedGenre; hasValue = true; }
+                        if (filter === "Year" && hSelectedYear) { label = hSelectedYear; hasValue = true; }
+                        if (filter === "Section" && hSelectedSection) { label = hSelectedSection; hasValue = true; }
+                        if (filter === "Sort" && hSelectedSort) { label = hSelectedSort; hasValue = true; }
 
-                      return (
-                        <TouchableOpacity
-                          key={filter}
-                          style={[
-                            styles.browseFilterPill,
-                            (isActive || hasValue) && styles.browseFilterPillActive,
-                          ]}
-                          activeOpacity={0.7}
-                          onPress={() => setActiveBrowseFilter(isActive ? "" : filter)}
-                        >
-                          {/* Removed pillSheen */}
-                          <Text
+                        return (
+                          <TouchableOpacity
+                            key={filter}
                             style={[
-                              styles.browseFilterPillText,
-                              (isActive || hasValue) && styles.browseFilterPillTextActive,
+                              styles.browseFilterPill,
+                              (isActive || hasValue) && styles.browseFilterPillActive,
                             ]}
+                            activeOpacity={0.7}
+                            onPress={() => setActiveBrowseFilter(isActive ? "" : filter)}
                           >
-                            {label}
+                            {/* Removed pillSheen */}
+                            <Text
+                              style={[
+                                styles.browseFilterPillText,
+                                (isActive || hasValue) && styles.browseFilterPillTextActive,
+                              ]}
+                            >
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {/* Filter Results & Clear Action */}
+                    {(hSelectedType || hSelectedGenre || hSelectedYear || hSelectedVJ || hSelectedSection || hSelectedSort) && (
+                      <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 10 }}>
+                        <TouchableOpacity
+                          style={[
+                            styles.browseFilterPill, 
+                            { flex: 1, backgroundColor: '#10b981', borderColor: 'rgba(255,255,255,0.3)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }
+                          ]}
+                          onPress={() => {
+                            const results = getHomeFilteredResults();
+                            setBrowseSectionModal({
+                              title: "Filtered Results",
+                              data: results,
+                            });
+                          }}
+                        >
+                          <Ionicons name="search" size={16} color="#fff" />
+                          <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>
+                            SEE {getHomeFilteredResults().length} RESULTS
                           </Text>
                         </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                        <TouchableOpacity
+                          style={[
+                            styles.browseFilterPill, 
+                            { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.3)' }
+                          ]}
+                          onPress={clearHomeFilters}
+                        >
+                          <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>CLEAR</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
-                  {/* Filter Results & Clear Action */}
-                  {(hSelectedType || hSelectedGenre || hSelectedYear || hSelectedVJ || hSelectedSection || hSelectedSort) && (
-                    <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 10 }}>
-                      <TouchableOpacity
-                        style={[
-                          styles.browseFilterPill, 
-                          { flex: 1, backgroundColor: '#10b981', borderColor: 'rgba(255,255,255,0.3)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }
-                        ]}
-                        onPress={() => {
-                          const results = getHomeFilteredResults();
-                          setBrowseSectionModal({
-                            title: "Filtered Results",
-                            data: results,
-                          });
-                        }}
-                      >
-                        <Ionicons name="search" size={16} color="#fff" />
-                        <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>
-                          SEE {getHomeFilteredResults().length} RESULTS
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.browseFilterPill, 
-                          { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.3)' }
-                        ]}
-                        onPress={clearHomeFilters}
-                      >
-                        <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>CLEAR</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Chip Selection Area */}
-                  <View
-                    style={[
-                      styles.browseSectionChips,
-                      { flexDirection: "row", flexWrap: "wrap" },
-                    ]}
-                  >
-                    {activeBrowseFilter === "Year"
-                      ? (
-                        <View style={{ width: '100%', gap: 12 }}>
-                          <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TouchableOpacity
-                              onPress={() => setHYearCategory('new')}
-                              style={[
-                                styles.browseSectionChip,
-                                hYearCategory === 'new' && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
-                              ]}
-                            >
-                              <Text style={[styles.browseSectionChipText, hYearCategory === 'new' && { color: '#fff', fontWeight: 'bold' }]}>NEW</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={() => setHYearCategory('oldest')}
-                              style={[
-                                styles.browseSectionChip,
-                                hYearCategory === 'oldest' && { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
-                              ]}
-                            >
-                              <Text style={[styles.browseSectionChipText, hYearCategory === 'oldest' && { color: '#fff', fontWeight: 'bold' }]}>OLDEST</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                            {(hYearCategory === 'new'
-                              ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) => String(2026 - i))
-                              : Array.from({ length: 2019 - 1975 + 1 }, (_, i) => String(2019 - i))
-                            ).map((yr) => (
+                    {/* Chip Selection Area */}
+                    <View
+                      style={[
+                        styles.browseSectionChips,
+                        { flexDirection: "row", flexWrap: "wrap" },
+                      ]}
+                    >
+                      {activeBrowseFilter === "Year"
+                        ? (
+                          <View style={{ width: '100%', gap: 12 }}>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
                               <TouchableOpacity
-                                key={yr}
+                                onPress={() => setHYearCategory('new')}
                                 style={[
                                   styles.browseSectionChip,
-                                  hSelectedYear === yr && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                  hYearCategory === 'new' && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
                                 ]}
-                                onPress={() => setHSelectedYear(hSelectedYear === yr ? null : yr)}
+                              >
+                                <Text style={[styles.browseSectionChipText, hYearCategory === 'new' && { color: '#fff', fontWeight: 'bold' }]}>NEW</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setHYearCategory('oldest')}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hYearCategory === 'oldest' && { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
+                                ]}
+                              >
+                                <Text style={[styles.browseSectionChipText, hYearCategory === 'oldest' && { color: '#fff', fontWeight: 'bold' }]}>OLDEST</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                              {(hYearCategory === 'new'
+                                ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) => String(2026 - i))
+                                : Array.from({ length: 2019 - 1975 + 1 }, (_, i) => String(2019 - i))
+                              ).map((yr) => (
+                                <TouchableOpacity
+                                  key={yr}
+                                  style={[
+                                    styles.browseSectionChip,
+                                    hSelectedYear === yr && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                  ]}
+                                  onPress={() => setHSelectedYear(hSelectedYear === yr ? null : yr)}
+                                  activeOpacity={0.75}
+                                >
+                                  <Text style={[styles.browseSectionChipText, hSelectedYear === yr && { color: '#fff', fontWeight: 'bold' }]}>
+                                    {yr}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                        )
+                        : activeBrowseFilter === "Genre"
+                          ? ALL_GENRES.map((g) => (
+                              <TouchableOpacity
+                                key={g}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hSelectedGenre === g && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                ]}
+                                onPress={() => setHSelectedGenre(hSelectedGenre === g ? null : g)}
                                 activeOpacity={0.75}
                               >
-                                <Text style={[styles.browseSectionChipText, hSelectedYear === yr && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {yr}
+                                <Text style={[styles.browseSectionChipText, hSelectedGenre === g && { color: '#fff', fontWeight: 'bold' }]}>
+                                  {g}
                                 </Text>
                               </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
-                      )
-                      : activeBrowseFilter === "Genre"
-                        ? ALL_GENRES.map((g) => (
-                            <TouchableOpacity
-                              key={g}
-                              style={[
-                                styles.browseSectionChip,
-                                hSelectedGenre === g && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                              ]}
-                              onPress={() => setHSelectedGenre(hSelectedGenre === g ? null : g)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.browseSectionChipText, hSelectedGenre === g && { color: '#fff', fontWeight: 'bold' }]}>
-                                {g}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                      : activeBrowseFilter === "Type"
-                        ? ["Movie", "Series", "Mini Series"].map((t) => (
-                            <TouchableOpacity
-                              key={t}
-                              style={[
-                                styles.browseSectionChip,
-                                hSelectedType === t && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                              ]}
-                              onPress={() => setHSelectedType(hSelectedType === t ? null : t)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.browseSectionChipText, hSelectedType === t && { color: '#fff', fontWeight: 'bold' }]}>
-                                {t === "Movie" ? "Movies" : t === "Series" ? "Series" : "Mini Series"}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                      : activeBrowseFilter === "VJ,s"
-                        ? ALL_VJS.map((vj) => (
-                            <TouchableOpacity
-                              key={vj}
-                              style={[
-                                styles.browseSectionChip,
-                                hSelectedVJ === vj && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                              ]}
-                              onPress={() => setHSelectedVJ(hSelectedVJ === vj ? null : vj)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.browseSectionChipText, hSelectedVJ === vj && { color: '#fff', fontWeight: 'bold' }]}>
-                                {vj}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                      : activeBrowseFilter === "Section"
-                        ? ALL_ROWS.map((r) => (
-                            <TouchableOpacity
-                              key={r.title}
-                              style={[
-                                styles.browseSectionChip,
-                                hSelectedSection === r.title && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                              ]}
-                              onPress={() => setHSelectedSection(hSelectedSection === r.title ? null : r.title)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.browseSectionChipText, hSelectedSection === r.title && { color: '#fff', fontWeight: 'bold' }]}>
-                                {r.title}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                      : activeBrowseFilter === "Sort"
-                        ? ["Newest", "Oldest", "Rating"].map((s) => (
-                            <TouchableOpacity
-                              key={s}
-                              style={[
-                                styles.browseSectionChip,
-                                hSelectedSort === s && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                              ]}
-                              onPress={() => setHSelectedSort(hSelectedSort === s ? null : s)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.browseSectionChipText, hSelectedSort === s && { color: '#fff', fontWeight: 'bold' }]}>
-                                {s}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                        : null}
+                            ))
+                        : activeBrowseFilter === "Type"
+                          ? ["Movie", "Series", "Mini Series"].map((t) => (
+                              <TouchableOpacity
+                                key={t}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hSelectedType === t && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                ]}
+                                onPress={() => setHSelectedType(hSelectedType === t ? null : t)}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={[styles.browseSectionChipText, hSelectedType === t && { color: '#fff', fontWeight: 'bold' }]}>
+                                  {t === "Movie" ? "Movies" : t === "Series" ? "Series" : "Mini Series"}
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                        : activeBrowseFilter === "VJ,s"
+                          ? ALL_VJS.map((vj) => (
+                              <TouchableOpacity
+                                key={vj}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hSelectedVJ === vj && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                ]}
+                                onPress={() => setHSelectedVJ(hSelectedVJ === vj ? null : vj)}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={[styles.browseSectionChipText, hSelectedVJ === vj && { color: '#fff', fontWeight: 'bold' }]}>
+                                  {vj}
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                        : activeBrowseFilter === "Section"
+                          ? ALL_ROWS.map((r) => (
+                              <TouchableOpacity
+                                key={r.title}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hSelectedSection === r.title && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                ]}
+                                onPress={() => setHSelectedSection(hSelectedSection === r.title ? null : r.title)}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={[styles.browseSectionChipText, hSelectedSection === r.title && { color: '#fff', fontWeight: 'bold' }]}>
+                                  {r.title}
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                        : activeBrowseFilter === "Sort"
+                          ? ["Newest", "Oldest", "Rating"].map((s) => (
+                              <TouchableOpacity
+                                key={s}
+                                style={[
+                                  styles.browseSectionChip,
+                                  hSelectedSort === s && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
+                                ]}
+                                onPress={() => setHSelectedSort(hSelectedSort === s ? null : s)}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={[styles.browseSectionChipText, hSelectedSort === s && { color: '#fff', fontWeight: 'bold' }]}>
+                                  {s}
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                          : null}
+                    </View>
                   </View>
-                </View>
-              </>
-            )}
-
-            {/* ── Additional Suggestions (Suggested by user) ── */}
-            <View style={{ paddingBottom: 6 }}>
+                )}
+                {/* ── Related Movies ── */}
+                {!hideSearchBy && (
+                <View style={{ paddingBottom: 6 }}>
+                  {isRenderReady ? (
+                    <>
               {/* YOU MAY ALSO LIKE */}
               <View style={styles.rowContainer}>
                 <View
@@ -5844,7 +6089,18 @@ export function MoviePreviewContent({
                   )}
                 />
               </View>
-            </View>
+                    </>
+                  ) : (
+                    <View style={{ paddingTop: 20 }}>
+                      <SkeletonRow />
+                      <SkeletonRow />
+                      <SkeletonRow />
+                    </View>
+                  )}
+                </View>
+                )}
+              </>
+            )}
 
             <View style={{ height: 40 }} />
           </Animated.ScrollView>
@@ -5866,12 +6122,12 @@ export function MoviePreviewContent({
         
       </Animated.View>
   );
-}
+});
 
 
 
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
-export function MoviePreviewModal(props: any) {
+export const MoviePreviewModal = memo((props: any) => {
   if (!props.movie) return null;
   return (
     <Modal
@@ -5884,15 +6140,15 @@ export function MoviePreviewModal(props: any) {
       <MoviePreviewContent {...props} />
     </Modal>
   );
-}
+}); // End of MoviePreviewModal memo
 
-export function MovieCard({
+export const MovieCard = memo(({
   movie,
   onPress,
 }: {
   movie: Movie | Series;
   onPress: () => void;
-}) {
+}) => {
   const { isPaid } = useSubscription();
   const isLocked = !isPaid && !movie.isFree;
 
@@ -5953,7 +6209,7 @@ export function MovieCard({
       </View>
     </TouchableOpacity>
   );
-}
+}); // End of MovieCard memo
 
 // ─── Movie Grid Card (used in the See-All modal) ──────────────────────────────
 // GridCard removed in favor of shared component in components/GridComponents.tsx
@@ -6027,7 +6283,7 @@ const MarqueePlaceholder = ({
   );
 };
 
-function MovieRow({
+const MovieRow = memo(({
   title,
   data,
   onSeeAll,
@@ -6037,7 +6293,7 @@ function MovieRow({
   data: (Movie | Series)[];
   onSeeAll?: () => void;
   onSelect: (m: Movie | Series) => void;
-}) {
+}) => {
   return (
     <View style={styles.rowContainer}>
       <View style={styles.rowHeader}>
@@ -6071,7 +6327,7 @@ function MovieRow({
       />
     </View>
   );
-}
+}); // End of MovieRow memo
 
 // ─── Navigation Stack Types ──────────────────────────────────────────────────
 type StackItem = 
@@ -6080,7 +6336,7 @@ type StackItem =
   | { type: 'grid', title: string, data: (Movie | Series)[] };
 
 // ─── Hero Video Banner ────────────────────────────────────────────────────────
-function HeroBanner({ 
+const HeroBanner = memo(({ 
   onSelect, 
   isMuted, 
   setIsMuted,
@@ -6096,7 +6352,7 @@ function HeroBanner({
   paused: boolean;
   isFocused: boolean;
   appState: string;
-}) {
+}) => {
   const router = useRouter();
   const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites } = useSubscription();
   // ✅ Pull live hero movies from Firebase context (not the static import)
@@ -6253,7 +6509,7 @@ function HeroBanner({
               }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
-              shouldPlay={!paused && isFocused && appState === 'active'}
+              shouldPlay={!paused && isFocused && appState === 'active' && playerMode === 'closed'}
               isLooping={false}
               isMuted={isMuted}
               onPlaybackStatusUpdate={onStatus}
@@ -6503,11 +6759,11 @@ function HeroBanner({
       </View>
     </View>
   );
-}
+});
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig, myList } = useMovies();
+  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig, myList, loading } = useMovies();
   const allPool = useMemo(() => {
     const pool: (Movie | Series)[] = [];
     const seen = new Set<string>();
@@ -6573,6 +6829,15 @@ export default function HomeScreen() {
     });
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    DeviceEventEmitter.emit('setOverlayVisible', navigationStack.length > 0 || playerMode === 'full');
+    
+    // Auto-dismiss preview if video starts playing
+    if (playerMode === 'full' && navigationStack.length > 0) {
+      setNavigationStack([]);
+    }
+  }, [navigationStack.length, playerMode]);
 
   useEffect(() => {
     // Show expiry reminder if in Yellow or Red zones (<= 5 days)
@@ -6713,10 +6978,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const isVisible = navigationStack.length > 0 || loadingDeepLink;
-    Animated.timing(stackAnim, {
+    Animated.spring(stackAnim, {
       toValue: isVisible ? 0 : SCREEN_H,
-      duration: 350,
-      easing: Easing.out(Easing.back(0.5)),
+      friction: 8,
+      tension: 45,
       useNativeDriver: true,
     }).start();
 
@@ -6819,7 +7084,7 @@ export default function HomeScreen() {
             return [...prev, { type: 'movie', movie: m }];
           });
         }
-        setTimeout(() => setIsStackLoading(false), 1200);
+        setTimeout(() => setIsStackLoading(false), 800);
       },
     );
 
@@ -6946,6 +7211,10 @@ export default function HomeScreen() {
       subscription.remove();
     };
   }, [auth.currentUser]); // Re-run pulse setup when current user changes (e.g. on login/logout)
+
+  if (loading) {
+    return <HomeSkeleton />;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -7103,7 +7372,9 @@ export default function HomeScreen() {
             style={StyleSheet.absoluteFill} 
             pointerEvents={playerMode === 'full' ? 'none' : 'auto'}
           >
-          {navigationStack.map((item, index) => {
+          {navigationStack.length > 0 && (() => {
+            const index = navigationStack.length - 1;
+            const item = navigationStack[index];
             const onClose = () => {
               setNavigationStack((prev) => {
                 const newStack = [...prev];
@@ -7140,8 +7411,6 @@ export default function HomeScreen() {
               );
             }
 
-
-
             return (
               <MoviePreviewContent
                 key={`movie-${index}`}
@@ -7152,13 +7421,12 @@ export default function HomeScreen() {
                   if (isSeries) {
                     router.push(`/(tabs)/saved?seriesId=${m.id}`);
                   } else {
-                    setNavigationStack((prev) => {
-                      if (prev.length > 0) {
-                        const top = prev[prev.length - 1];
-                        if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-                      }
-                      return [...prev, { type: 'movie', movie: m }];
-                    });
+                    // Direct to video for More Like This to avoid continuation
+                    setPlayingNow(m as Movie);
+                    setPlayerTitle(m.title);
+                    setSelectedVideoUrl(getStreamUrl(m));
+                    setPlayerMode('full');
+                    setNavigationStack([]); // Close all previews
                   }
                 }}
                 onSeeAll={(title: string, data: (Movie | Series)[]) => {
@@ -7178,17 +7446,17 @@ export default function HomeScreen() {
                 playerMode={playerMode}
                 playerTitle={playerTitle}
                 selectedVideoUrl={selectedVideoUrl}
-                isMuted={index !== navigationStack.length - 1 || !isFocused}
+                isMuted={!isFocused}
                 onShowPremium={() => setShowPremiumModal(true)}
                 onUpgrade={() => setShowPlanModal(true)}
                 isFocused={isFocused}
                 appState={appState}
               />
             );
-          })}
+          })()}
           
           {isStackLoading && (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 15, 0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
                <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
                <View style={{ backgroundColor: 'rgba(26,26,46,0.85)', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 15 }}>
                  <ActivityIndicator size="large" color="#5B5FEF" />

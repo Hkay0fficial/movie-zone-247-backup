@@ -13,6 +13,36 @@ import { useUser } from './UserContext';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 
+const COUNTRY_MAP: Record<string, string> = {
+  'KR': 'South Korea',
+  'PH': 'Philippines',
+  'CN': 'China',
+  'JP': 'Japan',
+  'TH': 'Thailand',
+  'IN': 'India',
+  'US': 'United States',
+  'GB': 'United Kingdom',
+  'NG': 'Nigeria',
+  'ZA': 'South Africa',
+  'TR': 'Turkey',
+  'ES': 'Spain',
+  'FR': 'France',
+  'MX': 'Mexico',
+  'BR': 'Brazil',
+  'CO': 'Colombia',
+  'VN': 'Vietnam',
+  'ID': 'Indonesia',
+  'MY': 'Malaysia',
+};
+
+function getFullCountryName(code: string) {
+  if (!code) return '';
+  const c = code.trim();
+  // If it's already a full name in the map values, return it
+  if (Object.values(COUNTRY_MAP).includes(c)) return c;
+  return COUNTRY_MAP[c.toUpperCase()] || code;
+}
+
 interface AppUpdateConfig {
   latestVersion: string;
   updateMessage: string;
@@ -134,6 +164,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
             createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
+            country: getFullCountryName(data.country || ''),
           });
         } else {
           fetchedMovies.push({
@@ -160,6 +191,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
             createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
+            country: getFullCountryName(data.country || ''),
           });
         }
       });
@@ -174,7 +206,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       
       setLiveMovies(uniqueMovies);
       setLiveSeries(uniqueSeries);
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+      }, 1500);
     }, (error) => {
       console.warn("Firestore listener error (MovieContext):", error);
       // Fallback to offline/mock data if offline
@@ -456,6 +490,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
           sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => m.genre?.toLowerCase().includes(val));
+        } else if (type === 'country') {
+          const val = (section.filterValue || '').toLowerCase();
+          sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => (m.country || '').toLowerCase() === val);
         }
         
         // Final safety dedup for each row

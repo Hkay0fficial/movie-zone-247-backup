@@ -1,20 +1,74 @@
 ⠋ Exporting...[expo-cli] --non-interactive is not supported, use $CI=1 instead
 ⠋ Exporting...⠙ Exporting...⠹ Exporting...[expo-cli] env: load .env.production .env
-⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...[expo-cli] env: export EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...[expo-cli] env: export EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 ⠋ Exporting...[expo-cli] React Compiler enabled
 ⠋ Exporting...⠙ Exporting...⠹ Exporting...[expo-cli] Starting Metro Bundler
 ⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...[expo-cli] iOS node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
 ⠋ Exporting...[expo-cli] Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...[expo-cli] Android Bundling failed 1505ms node_modules/expo-router/entry.js (1396 modules)
-⠋ Exporting...[expo-cli] SyntaxError: SyntaxError: /Users/hkfiles/Desktop/hk app/movieApp/components/ModernVideoPlayer.tsx: Identifier 'Platform' has already been declared. (42:9)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+⠋ Exporting...[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1685/1685)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...[expo-cli] Android Bundled 7940ms node_modules/expo-router/entry.js (1685 modules)
+⠋ Exporting...[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+⠋ Exporting...[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1685/1685)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+⠋ Exporting...⠙ Exporting...[expo-cli] iOS Bundled 12464ms node_modules/expo-router/entry.js (1686 modules)
+⠋ Exporting...[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+⠋ Exporting...⠙ Exporting...[expo-cli] Creating asset map
+⠋ Exporting...[expo-cli] Static rendering is enabled. Learn more: https://docs.expo.dev/router/reference/static-rendering/
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...[expo-cli] λ Bundled 2416ms node_modules/expo-router/node/render.js (1492 modules)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...[expo-cli] [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+⠋ Exporting...[expo-cli] [expo-notifications] Listening to push token changes is not yet fully supported on web. Adding a listener will have no effect.
+⠋ Exporting...[expo-cli] Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1435/1436)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...[expo-cli] Web Bundled 3745ms node_modules/expo-router/entry.js (1436 modules)
+⠋ Exporting...⠙ Exporting...⠹ Exporting...[expo-cli] › android bundles (2):
+⠋ Exporting...[expo-cli] _expo/static/js/android/entry-5d5a9e50e4d7633cbea95a992ba1a815.hbc (4.32 MB)
+⠋ Exporting...[expo-cli] _expo/static/js/android/entry-5d5a9e50e4d7633cbea95a992ba1a815.hbc.map (13.3 MB)
 ⠋ Exporting...[expo-cli] 
-⠋ Exporting...[expo-cli] [0m [90m 40 |[39m [90m// react-native-google-cast uses requireNativeComponent which crashes on web export.[39m
-⠋ Exporting...[expo-cli]  [90m 41 |[39m [90m// Import conditionally — on web we get no-op stubs so the OTA export succeeds.[39m
-⠋ Exporting...[expo-cli] [31m[1m>[22m[39m[90m 42 |[39m [36mimport[39m { [33mPlatform[39m } [36mfrom[39m [32m'react-native'[39m[33m;[39m
-⠋ Exporting...[expo-cli]  [90m    |[39m          [31m[1m^[22m[39m
-⠋ Exporting...[expo-cli]  [90m 43 |[39m [36mconst[39m _castModule [33m=[39m [33mPlatform[39m[33m.[39m[33mOS[39m [33m!==[39m [32m'web'[39m [33m?[39m require([32m'react-native-google-cast'[39m) [33m:[39m [36mnull[39m[33m;[39m
-⠋ Exporting...[expo-cli]  [90m 44 |[39m [36mconst[39m [33mGoogleCast[39m [33m=[39m _castModule[33m?[39m[33m.[39m[36mdefault[39m [33m?[39m[33m?[39m [36mnull[39m[33m;[39m
-⠋ Exporting...[expo-cli]  [90m 45 |[39m [36mconst[39m [33mCastButton[39m [33m=[39m _castModule[33m?[39m[33m.[39m[33mCastButton[39m [33m?[39m[33m?[39m (() [33m=>[39m [36mnull[39m)[33m;[39m[0m
-⠋ Exporting...✖ Export failed
-/Users/hkfiles/Desktop/hk app/movieApp/node_modules/expo/bin/cli export --output-dir dist --experimental-bundle --non-interactive --dump-sourcemap --dump-assetmap --platform=all exited with non-zero code: 1
-    Error: update command failed.
+⠋ Exporting...[expo-cli] › ios bundles (2):
+⠋ Exporting...[expo-cli] _expo/static/js/ios/entry-1a3fda46e01dfb8912aa2e569cd06748.hbc (4.32 MB)
+⠋ Exporting...[expo-cli] _expo/static/js/ios/entry-1a3fda46e01dfb8912aa2e569cd06748.hbc.map (13.3 MB)
+⠋ Exporting...[expo-cli] 
+⠋ Exporting...[expo-cli] › web bundles (2):
+⠋ Exporting...[expo-cli] _expo/static/js/web/entry-95c1ce41c0dea3d682907fda0c0417ba.js (4.18 MB)
+⠋ Exporting...[expo-cli] _expo/static/js/web/entry-95c1ce41c0dea3d682907fda0c0417ba.js.map (12.9 MB)
+⠋ Exporting...[expo-cli] 
+⠋ Exporting...[expo-cli] › Static routes (20):
+⠋ Exporting...[expo-cli] /menu (49.2 kB)
+⠋ Exporting...[expo-cli] /admin (59 kB)
+⠋ Exporting...[expo-cli] / (index) (53.3 kB)
+⠋ Exporting...[expo-cli] /login (60.5 kB)
+⠋ Exporting...[expo-cli] /modal (51.7 kB)
+⠋ Exporting...[expo-cli] /saved (49.2 kB)
+⠋ Exporting...[expo-cli] /signup (59.3 kB)
+⠋ Exporting...[expo-cli] /search (49.2 kB)
+⠋ Exporting...[expo-cli] /_sitemap (48.8 kB)
+⠋ Exporting...[expo-cli] /category (49.2 kB)
+⠋ Exporting...[expo-cli] /+not-found (48.8 kB)
+⠋ Exporting...[expo-cli] /(tabs)/menu (49.2 kB)
+⠋ Exporting...[expo-cli] /(tabs) (49.2 kB)
+⠋ Exporting...[expo-cli] /(tabs)/saved (49.2 kB)
+⠋ Exporting...[expo-cli] /(tabs)/search (49.2 kB)
+⠋ Exporting...[expo-cli] /(tabs)/category (49.2 kB)
+⠋ Exporting...[expo-cli] /context/UserContext (51.3 kB)
+⠋ Exporting...[expo-cli] /context/MovieContext (51.3 kB)
+⠋ Exporting...[expo-cli] /context/DownloadContext (51.4 kB)
+⠋ Exporting...[expo-cli] /context/SubscriptionContext (51.4 kB)
+⠋ Exporting...⠙ Exporting...[expo-cli] 
+⠋ Exporting...[expo-cli] Exported: dist
+⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...⠴ Exporting...⠦ Exporting...⠧ Exporting...⠇ Exporting...⠏ Exporting...⠋ Exporting...⠙ Exporting...⠹ Exporting...⠸ Exporting...⠼ Exporting...✔ Exported bundle(s)
+⠋ Uploading...⠙ Uploading...⠹ Uploading...⠸ Uploading...⠼ Uploading...⠴ Uploading...⠦ Uploading...⠋ Uploading assetmap.json (0 / 21.6 KB)⠧ Uploading...⠙ Uploading assetmap.json (21.6 KB / 21.6 KB)⠇ Uploading...⠹ Uploading assetmap.json (21.6 KB / 21.6 KB)⠏ Uploading...⠸ Uploading assetmap.json (21.6 KB / 21.6 KB)⠋ Uploading...⠼ Uploading assetmap.json (21.6 KB / 21.6 KB)⠙ Uploading...⠴ Uploading assetmap.json (21.6 KB / 21.6 KB)⠹ Uploading...⠦ Uploading assetmap.json (21.6 KB / 21.6 KB)⠸ Uploading...⠧ Uploading assetmap.json (21.6 KB / 21.6 KB)⠼ Uploading...⠇ Uploading assetmap.json (21.6 KB / 21.6 KB)⠴ Uploading...✔ Uploaded assetmap.json 
+⠦ Uploading (0/53)⠧ Uploading (0/53)⠇ Uploading (0/53)⠏ Uploading (0/53)⠋ Uploading (0/53)⠙ Uploading (0/53)⠹ Uploading (0/53)⠸ Uploading (0/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (51/53)⠴ Uploading (51/53)⠦ Uploading (51/53)⠧ Uploading (51/53)⠇ Uploading (51/53)⠏ Uploading (51/53)⠋ Uploading (51/53)⠙ Uploading (51/53)⠹ Uploading (51/53)⠸ Uploading (51/53)⠼ Uploading (53/53)✔ Uploaded 2 app bundles
+✔ Uploading assets skipped - no new assets found
+ℹ 47 iOS assets, 47 Android assets (maximum: 2000 total per update). Learn more about asset limits: https://expo.fyi/eas-update-asset-limits
+⠋ Computing project fingerprints⠙ Computing project fingerprints⠹ Computing project fingerprints⠸ Computing project fingerprints⠼ Computing project fingerprints⠴ Computing project fingerprints⠦ Computing project fingerprints⠧ Computing project fingerprints⠇ Computing project fingerprints⠏ Computing project fingerprints⠋ Computing project fingerprints⠙ Computing project fingerprints⠹ Computing project fingerprints⠸ Computing project fingerprints⠼ Computing project fingerprints⠴ Computing project fingerprints⠦ Computing project fingerprints⠧ Computing project fingerprints⠇ Computing project fingerprints⠏ Computing project fingerprints⠋ Computing project fingerprints⠙ Computing project fingerprints⠹ Computing project fingerprints⠸ Computing project fingerprints⠼ Computing project fingerprints⠴ Computing project fingerprints⠦ Computing project fingerprints✔ Computed project fingerprints
+⠋ Publishing...⠙ Publishing...⠹ Publishing...⠸ Publishing...⠼ Publishing...⠴ Publishing...⠦ Publishing...⠧ Publishing...⠇ Publishing...⠏ Publishing...⠋ Publishing...⠙ Publishing...✔ Published!
+Branch             production
+Runtime version    1.2.1
+Platform           android, ios
+Update group ID    1479a3ad-ba4d-4401-be8f-e4bc318c1118
+Android update ID  019dcbcf-1205-75db-9bce-3e09e6b4ecb5
+iOS update ID      019dcbcf-1205-7908-a659-4aced9147073
+Message            fix: genre duplicate keys, live VJ-genre matching, live genre counts
+Commit             35c713a11223dd27d7ec8a888583d22a7660ee7c*
+EAS Dashboard      https://expo.dev/accounts/haruna2567/projects/movie-zone-24-7/updates/1479a3ad-ba4d-4401-be8f-e4bc318c1118
+

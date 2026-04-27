@@ -37,6 +37,7 @@ import {
   shortenGenre,
   ALL_VJS,
   ALL_GENRES,
+  getStreamUrl,
 } from "@/constants/movieData";
 import { GridModal, GridCard } from "../../components/GridComponents";
 import { useMovies } from "@/app/context/MovieContext";
@@ -45,7 +46,6 @@ import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
-import ModernVideoPlayer from "../../components/ModernVideoPlayer";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -81,9 +81,9 @@ const TABS: {
   {
     name: "category",
     route: "/(tabs)/category",
-    icon: "grid-outline",
-    iconActive: "grid",
-    label: "Category",
+    icon: "compass-outline",
+    iconActive: "compass",
+    label: "Discover",
   },
   {
     name: "menu",
@@ -1995,7 +1995,18 @@ function SearchOverlay({
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
   const { liveMovies, liveSeries } = useMovies();
-  const { allMoviesFree, eventMessage, playingNow, playerMode, setPlayerMode, playerTitle, selectedVideoUrl } = useSubscription();
+  const { 
+    allMoviesFree, 
+    eventMessage, 
+    playingNow, 
+    setPlayingNow,
+    playerMode, 
+    setPlayerMode, 
+    playerTitle, 
+    setPlayerTitle,
+    selectedVideoUrl, 
+    setSelectedVideoUrl 
+  } = useSubscription();
   const { activeDownloads } = useDownloads();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -2146,6 +2157,15 @@ function CustomTabBar() {
   }, [showInPlaceSearch]);
 
   const segment = path.replace(/^\/\(tabs\)/, "") || "/";
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('setOverlayVisible', (v: boolean) => {
+      setIsOverlayVisible(v);
+    });
+    return () => sub.remove();
+  }, []);
+
   const active = (route: string) => {
     const seg = route.replace(/^\/\(tabs\)/, "") || "/";
     if (seg === "/")
@@ -2631,9 +2651,17 @@ function CustomTabBar() {
           }
         }}
         onSelect={(m) => {
-          setGlobalGridVisible(false);
-          setReopenOnBack(true); // Keep the chain going if they open a movie from the grid
-          DeviceEventEmitter.emit("movieSelected", m);
+          const isSeries = "seasons" in m || (m as any).type === 'Series' || (m as any).isMiniSeries;
+          if (isSeries) {
+            setGlobalGridVisible(false);
+            router.push(`/(tabs)/saved?seriesId=${m.id}`);
+          } else {
+            setGlobalGridVisible(false);
+            setPlayingNow(m as Movie);
+            setPlayerTitle(m.title);
+            setSelectedVideoUrl(getStreamUrl(m as Movie));
+            setPlayerMode('full');
+          }
         }}
       />
       {/* Background for 3-button nav */}
@@ -2944,37 +2972,7 @@ function CustomTabBar() {
                     <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.7)" />
                   </TouchableOpacity>
                   </View>
-                )) : active("/(tabs)/category") ? (
-                  <View
-                    style={{
-                      flex: 1,
-                      height: 35,
-                      paddingHorizontal: 20,
-                      borderRadius: 17.5,
-                      overflow: "hidden",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.4)",
-                      backgroundColor: "rgba(91, 95, 239, 0.25)",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      shadowColor: "#5B5FEF",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.45,
-                      shadowRadius: 10,
-                      elevation: 8,
-                    }}
-                  >
-                    <View style={styles.pillSheen} />
-                    <Text style={{
-                      color: "#fff",
-                      fontSize: 13,
-                      fontWeight: "900",
-                      letterSpacing: 0.5,
-                      textTransform: "uppercase",
-                    }}>CINEMA GENRES AND UGANDAN VJS 🇺🇬</Text>
-                  </View>
-                ) : (
+                )) : active("/(tabs)/category") ? null : (
                   <TouchableOpacity
                     style={styles.allVjsPill}
                     activeOpacity={0.8}
@@ -3031,32 +3029,34 @@ function CustomTabBar() {
                   </TouchableOpacity>
                 </View>
               )}
-              <View style={styles.notificationBlurCapsule}>
-                <BlurView
-                  tint="dark"
-                  intensity={99}
-                  style={StyleSheet.absoluteFill}
-                />
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.15)", "transparent"]}
-                  style={styles.pillSheen}
-                />
-                <TouchableOpacity
-                  style={styles.topBarActionBtn}
-                  onPress={() => setNotificationVisible(true)}
-                >
-                  <Ionicons
-                    name="notifications-outline"
-                    size={18}
-                    color="#fff"
+              {!active("/(tabs)/category") && !isOverlayVisible && (
+                <View style={styles.notificationBlurCapsule}>
+                  <BlurView
+                    tint="dark"
+                    intensity={99}
+                    style={StyleSheet.absoluteFill}
                   />
-                  {unreadCount > 0 && (
-                    <View style={styles.notificationIndicator}>
-                      <Text style={styles.notificationIndicatorText}>{unreadCount}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  <LinearGradient
+                    colors={["rgba(255,255,255,0.15)", "transparent"]}
+                    style={styles.pillSheen}
+                  />
+                  <TouchableOpacity
+                    style={styles.topBarActionBtn}
+                    onPress={() => setNotificationVisible(true)}
+                  >
+                    <Ionicons
+                      name="notifications-outline"
+                      size={18}
+                      color="#fff"
+                    />
+                    {unreadCount > 0 && (
+                      <View style={styles.notificationIndicator}>
+                        <Text style={styles.notificationIndicatorText}>{unreadCount}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -3080,11 +3080,11 @@ function CustomTabBar() {
               params: { seriesId: movie.id }
             });
           } else {
-            router.push({
-              pathname: "/(tabs)",
-              params: { movieId: movie.id },
-            });
-            DeviceEventEmitter.emit("movieSelected", movie);
+            // Direct to video for Search to avoid continuation
+            setPlayingNow(movie as Movie);
+            setPlayerTitle(movie.title);
+            setSelectedVideoUrl(getStreamUrl(movie as Movie));
+            setPlayerMode('full');
           }
         }}
         vjOnly={searchVjOnly}
@@ -3215,7 +3215,7 @@ isUpdateLocked={updateDismissCount >= 3}
         </SafeAreaView>
       </Modal>
 
-      {!showInPlaceSearch && !isDetailStackVisible && (
+      {!showInPlaceSearch && !isDetailStackVisible && playerMode === 'closed' && !isOverlayVisible && (
         <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : Math.max(16, insets.bottom + 12) }]} pointerEvents="box-none">
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
@@ -3277,7 +3277,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="saved" options={{ title: "Series" }} />
-      <Tabs.Screen name="category" options={{ title: "Category" }} />
+      <Tabs.Screen name="category" options={{ title: "Discover" }} />
       <Tabs.Screen name="menu" options={{ title: "Profile" }} />
     </Tabs>
   );

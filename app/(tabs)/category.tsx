@@ -1,631 +1,479 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
-  ImageBackground,
+  Image,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   Platform,
   StatusBar,
-  KeyboardAvoidingView,
   Dimensions,
   Modal,
-  TextInput,
   Animated,
-  Keyboard,
+  DeviceEventEmitter,
   Easing,
-  ActivityIndicator,
+  ViewToken,
 } from "react-native";
-
-// ─── Marquee Placeholder Component ─────────────────────────────────────────────
-const MarqueePlaceholder = ({
-  text,
-  containerWidth,
-  style,
-}: {
-  text: string;
-  containerWidth: number;
-  style?: any;
-}) => {
-  const scrollAnim = useRef(new Animated.Value(0)).current;
-  const [textWidth, setTextWidth] = useState(0);
-
-  useEffect(() => {
-    if (textWidth > containerWidth - 40 && containerWidth > 0) {
-      const scrollDistance = textWidth - (containerWidth - 40) + 20;
-      const duration = scrollDistance * 60;
-
-      const startAnimation = () => {
-        scrollAnim.setValue(0);
-        Animated.sequence([
-          Animated.delay(2000),
-          Animated.timing(scrollAnim, {
-            toValue: -scrollDistance,
-            duration: duration,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.delay(2000),
-          Animated.timing(scrollAnim, {
-            toValue: 0,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ]).start(() => startAnimation());
-      };
-
-      startAnimation();
-    } else {
-      scrollAnim.setValue(0);
-      scrollAnim.stopAnimation();
-    }
-  }, [text, textWidth, containerWidth]);
-
-  return (
-    <View
-      style={[{ overflow: "hidden", flex: 1, justifyContent: "center" }, style]}
-    >
-      <Animated.Text
-        numberOfLines={1}
-        onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-        style={[
-          {
-            color: "rgba(255,255,255,0.4)",
-            fontSize: 14,
-            transform: [{ translateX: scrollAnim }],
-            width: textWidth || "auto",
-          },
-        ]}
-      >
-        {text}
-      </Animated.Text>
-    </View>
-  );
-};
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { ALL_ROWS, Movie, Series } from "@/constants/movieData";
+import { Movie, Series } from "@/constants/movieData";
 import { MoviePreviewModal } from "./index";
 import { GridModal, GridContent } from "../../components/GridComponents";
-import ModernVideoPlayer from "../../components/ModernVideoPlayer";
 import { useMovies } from "@/app/context/MovieContext";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
+import { Video, ResizeMode } from "expo-av";
+import { 
+  ALL_GENRES, 
+  ALL_VJS, 
+  getStreamUrl,
+  ALL_ROWS
+} from "@/constants/movieData";
 
-const { width: W } = Dimensions.get("window");
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-// ─── Genre data ───────────────────────────────────────────────────────────────
-// NOTE: All IDs must be unique to avoid duplicate key errors in FlatList
-const GENRES = [
-  {
-    id: "1",
-    name: "Action",
-    color: "#ef4444",
-    image:
-      "https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=500&q=70",
-  },
-  {
-    id: "2",
-    name: "Comedy",
-    color: "#f97316",
-    image:
-      "https://images.unsplash.com/photo-1605809825458-7c870ad8ab43?w=500&q=70",
-  },
-  {
-    id: "3",
-    name: "Drama",
-    color: "#a855f7",
-    image:
-      "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=70",
-  },
-  {
-    id: "4",
-    name: "Sci-Fi",
-    color: "#3b82f6",
-    image:
-      "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=70",
-  },
-  {
-    id: "5",
-    name: "Horror",
-    color: "#6366f1",
-    image:
-      "https://images.unsplash.com/photo-1505635552518-3448ff116dd3?w=500&q=70",
-  },
-  {
-    id: "6",
-    name: "Romance",
-    color: "#ec4899",
-    image:
-      "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&q=70",
-  },
-  {
-    id: "7",
-    name: "Thriller",
-    color: "#6b7280",
-    image:
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=70",
-  },
-  {
-    id: "8",
-    name: "Animation",
-    color: "#14b8a6",
-    image:
-      "https://images.unsplash.com/photo-1560472355-109703aa3edc?w=500&q=70",
-  },
-  {
-    id: "9",
-    name: "Documentary",
-    color: "#10b981",
-    image:
-      "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=500&q=70",
-  },
-  {
-    id: "10",
-    name: "Indian Movies",
-    color: "#eab308",
-    image:
-      "https://images.unsplash.com/photo-1628126235206-5260b9ea6441?w=500&q=70",
-  },
-  {
-    id: "11",
-    name: "Anime",
-    color: "#0ea5e9",
-    image:
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&q=70",
-  },
-  {
-    id: "12",
-    name: "Fantasy",
-    color: "#8b5cf6",
-    image:
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=70",
-  },
-  {
-    id: "13",
-    name: "Crime",
-    color: "#475569",
-    image:
-      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500&q=70",
-  },
-  {
-    id: "14",
-    name: "Mystery",
-    color: "#78716c",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&q=70",
-  },
-  {
-    id: "15",
-    name: "Biography",
-    color: "#d97706",
-    image:
-      "https://images.unsplash.com/photo-1501426026826-31c667bdf23d?w=500&q=70",
-  },
-  {
-    id: "16",
-    name: "Sport",
-    color: "#059669",
-    image:
-      "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=500&q=70",
-  },
-];
-
-const REQUESTED_VJS = [
-  "Vj Junior",
-  "Vj Ice P",
-  "Vj Kevo",
-  "Vj HD",
-  "Vj Sammy",
-  "Vj Emmy",
-  "Vj Jovan",
-  "Vj Tom",
-  "Vj Shao Khan",
-  "Vj Jingo",
-  "Vj Kevin",
-  "Vj Kriss Sweet",
-  "Vj Dan De",
-  "Vj lvo",
-  "Vj Fredy",
-  "Vj Jumpers",
-  "Vj Ashim",
-  "Vj Pauleta",
-  "Vj Martin K",
-  "Vj Henrico",
-  "Vj Uncle T",
-  "Vj Soul",
-  "Vj Nelly",
-  "Vj Isma K",
-  "Vj Little T",
-  "Vj Mox",
-  "Vj Muba",
-  "Vj Eddy",
-  "Vj Kam",
-  "Vj Lance",
-  "Vj KS",
-  "Vj Ulio",
-  "Vj Aaron",
-  "Vj Cabs",
-  "Vj Banks",
-  "Vj Jimmy",
-  "Vj Baros",
-  "Vj Kimuli",
-];
-
-// ─── VJ Request Modal ──────────────────────────────────────────────────────────
-function VJRequestModal({
-  visible,
-  onClose,
-  title,
-  genre,
-  onSelectMovie,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  genre: string;
-  onSelectMovie: (m: Movie | Series) => void;
-}) {
-  const { allMovies, allSeries, loading } = useMovies();
-  const [search, setSearch] = useState("");
-  const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
-  const inputRef = useRef<TextInput>(null);
-  const insets = useSafeAreaInsets();
-  const [containerWidth, setContainerWidth] = useState(0);
-  const filtered = REQUESTED_VJS.filter((vj) =>
-    vj.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // Normalise a VJ name to its core part: strip "vj " prefix (any casing)
-  const normaliseVJ = (name: string) =>
-    name.replace(/^vj\s+/i, "").toLowerCase().trim();
-
-  // Movies for the selected VJ + specific genre (or 'all' for general requests)
-  const genreMovies = React.useMemo(() => {
-    if (!selectedVJ) return [];
-    const pool = [...(allMovies || []), ...(allSeries || [])];
-    const seen = new Set();
-    const unique = pool.filter(m => {
-      if (!m.id || seen.has(m.id)) return false;
-      seen.add(m.id);
-      return true;
-    });
-
-    const vjCore = normaliseVJ(selectedVJ);
-    return unique.filter((m) => {
-      // Match VJ: compare normalised core names (handles "VJ Junior" vs "Vj Junior" vs "vj junior")
-      const movieVJCore = normaliseVJ(m.vj || "");
-      const matchVJ = movieVJCore.includes(vjCore) || vjCore.includes(movieVJCore);
-      if (genre === "all" || genre === "request") return matchVJ;
-      return matchVJ && m.genre?.toLowerCase().includes(genre.toLowerCase());
-    });
-  }, [selectedVJ, genre, allMovies, allSeries]);
+// ─── Skeleton Loader Component ───────────────────────────────────────────────
+const SkeletonLoader = React.memo(({ width, height, borderRadius = 12, style, shimmer = true }: { width: any, height: any, borderRadius?: number, style?: any, shimmer?: boolean }) => {
+  const translateX = useRef(new Animated.Value(-1)).current;
 
   useEffect(() => {
-    // Keyboard listeners removed in favor of KeyboardAvoidingView
-  }, []);
+    if (shimmer) {
+      Animated.loop(
+        Animated.timing(translateX, {
+          toValue: 2,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [shimmer]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderRadius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
     >
-      <View style={styles.vjModalFullScreen}>
-        <StatusBar
-          barStyle="light-content"
-          translucent
-          backgroundColor="transparent"
-        />
-        <View style={styles.vjModalContent}>
-          {/* Header */}
-          <View style={[styles.vjModalHeader, { justifyContent: 'center', paddingTop: insets.top + (Platform.OS === 'ios' ? 0 : 5) }]}>
-          <View style={[styles.vjTitleCapsule]}>
-              <View style={styles.vjTitleSheen} />
-              <Text
-                style={styles.vjModalTitle}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {title}
-              </Text>
-            </View>
-          </View>
-
-          {/* VJ List */}
-          <FlatList
-            data={filtered}
-            keyExtractor={(v) => v}
-            contentContainerStyle={[
-              styles.vjListContent,
-              { paddingBottom: 100 },
+      {shimmer && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-1, 2],
+                    outputRange: [-width * 1.5, width * 1.5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'transparent',
             ]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="always"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.vjItem}
-                activeOpacity={0.7}
-                onPress={() => setSelectedVJ(item)}
-              >
-                <View style={styles.vjDot} />
-                <Text style={styles.vjItemText}>{item}</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color="rgba(255,255,255,0.4)"
-                />
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyVJ}>
-                <Text style={styles.emptyVJText}>
-                  No VJ found matching "{search}"
-                </Text>
-              </View>
-            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+});
+
+const VJ_PROFILES = ALL_VJS.map(name => ({
+  name,
+  image: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=5B5FEF&color=fff&size=200`
+}));
+
+const GENRES = ALL_GENRES.map((g, i) => ({ id: String(i), name: g }));
+const YEARS = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
+const TYPES = ["Movie", "Series", "Mini Series"];
+const SORT_OPTIONS = [
+  { label: "Top Rated", value: "rating", icon: "star" },
+  { label: "Newest", value: "newest", icon: "time" },
+  { label: "Oldest", value: "oldest", icon: "hourglass" },
+];
+
+const DiscoverSkeleton = React.memo(() => (
+  <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+    <SkeletonLoader width={SCREEN_W} height={SCREEN_H} borderRadius={0} />
+    <View style={{ position: 'absolute', bottom: 120, left: 20, right: 20 }}>
+      <SkeletonLoader width={200} height={30} style={{ marginBottom: 12 }} />
+      <SkeletonLoader width={150} height={15} style={{ marginBottom: 8 }} />
+      <SkeletonLoader width={100} height={15} style={{ marginBottom: 20 }} />
+      <View style={{ flexDirection: 'row', gap: 15 }}>
+        <SkeletonLoader width={120} height={50} borderRadius={25} />
+        <SkeletonLoader width={50} height={50} borderRadius={25} />
+        <SkeletonLoader width={50} height={50} borderRadius={25} />
+      </View>
+    </View>
+  </View>
+));
+
+// ─── Discover Feed Card ────────────────────────────────────────────────────────
+const DiscoverCard = React.memo(({ 
+  item, 
+  index, 
+  isActive, 
+  onPress, 
+  onSave,
+  isSaved,
+  isMuted,
+  onToggleMute,
+  playerMode,
+  isFocused,
+  isModalOpen
+}: { 
+  item: Movie | Series; 
+  index: number; 
+  isActive: boolean; 
+  onPress: () => void;
+  onSave: () => void;
+  isSaved: boolean;
+  isMuted: boolean;
+  onToggleMute: () => void;
+  playerMode: string;
+  isFocused: boolean;
+  isModalOpen: boolean;
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    if (isActive) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.95);
+    }
+  }, [isActive]);
+
+  return (
+    <View style={styles.cardContainer}>
+      <Image
+        source={{ uri: item.poster }}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
+
+      {isActive && item.previewUrl && (
+        <View style={styles.videoWrapper}>
+          <Video
+            source={{ uri: item.previewUrl }}
+            style={styles.previewVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={isActive && isFocused && !isModalOpen && playerMode === 'closed'}
+            isLooping
+            isMuted={isMuted}
           />
         </View>
+      )}
+      
+      {/* Immersive Overlays */}
+      <LinearGradient
+        colors={['rgba(10,10,15,0.2)', 'rgba(10,10,15,0.5)', 'rgba(10,10,15,1)']}
+        style={StyleSheet.absoluteFill}
+      />
 
-        {/* Movies grid for tapped VJ */}
-        <GridModal
-          visible={!!selectedVJ}
-          title={
-            selectedVJ
-              ? `${selectedVJ} — ${genre === "all" || genre === "request" ? "All" : genre}`
-              : ""
-          }
-          data={genreMovies}
-          onClose={() => setSelectedVJ(null)}
-          onSelect={onSelectMovie}
-        />
-      </View>
-    </Modal>
-  );
-}
-
-// ─── Genre Card ───────────────────────────────────────────────────────────────
-function GenreCard({ item, onPress }: { item: any; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={styles.gridItem}
-      activeOpacity={0.85}
-      onPress={onPress}
-    >
-      <View style={styles.gridItemInner}>
-        <ImageBackground
-          source={{ uri: item.image }}
-          style={styles.genreImage}
-          imageStyle={styles.genreImageStyle}
-        >
-          {/* Obsidian Glass Foundation */}
-          <LinearGradient
-            colors={["rgba(10,10,15,0.4)", "rgba(10,10,15,0.85)"]}
-            style={StyleSheet.absoluteFill}
-          />
-
-          {/* Light Sheen */}
-          <LinearGradient
-            colors={["rgba(255,255,255,0.08)", "transparent"]}
-            style={styles.pillSheen}
-          />
-
-          <View
-            style={[
-              styles.genreCardContent,
-              { justifyContent: "center", alignItems: "center" },
-            ]}
-          >
-            <Text
-              style={[styles.genreText, { textAlign: "center" }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {item.name}
-            </Text>
-            <Text style={styles.allVjsText}>ALL VJS</Text>
+      <Animated.View style={[styles.cardContent, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        {/* VJ Badge */}
+        {item.vj && (
+          <View style={styles.vjBadge}>
+            <View style={styles.vjBadgeSheen} />
+            <Ionicons name="mic-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.vjBadgeText}>{item.vj.toUpperCase()}</Text>
           </View>
-        </ImageBackground>
-      </View>
-    </TouchableOpacity>
-  );
-}
+        )}
 
-// ─── Category Screen ──────────────────────────────────────────────────────────
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        
+        <View style={styles.metaRow}>
+          <Text style={styles.metaText}>{item.year}</Text>
+          <View style={styles.metaDot} />
+          <Text style={styles.metaText}>{item.genre}</Text>
+          {item.rating && (
+            <>
+              <View style={styles.metaDot} />
+              <Ionicons name="star" size={12} color="#FFD700" style={{ marginRight: 2 }} />
+              <Text style={styles.metaText}>{item.rating}</Text>
+            </>
+          )}
+        </View>
+
+        <Text style={styles.cardDesc} numberOfLines={2}>
+          {item.description || "Discover the latest cinematic experience. Tap to explore more details and start watching."}
+        </Text>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity 
+            style={styles.mainPlayBtn}
+            onPress={onPress}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#5B5FEF', '#484BD3']}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="play" size={24} color="#fff" />
+            <Text style={styles.mainPlayText}>Watch Now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.iconCircleBtn, isSaved && { backgroundColor: 'rgba(91, 95, 239, 0.4)', borderColor: '#5B5FEF' }]}
+            onPress={onSave}
+          >
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            <Ionicons name={isSaved ? "checkmark" : "add"} size={24} color="#fff" />
+          </TouchableOpacity>
+
+
+          {item.previewUrl && (
+            <TouchableOpacity 
+              style={[styles.iconCircleBtn, { marginLeft: 'auto' }]}
+              onPress={onToggleMute}
+            >
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+              <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
+    </View>
+  );
+});
+
+// ─── Discovery Screen ──────────────────────────────────────────────────────────
 export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { allMovies, allSeries, loading } = useMovies();
-  const { isGuest, isPreview, setIsPreview } = useSubscription();
-  const [query, setQuery] = useState("");
-  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const { 
+    favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
+    playerMode, setPlayerMode, playerTitle, setPlayerTitle,
+    selectedVideoUrl, setSelectedVideoUrl, playerPos, playerSize,
+    isPaid, allMoviesFree, setPlayingNow
+  } = useSubscription();
+  const isFocused = useIsFocused();
+  const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
-  const [requestModalVisible, setRequestModalVisible] = useState(false);
-  const [activeRequestTitle, setActiveRequestTitle] = useState("");
-  const [activeGenre, setActiveGenre] = useState("");
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
-  // Navigation stack – mirrors the home screen pattern so "See All" works
-  type CatStackItem =
-    | { type: 'movie'; movie: Movie | Series }
-    | { type: 'grid'; title: string; data: (Movie | Series)[] };
-  const [categoryStack, setCategoryStack] = React.useState<CatStackItem[]>([]);
+  // Filter States
+  const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<"Movie" | "Series" | "Mini Series" | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rating" | null>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
-  // Unified Video Player State
-  const [playerMode, setPlayerMode] = useState<'closed' | 'full' | 'mini'>('closed');
-  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
-  const [playerTitle, setPlayerTitle] = useState("");
-  const playerPos = useRef(new Animated.ValueXY({ x: SCREEN_W - 170, y: SCREEN_H - 240 })).current;
-  const playerSize = useRef(new Animated.Value(150)).current;
-
-  const handlePress = (item: any) => {
-    setActiveRequestTitle(
-      `${item.name} ONLY BY YOUR FAVOURITE VJ`.toUpperCase(),
-    );
-    setActiveGenre(item.name);
-    setRequestModalVisible(true);
+  const resetFilters = () => {
+    setSelectedVJ(null);
+    setSelectedGenre(null);
+    setSelectedType(null);
+    setSelectedYear(null);
+    setSortBy(null);
   };
 
-  // Build genres with live counts from Firestore data
-  const genresWithCounts = React.useMemo(() => {
-    const pool = [...(allMovies || []), ...(allSeries || [])];
-    return GENRES.map(g => ({
-      ...g,
-      count: pool.filter(m => m.genre?.toLowerCase().includes(g.name.toLowerCase())).length,
-    }));
-  }, [allMovies, allSeries]);
 
-  const filtered = query.trim()
-    ? genresWithCounts.filter((g) => g.name.toLowerCase().includes(query.toLowerCase()))
-    : genresWithCounts;
+  // Prepare filtered items for the feed
+  const discoverItems = useMemo(() => {
+    let filtered = [...(allMovies || []), ...(allSeries || [])];
 
-  const totalCount = filtered.reduce((acc, g) => acc + g.count, 0);
+    if (selectedVJ) {
+      const vjQ = selectedVJ.toLowerCase().trim();
+      const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
+      filtered = filtered.filter(m => {
+        const mVJ = (m.vj || "").toLowerCase().trim();
+        return mVJ === vjQ || mVJ === vjName || mVJ.includes(vjQ);
+      });
+    }
+    if (selectedGenre) {
+      filtered = filtered.filter(m => (m.genre || "").toLowerCase().includes(selectedGenre.toLowerCase()));
+    }
+    if (selectedType) {
+      filtered = filtered.filter(m => {
+        const isSeries = "seasons" in m;
+        if (selectedType === "Movie") return !isSeries;
+        if (selectedType === "Series") return isSeries && !(m as any).isMiniSeries;
+        if (selectedType === "Mini Series") return isSeries && !!(m as any).isMiniSeries;
+        return true;
+      });
+    }
+    if (selectedYear) {
+      filtered = filtered.filter(m => String(m.year) === selectedYear);
+    }
 
-  const gridMovies = React.useMemo(() => {
-    if (!selectedItem) return [];
-    const pool = [...(allMovies || []), ...(allSeries || [])];
-    const seen = new Set();
-    const unique = pool.filter(m => {
-      if (!m.id || seen.has(m.id)) return false;
-      seen.add(m.id);
-      return true;
-    });
-    return unique.filter((m) => m.genre?.toLowerCase().includes(selectedItem.name.toLowerCase()));
-  }, [selectedItem, allMovies, allSeries]);
+    if (sortBy === "newest") filtered.sort((a, b) => b.year - a.year);
+    else if (sortBy === "oldest") filtered.sort((a, b) => a.year - b.year);
+    else if (sortBy === "rating") filtered.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    else filtered.sort(() => Math.random() - 0.5);
+
+    return filtered;
+  }, [allMovies, allSeries, selectedVJ, selectedGenre, selectedType, selectedYear, sortBy]);
+
+  // Scroll to top when filters change
+  useEffect(() => {
+    if (flatListRef.current && discoverItems.length > 0) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [selectedVJ, selectedGenre, selectedType, selectedYear, sortBy]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0) {
+      setActiveIndex(viewableItems[0].index || 0);
+    }
+  }).current;
+
+  useEffect(() => {
+    const isVisible = !!previewMovie || showFilterModal || playerMode === 'full';
+    DeviceEventEmitter.emit('setOverlayVisible', isVisible);
+    
+    // Auto-dismiss preview modal if video starts playing
+    if (playerMode === 'full' && previewMovie) {
+      setPreviewMovie(null);
+    }
+  }, [previewMovie, showFilterModal, playerMode]);
+
+  const handleItemPress = (item: Movie | Series) => {
+    const isSeries = "seasons" in item || "episodeList" in item;
+    
+    if (!isSeries) {
+      // Check for subscription/access
+      const canWatch = allMoviesFree || (item as any).isFree || isPaid;
+      if (!canWatch) {
+        setShowPremiumModal(true);
+        return;
+      }
+
+      // Direct to full screen player for movies
+      setPlayerTitle(item.title);
+      setSelectedVideoUrl((item as Movie).videoUrl);
+      setPlayingNow(item as Movie);
+      setPlayerMode('full');
+    } else {
+      // Show preview modal for series
+      setPreviewMovie(item);
+    }
+  };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#E50914" />
-      </View>
-    );
+    return <DiscoverSkeleton />;
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1, paddingTop: insets.top + (Platform.OS === 'ios' ? 44 : 45) }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-
-          <FlatList
-            data={filtered}
-            keyExtractor={(g) => g.id}
-            numColumns={3}
-            columnWrapperStyle={styles.row}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <GenreCard item={item} onPress={() => handlePress(item)} />
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+      {/* Main Discover Feed */}
+      <FlatList
+        ref={flatListRef}
+        data={discoverItems}
+        keyExtractor={(item) => item.id}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={SCREEN_H}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={80} color="rgba(255,255,255,0.1)" />
+            <Text style={styles.emptyText}>No matches found</Text>
+            <TouchableOpacity style={styles.resetInlineBtn} onPress={resetFilters}>
+              <Text style={styles.resetInlineText}>Clear All Filters</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        renderItem={({ item, index }) => (
+          <DiscoverCard 
+            item={item} 
+            index={index} 
+            isActive={index === activeIndex}
+            isSaved={favorites.some(f => f.id === item.id)}
+            isMuted={isMuted}
+            playerMode={playerMode}
+            isFocused={isFocused}
+            isModalOpen={!!previewMovie || showFilterModal || showPremiumModal || showPlanModal}
+            onToggleMute={() => setIsMuted(!isMuted)}
+            onPress={() => handleItemPress(item)}
+            onSave={() => toggleFavorite(item)}
           />
-
-          <View style={{ height: 120 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <GridModal
-        visible={!!selectedItem}
-        title={selectedItem ? `${selectedItem.name} Movies` : ""}
-        data={gridMovies}
-        onClose={() => setSelectedItem(null)}
-        onSelect={(m: Movie | Series) => {
-          setSelectedItem(null);
-          setTimeout(() => setPreviewMovie(m), 150);
-        }}
+        )}
       />
 
-      {/* Category navigation stack – handles See All from movie detail */}
-      <Modal
-        visible={categoryStack.length > 0 && playerMode !== 'full'}
-        animationType="slide"
-        transparent
-        statusBarTranslucent
-        onRequestClose={() => setCategoryStack(prev => prev.slice(0, -1))}
-      >
-        <View style={{ flex: 1 }}>
-          {categoryStack.map((item, index) => {
-            const onClose = () =>
-              setCategoryStack(prev => {
-                const next = [...prev];
-                next.splice(index, 1);
-                return next;
-              });
-            if (item.type === 'grid') {
-              return (
-                <GridContent
-                  key={`cg-${index}`}
-                  title={item.title}
-                  data={item.data}
-                  onClose={onClose}
-                  onSelect={(m) =>
-                    setCategoryStack(prev => [...prev, { type: 'movie', movie: m }])
-                  }
-                />
-              );
-            }
-              return (
-                <MoviePreviewModal
-                  key={`cm-${index}`}
-                movie={item.movie}
-                onClose={onClose}
-                onSwitch={(m: any) =>
-                  setCategoryStack(prev => [...prev, { type: 'movie', movie: m }])
-                }
-                onSeeAll={(title: any, data: any) =>
-                  setCategoryStack(prev => [...prev, { type: 'grid', title, data }])
-                }
-                onShowPremium={() => setShowPremiumModal(true)}
-                onUpgrade={() => {
-                  setShowPremiumModal(false);
-                  setShowPlanModal(true);
-                }}
-                playerMode={playerMode}
-                setPlayerMode={setPlayerMode}
-                setSelectedVideoUrl={setSelectedVideoUrl}
-                setPlayerTitle={setPlayerTitle}
-                selectedVideoUrl={selectedVideoUrl}
-                playerTitle={playerTitle}
-                playerPos={playerPos}
-                playerSize={playerSize}
-                isPreview={isPreview}
-                setIsPreview={setIsPreview}
-              />
-            );
-          })}
+      {/* Top Header Controls */}
+      <View style={[styles.headerControls, { top: insets.top + 10 }]}>
+        <View style={styles.discoverTitleWrap}>
+          <Text style={styles.discoverTitle}>DISCOVER</Text>
+          <View style={styles.activeDot} />
         </View>
-      </Modal>
 
-      {/* Legacy single-movie preview (opened from genre grid) */}
+        <TouchableOpacity 
+          style={[styles.filterBtn, (selectedVJ || selectedGenre) && styles.filterBtnActive]}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+          <Ionicons 
+            name={(selectedVJ || selectedGenre) ? "options" : "options-outline"} 
+            size={22} 
+            color={(selectedVJ || selectedGenre) ? "#5B5FEF" : "#fff"} 
+          />
+          <Text style={[styles.filterBtnText, (selectedVJ || selectedGenre) && { color: '#5B5FEF' }]}>
+            {(selectedVJ || selectedGenre) ? "Active" : "Filters"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Preview Modal */}
       {previewMovie && (
         <MoviePreviewModal
           visible={playerMode !== 'full'}
           movie={previewMovie}
+          hideSearchBy={true}
           onClose={() => setPreviewMovie(null)}
-          onSwitch={(m: any) => {
-            setPreviewMovie(null);
-            setTimeout(() => setPreviewMovie(m), 150);
-          }}
           onShowPremium={() => setShowPremiumModal(true)}
           playerMode={playerMode}
           setPlayerMode={setPlayerMode}
@@ -637,38 +485,203 @@ export default function CategoryScreen() {
           playerSize={playerSize}
           isPreview={isPreview}
           setIsPreview={setIsPreview}
+          onSwitch={(m: any) => {
+            setPreviewMovie(null);
+            setTimeout(() => {
+              setPlayerTitle(m.title);
+              setSelectedVideoUrl(m.videoUrl || m.episodeList?.[0]?.url || "");
+              setPlayerMode('full');
+            }, 200);
+          }}
         />
       )}
 
-      <VJRequestModal
-        visible={requestModalVisible && playerMode !== 'full'}
-        title={activeRequestTitle}
-        genre={activeGenre}
-        onClose={() => setRequestModalVisible(false)}
-        onSelectMovie={(m: any) =>
-          setCategoryStack([{ type: 'movie', movie: m }])
-        }
-      />
+      {/* Filter Modal (VJ/Genre Selection) */}
+      <Modal
+        visible={showFilterModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.filterModalHeader}>
+              <View>
+                <Text style={styles.filterModalTitle}>HUB FILTERS</Text>
+                <Text style={styles.filterModalSubtitle}>
+                  {discoverItems.length} matching titles found
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {(selectedVJ || selectedGenre || selectedType || selectedYear || sortBy) && (
+                  <TouchableOpacity 
+                    style={styles.closeModalBtn}
+                    onPress={resetFilters}
+                  >
+                    <Ionicons name="refresh" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  style={styles.closeModalBtn}
+                  onPress={() => setShowFilterModal(false)}
+                >
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ScrollView 
+              style={styles.filterModalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.filterSection}>
+                <View style={styles.filterSectionHeader}>
+                  <Text style={styles.filterSectionTitle}>BROWSE BY VJ</Text>
+                  {selectedVJ && (
+                    <TouchableOpacity onPress={() => setSelectedVJ(null)}>
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                  {VJ_PROFILES.map(vj => (
+                    <TouchableOpacity 
+                      key={vj.name}
+                      style={[styles.vjFilterCard, selectedVJ === vj.name && styles.activeFilterCard]}
+                      onPress={() => setSelectedVJ(vj.name)}
+                    >
+                      <Image 
+                        source={{ uri: vj.image }} 
+                        style={[styles.vjFilterImg, selectedVJ === vj.name && styles.activeFilterImg]} 
+                      />
+                      <Text style={[styles.vjFilterName, selectedVJ === vj.name && styles.activeFilterText]}>
+                        {vj.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.filterSection}>
+                <View style={styles.filterSectionHeader}>
+                  <Text style={styles.filterSectionTitle}>EXPLORE GENRES</Text>
+                  {selectedGenre && (
+                    <TouchableOpacity onPress={() => setSelectedGenre(null)}>
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.genreGrid}>
+                  {GENRES.map(g => (
+                    <TouchableOpacity 
+                      key={g.id}
+                      style={[styles.genreFilterBtn, selectedGenre === g.name && styles.activeGenreBtn]}
+                      onPress={() => setSelectedGenre(g.name === selectedGenre ? null : g.name)}
+                    >
+                      <Text style={[styles.genreFilterText, selectedGenre === g.name && styles.activeFilterText]}>
+                        {g.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.filterSection}>
+                <View style={styles.filterSectionHeader}>
+                  <Text style={styles.filterSectionTitle}>CONTENT TYPE</Text>
+                  {selectedType && (
+                    <TouchableOpacity onPress={() => setSelectedType(null)}>
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.genreGrid}>
+                  {TYPES.map(t => (
+                    <TouchableOpacity 
+                      key={t}
+                      style={[styles.genreFilterBtn, selectedType === t && styles.activeGenreBtn]}
+                      onPress={() => setSelectedType(t as any)}
+                    >
+                      <Text style={[styles.genreFilterText, selectedType === t && styles.activeFilterText]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.filterSection}>
+                <View style={styles.filterSectionHeader}>
+                  <Text style={styles.filterSectionTitle}>RELEASE YEAR</Text>
+                  {selectedYear && (
+                    <TouchableOpacity onPress={() => setSelectedYear(null)}>
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                  {YEARS.map(year => (
+                    <TouchableOpacity 
+                      key={year}
+                      style={[styles.yearFilterBtn, selectedYear === year && styles.activeGenreBtn]}
+                      onPress={() => setSelectedYear(year === selectedYear ? null : year)}
+                    >
+                      <Text style={[styles.genreFilterText, selectedYear === year && styles.activeFilterText]}>
+                        {year}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.filterSection}>
+                <View style={styles.filterSectionHeader}>
+                  <Text style={styles.filterSectionTitle}>SORT RESULTS</Text>
+                  {sortBy && (
+                    <TouchableOpacity onPress={() => setSortBy(null)}>
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.sortGrid}>
+                  {SORT_OPTIONS.map(opt => (
+                    <TouchableOpacity 
+                      key={opt.value}
+                      style={[styles.sortBtn, sortBy === opt.value && styles.activeGenreBtn]}
+                      onPress={() => setSortBy(opt.value as any)}
+                    >
+                      <Ionicons name={opt.icon as any} size={18} color={sortBy === opt.value ? "#fff" : "rgba(255,255,255,0.4)"} style={{ marginRight: 8 }} />
+                      <Text style={[styles.genreFilterText, sortBy === opt.value && styles.activeFilterText]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ height: 100 }} />
+            </ScrollView>
+
+            <View style={styles.filterFooter}>
+              <TouchableOpacity 
+                style={styles.applyBtn}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <LinearGradient colors={['#5B5FEF', '#484BD3']} style={StyleSheet.absoluteFill} />
+                <Text style={styles.applyBtnText}>Apply Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Modal>
 
       <PremiumAccessModal
         visible={showPremiumModal}
         isGuest={isGuest}
         onClose={() => setShowPremiumModal(false)}
-        onSignUp={() => {
-          setShowPremiumModal(false);
-          router.push("/login" as any);
-        }}
-        onLogin={() => {
-          setShowPremiumModal(false);
-          router.push("/login" as any);
-        }}
         onUpgrade={() => {
           setShowPremiumModal(false);
           setShowPlanModal(true);
-        }}
-        onSocialLogin={(provider) => {
-          setShowPremiumModal(false);
-          router.push("/login" as any);
         }}
       />
 
@@ -677,20 +690,6 @@ export default function CategoryScreen() {
         onClose={() => setShowPlanModal(false)}
       />
 
-      {/* Unified Video Player Component */}
-      <ModernVideoPlayer
-        playerMode={playerMode}
-        setPlayerMode={setPlayerMode}
-        videoUrl={selectedVideoUrl}
-        title={playerTitle}
-        playerPos={playerPos}
-        playerSize={playerSize}
-        isPreview={isPreview}
-        onClose={() => {
-          setPlayerMode('closed');
-          setIsPreview(false);
-        }}
-      />
     </View>
   );
 }
@@ -700,306 +699,338 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0a0a0f",
   },
-  scrollContent: {
-    paddingTop: 4,
-    paddingHorizontal: 12,
+  cardContainer: {
+    width: SCREEN_W,
+    height: SCREEN_H,
+    backgroundColor: '#000',
   },
-  headerArea: {
-    marginBottom: 24,
+  videoWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingBottom: 100, // Balanced with bottom text
   },
-  sectionHeaderBadge: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 50,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-    shadowColor: "#5B5FEF",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
-    elevation: 12,
+  previewVideo: {
+    width: SCREEN_W,
+    height: SCREEN_W * (9 / 16),
   },
-  switcherContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  switcherButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  switcherButtonActive: {
-    backgroundColor: "#5B5FEF",
-    borderColor: "rgba(255,255,255,0.4)",
-    shadowColor: "#5B5FEF",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  switcherText: {
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  headerSheen: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderTopLeftRadius: 50,
-    borderTopRightRadius: 50,
-  },
-  rowTitle: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  statsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 4,
-  },
-  sectionSub: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  statsDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginHorizontal: 8,
-  },
-  row: {
-    justifyContent: "flex-start",
-    gap: 6,
-  },
-  gridItem: {
-    width: (W - 36) / 3,
-    height: 145,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "#0a0a0f",
-  },
-  gridItemInner: {
-    flex: 1,
-  },
-  genreImage: {
-    flex: 1,
-  },
-  genreImageStyle: {
-    resizeMode: "cover",
-    opacity: 0.7,
-  },
-  pillSheen: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-  },
-  genreCardContent: {
-    flex: 1,
-    padding: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2,
-  },
-  genreText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "900",
-    width: "100%",
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-    letterSpacing: 0.1,
-  },
-  allVjsText: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 10,
-    fontWeight: "800",
-    marginTop: 6,
-    letterSpacing: 1.5,
-  },
-  genreArrow: {
-    padding: 6,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  vjModalFullScreen: {
-    flex: 1,
-    backgroundColor: "#0a0a0f",
-  },
-  vjModalContent: {
-    flex: 1,
-    paddingTop: 0,
-  },
-  vjModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 12,
-  },
-  vjTitleCapsule: {
-    flex: 1,
-    height: 35,
-    borderRadius: 17.5,
-    overflow: "hidden",
-    paddingHorizontal: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-    backgroundColor: "rgba(91, 95, 239, 0.25)",
-    shadowColor: "#5B5FEF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  vjTitleSheen: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 50,
-  },
-  vjModalTitle: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  vjSearchContainer: {
-    display: "none",
-  },
-  vjBottomSearch: {
-    display: "none",
-  },
-  vjSearchCapsule: {
-    display: "none",
-  },
-  vjSearchInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    paddingHorizontal: 12,
-  },
-  // ── Uniform search pill (matches home screen) ──
-  vjUniversalSearchPill: {
-    position: "absolute",
-    bottom: 20,
+  cardContent: {
+    position: 'absolute',
+    bottom: 155, // Lifted to clear tab bar
     left: 20,
     right: 20,
+  },
+  vjBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(91, 95, 239, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(91, 95, 239, 0.4)',
+    overflow: 'hidden',
+  },
+  vjBadgeSheen: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  vjBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  cardTitle: {
+    color: '#fff',
+    fontSize: 34,
+    fontWeight: '900',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metaText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  metaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 8,
+  },
+  cardDesc: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mainPlayBtn: {
+    flex: 1,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "rgba(2, 2, 5, 0.96)",
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "center",
-    zIndex: 1000,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.22)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  vjSearchBackBtn: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
+  mainPlayText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    marginLeft: 8,
   },
-  vjSearchInnerCapsule: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    height: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+  iconCircleBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  vjUniversalSearchInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    paddingHorizontal: 12,
+  headerControls: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
   },
-  vjListContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+  discoverTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  vjItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.04)",
+  discoverTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
-  vjDot: {
+  activeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#5956E9",
-    marginRight: 16,
-    shadowColor: "#5956E9",
+    backgroundColor: '#5B5FEF',
+    marginLeft: 6,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  filterBtnActive: {
+    borderColor: '#5B5FEF',
+    shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  vjItemText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
+  filterBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  filterModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  filterModalContent: {
     flex: 1,
+    alignItems: 'center',
+    padding: 20,
   },
-  emptyVJ: {
-    padding: 60,
-    alignItems: "center",
+  filterModalSubtitle: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  emptyVJText: {
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 15,
-    textAlign: "center",
+  closeModalBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  filterSection: {
+    marginBottom: 32,
+  },
+  filterSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  filterSectionTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  clearText: {
+    color: '#5B5FEF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  vjFilterCard: {
+    width: 90,
+    alignItems: 'center',
+  },
+  vjFilterImg: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    marginBottom: 8,
+  },
+  activeFilterCard: {
+    opacity: 1,
+  },
+  activeFilterImg: {
+    borderColor: '#5B5FEF',
+  },
+  vjFilterName: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  genreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  genreFilterBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  genreFilterText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  activeGenreBtn: {
+    backgroundColor: 'rgba(91, 95, 239, 0.2)',
+    borderColor: '#5B5FEF',
+  },
+  activeFilterText: {
+    color: '#fff',
+  },
+  filterFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: '#0a0a0f',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  applyBtn: {
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  applyBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  yearFilterBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  sortGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  sortBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    flex: 1,
+    minWidth: '45%',
+  },
+  emptyState: {
+    height: SCREEN_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  resetInlineBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    backgroundColor: 'rgba(91, 95, 239, 0.2)',
+    borderWidth: 1,
+    borderColor: '#5B5FEF',
+  },
+  resetInlineText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+  }
 });
