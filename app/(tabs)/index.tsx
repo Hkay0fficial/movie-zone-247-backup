@@ -1375,65 +1375,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     marginRight: 6,
   },
-  browseFilterScroll: {
-    paddingHorizontal: 16,
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  browseFilterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  browseFilterPillActive: {
-    backgroundColor: "#5B5FEF", // Indigo
-    borderColor: "rgba(255,255,255,0.4)",
-  },
-  browseFilterPillText: {
-    color: "#94a3b8",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  browseFilterPillTextActive: {
-    color: "#fff",
-    fontWeight: "800",
-  },
   relatedList: {
     paddingHorizontal: 16,
     gap: 6,
   },
-  browseSectionChips: {
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 14,
-  },
-  browseSectionChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  browseSectionChipActive: {
-    backgroundColor: "#5B5FEF",
-    borderColor: "rgba(255,255,255,0.4)",
-  },
-  browseSectionChipText: {
-    color: "#94a3b8",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  browseSectionChipTextActive: {
-    color: "#fff",
-    fontWeight: "800",
-  },
+
 
   universalSearchBottomPill: {
     position: "absolute",
@@ -3230,15 +3176,7 @@ export const MoviePreviewContent = memo(({
     title: string;
     data: (Movie | Series)[];
   } | null>(null);
-  const [activeBrowseFilter, setActiveBrowseFilter] =
-    useState<string>("VJ,s");
-  const [hSelectedType, setHSelectedType] = useState<string | null>(null);
-  const [hSelectedGenre, setHSelectedGenre] = useState<string | null>(null);
-  const [hSelectedYear, setHSelectedYear] = useState<string | null>(null);
-  const [hSelectedVJ, setHSelectedVJ] = useState<string | null>(null);
-  const [hSelectedSection, setHSelectedSection] = useState<string | null>(null);
-  const [hSelectedSort, setHSelectedSort] = useState<string | null>(null);
-  const [hYearCategory, setHYearCategory] = useState<'new' | 'oldest'>('new');
+
 
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -3247,77 +3185,7 @@ export const MoviePreviewContent = memo(({
   const [previewStatus, setPreviewStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const getHomeFilteredResults = useCallback(() => {
-    let pool: (Movie | Series)[] = [];
-    
-    // Base pool: All unique movies and series
-    const moviePool: (Movie | Series)[] = [];
-    for (const row of ALL_ROWS) {
-      for (const m of row.data) {
-        if (!moviePool.find((p) => p.id === m.id)) moviePool.push(m);
-      }
-    }
-    pool = [...moviePool, ...ALL_SERIES];
 
-    // Apply Filter: Type
-    if (hSelectedType) {
-      if (hSelectedType === "Movie") {
-        pool = pool.filter((item) => !("seasons" in item));
-      } else if (hSelectedType === "Series") {
-        pool = pool.filter((item) => "seasons" in item && !(item as Series).isMiniSeries);
-      } else if (hSelectedType === "Mini Series") {
-        pool = pool.filter((item) => "seasons" in item && (item as Series).isMiniSeries);
-      }
-    }
-
-    // Apply Filter: Genre
-    if (hSelectedGenre) {
-      pool = pool.filter((item) => item.genre.includes(hSelectedGenre));
-    }
-
-    // Apply Filter: Year
-    if (hSelectedYear) {
-      pool = pool.filter((item) => item.year === Number(hSelectedYear));
-    }
-
-    // Apply Filter: VJ
-    if (hSelectedVJ) {
-      const vjLower = (hSelectedVJ || "").toLowerCase();
-      pool = pool.filter(
-        (item) => (item.vj || "").toLowerCase() === vjLower || (item.vj || "").toLowerCase() === "vj " + vjLower
-      );
-    }
-
-    // Apply Filter: Section
-    if (hSelectedSection) {
-      const row = ALL_ROWS.find(r => r.title === hSelectedSection);
-      if (row) {
-        pool = pool.filter(item => row.data.some(rm => rm.id === item.id));
-      }
-    }
-
-    // Apply Sort
-    if (hSelectedSort) {
-      if (hSelectedSort === "Newest") {
-        pool.sort((a, b) => b.year - a.year);
-      } else if (hSelectedSort === "Oldest") {
-        pool.sort((a, b) => a.year - b.year);
-      } else if (hSelectedSort === "Rating") {
-        pool.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
-      }
-    }
-
-    return pool;
-  }, [hSelectedType, hSelectedGenre, hSelectedYear, hSelectedVJ, hSelectedSection, hSelectedSort]);
-
-  const clearHomeFilters = () => {
-    setHSelectedType(null);
-    setHSelectedGenre(null);
-    setHSelectedYear(null);
-    setHSelectedVJ(null);
-    setHSelectedSection(null);
-    setHSelectedSort(null);
-  };
 
   const [seriesSubFilter, setSeriesSubFilter] = useState<string>("All");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -5597,17 +5465,7 @@ export const MoviePreviewContent = memo(({
                       <Text style={styles.premiumEmptyDesc}>
                         We couldn't find any movies or series matching "{previewQuery}". Try searching for VJs or different genres.
                       </Text>
-                      <View style={styles.suggestionChips}>
-                        {['Action', 'Comedy', 'VJ Junior', 'Horror'].map((tag) => (
-                          <TouchableOpacity 
-                            key={tag} 
-                            style={styles.suggestionChip}
-                            onPress={() => setPreviewQuery(tag)}
-                          >
-                            <Text style={styles.suggestionChipText}>{tag}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+
                     </View>
                   ) : (
                   <FlatList
@@ -5670,242 +5528,7 @@ export const MoviePreviewContent = memo(({
                 )}
 
                 {/* ── Browse by Section Header & Filters ── */}
-                {!hideSearchBy && (
-                  <View style={styles.relatedSection}>
-                    <View
-                      style={[
-                        styles.sectionHeaderBadge,
-                        {
-                          alignSelf: "flex-start",
-                          marginLeft: 16,
-                          marginBottom: 5,
-                        },
-                      ]}
-                    >
-                      <BlurView
-                        intensity={65}
-                        tint="dark"
-                        style={StyleSheet.absoluteFill}
-                      />
-                      <Text style={styles.rowTitle}>You May Also Search By</Text>
-                    </View>
-                    {/* Scrollable title & filter pills */}
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.browseFilterScroll}
-                    >
-                      {[
-                        "VJ,s",
-                        "Type",
-                        "Genre",
-                        "Year",
-                        "Section",
-                        "Sort",
-                      ].map((filter) => {
-                        const isActive = activeBrowseFilter === filter;
-                        let label = filter;
-                        let hasValue = false;
-                        if (filter === "VJ,s" && hSelectedVJ) { label = hSelectedVJ; hasValue = true; }
-                        if (filter === "Type" && hSelectedType) { label = hSelectedType === "Movie" ? "Movies" : hSelectedType === "Series" ? "Series" : "Mini Series"; hasValue = true; }
-                        if (filter === "Genre" && hSelectedGenre) { label = hSelectedGenre; hasValue = true; }
-                        if (filter === "Year" && hSelectedYear) { label = hSelectedYear; hasValue = true; }
-                        if (filter === "Section" && hSelectedSection) { label = hSelectedSection; hasValue = true; }
-                        if (filter === "Sort" && hSelectedSort) { label = hSelectedSort; hasValue = true; }
 
-                        return (
-                          <TouchableOpacity
-                            key={filter}
-                            style={[
-                              styles.browseFilterPill,
-                              (isActive || hasValue) && styles.browseFilterPillActive,
-                            ]}
-                            activeOpacity={0.7}
-                            onPress={() => setActiveBrowseFilter(isActive ? "" : filter)}
-                          >
-                            {/* Removed pillSheen */}
-                            <Text
-                              style={[
-                                styles.browseFilterPillText,
-                                (isActive || hasValue) && styles.browseFilterPillTextActive,
-                              ]}
-                            >
-                              {label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-
-                    {/* Filter Results & Clear Action */}
-                    {(hSelectedType || hSelectedGenre || hSelectedYear || hSelectedVJ || hSelectedSection || hSelectedSort) && (
-                      <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 10 }}>
-                        <TouchableOpacity
-                          style={[
-                            styles.browseFilterPill, 
-                            { flex: 1, backgroundColor: '#10b981', borderColor: 'rgba(255,255,255,0.3)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }
-                          ]}
-                          onPress={() => {
-                            const results = getHomeFilteredResults();
-                            setBrowseSectionModal({
-                              title: "Filtered Results",
-                              data: results,
-                            });
-                          }}
-                        >
-                          <Ionicons name="search" size={16} color="#fff" />
-                          <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>
-                            SEE {getHomeFilteredResults().length} RESULTS
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.browseFilterPill, 
-                            { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.3)' }
-                          ]}
-                          onPress={clearHomeFilters}
-                        >
-                          <Text style={[styles.browseFilterPillText, { color: '#fff', fontWeight: '900' }]}>CLEAR</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
-                    {/* Chip Selection Area */}
-                    <View
-                      style={[
-                        styles.browseSectionChips,
-                        { flexDirection: "row", flexWrap: "wrap" },
-                      ]}
-                    >
-                      {activeBrowseFilter === "Year"
-                        ? (
-                          <View style={{ width: '100%', gap: 12 }}>
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                              <TouchableOpacity
-                                onPress={() => setHYearCategory('new')}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hYearCategory === 'new' && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
-                                ]}
-                              >
-                                <Text style={[styles.browseSectionChipText, hYearCategory === 'new' && { color: '#fff', fontWeight: 'bold' }]}>NEW</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => setHYearCategory('oldest')}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hYearCategory === 'oldest' && { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }
-                                ]}
-                              >
-                                <Text style={[styles.browseSectionChipText, hYearCategory === 'oldest' && { color: '#fff', fontWeight: 'bold' }]}>OLDEST</Text>
-                              </TouchableOpacity>
-                            </View>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                              {(hYearCategory === 'new'
-                                ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) => String(2026 - i))
-                                : Array.from({ length: 2019 - 1975 + 1 }, (_, i) => String(2019 - i))
-                              ).map((yr) => (
-                                <TouchableOpacity
-                                  key={yr}
-                                  style={[
-                                    styles.browseSectionChip,
-                                    hSelectedYear === yr && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                  ]}
-                                  onPress={() => setHSelectedYear(hSelectedYear === yr ? null : yr)}
-                                  activeOpacity={0.75}
-                                >
-                                  <Text style={[styles.browseSectionChipText, hSelectedYear === yr && { color: '#fff', fontWeight: 'bold' }]}>
-                                    {yr}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-                        )
-                        : activeBrowseFilter === "Genre"
-                          ? ALL_GENRES.map((g) => (
-                              <TouchableOpacity
-                                key={g}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hSelectedGenre === g && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                ]}
-                                onPress={() => setHSelectedGenre(hSelectedGenre === g ? null : g)}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={[styles.browseSectionChipText, hSelectedGenre === g && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {g}
-                                </Text>
-                              </TouchableOpacity>
-                            ))
-                        : activeBrowseFilter === "Type"
-                          ? ["Movie", "Series", "Mini Series"].map((t) => (
-                              <TouchableOpacity
-                                key={t}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hSelectedType === t && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                ]}
-                                onPress={() => setHSelectedType(hSelectedType === t ? null : t)}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={[styles.browseSectionChipText, hSelectedType === t && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {t === "Movie" ? "Movies" : t === "Series" ? "Series" : "Mini Series"}
-                                </Text>
-                              </TouchableOpacity>
-                            ))
-                        : activeBrowseFilter === "VJ,s"
-                          ? ALL_VJS.map((vj) => (
-                              <TouchableOpacity
-                                key={vj}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hSelectedVJ === vj && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                ]}
-                                onPress={() => setHSelectedVJ(hSelectedVJ === vj ? null : vj)}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={[styles.browseSectionChipText, hSelectedVJ === vj && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {vj}
-                                </Text>
-                              </TouchableOpacity>
-                            ))
-                        : activeBrowseFilter === "Section"
-                          ? ALL_ROWS.map((r) => (
-                              <TouchableOpacity
-                                key={r.title}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hSelectedSection === r.title && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                ]}
-                                onPress={() => setHSelectedSection(hSelectedSection === r.title ? null : r.title)}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={[styles.browseSectionChipText, hSelectedSection === r.title && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {r.title}
-                                </Text>
-                              </TouchableOpacity>
-                            ))
-                        : activeBrowseFilter === "Sort"
-                          ? ["Newest", "Oldest", "Rating"].map((s) => (
-                              <TouchableOpacity
-                                key={s}
-                                style={[
-                                  styles.browseSectionChip,
-                                  hSelectedSort === s && { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1 }
-                                ]}
-                                onPress={() => setHSelectedSort(hSelectedSort === s ? null : s)}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={[styles.browseSectionChipText, hSelectedSort === s && { color: '#fff', fontWeight: 'bold' }]}>
-                                  {s}
-                                </Text>
-                              </TouchableOpacity>
-                            ))
-                          : null}
-                    </View>
-                  </View>
-                )}
                 {/* ── Related Movies ── */}
                 {!hideSearchBy && (
                 <View style={{ paddingBottom: 6 }}>
@@ -6809,6 +6432,14 @@ export default function HomeScreen() {
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
+  const prevStackLength = useRef(0);
+  useEffect(() => {
+    if (prevStackLength.current > 0 && navigationStack.length === 0) {
+      DeviceEventEmitter.emit("previewClosed");
+    }
+    prevStackLength.current = navigationStack.length;
+  }, [navigationStack.length]);
+
   const [refreshing, setRefreshing] = useState(false);
   const [isUserMuted, setIsUserMuted] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -7372,102 +7003,113 @@ export default function HomeScreen() {
             style={StyleSheet.absoluteFill} 
             pointerEvents={playerMode === 'full' ? 'none' : 'auto'}
           >
-          {navigationStack.length > 0 && (() => {
-            const index = navigationStack.length - 1;
-            const item = navigationStack[index];
-            const onClose = () => {
-              setNavigationStack((prev) => {
-                const newStack = [...prev];
-                newStack.splice(index, 1);
-                if (newStack.length === 0) {
-                  DeviceEventEmitter.emit("previewClosed");
+            <Modal
+              visible={navigationStack.length > 0}
+              transparent={true}
+              animationType="fade"
+              statusBarTranslucent
+              onRequestClose={() => {
+                if (playerMode === 'full') return;
+                if (navigationStack.length > 0) {
+                  setNavigationStack(prev => prev.slice(0, -1));
                 }
-                return newStack;
-              });
-            };
+              }}
 
-            if (item.type === 'grid') {
-              return (
-                <GridContent
-                  key={`grid-${index}`}
-                  title={item.title}
-                  data={item.data}
-                  onClose={onClose}
-                  onSelect={(m) => {
-                    const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-                    if (isSeries) {
-                      router.push(`/(tabs)/saved?seriesId=${m.id}`);
-                    } else {
-                      setNavigationStack((prev) => {
-                        if (prev.length > 0) {
-                          const top = prev[prev.length - 1];
-                          if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-                        }
-                        return [...prev, { type: 'movie', movie: m }];
-                      });
-                    }
-                  }}
-                />
-              );
-            }
-
-            return (
-              <MoviePreviewContent
-                key={`movie-${index}`}
-                movie={item.movie}
-                onClose={onClose}
-                onSwitch={(m) => {
-                  const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-                  if (isSeries) {
-                    router.push(`/(tabs)/saved?seriesId=${m.id}`);
-                  } else {
-                    // Push to stack to show preview instead of direct play
+            >
+              <View style={StyleSheet.absoluteFill}>
+                {navigationStack.map((item, index) => {
+                  const onClose = () => {
                     setNavigationStack((prev) => {
-                      if (prev.length > 0) {
-                        const top = prev[prev.length - 1];
-                        if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-                      }
-                      return [...prev, { type: 'movie', movie: m }];
+                      const newStack = [...prev];
+                      newStack.splice(index, 1);
+                      return newStack;
                     });
+                  };
+
+                  if (item.type === 'grid') {
+                    return (
+                      <GridContent
+                        key={`grid-${index}`}
+                        title={item.title}
+                        data={item.data}
+                        onClose={onClose}
+                        onSelect={(m) => {
+                          const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+                          if (isSeries) {
+                            router.push(`/(tabs)/saved?seriesId=${m.id}`);
+                          } else {
+                            setNavigationStack((prev) => {
+                              if (prev.length > 0) {
+                                const top = prev[prev.length - 1];
+                                if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                              }
+                              return [...prev, { type: 'movie', movie: m }];
+                            });
+                          }
+                        }}
+                      />
+                    );
                   }
-                }}
-                onSeeAll={(title: string, data: (Movie | Series)[]) => {
-                  setNavigationStack((prev) => {
-                    if (prev.length > 0) {
-                      const top = prev[prev.length - 1];
-                      if (top.type === 'grid' && top.title === title) return prev;
-                    }
-                    return [...prev, { type: 'grid', title, data }];
-                  });
-                }}
-                playingNow={playingNow}
-                setPlayingNow={setPlayingNow}
-                setPlayerMode={setPlayerMode}
-                setPlayerTitle={setPlayerTitle}
-                setSelectedVideoUrl={setSelectedVideoUrl}
-                playerMode={playerMode}
-                playerTitle={playerTitle}
-                selectedVideoUrl={selectedVideoUrl}
-                isMuted={!isFocused}
-                onShowPremium={() => setShowPremiumModal(true)}
-                onUpgrade={() => setShowPlanModal(true)}
-                isFocused={isFocused}
-                appState={appState}
-              />
-            );
-          })()}
-          
-          {isStackLoading && (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 15, 0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
-               <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-               <View style={{ backgroundColor: 'rgba(26,26,46,0.85)', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 15 }}>
-                 <ActivityIndicator size="large" color="#5B5FEF" />
-                 <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>Opening Content...</Text>
-                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 8, textAlign: 'center', fontWeight: '600' }}>Preparing your viewing experience</Text>
-               </View>
-            </View>
-          )}
-        </View>
+
+                  return (
+                    <MoviePreviewContent
+                      key={`movie-${index}`}
+                      movie={item.movie}
+                      onClose={onClose}
+                      onSwitch={(m) => {
+                        const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+                        if (isSeries) {
+                          router.push(`/(tabs)/saved?seriesId=${m.id}`);
+                        } else {
+                          setNavigationStack((prev) => {
+                            if (prev.length > 0) {
+                              const top = prev[prev.length - 1];
+                              if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                            }
+                            return [...prev, { type: 'movie', movie: m }];
+                          });
+                        }
+                      }}
+                      onSeeAll={(title: string, data: (Movie | Series)[]) => {
+                        setNavigationStack((prev) => {
+                          if (prev.length > 0) {
+                            const top = prev[prev.length - 1];
+                            if (top.type === 'grid' && top.title === title) return prev;
+                          }
+                          return [...prev, { type: 'grid', title, data }];
+                        });
+                      }}
+                      playingNow={playingNow}
+                      setPlayingNow={setPlayingNow}
+                      setPlayerMode={setPlayerMode}
+                      setPlayerTitle={setPlayerTitle}
+                      setSelectedVideoUrl={setSelectedVideoUrl}
+                      playerMode={playerMode}
+                      playerTitle={playerTitle}
+                      selectedVideoUrl={selectedVideoUrl}
+                      isMuted={!isFocused}
+                      onShowPremium={() => setShowPremiumModal(true)}
+                      onUpgrade={() => setShowPlanModal(true)}
+                      isFocused={isFocused}
+                      appState={appState}
+                    />
+                  );
+                })}
+              </View>
+            </Modal>
+
+            {isStackLoading && (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 15, 0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
+                 <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+                 <View style={{ backgroundColor: 'rgba(26,26,46,0.85)', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 15 }}>
+                   <ActivityIndicator size="large" color="#5B5FEF" />
+                   <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>Opening Content...</Text>
+                   <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 8, textAlign: 'center', fontWeight: '600' }}>Preparing your viewing experience</Text>
+                 </View>
+              </View>
+            )}
+          </View>
+
       )}
       </Animated.View>
 

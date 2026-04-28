@@ -835,19 +835,9 @@ function SearchOverlay({
     }
   }, [visible, autoFocusRequested]);
 
-  useEffect(() => {
-    if (!visible) {
-      setQuery("");
-      setSubCategory(null);
-      setSelectedType(null);
-      setSelectedGenre(null);
-      setSelectedYear(null);
-      setSelectedVJ(null);
-      setSelectedSeason(null);
-      setSortBy(null);
-      setExpandedFilter(null);
-    }
-  }, [visible]);
+  // Clear state effect removed to support "step-by-step" back navigation
+  // State is now preserved until manually cleared or app is closed.
+
 
   useEffect(() => {
     if (selectedType && selectedType !== "Series" && selectedSeason) {
@@ -1051,571 +1041,9 @@ function SearchOverlay({
 
       {query.trim().length === 0 && (
         <>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterCategoryContainer}
-        >
-        <TouchableOpacity
-          style={[
-            styles.categoryBtn,
-            (expandedFilter === "vj" || selectedVJ) &&
-              styles.categoryBtnActive,
-          ]}
-          onPress={() => toggleFilter("vj")}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            style={[
-              styles.categoryBtnText,
-              (expandedFilter === "vj" || selectedVJ) &&
-                styles.categoryBtnTextActive,
-            ]}
-          >
-            {selectedVJ || "VJ,s"}
-          </Text>
-          <Ionicons
-            name={expandedFilter === "vj" ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#fff"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.categoryBtn,
-            (expandedFilter === "type" || selectedType) &&
-              styles.categoryBtnActive,
-          ]}
-          onPress={() => toggleFilter("type")}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            style={[
-              styles.categoryBtnText,
-              (expandedFilter === "type" || selectedType) &&
-                styles.categoryBtnTextActive,
-            ]}
-          >
-            {selectedType
-              ? selectedType === "Movie"
-                ? "Movies"
-                : selectedType === "Mini Series"
-                ? "Mini"
-                : "Series"
-              : "Type"}
-          </Text>
-          <Ionicons
-            name={expandedFilter === "type" ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#fff"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
 
-        {selectedType === "Series" && (
-          <TouchableOpacity
-            style={[
-              styles.categoryBtn,
-              (expandedFilter === "season" || selectedSeason) &&
-                styles.categoryBtnActive,
-            ]}
-            onPress={() => toggleFilter("season")}
-          >
-            <BlurView
-              intensity={30}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-            <Text
-              style={[
-                styles.categoryBtnText,
-                (expandedFilter === "season" || selectedSeason) &&
-                  styles.categoryBtnTextActive,
-              ]}
-            >
-              {selectedSeason ? `S ${selectedSeason}+` : "Season"}
-            </Text>
-            <Ionicons
-              name={expandedFilter === "season" ? "chevron-up" : "chevron-down"}
-              size={14}
-              color="#fff"
-              style={{ marginLeft: 6 }}
-            />
-          </TouchableOpacity>
-        )}
 
-        <TouchableOpacity
-          style={[
-            styles.categoryBtn,
-            (expandedFilter === "sort" || sortBy) && styles.categoryBtnActive,
-          ]}
-          onPress={() => toggleFilter("sort")}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            style={[
-              styles.categoryBtnText,
-              (expandedFilter === "sort" || sortBy) &&
-                styles.categoryBtnTextActive,
-            ]}
-          >
-            {sortBy
-              ? sortBy === "rating"
-                ? "Top Rated"
-                : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)
-              : "Sort"}
-          </Text>
-          <Ionicons
-            name={expandedFilter === "sort" ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#fff"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.categoryBtn,
-            (expandedFilter === "genre" || selectedGenre) &&
-              styles.categoryBtnActive,
-          ]}
-          onPress={() => toggleFilter("genre")}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            style={[
-              styles.categoryBtnText,
-              (expandedFilter === "genre" || selectedGenre) &&
-                styles.categoryBtnTextActive,
-            ]}
-          >
-            {selectedGenre || "Genre"}
-          </Text>
-          <Ionicons
-            name={expandedFilter === "genre" ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#fff"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.categoryBtn,
-            (expandedFilter === "year" || selectedYear) &&
-              styles.categoryBtnActive,
-          ]}
-          onPress={() => toggleFilter("year")}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            style={[
-              styles.categoryBtnText,
-              (expandedFilter === "year" || selectedYear) &&
-                styles.categoryBtnTextActive,
-            ]}
-          >
-            {selectedYear || "Year"}
-          </Text>
-          <Ionicons
-            name={expandedFilter === "year" ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#fff"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
-
-        </ScrollView>
-
-        <View style={styles.multiSelectionContainer}>
-        {expandedFilter === "sort" && (
-          <View style={styles.selectionTrayWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.filterPill,
-                  sortBy === "newest" && styles.filterPillActive,
-                ]}
-                onPress={() => {
-                  const newVal = sortBy === "newest" ? null : "newest";
-                  setSortBy(newVal);
-                  if (newVal === "newest") {
-                    setYearCategory("new");
-                    if (selectedYear && parseInt(selectedYear) < 2020) {
-                      setSelectedYear(null);
-                    }
-                  }
-                  setExpandedFilter(null);
-                }}
-              >
-                <BlurView
-                  intensity={30}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
-                <Ionicons
-                  name="flash"
-                  size={12}
-                  color={sortBy === "newest" ? "#fff" : "rgba(255,255,255,0.6)"}
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  style={[
-                    styles.filterPillText,
-                    sortBy === "newest" && styles.filterPillTextActive,
-                  ]}
-                >
-                  Newest
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.filterPill,
-                  sortBy === "oldest" && styles.filterPillActive,
-                ]}
-                onPress={() => {
-                  const newVal = sortBy === "oldest" ? null : "oldest";
-                  setSortBy(newVal);
-                  if (newVal === "oldest") {
-                    setYearCategory("oldest");
-                    if (selectedYear && parseInt(selectedYear) >= 2020) {
-                      setSelectedYear(null);
-                    }
-                  }
-                  setExpandedFilter(null);
-                }}
-              >
-                <BlurView
-                  intensity={30}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text
-                  style={[
-                    styles.filterPillText,
-                    sortBy === "oldest" && styles.filterPillTextActive,
-                  ]}
-                >
-                  Oldest
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
-
-        {expandedFilter === "type" && (
-          <View style={styles.selectionTrayWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              {(["Movie", "Series", "Mini Series"] as const).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[
-                    styles.filterPill,
-                    selectedType === t && styles.filterPillActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedType(selectedType === t ? null : t);
-                    setExpandedFilter(null);
-                  }}
-                >
-                  <BlurView
-                    intensity={30}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      selectedType === t && styles.filterPillTextActive,
-                    ]}
-                  >
-                    {t === "Movie" ? "Movies" : t === "Series" ? "Series" : "Mini Series"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {expandedFilter === "genre" && (
-          <View style={styles.selectionTrayWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              {ALL_GENRES.map((g) => (
-                <TouchableOpacity
-                  key={g}
-                  style={[
-                    styles.filterPill,
-                    selectedGenre === g && styles.filterPillActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedGenre(selectedGenre === g ? null : g);
-                    setExpandedFilter(null);
-                  }}
-                >
-                  <BlurView
-                    intensity={30}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      selectedGenre === g && styles.filterPillTextActive,
-                    ]}
-                  >
-                    {g}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {expandedFilter === "year" && (
-          <View style={styles.selectionTrayWrapper}>
-            {/* Year Sub-Toggle - Hidden if sortBy newest/oldest is active */}
-            {!sortBy && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  paddingHorizontal: 16,
-                  marginBottom: 4,
-                  gap: 6,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => setYearCategory("new")}
-                  style={[
-                    styles.yearSubToggle,
-                    yearCategory === "new" && styles.yearSubToggleActiveNew,
-                  ]}
-                >
-                  <BlurView
-                    intensity={20}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.yearSubToggleText,
-                      yearCategory === "new" && styles.yearSubToggleTextActiveNew,
-                    ]}
-                  >
-                    NEW
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setYearCategory("oldest")}
-                  style={[
-                    styles.yearSubToggle,
-                    yearCategory === "oldest" && styles.yearSubToggleActiveOldest,
-                  ]}
-                >
-                  <BlurView
-                    intensity={20}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.yearSubToggleText,
-                      yearCategory === "oldest" &&
-                        styles.yearSubToggleTextActiveOldest,
-                    ]}
-                  >
-                    OLDEST
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingLeft: 16,
-                }}
-              >
-                {sortBy === "newest" ||
-                (yearCategory === "new" && sortBy !== "oldest")
-                  ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) =>
-                      String(2026 - i),
-                    ).map((y) => (
-                      <TouchableOpacity
-                        key={y}
-                        style={[
-                          styles.filterPill,
-                          selectedYear === y && styles.filterPillActive,
-                        ]}
-                        onPress={() => {
-                          setSelectedYear(selectedYear === y ? null : y);
-                          setExpandedFilter(null);
-                        }}
-                      >
-                        <BlurView
-                          intensity={30}
-                          tint="dark"
-                          style={StyleSheet.absoluteFill}
-                        />
-                        <Text
-                          style={[
-                            styles.filterPillText,
-                            selectedYear === y && styles.filterPillTextActive,
-                          ]}
-                        >
-                          {y}
-                        </Text>
-                      </TouchableOpacity>
-                    ))
-                  : Array.from({ length: 2019 - 1975 + 1 }, (_, i) =>
-                      String(2019 - i),
-                    ).map((y) => (
-                      <TouchableOpacity
-                        key={y}
-                        style={[
-                          styles.filterPill,
-                          selectedYear === y && styles.filterPillActive,
-                        ]}
-                        onPress={() => {
-                          setSelectedYear(selectedYear === y ? null : y);
-                          setExpandedFilter(null);
-                        }}
-                      >
-                        <BlurView
-                          intensity={30}
-                          tint="dark"
-                          style={StyleSheet.absoluteFill}
-                        />
-                        <Text
-                          style={[
-                            styles.filterPillText,
-                            selectedYear === y && styles.filterPillTextActive,
-                          ]}
-                        >
-                          {y}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {expandedFilter === "season" && (
-          <View style={styles.selectionTrayWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              {Array.from({ length: 20 }, (_, i) => String(i + 1)).map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[
-                    styles.filterPill,
-                    selectedSeason === s && styles.filterPillActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedSeason(selectedSeason === s ? null : s);
-                    setExpandedFilter(null);
-                  }}
-                >
-                  <BlurView
-                    intensity={30}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      selectedSeason === s && styles.filterPillTextActive,
-                    ]}
-                  >
-                    Season {s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {expandedFilter === "vj" && (
-          <View style={styles.selectionTrayWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterBarScroll}
-            >
-              {ALL_VJS.map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  style={[
-                    styles.filterPill,
-                    selectedVJ === v && styles.filterPillActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedVJ(selectedVJ === v ? null : v);
-                    setExpandedFilter(null);
-                  }}
-                >
-                  <BlurView
-                    intensity={30}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      selectedVJ === v && styles.filterPillTextActive,
-                    ]}
-                  >
-                    {v}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-        </View>
         </>
       )}
     </View>
@@ -1654,26 +1082,30 @@ function SearchOverlay({
                     height: 50, // outer container
                   }}
                 >
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (expandedFilter) {
-                        setExpandedFilter(null);
-                      } else if (hasActiveFilters) {
-                        clearFilters(true); // Step by step
-                      } else {
-                        onClose();
-                      }
-                    }}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 6,
-                    }}
-                  >
-                    <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
-                  </TouchableOpacity>
+                  {Platform.OS !== 'android' && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (expandedFilter) {
+                          setExpandedFilter(null);
+                        } else if (hasActiveFilters) {
+                          clearFilters(true); // Step by step
+                        } else {
+                          onClose();
+                        }
+                      }}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 6,
+                      }}
+                    >
+                      <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
+                    </TouchableOpacity>
+                  )}
+
+                  {(!isPerformingFiltering || query.length > 0) && (
                     <View
                       style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
                       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
@@ -1727,9 +1159,12 @@ function SearchOverlay({
                         </TouchableOpacity>
                       )}
                     </View>
+                  )}
+
                 </KeyboardAvoidingView>
 
-              <View style={{ flex: 1, marginTop: 40 }}>
+              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 40 }}>
+
               {isFiltering ? (
                 <View style={{ flex: 1 }}>
                   {renderFilters()}
@@ -2012,6 +1447,8 @@ function CustomTabBar() {
   const router = useRouter();
   const path = usePathname();
   const [searchVisible, setSearchVisible] = useState(false);
+  const [shouldReopenSearch, setShouldReopenSearch] = useState(false);
+
   const [searchVjOnly, setSearchVjOnly] = useState(false);
   const [searchAutoFocus, setSearchAutoFocus] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
@@ -2090,11 +1527,42 @@ function CustomTabBar() {
     }
   }, [isUpdateApplied, isStateLoaded]);
 
+  const shouldReopenRef = useRef(false);
+  useEffect(() => {
+    shouldReopenRef.current = shouldReopenSearch;
+  }, [shouldReopenSearch]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("previewClosed", () => {
+      if (shouldReopenRef.current) {
+        // Small delay to allow the closing modal to finish its animation
+        setTimeout(() => {
+          setSearchVisible(true);
+          setShouldReopenSearch(false);
+        }, 100);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const prevPath = useRef(path);
+  useEffect(() => {
+    // If we were on the saved tab (Series detail) and we move back to another tab
+    // and we were previously searching, re-open the search.
+    if (prevPath.current === "/(tabs)/saved" && path !== "/(tabs)/saved" && shouldReopenRef.current) {
+      setSearchVisible(true);
+      setShouldReopenSearch(false);
+    }
+    prevPath.current = path;
+  }, [path]);
+
   useEffect(() => {
     if (isStateLoaded) {
       AsyncStorage.setItem("isRatingPermanentlyRemoved", String(isRatingPermanentlyRemoved));
     }
   }, [isRatingPermanentlyRemoved, isStateLoaded]);
+
+
 
   // Emit events when search or notification overlays are toggled to auto-mute hero video
   useEffect(() => {
@@ -2583,22 +2051,24 @@ function CustomTabBar() {
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
         setGlobalGridVisible(true);
-        setNotificationVisible(false); // Auto-close overlay when opening grid
+        // We keep notification visible in background so it doesn't "peep"
         return;
       }
+
     }
 
     if (item.movieId) {
       setReopenOnBack(true); // Ensure we come back here
       router.setParams({ movieId: item.movieId } as any);
-      setNotificationVisible(false);
+      // We keep notification visible in background
     } else if (item.sectionTitle) {
       setReopenOnBack(true);
-      setNotificationVisible(false);
+      // We keep notification visible in background
       setTimeout(() => {
         DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
       }, 300);
-    } else if (item.route) {
+    }
+ else if (item.route) {
       router.push(item.route as any);
     }
   };
@@ -3069,21 +2539,29 @@ function CustomTabBar() {
           setSearchAutoFocus(false);
         }}
         onSelect={(movie) => {
-          setSearchVisible(false); // Close search when movie is selected
-          setSearchAutoFocus(false);
-          const isActuallySeries = ("seasons" in movie) || ("episodes" in movie) || ("isMiniSeries" in movie && !!(movie as any).isMiniSeries);
+          const isActuallySeries =
+            "seasons" in movie ||
+            movie.type === "Series" ||
+            (movie as any).isMiniSeries;
+
           if (isActuallySeries) {
-            router.push({
-              pathname: "/(tabs)/saved",
-              params: { seriesId: movie.id }
-            });
-          } else {
-            // Emit to Home stack to show preview
+            setShouldReopenSearch(true);
+            setSearchVisible(false);
+            setSearchVjOnly(false);
+            setSearchAutoFocus(false);
+            // Navigate to series detail (which is the saved tab)
+            router.push(`/(tabs)/saved?seriesId=${movie.id}`);
+          }
+ else {
+            // For movies, we keep search open in background
+            // The Preview will open ON TOP because it's now also a Modal
             DeviceEventEmitter.emit("movieSelected", movie);
           }
+
         }}
         vjOnly={searchVjOnly}
       />
+
 
       <NotificationOverlay
         TOTAL_LIVE_ITEMS={TOTAL_LIVE_ITEMS}

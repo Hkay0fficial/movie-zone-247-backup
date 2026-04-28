@@ -354,16 +354,7 @@ export default function SeriesScreen() {
   const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
   const [selectedSeason, setSelectedSeason] = useState(1);
 
-  // Real Multi-Filters
-  const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
-  const [sSelectedYear, setSSelectedYear] = useState<string | null>(null);
-  const [sSelectedVJ, setSSelectedVJ] = useState<string | null>(null);
-  const [sSelectedStatus, setSSelectedStatus] = useState<string | null>(null);
-  const [sSelectedSort, setSSelectedSort] = useState<string | null>(null);
-  const [sSelectedSeasons, setSSelectedSeasons] = useState<string | null>(null);
 
-  const [sYearCategory, setSYearCategory] = useState<'new' | 'oldest'>('new');
-  const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
   const getFilteredResults = () => {
     let result = [...ALL_SERIES];
@@ -427,40 +418,7 @@ export default function SeriesScreen() {
     if (sSelectedYear) {
       result = result.filter((s) => String(s.year) === sSelectedYear);
     }
-    if (sSelectedVJ) {
-      result = result.filter((s) => s.vj === sSelectedVJ);
-    }
-    if (sSelectedStatus) {
-      if (sSelectedStatus === "Mini Series") {
-        result = result.filter((s) => s.isMiniSeries === true);
-      } else if (sSelectedStatus === "Series") {
-        result = result.filter((s) => !s.isMiniSeries);
-      } else {
-        result = result.filter((s) => s.status === sSelectedStatus);
-      }
-    }
 
-    if (sSelectedSeasons) {
-      if (sSelectedSeasons === "1-30") {
-        result = result.filter((s) => s.seasons >= 1 && s.seasons <= 30);
-      } else {
-        // Individual numeric season
-        const seasonNum = parseInt(sSelectedSeasons);
-        if (!isNaN(seasonNum)) {
-          result = result.filter((s) => s.seasons === seasonNum);
-        }
-      }
-    }
-
-    if (sSelectedSort) {
-      if (sSelectedSort === "Newest") {
-        result.sort((a, b) => b.year - a.year);
-      } else if (sSelectedSort === "Oldest") {
-        result.sort((a, b) => a.year - b.year);
-      } else if (sSelectedSort === "Trending") {
-        result.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-      }
-    }
 
     return result;
   };
@@ -481,13 +439,7 @@ export default function SeriesScreen() {
       }
     });
 
-    const sub2 = DeviceEventEmitter.addListener("toggleSeriesFilters", () => {
-      setIsFiltersVisible(prev => !prev);
-    });
 
-    const sub3 = DeviceEventEmitter.addListener("resetSeriesFilters", () => {
-      clearFilters();
-    });
 
     const sub4 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
       setSeriesStack([]);
@@ -501,26 +453,12 @@ export default function SeriesScreen() {
 
     return () => {
       sub1.remove();
-      sub2.remove();
-      sub3.remove();
       sub4.remove();
       sub5.remove();
     };
   }, []);
 
-  const clearFilters = () => {
-    setSSelectedGenre(null);
-    setSSelectedYear(null);
-    setSSelectedVJ(null);
-    setSSelectedStatus(null);
-    setSSelectedSort(null);
-    setSSelectedSeasons(null);
-    setQuery("");
-    setActiveCategory("All Series/Mini Series");
-    DeviceEventEmitter.emit("clearSeriesSearch");
-  };
 
-  const hasActiveFilters = !!(sSelectedGenre || sSelectedYear || sSelectedVJ || sSelectedStatus || sSelectedSort || sSelectedSeasons);
 
   const [showCategories, setShowCategories] = useState(true);
   const activityTimer = useRef<any>(null);
@@ -620,189 +558,11 @@ export default function SeriesScreen() {
 
       {seriesStack.length === 0 && (
         <>
-          {/* Clear Filters below header if active and filters hidden */}
-          {hasActiveFilters && !isFiltersVisible && (
-            <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-start' }}>
-              <TouchableOpacity
-                style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-                onPress={clearFilters}
-              >
-                <Ionicons name="close-circle" size={12} color="#ef4444" style={{ marginRight: 4 }} />
-                <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '800' }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
         </>
       )}
 
-      {/* Expanded Filter Area - Hidden if searching */}
-      {isFiltersVisible && !query && !isSearchActive && (
-        <View style={[styles.filterWrap, { paddingTop: 0 }]}>
-          {/* Primary filter tabs (Top Pills) */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterListPrimary}
-          >
-            {hasActiveFilters && (
-              <TouchableOpacity
-                style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)', marginRight: 8 }]}
-                onPress={clearFilters}
-              >
-                <Ionicons name="close-circle" size={14} color="#ef4444" style={{ marginRight: 4 }} />
-                <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '900' }]}>Clear</Text>
-              </TouchableOpacity>
-            )}
 
-            {["VJ,s", "Type", "Seasons", "Sort", "Genre", "Year"].map((filter) => {
-              const isActive = activeBrowseFilter === filter;
-              let label = filter;
-              let hasValue = false;
-              // Map "Status" logic to "Type" label
-              if (filter === "VJ,s" && sSelectedVJ) { label = sSelectedVJ; hasValue = true; }
-              if (filter === "Type" && sSelectedStatus) { label = sSelectedStatus; hasValue = true; }
-              if (filter === "Seasons" && sSelectedSeasons) { 
-                label = sSelectedSeasons === "1-30" ? "1-30" : `Season ${sSelectedSeasons}`; 
-                hasValue = true; 
-              }
-              if (filter === "Genre" && sSelectedGenre) { label = sSelectedGenre; hasValue = true; }
-              if (filter === "Year" && sSelectedYear) { label = sSelectedYear; hasValue = true; }
-              if (filter === "Sort" && sSelectedSort) { label = sSelectedSort; hasValue = true; }
-
-              return (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.browseFilterPill,
-                    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-                    (isActive || hasValue) && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setActiveBrowseFilter(isActive ? "" : filter)}
-                >
-                  <Text
-                    style={[
-                      styles.browseFilterPillText,
-                      (isActive || hasValue) && { color: '#fff', fontWeight: '800' },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  <Ionicons 
-                    name="chevron-down" 
-                    size={10} 
-                    color={(isActive || hasValue) ? "#fff" : "rgba(255,255,255,0.5)"} 
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Chip Selection Area - Only render if a valid filter category is active */}
-          {["VJ,s", "Type", "Seasons", "Sort", "Genre", "Year"].includes(activeBrowseFilter) && (
-            <View style={styles.chipSelectionArea}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterListSecondary}
-            >
-              {activeBrowseFilter === "Type"
-                ? ["Series", "Mini Series"].map((st) => (
-                    <TouchableOpacity
-                      key={st}
-                      style={[styles.filterChip, sSelectedStatus === st && styles.filterChipActive]}
-                      onPress={() => setSSelectedStatus(sSelectedStatus === st ? null : st)}
-                    >
-                      <Text style={[styles.filterChipText, sSelectedStatus === st && styles.filterChipTextActive]}>{st}</Text>
-                    </TouchableOpacity>
-                  ))
-                : activeBrowseFilter === "Seasons"
-                  ? Array.from({ length: 30 }, (_, i) => String(i + 1)).map((num) => (
-                      <TouchableOpacity
-                        key={num}
-                        style={[styles.filterChip, sSelectedSeasons === num && styles.filterChipActive]}
-                        onPress={() => setSSelectedSeasons(sSelectedSeasons === num ? null : num)}
-                      >
-                        <Text style={[styles.filterChipText, sSelectedSeasons === num && styles.filterChipTextActive]}>Season {num}</Text>
-                      </TouchableOpacity>
-                    ))
-                  : activeBrowseFilter === "Year"
-                  ? (
-                    <View style={{ flexDirection: 'column', gap: 10 }}>
-                      <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 4 }}>
-                        <TouchableOpacity
-                          onPress={() => setSYearCategory('new')}
-                          style={[
-                            styles.filterChip,
-                            { paddingHorizontal: 12, height: 28 },
-                            sYearCategory === 'new' && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
-                          ]}
-                        >
-                          <Text style={[styles.filterChipText, sYearCategory === 'new' && { color: '#fff', fontWeight: '800' }]}>NEW</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setSYearCategory('oldest')}
-                          style={[
-                            styles.filterChip,
-                            { paddingHorizontal: 12, height: 28 },
-                            sYearCategory === 'oldest' && { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.3)' }
-                          ]}
-                        >
-                          <Text style={[styles.filterChipText, sYearCategory === 'oldest' && { color: '#fff', fontWeight: '800' }]}>OLDEST</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                        {(sYearCategory === 'new'
-                          ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) => String(2026 - i))
-                          : Array.from({ length: 2019 - 1975 + 1 }, (_, i) => String(2019 - i))
-                        ).map((yr) => (
-                          <TouchableOpacity
-                            key={yr}
-                            style={[styles.filterChip, sSelectedYear === yr && styles.filterChipActive]}
-                            onPress={() => setSSelectedYear(sSelectedYear === yr ? null : yr)}
-                          >
-                            <Text style={[styles.filterChipText, sSelectedYear === yr && styles.filterChipTextActive]}>{yr}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )
-                  : activeBrowseFilter === "Genre"
-                    ? ALL_GENRES.map((g) => (
-                        <TouchableOpacity
-                          key={g}
-                          style={[styles.filterChip, sSelectedGenre === g && styles.filterChipActive]}
-                          onPress={() => setSSelectedGenre(sSelectedGenre === g ? null : g)}
-                        >
-                          <Text style={[styles.filterChipText, sSelectedGenre === g && styles.filterChipTextActive]}>{g}</Text>
-                        </TouchableOpacity>
-                      ))
-                    : activeBrowseFilter === "VJ,s"
-                    ? ALL_VJS.slice(0, 12).map((vj) => (
-                        <TouchableOpacity
-                          key={vj}
-                          style={[styles.filterChip, sSelectedVJ === vj && styles.filterChipActive]}
-                          onPress={() => setSSelectedVJ(sSelectedVJ === vj ? null : vj)}
-                        >
-                          <Text style={[styles.filterChipText, sSelectedVJ === vj && styles.filterChipTextActive]}>{vj}</Text>
-                        </TouchableOpacity>
-                      ))
-                      : activeBrowseFilter === "Sort"
-                        ? ["Newest", "Oldest", "Trending"].map((srt) => (
-                            <TouchableOpacity
-                              key={srt}
-                              style={[styles.filterChip, sSelectedSort === srt && styles.filterChipActive]}
-                              onPress={() => setSSelectedSort(sSelectedSort === srt ? null : srt)}
-                            >
-                              <Text style={[styles.filterChipText, sSelectedSort === srt && styles.filterChipTextActive]}>{srt}</Text>
-                            </TouchableOpacity>
-                          ))
-                        : null}
-            </ScrollView>
-          </View>
-        )}
-      </View>
-      )}
 
       {/* Main Content */}
       {(!query && !hasActiveFilters && activeCategory === "All Series/Mini Series") ? (

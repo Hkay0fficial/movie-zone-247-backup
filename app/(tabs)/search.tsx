@@ -242,21 +242,7 @@ export default function SearchScreen() {
             <Text style={styles.emptyDesc}>
               Search for your favorite movies, series, or VJs to start watching.
             </Text>
-            <View style={styles.suggestionRow}>
-              {['VJ Junior', 'K-Drama', 'Action', 'Sci-Fi', 'Vj Ice P'].map((tag) => (
-                <TouchableOpacity 
-                  key={tag} 
-                  style={styles.tag}
-                  onPress={() => {
-                    setQuery(tag);
-                    handleSearch(tag);
-                  }}
-                >
-                  <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-                  <Text style={styles.tagText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+
           </View>
         ) : query.length > 0 && results.length === 0 ? (
           <View style={styles.premiumEmptyContainer}>
@@ -268,17 +254,7 @@ export default function SearchScreen() {
             <Text style={styles.premiumEmptyDesc}>
               We couldn't find any movies or series matching "{query}". Try searching for VJs or different genres.
             </Text>
-            <View style={styles.suggestionChips}>
-              {['Action', 'Comedy', 'VJ Junior', 'Horror', 'Sci-Fi'].map((tag) => (
-                <TouchableOpacity 
-                  key={tag} 
-                  style={styles.suggestionChip}
-                  onPress={() => handleSearch(tag)}
-                >
-                  <Text style={styles.suggestionChipText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+
           </View>
         ) : (
           <FlatList

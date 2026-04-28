@@ -1224,28 +1224,37 @@ export default function ModernVideoPlayer({
 
   if (playerMode === 'full') {
     return (
-      <View 
-        style={[
-          StyleSheet.absoluteFill, 
-          { 
-            backgroundColor: '#000', 
-            zIndex: 2147483647, 
-            elevation: 1000 
-          }
-        ]}
-        onLayout={() => {
-          if (Platform.OS === 'android') {
-            NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-            NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
-            StatusBar.setHidden(true);
-          }
-        }}
+      <RNModal
+        visible={true}
+        transparent={false}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => onClose()}
       >
-        <ExpoStatusBar hidden={true} translucent />
-        {renderPlayer()}
-      </View>
+        <View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { 
+              backgroundColor: '#000', 
+              zIndex: 2147483647, 
+              elevation: 1000 
+            }
+          ]}
+          onLayout={() => {
+            if (Platform.OS === 'android') {
+              NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+              NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+              StatusBar.setHidden(true);
+            }
+          }}
+        >
+          <ExpoStatusBar hidden={true} translucent />
+          {renderPlayer()}
+        </View>
+      </RNModal>
     );
   }
+
 
   // The mini-player (in-app floating window) has been removed as per user request.
   // The app now uses System PiP (pop-out to home screen) via staysActiveInBackground.
