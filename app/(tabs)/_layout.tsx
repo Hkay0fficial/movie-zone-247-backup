@@ -41,6 +41,7 @@ import {
 } from "@/constants/movieData";
 import { GridModal, GridCard } from "../../components/GridComponents";
 import { useMovies } from "@/app/context/MovieContext";
+import { SkeletonLoader } from "../../components/SkeletonLoader";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
@@ -781,7 +782,7 @@ function SearchOverlay({
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
   const { isPaid } = useSubscription();
-  const { liveMovies, liveSeries, allRows } = useMovies();
+  const { liveMovies, liveSeries, allRows, loading } = useMovies();
   
   // Combine all live content for absolute coverage
   const TOTAL_LIVE_ITEMS = React.useMemo(() => {
@@ -1171,7 +1172,7 @@ function SearchOverlay({
                   <FlatList
                     ref={resultsRef}
                     keyboardShouldPersistTaps="always"
-                    data={results}
+                    data={loading && results.length === 0 ? Array(12).fill({ id: "skeleton" }) : results}
                     keyExtractor={(m, i) => `${m.id}-${i}`}
                     numColumns={3}
                     contentContainerStyle={{
@@ -1183,7 +1184,17 @@ function SearchOverlay({
                       gap: 6,
                       marginBottom: 10,
                     }}
-                    renderItem={({ item }) => (
+                    renderItem={({ item, index }) => {
+                      if (item.id === "skeleton") {
+                        return (
+                          <View style={[styles.searchResultCard, { height: 180 }]}>
+                             <SkeletonLoader width="100%" height={130} borderRadius={10} />
+                             <SkeletonLoader width="80%" height={12} style={{ marginTop: 8 }} />
+                             <SkeletonLoader width="50%" height={10} style={{ marginTop: 4 }} />
+                          </View>
+                        );
+                      }
+                      return (
                       <TouchableOpacity
                         style={styles.searchResultCard}
                         onPress={() => {
@@ -1234,7 +1245,8 @@ function SearchOverlay({
                           </Text>
                         </View>
                       </TouchableOpacity>
-                    )}
+                      );
+                    }}
                     ListEmptyComponent={
                       <View style={styles.emptyResults}>
                         <Text style={styles.emptyText}>

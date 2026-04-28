@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
@@ -24,6 +24,7 @@ import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useUser } from "../context/UserContext";
 import { db, auth } from "../../constants/firebaseConfig";
+import { PreviewEpisodeSkeleton } from "../../components/SkeletonLoader";
 import { 
   collection, 
   addDoc, 
@@ -187,6 +188,122 @@ const MarqueePlaceholder = ({
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = (W - 44) / 3;
+
+// ─── Skeleton Components ───────────────────────────────────────────────────
+const SkeletonLoader = memo(({ width, height, borderRadius = 12, style, shimmer = true }: { width: any, height: any, borderRadius?: number, style?: any, shimmer?: boolean }) => {
+  const translateX = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    if (shimmer) {
+      Animated.loop(
+        Animated.timing(translateX, {
+          toValue: 2,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [shimmer]);
+
+  return (
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderRadius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      {shimmer && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-1, 2],
+                    outputRange: [-width * 1.5, width * 1.5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'transparent',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+});
+
+const SkeletonRow = memo(() => (
+  <View style={{ marginBottom: 30 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 15 }}>
+      <SkeletonLoader width={140} height={16} />
+      <SkeletonLoader width={60} height={16} />
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+      {[1, 2, 3, 4].map(i => (
+        <View key={i}>
+          <SkeletonLoader width={140} height={200} borderRadius={15} />
+          <SkeletonLoader width={100} height={12} style={{ marginTop: 10 }} />
+          <SkeletonLoader width={60} height={10} style={{ marginTop: 6 }} />
+        </View>
+      ))}
+    </ScrollView>
+  </View>
+));
+
+const SeriesSkeleton = memo(() => {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0a0a0f', paddingTop: (Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 48 : 60) }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Top Spacer matches index.tsx top bar area roughly */}
+        <View style={{ height: 20 }} />
+        
+        {/* Filter Pills Skeleton */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 25 }}>
+          <SkeletonLoader width={100} height={36} borderRadius={18} />
+          <SkeletonLoader width={80} height={36} borderRadius={18} />
+          <SkeletonLoader width={110} height={36} borderRadius={18} />
+        </View>
+
+        {/* Featured Card Row Skeleton */}
+        <View style={{ marginBottom: 35 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 15 }}>
+            {[1, 2].map(i => (
+              <SkeletonLoader key={i} width={W * 0.8} height={200} borderRadius={20} />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Dynamic Sections Skeletons */}
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </ScrollView>
+    </View>
+  );
+});
 
 const GENRES = ["All", ...ALL_GENRES];
 
@@ -527,12 +644,7 @@ export default function SeriesScreen() {
   }, [seriesStack.length, isFocused]);
 
   if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#5B5FEF" />
-        <Text style={{ color: 'rgba(255,255,255,0.5)', marginTop: 12, fontSize: 13, fontWeight: '600' }}>Fetching latest content...</Text>
-      </View>
-    );
+    return <SeriesSkeleton />;
   }
 
   return (
@@ -840,6 +952,12 @@ function SeriesPreviewModal({
   appState: string;
 }) {
   const router = useRouter();
+  const [isRenderReady, setIsRenderReady] = useState(false);
+  useEffect(() => {
+    setIsRenderReady(false);
+    const timer = setTimeout(() => setIsRenderReady(true), 250);
+    return () => clearTimeout(timer);
+  }, [series?.id]);
   const {
     isGuest,
     subscriptionBundle,
@@ -1810,6 +1928,7 @@ function SeriesPreviewModal({
               </View>
 
               {/* EPISODES SECTION */}
+              {isRenderReady ? (
               <View style={styles.episodesSection}>
                 {/* OTHER EPISODES toggle header */}
                 <View style={{ marginTop: 12, marginBottom: showEpisodes ? 12 : 4, paddingHorizontal: 4 }}>
@@ -2110,7 +2229,13 @@ function SeriesPreviewModal({
                     },
                   )}
               </View>
+              ) : (
+                <View style={{ paddingTop: 24 }}>
+                  <PreviewEpisodeSkeleton />
+                </View>
+              )}
             </View>
+
 
             {/* Related */}
             {related.length > 0 && (

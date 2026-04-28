@@ -37,6 +37,8 @@ import { useMovies } from '../context/MovieContext';
 import { useDownloads } from '../context/DownloadContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SkeletonLoader } from '../../components/SkeletonLoader';
+
 import { AboutSection } from '../../components/menu/AboutSection';
 import { AnalyticsModal } from '../../components/menu/AnalyticsModal';
 import { SubscriptionModals } from '../../components/menu/SubscriptionModals';
@@ -122,6 +124,34 @@ export default function MenuScreen() {
     });
     return () => unsub();
   }, []);
+
+  const MenuSkeleton = React.memo(() => (
+    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+       <View style={{ padding: 20, paddingTop: insets.top + 20 }}>
+          <SkeletonLoader width={120} height={32} style={{ marginBottom: 20 }} />
+          <View style={{ padding: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+            <SkeletonLoader width={60} height={60} borderRadius={30} />
+            <View style={{ gap: 8 }}>
+               <SkeletonLoader width={140} height={18} />
+               <SkeletonLoader width={100} height={14} />
+            </View>
+          </View>
+          
+          <View style={{ marginTop: 30, gap: 15 }}>
+             {[1, 2, 3, 4, 5, 6].map(i => (
+               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 15, gap: 15 }}>
+                 <SkeletonLoader width={24} height={24} borderRadius={6} />
+                 <View style={{ gap: 5, flex: 1 }}>
+                    <SkeletonLoader width="60%" height={16} />
+                    <SkeletonLoader width="40%" height={12} />
+                 </View>
+                 <SkeletonLoader width={20} height={20} borderRadius={10} />
+               </View>
+             ))}
+          </View>
+       </View>
+    </View>
+  ));
 
   const aboutScrollRef = React.useRef<ScrollView>(null);
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
@@ -1181,6 +1211,10 @@ export default function MenuScreen() {
   const handleStatsDone = () => {
     toggleStatsModal(null);
   };
+
+  if (isMenuLoading) {
+    return <MenuSkeleton />;
+  }
 
   return (
     <View style={styles.container}>
