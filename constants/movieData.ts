@@ -28,6 +28,7 @@ export interface Movie {
   bunnyLibraryId?: string;
   bunnyLibraryId2?: string;
   episodesPerPart?: number;
+  country?: string;
 }
 
 export interface Series {
@@ -62,6 +63,7 @@ export interface Series {
   bunnyLibraryId?: string;
   createdAt?: number;
   episodesPerPart?: number;
+  country?: string;
 }
 
 export function shortenGenre(genre?: string): string {

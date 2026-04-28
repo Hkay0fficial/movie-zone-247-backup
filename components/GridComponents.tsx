@@ -144,6 +144,7 @@ export function GridCard({
         </Text>
       </View>
 
+
       {"seasons" in movie ? (
         <View style={styles.epBadgePremium}>
           <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
@@ -344,7 +345,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
+  },
+  qualityRow: {
+    position: 'absolute',
+    top: 6,
+    flexDirection: 'row',
+    gap: 3,
+  },
+  qBadge: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  qText: {
+    color: '#fff',
+    fontSize: 7,
+    fontWeight: '900',
   },
   vjBadgeText: {
     color: '#fff',

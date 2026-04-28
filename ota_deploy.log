@@ -1,0 +1,85 @@
+- Exporting...
+[expo-cli] --non-interactive is not supported, use $CI=1 instead
+[expo-cli] env: load .env.production .env
+[expo-cli] env: export EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
+[expo-cli] React Compiler enabled
+[expo-cli] Starting Metro Bundler
+[expo-cli] iOS node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[expo-cli] Android node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.7% (1339/1433)
+[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.7% (1304/1369)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.6% (1652/1655)
+[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1682/1683)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1683/1684)
+[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1685/1685)
+[expo-cli] Android Bundled 15009ms node_modules/expo-router/entry.js (1685 modules)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+[expo-cli] Android node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1685/1685)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+[expo-cli] iOS Bundled 20918ms node_modules/expo-router/entry.js (1686 modules)
+[expo-cli] iOS node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1686/1686)
+[expo-cli] Creating asset map
+[expo-cli] Static rendering is enabled. Learn more: https://docs.expo.dev/router/reference/static-rendering/
+[expo-cli] Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.7% (1431/1433)
+[expo-cli] λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.6% (1458/1461)
+[expo-cli] Web Bundled 5266ms node_modules/expo-router/entry.js (1436 modules)
+[expo-cli] λ Bundled 6057ms node_modules/expo-router/node/render.js (1490 modules)
+[expo-cli] [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+[expo-cli] [expo-notifications] Listening to push token changes is not yet fully supported on web. Adding a listener will have no effect.
+[expo-cli] 
+[expo-cli] › android bundles (2):
+[expo-cli] _expo/static/js/android/entry-1099640e351e177c88a6bd2346d11b97.hbc (4.34 MB)
+[expo-cli] _expo/static/js/android/entry-1099640e351e177c88a6bd2346d11b97.hbc.map (13.3 MB)
+[expo-cli] 
+[expo-cli] › ios bundles (2):
+[expo-cli] _expo/static/js/ios/entry-e9b66f0c4243e7b0aeb353c20a302e94.hbc (4.33 MB)
+[expo-cli] _expo/static/js/ios/entry-e9b66f0c4243e7b0aeb353c20a302e94.hbc.map (13.3 MB)
+[expo-cli] 
+[expo-cli] › web bundles (2):
+[expo-cli] _expo/static/js/web/entry-b92a156cf58d28e9c53fc79657fecc1f.js (4.19 MB)
+[expo-cli] _expo/static/js/web/entry-b92a156cf58d28e9c53fc79657fecc1f.js.map (13 MB)
+[expo-cli] 
+[expo-cli] › Static routes (20):
+[expo-cli] /menu (49.6 kB)
+[expo-cli] /admin (59.3 kB)
+[expo-cli] / (index) (53.6 kB)
+[expo-cli] /login (60.9 kB)
+[expo-cli] /modal (52.1 kB)
+[expo-cli] /saved (49.6 kB)
+[expo-cli] /signup (59.7 kB)
+[expo-cli] /search (49.6 kB)
+[expo-cli] /_sitemap (49.1 kB)
+[expo-cli] /category (49.6 kB)
+[expo-cli] /+not-found (49.1 kB)
+[expo-cli] /(tabs)/menu (49.6 kB)
+[expo-cli] /(tabs) (49.6 kB)
+[expo-cli] /(tabs)/saved (49.6 kB)
+[expo-cli] /(tabs)/search (49.6 kB)
+[expo-cli] /(tabs)/category (49.6 kB)
+[expo-cli] /context/UserContext (51.7 kB)
+[expo-cli] /context/MovieContext (51.7 kB)
+[expo-cli] /context/DownloadContext (51.7 kB)
+[expo-cli] /context/SubscriptionContext (51.7 kB)
+[expo-cli] 
+[expo-cli] Exported: dist
+✔ Exported bundle(s)
+- Uploading...
+- Uploading assetmap.json (0 / 21.6 KB)
+✔ Uploaded assetmap.json 
+✔ Uploaded 2 app bundles
+✔ Uploading assets skipped - no new assets found
+ℹ 47 iOS assets, 47 Android assets (maximum: 2000 total per update). Learn more about asset limits: https://expo.fyi/eas-update-asset-limits
+- Computing project fingerprints
+✔ Computed project fingerprints
+- Publishing...
+✔ Published!
+Branch             main
+Runtime version    1.2.1
+Platform           android, ios
+Update group ID    3ca14ad3-82b8-4d97-a99c-c28500e85d1d
+Android update ID  019dd08b-f001-7b57-b1ce-dfb78e90b2f8
+iOS update ID      019dd08b-f001-748a-a3ad-6abaa1885253
+Message            Enhanced Series Library layout and filtering
+Commit             4d37f8f35b3811d1f469969b042dd55120ed2c33*
+EAS Dashboard      https://expo.dev/accounts/haruna2567/projects/movie-zone-24-7/updates/3ca14ad3-82b8-4d97-a99c-c28500e85d1d
+

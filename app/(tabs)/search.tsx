@@ -23,11 +23,91 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Movie, Series } from '@/constants/movieData';
+import { Movie, Series, getStreamUrl } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
+import { useSubscription } from '@/app/context/SubscriptionContext';
 import { useUser } from '../context/UserContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+// ─── Skeleton Loader Component ───────────────────────────────────────────────
+const SkeletonLoader = React.memo(({ width, height, borderRadius = 12, style, shimmer = true }: { width: any, height: any, borderRadius?: number, style?: any, shimmer?: boolean }) => {
+  const translateX = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    if (shimmer) {
+      Animated.loop(
+        Animated.timing(translateX, {
+          toValue: 2,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [shimmer]);
+
+  return (
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderRadius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      {shimmer && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-1, 2],
+                    outputRange: [-width * 1.5, width * 1.5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'transparent',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+});
+
+const GridSkeleton = React.memo(() => (
+  <View style={{ paddingHorizontal: 15, paddingTop: 20 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+      {[1, 2].map((i) => (
+        <SkeletonLoader key={i} width={(SCREEN_W - 45) / 2} height={250} borderRadius={20} />
+      ))}
+    </View>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      {[1, 2].map((i) => (
+        <SkeletonLoader key={i} width={(SCREEN_W - 45) / 2} height={250} borderRadius={20} />
+      ))}
+    </View>
+  </View>
+));
 
 // ─── Search Result Card ───────────────────────────────────────────────────────
 function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => void }) {
@@ -66,6 +146,7 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
 export default function SearchScreen() {
   const router = useRouter();
   const { allMovies, allSeries, loading } = useMovies();
+  const { setPlayingNow, setPlayerTitle, setSelectedVideoUrl, setPlayerMode } = useSubscription();
   const { profile } = useUser();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(Movie | Series)[]>([]);
@@ -146,7 +227,7 @@ export default function SearchScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#5B5FEF" />
-            <Text style={styles.loadingText}>Loading library...</Text>
+            <Text style={styles.loadingText}>Fetching latest content...</Text>
           </View>
         ) : query.trim() === '' ? (
           <View style={styles.emptyContainer}>
@@ -161,44 +242,44 @@ export default function SearchScreen() {
             <Text style={styles.emptyDesc}>
               Search for your favorite movies, series, or VJs to start watching.
             </Text>
-            
-            <View style={styles.suggestionRow}>
-              {['Action', 'Sci-Fi', 'VJ Junior', 'New 2025'].map((tag) => (
-                <TouchableOpacity 
-                  key={tag} 
-                  style={styles.tag}
-                  onPress={() => handleSearch(tag)}
-                >
-                  <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-                  <Text style={styles.tagText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
+
+          </View>
+        ) : query.length > 0 && results.length === 0 ? (
+          <View style={styles.premiumEmptyContainer}>
+            <View style={styles.emptyIconGlow}>
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+              <Ionicons name="search-outline" size={50} color="rgba(91,95,239,0.8)" />
             </View>
+            <Text style={styles.premiumEmptyTitle}>No Results Found</Text>
+            <Text style={styles.premiumEmptyDesc}>
+              We couldn't find any movies or series matching "{query}". Try searching for VJs or different genres.
+            </Text>
+
           </View>
         ) : (
           <FlatList
-            data={results}
-            numColumns={2}
+            data={query.length > 0 ? results : []}
             keyExtractor={(item) => item.id}
+            numColumns={2}
             contentContainerStyle={styles.gridContainer}
-            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <ResultCard 
                 item={item} 
                 onPress={() => {
-                   const isSeries = "seasons" in item || (item as any).type === 'Series' || (item as any).isMiniSeries;
-                   if (isSeries) {
-                     router.push(`/(tabs)/saved?seriesId=${item.id}`);
-                   } else {
-                     DeviceEventEmitter.emit('movieSelected', item);
-                     router.back();
-                   }
+                  const isSeries = 'seasons' in item;
+                  if (isSeries) {
+                    router.push(`/(tabs)/saved?seriesId=${item.id}`);
+                  } else {
+                    // Emit selection event to be caught by the Home detail stack
+                    DeviceEventEmitter.emit("movieSelected", item);
+                    router.back();
+                  }
                 }} 
               />
             )}
             ListHeaderComponent={() => (
               <Text style={styles.resultsCount}>
-                Found {results.length} results for "{query}"
+                {results.length} {results.length === 1 ? 'RESULT' : 'RESULTS'} FOUND FOR "{query.toUpperCase()}"
               </Text>
             )}
           />
@@ -431,16 +512,81 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
   },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   loadingText: {
     color: 'rgba(255,255,255,0.5)',
     marginTop: 12,
     fontSize: 14,
     fontWeight: '600',
+  },
+  premiumEmptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
+  },
+  emptyIconGlow: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(91, 95, 239, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(91, 95, 239, 0.2)',
+  },
+  premiumEmptyTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  premiumEmptyDesc: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  suggestionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  suggestionChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  suggestionChipText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 6,
+  },
+  qualityBadge: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  qualityText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
   },
 });
 

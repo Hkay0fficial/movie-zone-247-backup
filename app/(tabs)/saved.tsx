@@ -31,7 +31,9 @@ import {
   where, 
   orderBy, 
   onSnapshot, 
-  serverTimestamp 
+  serverTimestamp,
+  doc,
+  getDoc
 } from 'firebase/firestore';
 import { formatRelativeTime } from "../../utils/TimeUtils";
 
@@ -67,6 +69,7 @@ import {
   useWindowDimensions,
   NativeModules,
   AppState,
+  ActivityIndicator,
 } from "react-native";
 
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
@@ -252,6 +255,34 @@ const SERIES_CATEGORIES = [
   "Mini Series",
 ];
 
+function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <TouchableOpacity onPress={onSeeAll} style={styles.seeAllBtn}>
+        <Text style={styles.seeAllText}>See All</Text>
+        <Ionicons name="chevron-forward" size={14} color="#5B5FEF" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function HorizontalSeriesRow({ data, onSelect }: { data: Series[]; onSelect: (s: Series) => void }) {
+  if (!data || data.length === 0) return null;
+  return (
+    <FlatList
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      data={data}
+      keyExtractor={(s) => s.id}
+      contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+      renderItem={({ item }) => (
+        <SeriesCard item={item} onPress={() => onSelect(item)} />
+      )}
+    />
+  );
+}
+
 // ─── Series Screen ────────────────────────────────────────────────────────────
 export default function SeriesScreen() {
   const router = useRouter();
@@ -261,7 +292,8 @@ export default function SeriesScreen() {
     trendingSeries: TRENDING_SERIES,
     mostViewedSeries: MOST_VIEWED_SERIES,
     newSeries: NEW_SERIES,
-    youMayAlsoLikeSeries: YOU_MAY_ALSO_LIKE_SERIES
+    youMayAlsoLikeSeries: YOU_MAY_ALSO_LIKE_SERIES,
+    loading
   } = useMovies();
   // removed recordExternalDownload
   const [activeBrowseFilter, setActiveBrowseFilter] =
@@ -269,6 +301,8 @@ export default function SeriesScreen() {
   const [query, setQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
+  const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
+  const [appLayout, setAppLayout] = useState<{ quickAccess: any[], sections: any[] }>({ quickAccess: [], sections: [] });
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const { 
@@ -297,6 +331,20 @@ export default function SeriesScreen() {
 
   const [seriesStack, setSeriesStack] = useState<Series[]>([]);
   const [isExternalSearch, setIsExternalSearch] = useState(false);
+
+  useEffect(() => {
+    const layoutRef = doc(db, 'app_layout', 'series');
+    const unsub = onSnapshot(layoutRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setAppLayout({
+          quickAccess: (data.quickAccess || []).filter((s: any) => s.isVisible),
+          sections: (data.sections || []).filter((s: any) => s.isVisible)
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
   const [activeSection, setActiveSection] = useState<{
     title: string;
     data: Series[];
@@ -306,16 +354,7 @@ export default function SeriesScreen() {
   const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
   const [selectedSeason, setSelectedSeason] = useState(1);
 
-  // Real Multi-Filters
-  const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
-  const [sSelectedYear, setSSelectedYear] = useState<string | null>(null);
-  const [sSelectedVJ, setSSelectedVJ] = useState<string | null>(null);
-  const [sSelectedStatus, setSSelectedStatus] = useState<string | null>(null);
-  const [sSelectedSort, setSSelectedSort] = useState<string | null>(null);
-  const [sSelectedSeasons, setSSelectedSeasons] = useState<string | null>(null);
 
-  const [sYearCategory, setSYearCategory] = useState<'new' | 'oldest'>('new');
-  const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
   const getFilteredResults = () => {
     let result = [...ALL_SERIES];
@@ -379,40 +418,7 @@ export default function SeriesScreen() {
     if (sSelectedYear) {
       result = result.filter((s) => String(s.year) === sSelectedYear);
     }
-    if (sSelectedVJ) {
-      result = result.filter((s) => s.vj === sSelectedVJ);
-    }
-    if (sSelectedStatus) {
-      if (sSelectedStatus === "Mini Series") {
-        result = result.filter((s) => s.isMiniSeries === true);
-      } else if (sSelectedStatus === "Series") {
-        result = result.filter((s) => !s.isMiniSeries);
-      } else {
-        result = result.filter((s) => s.status === sSelectedStatus);
-      }
-    }
 
-    if (sSelectedSeasons) {
-      if (sSelectedSeasons === "1-30") {
-        result = result.filter((s) => s.seasons >= 1 && s.seasons <= 30);
-      } else {
-        // Individual numeric season
-        const seasonNum = parseInt(sSelectedSeasons);
-        if (!isNaN(seasonNum)) {
-          result = result.filter((s) => s.seasons === seasonNum);
-        }
-      }
-    }
-
-    if (sSelectedSort) {
-      if (sSelectedSort === "Newest") {
-        result.sort((a, b) => b.year - a.year);
-      } else if (sSelectedSort === "Oldest") {
-        result.sort((a, b) => a.year - b.year);
-      } else if (sSelectedSort === "Trending") {
-        result.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-      }
-    }
 
     return result;
   };
@@ -433,13 +439,7 @@ export default function SeriesScreen() {
       }
     });
 
-    const sub2 = DeviceEventEmitter.addListener("toggleSeriesFilters", () => {
-      setIsFiltersVisible(prev => !prev);
-    });
 
-    const sub3 = DeviceEventEmitter.addListener("resetSeriesFilters", () => {
-      clearFilters();
-    });
 
     const sub4 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
       setSeriesStack([]);
@@ -453,26 +453,12 @@ export default function SeriesScreen() {
 
     return () => {
       sub1.remove();
-      sub2.remove();
-      sub3.remove();
       sub4.remove();
       sub5.remove();
     };
   }, []);
 
-  const clearFilters = () => {
-    setSSelectedGenre(null);
-    setSSelectedYear(null);
-    setSSelectedVJ(null);
-    setSSelectedStatus(null);
-    setSSelectedSort(null);
-    setSSelectedSeasons(null);
-    setQuery("");
-    setActiveCategory("All Series/Mini Series");
-    DeviceEventEmitter.emit("clearSeriesSearch");
-  };
 
-  const hasActiveFilters = !!(sSelectedGenre || sSelectedYear || sSelectedVJ || sSelectedStatus || sSelectedSort || sSelectedSeasons);
 
   const [showCategories, setShowCategories] = useState(true);
   const activityTimer = useRef<any>(null);
@@ -538,6 +524,15 @@ export default function SeriesScreen() {
     }
   }, [seriesStack.length, isFocused]);
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#5B5FEF" />
+        <Text style={{ color: 'rgba(255,255,255,0.5)', marginTop: 12, fontSize: 13, fontWeight: '600' }}>Fetching latest content...</Text>
+      </View>
+    );
+  }
+
   return (
     <View 
       style={styles.container}
@@ -563,262 +558,171 @@ export default function SeriesScreen() {
 
       {seriesStack.length === 0 && (
         <>
-          {/* Categories Horizontal Scroll - Hidden if searching or filters visible */}
-          {!isFiltersVisible && !query && !isSearchActive && (
-            <Animated.View style={{ 
-              opacity: categoriesAnim,
-              maxHeight: categoriesAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 100]
-              }),
-              overflow: "hidden"
-            }}>
-              <View style={{ paddingBottom: 2 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+
+        </>
+      )}
+
+
+
+      {/* Main Content */}
+      {(!query && !hasActiveFilters && activeCategory === "All Series/Mini Series") ? (
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#5B5FEF"
+            />
+          }
+        >
+          <View style={{ gap: 24, paddingTop: 10 }}>
+            {/* 1. Dynamic Quick Access Tabs (Switcher) */}
+            {appLayout.quickAccess.length > 0 && (
+              <View>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false} 
+                  contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}
                 >
-                  {SERIES_CATEGORIES.map((category) => (
+                  {appLayout.quickAccess.map((section, idx) => (
                     <TouchableOpacity
-                      key={category}
+                      key={section.id}
+                      onPress={() => setFeaturedTab(section.title)}
                       style={[
                         styles.browseFilterPill,
-                        activeCategory === category && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
+                        (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
                       ]}
-                      onPress={() => setActiveCategory(category)}
-                      activeOpacity={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.browseFilterPillText,
-                          activeCategory === category && { color: '#fff', fontWeight: '800' }
-                        ]}
-                      >
-                        {category}
+                      <Text style={[styles.browseFilterPillText, (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && { color: '#fff', fontWeight: '800' }]}>
+                        {section.title}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+                
+                <HorizontalSeriesRow 
+                  data={(() => {
+                    const activeSec = appLayout.quickAccess.find(s => s.title === featuredTab) || appLayout.quickAccess[0];
+                    if (!activeSec) return NEW_SERIES;
+                    
+                    const filterVal = (activeSec.filterValue || '').toLowerCase().trim();
+                    switch(activeSec.filterType) {
+                      case 'newReleases': return NEW_SERIES;
+                      case 'trending': return TRENDING_SERIES;
+                      case 'mostViewed': return MOST_VIEWED_SERIES;
+                      case 'mostDownloaded': return MOST_DOWNLOADED_SERIES;
+                      case 'miniSeries': return ALL_SERIES.filter(s => s.isMiniSeries === true);
+                      case 'genre': return ALL_SERIES.filter(s => 
+                        (s.genre || '').toLowerCase().includes(filterVal) ||
+                        (s.country || '').toLowerCase().includes(filterVal)
+                      );
+                      case 'country': return ALL_SERIES.filter(s => 
+                        (s.country || '').toLowerCase().includes(filterVal) ||
+                        (s.genre || '').toLowerCase().includes(filterVal)
+                      );
+                      default: return NEW_SERIES;
+                    }
+                  })()} 
+                  onSelect={(s) => setSeriesStack([s])} 
+                />
               </View>
-            </Animated.View>
-          )}
-
-          {/* Clear Filters below header if active and filters hidden */}
-          {hasActiveFilters && !isFiltersVisible && (
-            <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-start' }}>
-              <TouchableOpacity
-                style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-                onPress={clearFilters}
-              >
-                <Ionicons name="close-circle" size={12} color="#ef4444" style={{ marginRight: 4 }} />
-                <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '800' }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </>
-      )}
-
-      {/* Expanded Filter Area - Hidden if searching */}
-      {isFiltersVisible && !query && !isSearchActive && (
-        <View style={[styles.filterWrap, { paddingTop: 0 }]}>
-          {/* Primary filter tabs (Top Pills) */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterListPrimary}
-          >
-            {hasActiveFilters && (
-              <TouchableOpacity
-                style={[styles.browseFilterPill, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)', marginRight: 8 }]}
-                onPress={clearFilters}
-              >
-                <Ionicons name="close-circle" size={14} color="#ef4444" style={{ marginRight: 4 }} />
-                <Text style={[styles.browseFilterPillText, { color: '#ef4444', fontWeight: '900' }]}>Clear</Text>
-              </TouchableOpacity>
             )}
 
-            {["VJ,s", "Type", "Seasons", "Sort", "Genre", "Year"].map((filter) => {
-              const isActive = activeBrowseFilter === filter;
-              let label = filter;
-              let hasValue = false;
-              // Map "Status" logic to "Type" label
-              if (filter === "VJ,s" && sSelectedVJ) { label = sSelectedVJ; hasValue = true; }
-              if (filter === "Type" && sSelectedStatus) { label = sSelectedStatus; hasValue = true; }
-              if (filter === "Seasons" && sSelectedSeasons) { 
-                label = sSelectedSeasons === "1-30" ? "1-30" : `Season ${sSelectedSeasons}`; 
-                hasValue = true; 
-              }
-              if (filter === "Genre" && sSelectedGenre) { label = sSelectedGenre; hasValue = true; }
-              if (filter === "Year" && sSelectedYear) { label = sSelectedYear; hasValue = true; }
-              if (filter === "Sort" && sSelectedSort) { label = sSelectedSort; hasValue = true; }
+            {/* 2. Admin Managed Dynamic Sections */}
+            {appLayout.sections.map((section) => {
+                let sectionData: Series[] = [];
+                const filterVal = (section.filterValue || '').toLowerCase().trim();
+                
+                switch(section.filterType) {
+                  case 'newReleases': sectionData = NEW_SERIES; break;
+                  case 'trending': sectionData = TRENDING_SERIES; break;
+                  case 'mostViewed': sectionData = MOST_VIEWED_SERIES; break;
+                  case 'mostDownloaded': sectionData = MOST_DOWNLOADED_SERIES; break;
+                  case 'miniSeries': sectionData = ALL_SERIES.filter(s => s.isMiniSeries === true); break;
+                  case 'genre': 
+                    sectionData = ALL_SERIES.filter(s => 
+                      (s.genre || '').toLowerCase().includes(filterVal) ||
+                      (s.country || '').toLowerCase().includes(filterVal)
+                    );
+                    break;
+                  case 'country': 
+                    sectionData = ALL_SERIES.filter(s => 
+                      (s.country || '').toLowerCase().includes(filterVal) ||
+                      (s.genre || '').toLowerCase().includes(filterVal)
+                    );
+                    break;
+                  default: sectionData = [];
+                }
 
-              return (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.browseFilterPill,
-                    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-                    (isActive || hasValue) && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setActiveBrowseFilter(isActive ? "" : filter)}
-                >
-                  <Text
-                    style={[
-                      styles.browseFilterPillText,
-                      (isActive || hasValue) && { color: '#fff', fontWeight: '800' },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  <Ionicons 
-                    name="chevron-down" 
-                    size={10} 
-                    color={(isActive || hasValue) ? "#fff" : "rgba(255,255,255,0.5)"} 
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                if (sectionData.length === 0) return null;
 
-          {/* Chip Selection Area - Only render if a valid filter category is active */}
-          {["VJ,s", "Type", "Seasons", "Sort", "Genre", "Year"].includes(activeBrowseFilter) && (
-            <View style={styles.chipSelectionArea}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterListSecondary}
-            >
-              {activeBrowseFilter === "Type"
-                ? ["Series", "Mini Series"].map((st) => (
-                    <TouchableOpacity
-                      key={st}
-                      style={[styles.filterChip, sSelectedStatus === st && styles.filterChipActive]}
-                      onPress={() => setSSelectedStatus(sSelectedStatus === st ? null : st)}
-                    >
-                      <Text style={[styles.filterChipText, sSelectedStatus === st && styles.filterChipTextActive]}>{st}</Text>
-                    </TouchableOpacity>
-                  ))
-                : activeBrowseFilter === "Seasons"
-                  ? Array.from({ length: 30 }, (_, i) => String(i + 1)).map((num) => (
-                      <TouchableOpacity
-                        key={num}
-                        style={[styles.filterChip, sSelectedSeasons === num && styles.filterChipActive]}
-                        onPress={() => setSSelectedSeasons(sSelectedSeasons === num ? null : num)}
-                      >
-                        <Text style={[styles.filterChipText, sSelectedSeasons === num && styles.filterChipTextActive]}>Season {num}</Text>
-                      </TouchableOpacity>
-                    ))
-                  : activeBrowseFilter === "Year"
-                  ? (
-                    <View style={{ flexDirection: 'column', gap: 10 }}>
-                      <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 4 }}>
-                        <TouchableOpacity
-                          onPress={() => setSYearCategory('new')}
-                          style={[
-                            styles.filterChip,
-                            { paddingHorizontal: 12, height: 28 },
-                            sYearCategory === 'new' && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
-                          ]}
-                        >
-                          <Text style={[styles.filterChipText, sYearCategory === 'new' && { color: '#fff', fontWeight: '800' }]}>NEW</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setSYearCategory('oldest')}
-                          style={[
-                            styles.filterChip,
-                            { paddingHorizontal: 12, height: 28 },
-                            sYearCategory === 'oldest' && { backgroundColor: '#ef4444', borderColor: 'rgba(255,255,255,0.3)' }
-                          ]}
-                        >
-                          <Text style={[styles.filterChipText, sYearCategory === 'oldest' && { color: '#fff', fontWeight: '800' }]}>OLDEST</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                        {(sYearCategory === 'new'
-                          ? Array.from({ length: 2026 - 2020 + 1 }, (_, i) => String(2026 - i))
-                          : Array.from({ length: 2019 - 1975 + 1 }, (_, i) => String(2019 - i))
-                        ).map((yr) => (
-                          <TouchableOpacity
-                            key={yr}
-                            style={[styles.filterChip, sSelectedYear === yr && styles.filterChipActive]}
-                            onPress={() => setSSelectedYear(sSelectedYear === yr ? null : yr)}
-                          >
-                            <Text style={[styles.filterChipText, sSelectedYear === yr && styles.filterChipTextActive]}>{yr}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )
-                  : activeBrowseFilter === "Genre"
-                    ? ALL_GENRES.map((g) => (
-                        <TouchableOpacity
-                          key={g}
-                          style={[styles.filterChip, sSelectedGenre === g && styles.filterChipActive]}
-                          onPress={() => setSSelectedGenre(sSelectedGenre === g ? null : g)}
-                        >
-                          <Text style={[styles.filterChipText, sSelectedGenre === g && styles.filterChipTextActive]}>{g}</Text>
-                        </TouchableOpacity>
-                      ))
-                    : activeBrowseFilter === "VJ,s"
-                    ? ALL_VJS.slice(0, 12).map((vj) => (
-                        <TouchableOpacity
-                          key={vj}
-                          style={[styles.filterChip, sSelectedVJ === vj && styles.filterChipActive]}
-                          onPress={() => setSSelectedVJ(sSelectedVJ === vj ? null : vj)}
-                        >
-                          <Text style={[styles.filterChipText, sSelectedVJ === vj && styles.filterChipTextActive]}>{vj}</Text>
-                        </TouchableOpacity>
-                      ))
-                      : activeBrowseFilter === "Sort"
-                        ? ["Newest", "Oldest", "Trending"].map((srt) => (
-                            <TouchableOpacity
-                              key={srt}
-                              style={[styles.filterChip, sSelectedSort === srt && styles.filterChipActive]}
-                              onPress={() => setSSelectedSort(sSelectedSort === srt ? null : srt)}
-                            >
-                              <Text style={[styles.filterChipText, sSelectedSort === srt && styles.filterChipTextActive]}>{srt}</Text>
-                            </TouchableOpacity>
-                          ))
-                        : null}
-            </ScrollView>
+                return (
+                  <View key={section.id}>
+                    <SectionHeader 
+                      title={section.title} 
+                      onSeeAll={() => setActiveSection({ title: section.title, data: sectionData })} 
+                    />
+                    <HorizontalSeriesRow 
+                      data={sectionData} 
+                      onSelect={(s) => setSeriesStack([s])} 
+                    />
+                  </View>
+                );
+              })}
+
+            {/* 3. All Series (Final Catch-all) */}
+            <View>
+              <SectionHeader 
+                title="All Series/Mini Series" 
+                onSeeAll={() => setActiveSection({ title: "All Series/Mini Series", data: ALL_SERIES })} 
+              />
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={ALL_SERIES}
+                keyExtractor={(s) => s.id}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                renderItem={({ item }) => (
+                  <SeriesCard item={item} onPress={() => setSeriesStack([item])} />
+                )}
+              />
+            </View>
           </View>
-        )}
-      </View>
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(s) => s.id}
+          numColumns={3}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#5B5FEF"
+              colors={["#5B5FEF", "#818cf8"]}
+              progressBackgroundColor="#1e293b"
+            />
+          }
+          contentContainerStyle={[styles.grid, { paddingBottom: 110 }]}
+          columnWrapperStyle={styles.gridRow}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={Platform.OS === "android"}
+          initialNumToRender={12}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          renderItem={({ item }) => (
+            <SeriesCard item={item} onPress={() => {
+              setSeriesStack([item]);
+              setIsExternalSearch(false);
+              if (isSearchActive || query.length > 0) {
+                DeviceEventEmitter.emit("seriesSearchClosed");
+              }
+            }} />
+          )}
+        />
       )}
-
-      {/* Grid */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(s) => s.id}
-        numColumns={3}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#5B5FEF"
-            colors={["#5B5FEF", "#818cf8"]}
-            progressBackgroundColor="#1e293b"
-          />
-        }
-        contentContainerStyle={[styles.grid, { paddingBottom: 110 }]}
-        columnWrapperStyle={styles.gridRow}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={Platform.OS === "android"}
-        initialNumToRender={12}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        renderItem={({ item }) => (
-          <SeriesCard item={item} onPress={() => {
-            setSeriesStack([item]);
-            setIsExternalSearch(false);
-            if (isSearchActive || query.length > 0) {
-              DeviceEventEmitter.emit("seriesSearchClosed");
-            }
-          }} />
-        )}
-      />
 
       {/* Series Preview Modal Stack */}
       {seriesStack.map((series, index) => (
@@ -3214,6 +3118,29 @@ const styles = StyleSheet.create({
   gridRow: { justifyContent: "flex-start", gap: 6 },
 
   // Card
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  seeAllText: {
+    color: '#5B5FEF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   card: {
     width: CARD_W,
     backgroundColor: "rgba(255,255,255,0.05)",
@@ -3988,16 +3915,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sleepTimerMenuPopup: {
-    position: 'absolute',
+    position: "absolute",
     top: 75,
     right: 80,
-    backgroundColor: 'rgba(30, 30, 40, 0.95)',
+    backgroundColor: "rgba(30, 30, 40, 0.95)",
     borderRadius: 12,
     paddingVertical: 8,
     width: 140,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000',
+    borderColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
