@@ -2190,14 +2190,11 @@ function CustomTabBar() {
                 }
               ]}
             >
+              <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
               <View 
                 style={[
                   StyleSheet.absoluteFill,
-                  { 
-                    backgroundColor: "rgba(15, 15, 25, 0.98)",
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: "rgba(255, 255, 255, 0.15)"
-                  }
+                  { backgroundColor: "rgba(15, 15, 25, 0.95)" }
                 ]} 
               />
               <LinearGradient
@@ -2467,6 +2464,11 @@ function CustomTabBar() {
               {/* Hide the top bar search icon if the in-place search bar is active or on category tab */}
               {!(active("/(tabs)/saved") && showInPlaceSearch) && !active("/(tabs)/category") && (
                 <View style={styles.searchBlurCapsule}>
+                  <BlurView
+                    tint="dark"
+                    intensity={99}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <LinearGradient
                     colors={["rgba(255,255,255,0.15)", "transparent"]}
                     style={styles.pillSheen}
@@ -3214,7 +3216,7 @@ const styles = StyleSheet.create({
     height: 35,
     borderRadius: 17.5,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(2, 2, 5, 0.85)",
   },
@@ -3223,7 +3225,7 @@ const styles = StyleSheet.create({
     height: 35,
     borderRadius: 17.5,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(2, 2, 5, 0.85)",
   },
@@ -3270,7 +3272,7 @@ const styles = StyleSheet.create({
     borderRadius: 17.5,
     overflow: "hidden",
     backgroundColor: "rgba(91, 95, 239, 0.25)",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
     shadowColor: "#5B5FEF",
     shadowOffset: { width: 0, height: 4 },
