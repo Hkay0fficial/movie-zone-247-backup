@@ -1283,7 +1283,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.6,
     shadowRadius: 16,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   contentContainer: {
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   playBtnInner: {
@@ -1380,7 +1380,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.4)',
   },
   glassCircleBg: { ...StyleSheet.absoluteFillObject },
@@ -1469,7 +1469,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.3)',
   },
   speedText: {
@@ -1494,7 +1494,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1568,7 +1568,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 25,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   nextPillText: {
@@ -1590,7 +1590,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     padding: 24,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   overlayHeader: {

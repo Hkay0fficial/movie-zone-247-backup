@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   headerTitle: {
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
     shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 10 },
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tagText: {
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#161622',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.05)',
   },
   cardInner: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91,95,239,0.3)',
   },
   vjText: {
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91, 95, 239, 0.2)',
   },
   premiumEmptyTitle: {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 25,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   suggestionChipText: {

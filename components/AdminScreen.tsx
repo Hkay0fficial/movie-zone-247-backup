@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.22)',
     backgroundColor: '#0f0f14',
   },
   backBtn: {
@@ -119,8 +119,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   liveDot: {
     width: 6,

@@ -125,7 +125,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
 
       {!isSubscribed ? (
         <View style={{ alignItems: 'center', paddingVertical: 40, gap: 16 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
             <Ionicons name="diamond-outline" size={40} color="#475569" />
           </View>
           <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>No Active Subscription</Text>
@@ -206,7 +206,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                       height: 34,
                       borderRadius: 17,
                       overflow: 'hidden',
-                      borderWidth: 1.5,
+                      borderWidth: StyleSheet.hairlineWidth,
                       borderColor: 'rgba(245, 158, 11, 0.5)',
                       backgroundColor: 'rgba(245, 158, 11, 0.05)',
                     }}>
@@ -331,7 +331,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                   <Text style={styles.detailLabel}>Active Devices ({activeDevices.length}/{getDeviceLimit()})</Text>
                 <View style={{ gap: 8 }}>
                   {activeDevices.map((device) => (
-                    <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: device.current ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name={device.device.includes('iPhone') || device.device.includes('Phone') ? "phone-portrait-outline" : "desktop-outline"} size={14} color={device.current ? '#10b981' : 'rgba(255,255,255,0.4)'} />
@@ -394,7 +394,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                       else if (s.includes('device')) { bColor = '#10b981'; bIcon = 'phone-portrait'; }
                       else if (s.includes('access')) { bColor = '#06b6d4'; bIcon = 'layers'; }
                       return (
-                        <View key={idx} style={{ backgroundColor: bColor + '10', flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, borderColor: bColor + '20' }}>
+                        <View key={idx} style={{ backgroundColor: bColor + '10', flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: bColor + '20' }}>
                           <Ionicons name={bIcon as any} size={10} color={bColor} />
                           <Text style={{ color: bColor, fontSize: 10, fontWeight: '700' }}>{spec}</Text>
                         </View>

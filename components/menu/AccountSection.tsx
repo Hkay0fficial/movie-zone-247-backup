@@ -214,7 +214,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           <View style={[styles.settingsList, {
             backgroundColor: 'rgba(30,30,45,0.98)',
             borderRadius: 32,
-            borderWidth: 1.5,
+            borderWidth: StyleSheet.hairlineWidth,
             borderColor: 'rgba(255,255,255,0.15)',
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 8 },
@@ -280,7 +280,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           <View style={{
             backgroundColor: 'rgba(30,30,45,0.98)',
             borderRadius: 32,
-            borderWidth: 1.5,
+            borderWidth: StyleSheet.hairlineWidth,
             borderColor: 'rgba(255,255,255,0.15)',
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 8 },
@@ -330,7 +330,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           <View style={{
             backgroundColor: 'rgba(30,30,45,0.98)',
             borderRadius: 32,
-            borderWidth: 1.5,
+            borderWidth: StyleSheet.hairlineWidth,
             borderColor: 'rgba(255,255,255,0.15)',
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 8 },
@@ -368,7 +368,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               <View style={styles.piInfoCardGroup}>
                 <Text style={styles.piInfoGroupTitle}>Identity</Text>
-                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
+                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
                   {[
                     { label: 'Username', value: `@${username}`, temp: tempUsername, set: setTempUsername, icon: 'at-outline' },
                   ].map((field) => (
@@ -418,7 +418,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
               <View style={styles.piInfoCardGroup}>
                 <Text style={styles.piInfoGroupTitle}>Contact Details</Text>
-                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
+                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
                   <View style={styles.piInfoRow}>
                     <Ionicons name="mail-outline" size={18} color="#818cf8" style={styles.piInfoIcon} />
                     <View style={{ flex: 1 }}>
@@ -459,7 +459,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
               {!isEditingProfile ? (
                 <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                   <View style={[styles.piMetadataPill, { flex: 1, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
+                   <View style={[styles.piMetadataPill, { flex: 1, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
                      <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.4)" />
                      <Text style={styles.piMetadataText}>Member Since: March 2024</Text>
                    </View>
@@ -469,7 +469,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     onPress={startEditing}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.piMainEditBtn, { height: 44, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }]}>
+                    <View style={[styles.piMainEditBtn, { height: 44, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]}>
                       <Ionicons name="create-outline" size={16} color="#fff" />
                       <Text style={styles.piMainEditBtnText}>Edit Profile</Text>
                     </View>
@@ -503,7 +503,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         {!selectedSecurityItem ? (
           <View style={{ width: '100%', marginBottom: 20, marginTop: 10 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 32, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
+            <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Change Password'); }}>
                 <Text style={styles.settingsRowText}>Change Password</Text>
                 <Ionicons name="lock-closed" size={14} color="#475569" />
@@ -529,7 +529,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         ) : selectedSecurityItem === 'Change Password' ? (
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
               {passUpdateSuccess && (
                 <View style={styles.successBanner}>
                   <Ionicons name="checkmark-circle" size={20} color="#34d399" />
@@ -584,7 +584,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         ) : selectedSecurityItem === 'Two-Factor Authentication' ? (
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
               <Text style={styles.securityTitle}>Two-Factor Authentication</Text>
               <Text style={styles.securityDesc}>Add an extra layer of security to your account by requiring a code from your phone in addition to your password.</Text>
 
@@ -616,7 +616,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         ) : selectedSecurityItem === 'Login Activity' ? (
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
               <Text style={styles.securityTitle}>Recent Login Activity</Text>
               <Text style={styles.securityDesc}>Check the devices where you're currently logged in or have recently accessed your account.</Text>
 
@@ -652,7 +652,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
             <View style={{ width: '100%', marginBottom: 20, marginTop: 10 }}>
               <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 32, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-              <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
+              <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
                 {[
                   { id: 'google', label: 'Registered Google', icon: 'logo-google', color: '#ea4335', detail: linkedAccounts.google ? 'Account Linked - Ready for Recovery' : 'Recovery via linked Google Account' },
                   { id: 'phone', label: 'Phone Numbers', icon: 'phone-portrait-outline', color: '#34d399', detail: 'Recovery via SMS verification' },
@@ -690,7 +690,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         ) : selectedSecurityItem === 'Linked Accounts' ? (
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
               <Text style={styles.securityTitle}>Linked Accounts</Text>
               <Text style={styles.securityDesc}>Manage your connected social login providers to enable quick and easy access to your account.</Text>
 
@@ -726,7 +726,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         ) : selectedSecurityItem === 'Security Questions' ? (
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
               {securitySaveSuccess && (
                 <View style={styles.successBanner}>
                   <Ionicons name="checkmark-circle" size={20} color="#34d399" />
@@ -747,7 +747,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     <Text style={[styles.detailValue, { color: '#64748b', fontSize: 13 }]}>••••••••</Text>
                   </View>
                   <TouchableOpacity 
-                    style={[styles.requestCodeBtn, { marginTop: 24, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }]} 
+                    style={[styles.requestCodeBtn, { marginTop: 24, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]} 
                     onPress={() => setSelectedSecurityItem('Password Recovery')} // Back to recovery
                   >
                     <Text style={[styles.requestCodeText, { color: '#94a3b8' }]}>Back to Recovery Models</Text>
@@ -764,7 +764,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                           padding: 14,
                           borderRadius: 16,
                           backgroundColor: userSecurityQuestion === q ? 'rgba(129,140,248,0.15)' : 'rgba(255,255,255,0.03)',
-                          borderWidth: 1,
+                          borderWidth: StyleSheet.hairlineWidth,
                           borderColor: userSecurityQuestion === q ? '#818cf8' : 'rgba(255,255,255,0.05)',
                         }}
                         onPress={() => setUserSecurityQuestion(q)}
@@ -806,13 +806,13 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         
         <View style={{ width: '100%', marginBottom: 30, marginTop: -4 }}>
           <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-          <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: 1.5, borderColor: 'rgba(239, 68, 68, 0.3)', shadowColor: '#ef4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 12 }]}>
+          <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(239, 68, 68, 0.3)', shadowColor: '#ef4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 12 }]}>
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
               <Ionicons name="warning-outline" size={48} color="#ef4444" />
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 8 }}>Danger Zone</Text>
             </View>
 
-            <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: 16, borderRadius: 16, marginBottom: 0, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.1)' }}>
+            <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: 16, borderRadius: 16, marginBottom: 0, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(239, 68, 68, 0.1)' }}>
               <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '800', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Consequences of Deletion</Text>
               
               {[
@@ -836,7 +836,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               style={[styles.editInput, { 
                 borderColor: deleteConfirmationText === 'DELETE' ? '#34d399' : 'rgba(239, 68, 68, 0.3)', 
                 color: '#fff',
-                borderWidth: 1.5,
+                borderWidth: StyleSheet.hairlineWidth,
                 textAlign: 'center',
                 fontSize: 18,
                 letterSpacing: 2

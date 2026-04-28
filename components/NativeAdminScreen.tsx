@@ -1218,7 +1218,7 @@ export default function NativeAdminScreen() {
                 backgroundColor: '#ef444411', 
                 paddingVertical: 12, 
                 borderRadius: 14, 
-                borderWidth: 1, 
+                borderWidth: StyleSheet.hairlineWidth, 
                 borderColor: '#ef444433' 
               }} 
               onPress={() => handleUserAction('Cleanup')}
@@ -2597,7 +2597,7 @@ export default function NativeAdminScreen() {
               </View>
 
               {newUserForm.duration === 'Custom' && (
-                <View style={{ marginBottom: 24, padding: 16, backgroundColor: '#0f172a', borderRadius: 16, borderWidth: 1, borderColor: '#1e293b' }}>
+                <View style={{ marginBottom: 24, padding: 16, backgroundColor: '#0f172a', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' }}>
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.label}>DAYS</Text>
@@ -2837,7 +2837,7 @@ const styles = StyleSheet.create({
   dashboardWelcome: { color: '#64748b', fontSize: 13, fontWeight: '500', marginTop: 2 },
   
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
-  statCard: { width: (width - 44) / 2, backgroundColor: '#0f172a', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#1e293b' },
+  statCard: { width: (width - 44) / 2, backgroundColor: '#0f172a', padding: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   statCardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   statInfoColumn: { flex: 1 },
   statValue: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 4 },
@@ -2851,7 +2851,7 @@ const styles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   sectionTitle: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 1.5, opacity: 0.6, textTransform: 'uppercase' },
   
-  miniCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 10, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1e293b' },
+  miniCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 10, borderRadius: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   miniPoster: { width: 36, height: 48, borderRadius: 8, backgroundColor: '#1e293b' },
   miniAvatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   miniTextContent: { marginLeft: 12, flex: 1 },
@@ -2860,7 +2860,7 @@ const styles = StyleSheet.create({
   miniCardSub: { color: '#64748b', fontSize: 11, fontWeight: '600' },
   miniTag: { backgroundColor: '#6366f122', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   miniTagText: { color: '#6366f1', fontSize: 9, fontWeight: '900' },
-  uniformCard: { backgroundColor: '#0f172a', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#1e293b' },
+  uniformCard: { backgroundColor: '#0f172a', padding: 16, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
 
   // Tabs
   tabs: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginVertical: 12 },
@@ -2870,23 +2870,23 @@ const styles = StyleSheet.create({
   activeTabText: { color: '#fff' },
 
   // Content/Users List
-  contentCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#1e293b' },
+  contentCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   contentInfo: { flex: 1, marginLeft: 12 },
   cardTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
   cardSubtitle: { color: '#64748b', fontSize: 12, marginTop: 2 },
   userAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', margin: 16, paddingHorizontal: 12, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#1e293b' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', margin: 16, paddingHorizontal: 12, height: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   searchInput: { flex: 1, marginLeft: 8, color: '#fff', fontSize: 13, fontWeight: '600' },
   resultsCount: { color: '#475569', fontSize: 10, fontWeight: '700', marginLeft: 8 },
   filterSection: { paddingHorizontal: 16, marginBottom: 8 },
   filterRow: { flexDirection: 'row', marginBottom: 12 },
-  miniChip: { backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 8, borderWidth: 1, borderColor: '#334155' },
+  miniChip: { backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   miniChipActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
   miniChipText: { color: '#64748b', fontSize: 11, fontWeight: '800' },
   miniChipTextActive: { color: '#fff' },
   vDivider: { width: 1, height: 20, backgroundColor: '#1e293b', alignSelf: 'center', marginRight: 8 },
   
-  contentCardLarge: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 12, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#1e293b' },
+  contentCardLarge: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 12, borderRadius: 20, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   itemThumbnail: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#1e293b' },
   itemInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
   itemTitle: { color: '#fff', fontSize: 14, fontWeight: '800' },
@@ -2894,7 +2894,7 @@ const styles = StyleSheet.create({
   itemBadges: { flexDirection: 'row', gap: 6, marginTop: 6 },
   priceTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   priceTagText: { fontSize: 8, fontWeight: '900' },
-  typeTag: { backgroundColor: '#1e293b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#334155' },
+  typeTag: { backgroundColor: '#1e293b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   typeTagText: { color: '#6366f1', fontSize: 8, fontWeight: '900' },
   itemActionCol: { alignItems: 'flex-end', justifyContent: 'space-between' },
   itemYear: { color: '#64748b', fontSize: 11, fontWeight: '700' },
@@ -2910,19 +2910,19 @@ const styles = StyleSheet.create({
   modalScroll: { flex: 1 },
   label: { color: '#94a3b8', fontSize: 11, fontWeight: '900', marginBottom: 8, textTransform: 'uppercase' },
   inputLabel: { color: '#64748b', fontSize: 10, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
-  input: { backgroundColor: '#1e293b', borderRadius: 12, padding: 14, color: '#fff', fontSize: 15, marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
+  input: { backgroundColor: '#1e293b', borderRadius: 12, padding: 14, color: '#fff', fontSize: 15, marginBottom: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   row: { flexDirection: 'row', marginBottom: 10 },
-  pickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 12, borderWidth: 1, borderColor: '#334155', paddingRight: 10, flex: 1 },
+  pickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155', paddingRight: 10, flex: 1 },
   pickerInput: { flex: 1, color: '#fff', paddingHorizontal: 16, paddingVertical: 12, fontSize: 14 },
   pickerIcon: { opacity: 0.5 },
-  switchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },
+  switchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155', marginBottom: 12 },
   switchLabel: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   switchDesc: { color: '#64748b', fontSize: 10, marginTop: 2 },
   
   // Series Specific
   seriesSection: { marginTop: 10 },
   epTitle: { color: '#fff', fontSize: 12, fontWeight: '800', marginTop: 15, marginBottom: 10, opacity: 0.6 },
-  epBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#1e293b', marginBottom: 10, gap: 10 },
+  epBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b', marginBottom: 10, gap: 10 },
   epInput: { color: '#fff', fontSize: 13, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b', flex: 1 },
   epRemove: { padding: 10, backgroundColor: '#450a0a', borderRadius: 10 },
   addEpBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#334155', borderRadius: 12, marginTop: 10 },
@@ -2950,7 +2950,7 @@ const styles = StyleSheet.create({
   closeBtnText: { color: '#64748b', fontWeight: '800' },
   
   // Logs
-  logCard: { backgroundColor: '#0f172a', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1e293b' },
+  logCard: { backgroundColor: '#0f172a', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   logTagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   logTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   logTagText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
@@ -2959,27 +2959,27 @@ const styles = StyleSheet.create({
   logMeta: { color: '#64748b', fontSize: 11, marginTop: 8, fontWeight: '600' },
   
   // Settings
-  settingRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: '#1e293b' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   settingTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
   settingDesc: { color: '#64748b', fontSize: 11, marginTop: 2 },
-  adminCard: { backgroundColor: '#0f172a', padding: 20, borderRadius: 24, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#334155' },
+  adminCard: { backgroundColor: '#0f172a', padding: 20, borderRadius: 24, alignItems: 'center', borderStyle: 'dashed', borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   adminEmail: { color: '#fff', fontWeight: '900', fontSize: 16, marginBottom: 16 },
-  outlineBtn: { borderWidth: 1, borderColor: '#6366f1', padding: 12, borderRadius: 12 },
+  outlineBtn: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#6366f1', padding: 12, borderRadius: 12 },
   outlineBtnText: { color: '#6366f1', fontSize: 11, fontWeight: '800' },
   
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  userModal: { backgroundColor: '#0f172a', width: '100%', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: '#1e293b' },
+  userModal: { backgroundColor: '#0f172a', width: '100%', borderRadius: 28, padding: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   userModalEmail: { color: '#fff', fontSize: 20, fontWeight: '900', textAlign: 'center' },
   userModalSub: { color: '#64748b', fontSize: 13, textAlign: 'center', marginBottom: 24, marginTop: 4 },
   userActionGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  userActionBtn: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 8 },
+  userActionBtn: { flex: 1, padding: 16, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', gap: 8 },
   userActionText: { fontSize: 12, fontWeight: '900' },
   planChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#1e293b', borderRadius: 20, marginRight: 8 },
   planChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   
   // Picker & Image Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
-  pickerModal: { backgroundColor: '#0f172a', width: '85%', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#1e293b' },
+  pickerModal: { backgroundColor: '#0f172a', width: '85%', borderRadius: 24, padding: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
   pickerItemText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   imageInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
@@ -2992,18 +2992,18 @@ const styles = StyleSheet.create({
   posterPreview: { width: 120, height: 180, borderRadius: 12, marginTop: 10, marginBottom: 20, backgroundColor: '#1e293b' },
   heroPreview: { width: '100%', height: 120, borderRadius: 12, marginTop: 10, marginBottom: 20, backgroundColor: '#1e293b' },
   
-  dateHelperBtn: { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', marginBottom: 8 },
+  dateHelperBtn: { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, backgroundColor: '#1e293b', borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155', marginBottom: 8 },
   dateHelperText: { color: '#6366f1', fontSize: 9, fontWeight: '900' },
   filterBtn: { padding: 8, marginLeft: 8 },
 
   // Temp User UI
   headerIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#10b98111', justifyContent: 'center', alignItems: 'center' },
   durationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  durationBtn: { width: '31%', backgroundColor: '#0f172a', paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#1e293b' },
+  durationBtn: { width: '31%', backgroundColor: '#0f172a', paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   durationBtnActive: { backgroundColor: '#10b98122', borderColor: '#10b981' },
   durationText: { color: '#64748b', fontSize: 13, fontWeight: '800' },
   durationTextActive: { color: '#10b981' },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 16, borderRadius: 20, marginBottom: 32, borderWidth: 1, borderColor: '#1e293b' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 16, borderRadius: 20, marginBottom: 32, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   toggleIconBg: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f43f5e11', justifyContent: 'center', alignItems: 'center' },
   toggleTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
   toggleDesc: { color: '#64748b', fontSize: 11, marginTop: 2 },
@@ -3033,7 +3033,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366f111', 
     padding: 16, 
     borderRadius: 16, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#6366f122',
     gap: 12,
     marginBottom: 24
@@ -3047,7 +3047,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10, 
     borderRadius: 10, 
     alignItems: 'center', 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#1e293b' 
   },
   settingsDurationBtnActive: { backgroundColor: '#6366f122', borderColor: '#6366f1' },
@@ -3062,7 +3062,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, 
     paddingVertical: 6, 
     borderRadius: 8, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#334155',
     gap: 6
   },
@@ -3072,7 +3072,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a', 
     padding: 20, 
     borderRadius: 16, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#1e293b',
     borderLeftWidth: 4,
     borderLeftColor: '#6366f1',
@@ -3088,7 +3088,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366f111', 
     justifyContent: 'center', 
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#6366f122'
   },
   
@@ -3099,7 +3099,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8, 
     borderRadius: 10, 
     backgroundColor: '#1e293b', 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#334155' 
   },
   categoryChipActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
@@ -3129,7 +3129,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, 
     height: 48, 
     borderRadius: 14, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#1e293b',
     marginBottom: 20 
   },
@@ -3140,7 +3140,7 @@ const styles = StyleSheet.create({
     borderRadius: 20, 
     padding: 16, 
     marginBottom: 12, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#1e293b' 
   },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
@@ -3149,7 +3149,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, 
     paddingVertical: 4, 
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#10b98144'
   },
   historyStatusText: { color: '#10b981', fontSize: 9, fontWeight: '900' },
@@ -3170,21 +3170,21 @@ const styles = StyleSheet.create({
   
   // Media Assets
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 100 },
-  assetCard: { width: (width - 44) / 3, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#1e293b' },
+  assetCard: { width: (width - 44) / 3, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0f172a', borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   assetImage: { width: '100%', aspectRatio: 2/3 },
   assetInfoOverflow: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 6, backgroundColor: 'rgba(0,0,0,0.6)' },
   assetTitleSmall: { color: '#fff', fontSize: 8, fontWeight: 'bold' },
   
-  heroMediaCard: { backgroundColor: '#0f172a', borderRadius: 20, marginBottom: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1e293b' },
+  heroMediaCard: { backgroundColor: '#0f172a', borderRadius: 20, marginBottom: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b' },
   heroMediaBanner: { width: '100%', height: 160, backgroundColor: '#1e293b' },
   heroMediaOverlay: { position: 'absolute', top: 12, right: 12, backgroundColor: '#00c853', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   heroMediaOverlayText: { color: '#fff', fontSize: 10, fontWeight: '900' },
   heroMediaFooter: { padding: 16 },
   heroMediaTitle: { color: '#fff', fontSize: 16, fontWeight: '900', marginBottom: 12 },
   heroActionRow: { flexDirection: 'row', gap: 10 },
-  heroTypeToggle: { flex: 1, height: 40, borderRadius: 10, backgroundColor: '#1e293b', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: '#334155' },
+  heroTypeToggle: { flex: 1, height: 40, borderRadius: 10, backgroundColor: '#1e293b', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   heroTypeToggleActive: { backgroundColor: '#6366f122', borderColor: '#6366f1' },
-  heroActionBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' },
+  heroActionBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   
   previewModalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   previewFullImage: { width: width, height: height * 0.7 },
@@ -3196,7 +3196,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, 
     marginBottom: 12, 
     borderRadius: 20, 
-    borderWidth: 1, 
+    borderWidth: StyleSheet.hairlineWidth, 
     borderColor: '#1e293b', 
     flexDirection: 'row', 
     padding: 16 
@@ -3263,7 +3263,7 @@ const styles = StyleSheet.create({
     borderRadius: 16, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   folderIconBg: { backgroundColor: '#f59e0b11', borderColor: '#f59e0b22' },
   fileIconBg: { backgroundColor: '#6366f111', borderColor: '#6366f122' },

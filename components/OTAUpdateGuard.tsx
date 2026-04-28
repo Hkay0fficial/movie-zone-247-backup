@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderRadius: 32,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   card: {
     padding: 32,

@@ -164,8 +164,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                 padding: 16,
                 paddingTop: 12,
                 paddingBottom: 24,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: 'rgba(255, 255, 255, 0.22)',
                 marginBottom: 60, // Shifted "more up" as requested
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 10 },
@@ -202,8 +202,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                       backgroundColor: 'rgba(255,255,255,0.05)',
                       padding: 12,
                       borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.08)'
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: 'rgba(255, 255, 255, 0.22)'
                     }}
                     onPress={() => {
                       setSelectedPaymentMethod(method);
@@ -274,8 +274,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                 padding: 20,
                 paddingTop: 12,
                 paddingBottom: 32,
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: 'rgba(255, 255, 255, 0.22)',
                 marginBottom: 60, // Consistent "more up" positioning
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 10 },
@@ -347,10 +347,10 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                               backgroundColor: paymentPhone.startsWith(p)
                                 ? `${selectedPaymentMethod?.color}30`
                                 : 'rgba(255,255,255,0.05)',
-                              borderWidth: 1,
+                              borderWidth: StyleSheet.hairlineWidth,
                               borderColor: paymentPhone.startsWith(p)
                                 ? selectedPaymentMethod?.color
-                                : 'rgba(255,255,255,0.08)'
+                                : 'rgba(255, 255, 255, 0.12)'
                             }}
                           >
                             <Text style={{
@@ -366,13 +366,13 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                       <Animated.View style={{
                         flexDirection: 'row', alignItems: 'center',
                         backgroundColor: 'rgba(255,255,255,0.05)',
-                        borderRadius: 16, borderWidth: 1,
+                        borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
                         transform: [{ translateX: shakeAnimation }],
                         borderColor: paymentPhone.length === 10 && allowedPrefixes.some(p => paymentPhone.startsWith(p))
                           ? selectedPaymentMethod?.color
                           : paymentPhone.length >= 3 && !allowedPrefixes.some(p => paymentPhone.startsWith(p))
                             ? '#ef4444'
-                            : 'rgba(255,255,255,0.1)',
+                            : 'rgba(255, 255, 255, 0.12)',
                         paddingHorizontal: 16, paddingVertical: 14, gap: 12
                       }}>
                         <Ionicons name="phone-portrait-outline" size={20} color={selectedPaymentMethod?.color} />
@@ -414,8 +414,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                         <View style={{
                           flexDirection: 'row', alignItems: 'center',
                           backgroundColor: 'rgba(255,255,255,0.05)',
-                          borderRadius: 14, borderWidth: 1,
-                          borderColor: cardNumber.replace(/\s/g, '').length === 16 ? '#6366f1' : 'rgba(255,255,255,0.1)',
+                          borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: cardNumber.replace(/\s/g, '').length === 16 ? '#6366f1' : 'rgba(255, 255, 255, 0.12)',
                           paddingHorizontal: 16, paddingVertical: 14, gap: 12
                         }}>
                           <Ionicons name="card-outline" size={20} color="#6366f1" />
@@ -438,8 +438,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                           <View style={{
                             flexDirection: 'row', alignItems: 'center',
                             backgroundColor: 'rgba(255,255,255,0.05)',
-                            borderRadius: 14, borderWidth: 1,
-                            borderColor: cardExpiry.length === 5 ? '#6366f1' : 'rgba(255,255,255,0.1)',
+                            borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
+                            borderColor: cardExpiry.length === 5 ? '#6366f1' : 'rgba(255, 255, 255, 0.12)',
                             paddingHorizontal: 14, paddingVertical: 14, gap: 10
                           }}>
                             <Ionicons name="calendar-outline" size={18} color="#6366f1" />
@@ -460,8 +460,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                           <View style={{
                             flexDirection: 'row', alignItems: 'center',
                             backgroundColor: 'rgba(255,255,255,0.05)',
-                            borderRadius: 14, borderWidth: 1,
-                            borderColor: cardCVV.length === 3 ? '#6366f1' : 'rgba(255,255,255,0.1)',
+                            borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
+                            borderColor: cardCVV.length === 3 ? '#6366f1' : 'rgba(255, 255, 255, 0.12)',
                             paddingHorizontal: 14, paddingVertical: 14, gap: 10
                           }}>
                             <Ionicons name="lock-closed-outline" size={18} color="#6366f1" />
@@ -522,8 +522,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                            padding: 10, 
                            backgroundColor: 'rgba(239,68,68,0.1)', 
                            borderRadius: 12,
-                           borderWidth: 1,
-                           borderColor: 'rgba(239,68,68,0.2)',
+                           borderWidth: StyleSheet.hairlineWidth,
+                           borderColor: 'rgba(239, 68, 68, 0.3)',
                            alignSelf: 'center'
                          }}
                          onPress={onCancel}
@@ -545,8 +545,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                      paddingHorizontal: 16,
                      backgroundColor: 'rgba(16,185,129,0.05)',
                      borderRadius: 14,
-                     borderWidth: 1,
-                     borderColor: 'rgba(16,185,129,0.15)',
+                     borderWidth: StyleSheet.hairlineWidth,
+                     borderColor: 'rgba(16, 185, 129, 0.22)',
                      flexDirection: 'row',
                      alignItems: 'center',
                      justifyContent: 'center',
@@ -596,8 +596,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                 padding: 20,
                 paddingTop: 12,
                 paddingBottom: Platform.OS === 'android' ? (insets.bottom > 0 ? insets.bottom + 12 : 24) : Math.max(insets.bottom + 10, 40),
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: 'rgba(255, 255, 255, 0.22)',
                 marginBottom: 60, // Consistent "more up" positioning
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 10 },
@@ -627,8 +627,8 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                     padding: 16,
                     borderRadius: 20,
                     backgroundColor: 'rgba(255,255,255,0.03)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.05)'
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: 'rgba(255, 255, 255, 0.12)'
                   }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                       <View>
@@ -639,7 +639,7 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                         <Text style={{ color: '#34d399', fontSize: 11, fontWeight: '800' }}>PAID</Text>
                       </View>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255, 255, 255, 0.12)' }}>
                       <Text style={{ color: '#94a3b8', fontSize: 14 }}>{item.method}</Text>
                       <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>{item.amount}</Text>
                     </View>

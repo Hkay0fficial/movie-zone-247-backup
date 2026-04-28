@@ -56,8 +56,8 @@ export const SettingsList: React.FC<SettingsListProps> = ({
       <View style={[styles.settingsList, {
         backgroundColor: 'rgba(30, 30, 45, 0.98)',
         borderRadius: 32,
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,

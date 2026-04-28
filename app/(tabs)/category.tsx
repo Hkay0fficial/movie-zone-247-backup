@@ -260,7 +260,6 @@ const DiscoverCard = React.memo(({
             style={[styles.iconCircleBtn, isSaved && { backgroundColor: 'rgba(91, 95, 239, 0.4)', borderColor: '#5B5FEF' }]}
             onPress={onSave}
           >
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
             <Ionicons name={isSaved ? "checkmark" : "add"} size={24} color="#fff" />
           </TouchableOpacity>
 
@@ -270,7 +269,6 @@ const DiscoverCard = React.memo(({
               style={[styles.iconCircleBtn, { marginLeft: 'auto' }]}
               onPress={onToggleMute}
             >
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
               <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="#fff" />
             </TouchableOpacity>
           )}
@@ -461,7 +459,6 @@ export default function CategoryScreen() {
           style={[styles.filterBtn, (selectedVJ || selectedGenre) && styles.filterBtnActive]}
           onPress={() => setShowFilterModal(true)}
         >
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
           <Ionicons 
             name={(selectedVJ || selectedGenre) ? "options" : "options-outline"} 
             size={22} 
@@ -733,8 +730,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: 'flex-start',
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(91, 95, 239, 0.4)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     overflow: 'hidden',
   },
   vjBadgeSheen: {
@@ -807,8 +804,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   headerControls: {
     position: 'absolute',
@@ -843,8 +840,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   filterBtnActive: {
     borderColor: '#5B5FEF',
@@ -946,7 +943,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   genreFilterText: {
@@ -988,7 +985,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
     minWidth: 70,
     alignItems: 'center',
@@ -1005,7 +1002,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
     flex: 1,
     minWidth: '45%',
@@ -1028,7 +1025,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     backgroundColor: 'rgba(91, 95, 239, 0.2)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#5B5FEF',
   },
   resetInlineText: {

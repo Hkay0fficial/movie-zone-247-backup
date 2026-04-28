@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   blur: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   secondaryAction: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   actionText: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366f111',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#6366f122',
   },
   textContainer: {

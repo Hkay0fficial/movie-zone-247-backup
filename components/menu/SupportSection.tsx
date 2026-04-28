@@ -68,7 +68,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
 }) => {
   if (showRatingPreview) {
     return (
-      <View style={{ backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', padding: 24, alignItems: 'center', overflow: 'hidden' }}>
+      <View style={{ backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(245,158,11,0.3)', padding: 24, alignItems: 'center', overflow: 'hidden' }}>
         <LinearGradient
           colors={["rgba(245, 158, 11, 0.05)", "transparent"]}
           style={StyleSheet.absoluteFill}
@@ -210,7 +210,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
       {/* Send Feedback Section */}
       <View style={{ width: '100%', marginBottom: 20 }}>
         <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#10b981', borderRadius: 28, opacity: 0.08, shadowColor: '#10b981', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 20 }} />
-        <View style={[styles.settingsList, { backgroundColor: 'rgba(30,30,45,0.98)', borderRadius: 28, borderWidth: 1.5, borderColor: 'rgba(16,185,129,0.18)', overflow: 'hidden', paddingVertical: 16, paddingHorizontal: 20 }]}>
+        <View style={[styles.settingsList, { backgroundColor: 'rgba(30,30,45,0.98)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(16,185,129,0.3)', overflow: 'hidden', paddingVertical: 16, paddingHorizontal: 20 }]}>
           <Text style={[styles.aboutLabel, { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 8 }]}>Send Feedback</Text>
           <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 16 }}>
             Have a suggestion or found a bug? Tell us about it!
@@ -227,8 +227,8 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
                   fontSize: 14,
                   minHeight: 100,
                   textAlignVertical: 'top',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.08)'
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(255,255,255,0.22)'
                 }}
                 placeholder="Type your feedback here..."
                 placeholderTextColor="rgba(255,255,255,0.3)"
@@ -369,7 +369,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
           {/* Email Tile */}
           <TouchableOpacity 
-            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(129,140,248,0.2)', padding: 16, justifyContent: 'space-between' }}
+            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(129,140,248,0.3)', padding: 16, justifyContent: 'space-between' }}
             activeOpacity={0.7}
             onPress={() => Linking.openURL('mailto:Sserunkumaharuna01@gmail.com')}
           >
@@ -384,7 +384,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
 
           {/* WhatsApp Tile */}
           <TouchableOpacity 
-            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(37,211,102,0.2)', padding: 16, justifyContent: 'space-between' }}
+            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(37,211,102,0.3)', padding: 16, justifyContent: 'space-between' }}
             activeOpacity={0.7}
             onPress={() => Linking.openURL('https://wa.me/256786966792')}
           >
@@ -399,7 +399,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
 
           {/* Website Tile */}
           <TouchableOpacity 
-            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', padding: 16, justifyContent: 'space-between' }}
+            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', padding: 16, justifyContent: 'space-between' }}
             activeOpacity={0.7}
             onPress={() => Linking.openURL('https://themoviezone247.com')}
           >
@@ -414,7 +414,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
 
           {/* Rate Tile */}
           <TouchableOpacity 
-            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', padding: 16, justifyContent: 'space-between' }}
+            style={{ width: '48%', height: 110, backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(245,158,11,0.3)', padding: 16, justifyContent: 'space-between' }}
             activeOpacity={0.7}
             onPress={() => {
               setSavedScrollPosition(currentScrollY);
@@ -435,7 +435,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
       {/* FAQ Section */}
       <View style={{ width: '100%', marginTop: 24, marginBottom: 20 }}>
         <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#818cf8', borderRadius: 28, opacity: 0.08, shadowColor: '#818cf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 20 }} />
-        <View style={[styles.settingsList, { backgroundColor: 'rgba(30,30,45,0.98)', borderRadius: 28, borderWidth: 1.5, borderColor: 'rgba(129,140,248,0.18)', overflow: 'hidden', paddingVertical: 8 }]}>
+        <View style={[styles.settingsList, { backgroundColor: 'rgba(30,30,45,0.98)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(129,140,248,0.3)', overflow: 'hidden', paddingVertical: 8 }]}>
           <TouchableOpacity 
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}
             activeOpacity={0.7}

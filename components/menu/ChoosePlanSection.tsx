@@ -162,7 +162,7 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
                     <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 18, fontWeight: '700' }}>{p.currency}</Text>
                   </View>
                   {isActivePlan && (
-                    <View style={{ marginTop: 12, backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                    <View style={{ marginTop: 12, backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(16, 185, 129, 0.3)' }}>
                       <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>CURRENT MEMBERSHIP</Text>
                     </View>
                   )}

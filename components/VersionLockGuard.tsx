@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     padding: 32,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 32,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.08)',
     width: '100%',
     maxWidth: 400,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(59, 130, 246, 0.2)',
   },
   title: {

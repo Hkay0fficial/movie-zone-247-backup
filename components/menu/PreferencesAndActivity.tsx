@@ -208,7 +208,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                     paddingVertical: 8,
                     borderRadius: 20,
                     backgroundColor: filterType === type ? '#5B5FEF' : 'rgba(255,255,255,0.05)',
-                    borderWidth: 1,
+                    borderWidth: StyleSheet.hairlineWidth,
                     borderColor: filterType === type ? '#5B5FEF' : 'rgba(255,255,255,0.1)'
                   }}
                 >

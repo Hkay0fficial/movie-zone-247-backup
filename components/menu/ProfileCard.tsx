@@ -96,8 +96,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       <View style={[styles.profileCard, { 
         marginBottom: 0, 
         backgroundColor: 'rgba(30, 30, 45, 0.98)', 
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
         shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, 
         shadowOpacity: 0.4, shadowRadius: 20, elevation: 12
       }]}>

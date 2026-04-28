@@ -271,8 +271,8 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: 'rgba(15,15,20,0.95)',
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     overflow: 'hidden',
     marginHorizontal: 16,
     maxHeight: SCREEN_H * 0.85, // Ensure it fits the screen
@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   title: {
     fontSize: 22,
@@ -330,8 +330,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 24, // Fully rounded (pill)
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -393,8 +393,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     padding: 16,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   benefitItem: {
     flexDirection: 'row',

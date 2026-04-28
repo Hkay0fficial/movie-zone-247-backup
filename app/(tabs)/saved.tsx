@@ -296,12 +296,14 @@ export default function SeriesScreen() {
     loading
   } = useMovies();
   // removed recordExternalDownload
-  const [activeBrowseFilter, setActiveBrowseFilter] =
-    useState<string>("Status");
+  const [activeBrowseFilter, setActiveBrowseFilter] = useState<string>("Status");
   const [query, setQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
+  const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
+  const [sSelectedYear, setSSelectedYear] = useState<string | null>(null);
+  const hasActiveFilters = sSelectedGenre !== null || sSelectedYear !== null;
   const [appLayout, setAppLayout] = useState<{ quickAccess: any[], sections: any[] }>({ quickAccess: [], sections: [] });
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -1980,7 +1982,7 @@ function SeriesPreviewModal({
                               flexDirection: 'row', 
                               alignItems: 'center', 
                               gap: 3,
-                              borderWidth: 1,
+                              borderWidth: StyleSheet.hairlineWidth,
                               borderColor: 'rgba(255,255,255,0.15)'
                             }}>
                               <Ionicons name="mic" size={10} color="#fff" />
@@ -2035,7 +2037,7 @@ function SeriesPreviewModal({
                               {episodeDownloads[ep.id] ? (
                                 <View style={{ 
                                   backgroundColor: 'rgba(16, 185, 129, 0.12)', 
-                                  borderWidth: 1, 
+                                  borderWidth: StyleSheet.hairlineWidth, 
                                   borderColor: 'rgba(16, 185, 129, 0.4)', 
                                   borderRadius: 8, 
                                   flex: 1, 
@@ -2054,7 +2056,7 @@ function SeriesPreviewModal({
                                   onPress={(e) => { e.stopPropagation(); handleDownload(ep); }}
                                   style={{ 
                                     backgroundColor: activeDownloads[ep.id].isPaused ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.12)', 
-                                    borderWidth: 1, 
+                                    borderWidth: StyleSheet.hairlineWidth, 
                                     borderColor: activeDownloads[ep.id].isPaused ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.4)', 
                                     borderRadius: 8, 
                                     flex: 1, 
@@ -2092,7 +2094,7 @@ function SeriesPreviewModal({
                                     justifyContent: 'center', 
                                     paddingVertical: 7, 
                                     borderRadius: 8,
-                                    borderWidth: 1,
+                                    borderWidth: StyleSheet.hairlineWidth,
                                     borderColor: 'rgba(52, 211, 153, 0.3)'
                                   }}
                                   onPress={(e) => { e.stopPropagation(); handleDownload(ep); }}
@@ -2877,7 +2879,7 @@ function SeriesPreviewModal({
                           paddingVertical: 4,
                           color: "#fff",
                           fontSize: 14,
-                          borderWidth: 1,
+                          borderWidth: StyleSheet.hairlineWidth,
                           borderColor: "rgba(255,255,255,0.1)",
                           maxHeight: 80,
                         }}
@@ -3064,8 +3066,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -3093,8 +3095,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   filterChipActive: {
     backgroundColor: "#5B5FEF",
@@ -3146,8 +3148,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.15)",
     marginBottom: 10,
   },
   poster: {
@@ -3180,8 +3182,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   vjBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
   lockBadge: {
@@ -3194,8 +3196,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.72)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   genreBadge: {
     position: "absolute",
@@ -3205,8 +3207,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   genreBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
   epBadgePremium: {
@@ -3219,8 +3221,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.7)",
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   epBadgeTextPremium: {
     color: "#FFC107",
@@ -3238,8 +3240,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 14,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
     alignSelf: 'flex-start',
   },
   rowTitle: {
@@ -3263,8 +3265,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 50,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.35)",
     gap: 4,
     overflow: "hidden",
     shadowColor: "#5B5FEF",
@@ -3304,8 +3306,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     zIndex: 1000,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   searchBackBtnSmall: {
     width: 44,
@@ -3315,8 +3317,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     backgroundColor: "rgba(10, 10, 15, 0.95)",
     borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   searchInnerCapsule: {
     flex: 1,
@@ -3326,8 +3328,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(10, 10, 15, 0.95)",
     borderRadius: 20,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   universalSearchInput: {
     flex: 1,
@@ -3374,8 +3376,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.15)",
   },
   previewTagText: {
     color: "#e2e8f0",
@@ -3426,8 +3428,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
   },
   previewActionLabel: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
   posterPlayBtn: {
@@ -3436,8 +3438,8 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.5)",
     overflow: "hidden",
   },
   relatedSection: {
@@ -3476,8 +3478,8 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderRadius: 32,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
     padding: 24,
     alignItems: "center",
     shadowColor: "#000",
@@ -3496,7 +3498,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(91, 95, 239, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(91, 95, 239, 0.3)",
   },
   downloadTitle: {
@@ -3525,7 +3527,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 20,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.3)",
   },
   downloadPrimaryBtnText: {
@@ -3541,7 +3543,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.12)",
   },
   downloadSecondaryBtnText: {
@@ -3582,7 +3584,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(91, 95, 239, 0.4)",
   },
   episodesCountText: {
@@ -3597,7 +3599,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.02)",
     marginBottom: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.6)",
   },
   episodeItemActive: {
@@ -3610,7 +3612,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     backgroundColor: "#1e1e2e",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.6)",
   },
   epThumb: {
@@ -3664,7 +3666,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 10,
     backgroundColor: "rgba(16, 185, 129, 0.15)",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(16, 185, 129, 0.3)",
   },
   epNowPlayingText: {
@@ -3753,7 +3755,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.1)",
   },
   playerPlayBtnLarge: {
@@ -3761,7 +3763,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
@@ -3771,7 +3773,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
@@ -3866,7 +3868,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
@@ -3885,7 +3887,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
     maxWidth: 280,
   },
@@ -3906,7 +3908,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
   },
   playerSpeedText: {
@@ -3922,7 +3924,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
     width: 140,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.1)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -3946,7 +3948,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 23,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.2)",
     backgroundColor: "rgba(10, 10, 15, 0.4)",
     shadowColor: "#5B5FEF",
@@ -3975,7 +3977,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 1,
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.2)",
   },
   epCountTextPremium: {
@@ -3988,7 +3990,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(91, 95, 239, 0.4)",
   },
   epTitleBadgeText: {
@@ -4014,8 +4016,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginBottom: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255, 255, 255, 0.3)",
     backgroundColor: "rgba(30, 30, 45, 0.4)",
   },
   epThumbWrapPremiumLarge: {
@@ -4024,8 +4026,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
     backgroundColor: "#1e1e2e",
-    borderWidth: 1.2,
-    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   epThumbPlayIconOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -4041,7 +4043,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 5,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.12)",
   },
   epDurationTextPremium: {
@@ -4096,7 +4098,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 50,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255, 255, 255, 0.15)",
     backgroundColor: "rgba(2, 2, 5, 0.85)",
     flexDirection: "row",

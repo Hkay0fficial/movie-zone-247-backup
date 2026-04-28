@@ -125,8 +125,8 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   content: {
     padding: 24,
@@ -192,8 +192,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 16,
     padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   currentDevice: {
     borderColor: 'rgba(16, 185, 129, 0.3)',
@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   removeText: {
     color: '#ef4444',

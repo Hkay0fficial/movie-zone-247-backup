@@ -278,7 +278,7 @@ export default function GlobalDownloadBar() {
 
 const styles = StyleSheet.create({
   outerContainer: { position: 'absolute', top: 0, left: 0, zIndex: 99999, shadowColor: '#5B5FEF', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 20 },
-  blurWrapper: { flex: 1, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)' },
+  blurWrapper: { flex: 1, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)' },
   circularContent: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   centerCircle: { width: COLLAPSED_SIZE - 4, height: COLLAPSED_SIZE - 4, borderRadius: (COLLAPSED_SIZE - 4) / 2, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   expandedWrapper: { flex: 1 },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   progressBar: { height: '100%', borderRadius: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   primaryBtn: { backgroundColor: '#5865F2', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 8 },
-  secondaryBtn: { backgroundColor: 'rgba(255,255,255,0.15)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  secondaryBtn: { backgroundColor: 'rgba(255,255,255,0.15)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)' },
   btnText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 },
   percentDetail: { color: '#fff', fontSize: 11, fontWeight: '900', opacity: 0.8 },
   progressTextSmall: { color: '#fff', fontSize: 14, fontWeight: '900' },

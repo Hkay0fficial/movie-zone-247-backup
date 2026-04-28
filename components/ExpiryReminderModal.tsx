@@ -109,8 +109,8 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   gradientBg: {
     ...StyleSheet.absoluteFillObject,
