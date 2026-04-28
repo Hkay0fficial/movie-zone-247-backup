@@ -6892,11 +6892,17 @@ export default function HomeScreen() {
       >
         {(allMoviesFree || eventMessage) && (
           <TouchableOpacity 
-            style={styles.eventBannerContainer}
+            style={[
+              styles.eventBannerContainer,
+              { 
+                backgroundColor: "rgba(10, 10, 15, 0.9)",
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: "rgba(255, 255, 255, 0.2)"
+              }
+            ]}
             activeOpacity={0.9}
             onPress={() => DeviceEventEmitter.emit("openNotifications", { highlightId: "event_n1" })}
           >
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
             <LinearGradient
               colors={allMoviesFree ? ["rgba(225, 29, 72, 0.4)", "rgba(10, 10, 15, 0.8)"] : ["rgba(91, 95, 239, 0.4)", "rgba(10, 10, 15, 0.8)"]}
               start={{ x: 0, y: 0 }}
