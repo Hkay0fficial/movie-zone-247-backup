@@ -84,6 +84,7 @@ interface MovieContextType {
   romanceMovies: Movie[];
   kDramaMovies: Movie[];
   vjCollection: Movie[];
+  bukoleya: Series[];
   allMovies: Movie[];
   allSeries: Series[];
   globalSettings: {
@@ -390,15 +391,14 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (h.category) watchedGenres.add(h.category);
     });
     
-    // Mixed recommendation list
-    let youMayAlsoLike = allContent
-      .filter(m => watchedGenres.has(m.category || ''))
-      .filter(m => !profile.watchHistory?.[m.id]) 
-      .slice(0, 15);
-
-    if (youMayAlsoLike.length < 5) {
-      youMayAlsoLike = [...trending].reverse().slice(0, 15);
+    // Mixed recommendation list - Populated with New Releases and Trending as requested
+    const mixedDiscovery = [];
+    const maxLenDiscovery = Math.max(newReleases.length, trending.length);
+    for (let i = 0; i < maxLenDiscovery; i++) {
+      if (newReleases[i]) mixedDiscovery.push(newReleases[i]);
+      if (trending[i]) mixedDiscovery.push(trending[i]);
     }
+    const youMayAlsoLike = Array.from(new Map(mixedDiscovery.map(item => [item.id, item])).values()).slice(0, 20);
 
     // Dedicated Series recommendation list (NO MOVIES)
     let youMayAlsoLikeSeries = filteredSeries
@@ -453,6 +453,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ...filteredSeries.filter(s => s.isFree),
     ].filter((item, index, self) => index === self.findIndex((t) => t.id === item.id)); // Dedup
     const kDramaMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('korean') || m.genre?.toLowerCase().includes('kdrama') || m.genre?.toLowerCase().includes('k-drama'))];
+    const bukoleya = [...filteredSeries]
+      .filter(s => 
+        s.genre?.toLowerCase().includes('korean') || 
+        s.genre?.toLowerCase().includes('kdrama') || 
+        s.genre?.toLowerCase().includes('k-drama') ||
+        (s.country || '').toLowerCase().includes('korea')
+      )
+      .sort((a, b) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
+      .slice(0, 15);
     const vjCollection: Movie[] = [];
 
     const allSeries = [...filteredSeries];
@@ -575,10 +584,14 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           sectionData = lastWatched;
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
-          sectionData = [...filteredMovies, ...filteredSeries].filter(m => m.genre?.toLowerCase().includes(val));
+          sectionData = [...filteredMovies, ...filteredSeries]
+            .filter(m => m.genre?.toLowerCase().includes(val))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         } else if (type === 'country') {
           const val = (section.filterValue || '').toLowerCase();
-          sectionData = [...filteredMovies, ...filteredSeries].filter(m => (m.country || '').toLowerCase() === val);
+          sectionData = [...filteredMovies, ...filteredSeries]
+            .filter(m => (m.country || '').toLowerCase() === val)
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         }
         
         // Final safety dedup for each row
@@ -588,6 +601,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         
         return { title: section.title, data: uniqueSectionData };
       }).filter(row => row.data.length > 0);
+
+      // Force "New Release" to the top if it exists
+      allRows.sort((a, b) => {
+        const aIsNew = a.title.toLowerCase().includes('new release');
+        const bIsNew = b.title.toLowerCase().includes('new release');
+        if (aIsNew && !bIsNew) return -1;
+        if (!aIsNew && bIsNew) return 1;
+        return 0;
+      });
 
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
@@ -645,6 +667,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       indianMovies,
       kDramaMovies,
       vjCollection,
+      bukoleya,
       heroMovies,
       allRows,
       allMovies: filteredMovies,
