@@ -137,9 +137,16 @@ export default function ModernVideoPlayer({
   
   const scrubbingTimeout = useRef<any>(null);
   const hidingTimeoutsRef = useRef<any[]>([]);
+  const restorationIntervalRef = useRef<any>(null);
 
   const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
     if (Platform.OS !== 'android') return;
+
+    // Clear any pending restoration interval immediately if we are changing state
+    if (restorationIntervalRef.current) {
+      clearInterval(restorationIntervalRef.current);
+      restorationIntervalRef.current = null;
+    }
 
     // Clear any pending hiding attempts immediately if we want to show it
     if (visibility === 'visible') {
@@ -168,7 +175,7 @@ export default function ModernVideoPlayer({
         await NavigationBar.setVisibilityAsync('visible').catch(() => {});
         
         // Transparency Lock Burst: Ensuring the OS doesn't force a solid background
-        const restorationInterval = setInterval(async () => {
+        restorationIntervalRef.current = setInterval(async () => {
           await NavigationBar.setVisibilityAsync('visible').catch(() => {});
           await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
           await NavigationBar.setButtonStyleAsync('light').catch(() => {});
@@ -177,7 +184,10 @@ export default function ModernVideoPlayer({
 
         // Kill the lock after 2 seconds
         setTimeout(() => {
-          clearInterval(restorationInterval);
+          if (restorationIntervalRef.current) {
+            clearInterval(restorationIntervalRef.current);
+            restorationIntervalRef.current = null;
+          }
         }, 2100);
 
         setTimeout(async () => {
@@ -238,6 +248,8 @@ export default function ModernVideoPlayer({
   const progressBarGlow = useRef(new Animated.Value(0)).current;
   const skipIntroOpacity = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef<number>(0);
+  const [showGestureGuidance, setShowGestureGuidance] = useState(false);
+  const guidanceOpacity = useRef(new Animated.Value(0)).current;
   // Animated values for smooth knob/fill (no React re-render during drag)
   const scrubAnimPct = useRef(new Animated.Value(0)).current;   // 0..1
   const volumeAnimPct = useRef(new Animated.Value(1)).current;  // 0..1
@@ -312,13 +324,34 @@ export default function ModernVideoPlayer({
       
       forceHide();
       hideInterval = setInterval(forceHide, 500);
-      setTimeout(() => clearInterval(hideInterval), 3000);
+      setTimeout(() => clearInterval(hideInterval), 5000);
     }
 
     return () => { 
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current); 
       if (hideInterval) clearInterval(hideInterval);
     };
+  }, [playerMode]);
+
+  useEffect(() => {
+    if (playerMode === 'full') {
+      const checkGuidance = async () => {
+        try {
+          const hasSeen = await AsyncStorage.getItem('has_seen_video_gestures');
+          if (!hasSeen) {
+            setShowGestureGuidance(true);
+            Animated.timing(guidanceOpacity, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+            setTimeout(() => {
+              Animated.timing(guidanceOpacity, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => {
+                setShowGestureGuidance(false);
+                AsyncStorage.setItem('has_seen_video_gestures', 'true');
+              });
+            }, 5000);
+          }
+        } catch (e) {}
+      };
+      checkGuidance();
+    }
   }, [playerMode]);
 
   // Handle hardware back button
@@ -794,6 +827,39 @@ export default function ModernVideoPlayer({
           </View>
         )}
 
+        {/* ── Gesture Guidance Overlay ── */}
+        {showGestureGuidance && (
+          <Animated.View 
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill, 
+              { 
+                flexDirection: 'row', 
+                backgroundColor: 'rgba(0,0,0,0.3)', 
+                zIndex: 90,
+                opacity: guidanceOpacity 
+              }
+            ]}
+          >
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20, borderRadius: 20 }}>
+                <Ionicons name="sunny-outline" size={40} color="#fff" />
+                <Ionicons name="chevron-up-outline" size={24} color="rgba(255,255,255,0.5)" style={{ marginTop: 10 }} />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginVertical: 8 }}>Brightness</Text>
+                <Ionicons name="chevron-down-outline" size={24} color="rgba(255,255,255,0.5)" />
+              </View>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20, borderRadius: 20 }}>
+                <Ionicons name="volume-high-outline" size={40} color="#fff" />
+                <Ionicons name="chevron-up-outline" size={24} color="rgba(255,255,255,0.5)" style={{ marginTop: 10 }} />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginVertical: 8 }}>Volume</Text>
+                <Ionicons name="chevron-down-outline" size={24} color="rgba(255,255,255,0.5)" />
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
 
           {/* Immersive Overlay Components */}
           {!isMini && (
@@ -1230,6 +1296,13 @@ export default function ModernVideoPlayer({
         animationType="fade"
         statusBarTranslucent
         onRequestClose={() => onClose()}
+        onShow={() => {
+          if (Platform.OS === 'android') {
+            NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+            NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+            StatusBar.setHidden(true);
+          }
+        }}
       >
         <View 
           style={[

@@ -363,11 +363,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     else if (sortBy === "oldest") allContent.sort((a, b) => (a.year || 0) - (b.year || 0));
     else if (sortBy === "rating") allContent.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
 
-    // New Releases = items uploaded in the last 30 days (movies + series), newest first
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const newReleases = allContent
-      .filter((m: any) => (m.createdAt || 0) >= thirtyDaysAgo)
+    // New Releases = newest items uploaded (movies + series), newest first
+    const newReleases = [...allContent]
       .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
     // ── Smart Discovery Rows ──
     const trending = [...allContent]
       .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))

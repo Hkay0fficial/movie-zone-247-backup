@@ -22,6 +22,7 @@ import { useMovies } from "@/app/context/MovieContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
+import EmptyState from "../../components/EmptyState";
 import { useUser } from "../context/UserContext";
 import { db, auth } from "../../constants/firebaseConfig";
 import { PreviewEpisodeSkeleton } from "../../components/SkeletonLoader";
@@ -2550,12 +2551,13 @@ function SeriesPreviewModal({
                   />
                 )}
                 ListEmptyComponent={
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
-                    <Ionicons name="search-outline" size={60} color="rgba(255,255,255,0.1)" />
-                    <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 16, marginTop: 15 }}>
-                      No series found for "{seriesQuery}"
-                    </Text>
-                  </View>
+                  <EmptyState
+                    title="No series found"
+                    description={`We couldn't find any series matching "${seriesQuery}". Try a different name or browse by category.`}
+                    icon="search-outline"
+                    actionLabel="Clear Search"
+                    onAction={() => setSeriesQuery("")}
+                  />
                 }
               />
             </View>
@@ -3128,12 +3130,13 @@ function SeriesGridModal({
               <SeriesCard item={item} onPress={() => onSelect(item)} />
             )}
             ListEmptyComponent={
-              <View style={{ alignItems: "center", marginTop: 100 }}>
-                <Ionicons name="search-outline" size={60} color="#1e293b" />
-                <Text style={{ color: "#475569", marginTop: 12 }}>
-                  No matches found
-                </Text>
-              </View>
+              <EmptyState
+                title="No matches found"
+                description="We couldn't find any content matching your filters. Try adjusting them to see more."
+                icon="filter-outline"
+                actionLabel="Back to Series"
+                onAction={onClose}
+              />
             }
           />
         </SafeAreaView>

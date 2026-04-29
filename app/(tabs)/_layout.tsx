@@ -46,6 +46,7 @@ import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
+import EmptyState from "../../components/EmptyState";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
@@ -1248,21 +1249,13 @@ function SearchOverlay({
                         );
                       }}
                       ListEmptyComponent={
-                        <View style={styles.emptyResults}>
-                          <Text style={styles.emptyText}>
-                            No matches found for {(() => {
-                              const parts = [];
-                              if (query) parts.push(`"${query}"`);
-                              if (selectedType) parts.push(selectedType === 'Movie' ? "Movies" : selectedType);
-                              if (selectedGenre) parts.push(selectedGenre);
-                              if (selectedYear) parts.push(selectedYear);
-                              if (selectedVJ) parts.push(selectedVJ);
-                              if (selectedSeason) parts.push(`Season ${selectedSeason}`);
-
-                              return parts.length > 0 ? parts.join(" in ") : "these filters";
-                            })()}
-                          </Text>
-                        </View>
+                        <EmptyState
+                          title="No matches found"
+                          description={`We couldn't find any content matching "${query || 'your filters'}". Try adjusting your search or filters.`}
+                          icon="search-outline"
+                          actionLabel="Clear Filters"
+                          onAction={() => clearFilters()}
+                        />
                       }
                     />
                   </View>
@@ -2281,28 +2274,12 @@ function CustomTabBar() {
       {!searchVisible && !isDetailStackVisible && playerMode !== 'full' && (
         <View style={[
           styles.topBarWrapper,
-          (active("/") || active("/menu")) ? {
-            top: 0,
+          {
+            top: Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top) : 0,
             left: 0,
             right: 0,
-            paddingTop: active("/")
-              ? (homeScrollY < (HERO_H - 120)
-                ? insets.top
-                : Math.max(
-                  insets.top - 1,
-                  insets.top - (homeScrollY - (HERO_H - 120))
-                ))
-              : (menuScrollY < 50
-                ? insets.top
-                : Math.max(
-                  insets.top - 1,
-                  insets.top - (menuScrollY - 50)
-                )),
+            paddingTop: active("/") || active("/menu") ? 0 : 4,
             paddingHorizontal: 16,
-          } : {
-            top: Platform.OS === "ios" ? 44 : (StatusBar.currentHeight ?? 0) + 4,
-            left: 4,
-            right: 8,
           }
         ]}>
           {(active("/") || active("/menu")) && (
@@ -2368,31 +2345,31 @@ function CustomTabBar() {
                       backgroundColor: "transparent",
                     }}
                   >
-                    <View style={{ alignItems: 'flex-start' }}>
-                      {/* Main Abbreviation */}
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                        <Text style={[styles.navLogoTitle, { fontSize: 26, letterSpacing: -0.5, color: '#fff' }]}>
+                    <View style={{ position: 'relative' }}>
+                      {/* Main Logo Text */}
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                        <Text style={[styles.navLogoTitle, { fontSize: 22, color: '#fff' }]}>
                           TMZ
                         </Text>
-                        <Text style={[styles.navLogoSub, { fontSize: 10, marginBottom: 4, marginLeft: 4, color: '#818cf8', fontWeight: '900' }]}>
+                        <Text style={[styles.navLogoSub, { fontSize: 10, color: '#818cf8', marginLeft: 4, fontWeight: '900' }]}>
                           247
                         </Text>
                       </View>
 
-                      {/* Mirror Reflection */}
-                      <View style={{ marginTop: -11, opacity: 0.3, transform: [{ scaleY: -1 }] }} pointerEvents="none">
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                          <Text style={[styles.navLogoTitle, { fontSize: 26, letterSpacing: -0.5, color: '#fff' }]}>
+                      {/* Mirror Reflection Effect */}
+                      <View style={{ marginTop: -8, opacity: 0.3, transform: [{ scaleY: -0.8 }] }}>
+                        <LinearGradient
+                          colors={['rgba(255,255,255,0.4)', 'transparent']}
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                          <Text style={[styles.navLogoTitle, { fontSize: 22, color: '#fff' }]}>
                             TMZ
                           </Text>
-                          <Text style={[styles.navLogoSub, { fontSize: 10, marginBottom: 4, marginLeft: 4, color: '#818cf8', fontWeight: '900' }]}>
+                          <Text style={[styles.navLogoSub, { fontSize: 10, color: '#818cf8', marginLeft: 4, fontWeight: '900' }]}>
                             247
                           </Text>
                         </View>
-                        <LinearGradient
-                          colors={['rgba(15, 15, 25, 0)', 'rgba(15, 15, 25, 0.95)']}
-                          style={StyleSheet.absoluteFill}
-                        />
                       </View>
                     </View>
                   </View>
@@ -3277,7 +3254,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(255,255,255,0.22)", // Sharper thin line
+    borderBottomColor: "rgba(255,255,255,0.35)", // Slightly brighter bottom edge for separation
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
