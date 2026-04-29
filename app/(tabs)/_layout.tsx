@@ -2368,21 +2368,31 @@ function CustomTabBar() {
                       backgroundColor: "transparent",
                     }}
                   >
-                    <View>
-                      <Text style={styles.navLogoTitle}>
-                        THE MOVIE <Text style={{ color: '#818cf8' }}>ZONE</Text>
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-                        <LinearGradient
-                          colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{ flex: 1, height: 1, marginRight: 6 }}
-                        />
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <ClockAnimation size={10} color="#ffffff" />
-                          <Text style={styles.navLogoSub}>24 / 7</Text>
+                    <View style={{ alignItems: 'flex-start' }}>
+                      {/* Main Abbreviation */}
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                        <Text style={[styles.navLogoTitle, { fontSize: 26, letterSpacing: -0.5, color: '#fff' }]}>
+                          TMZ
+                        </Text>
+                        <Text style={[styles.navLogoSub, { fontSize: 10, marginBottom: 4, marginLeft: 4, color: '#818cf8', fontWeight: '900' }]}>
+                          247
+                        </Text>
+                      </View>
+
+                      {/* Mirror Reflection */}
+                      <View style={{ marginTop: -11, opacity: 0.3, transform: [{ scaleY: -1 }] }} pointerEvents="none">
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                          <Text style={[styles.navLogoTitle, { fontSize: 26, letterSpacing: -0.5, color: '#fff' }]}>
+                            TMZ
+                          </Text>
+                          <Text style={[styles.navLogoSub, { fontSize: 10, marginBottom: 4, marginLeft: 4, color: '#818cf8', fontWeight: '900' }]}>
+                            247
+                          </Text>
                         </View>
+                        <LinearGradient
+                          colors={['rgba(15, 15, 25, 0)', 'rgba(15, 15, 25, 0.95)']}
+                          style={StyleSheet.absoluteFill}
+                        />
                       </View>
                     </View>
                   </View>
