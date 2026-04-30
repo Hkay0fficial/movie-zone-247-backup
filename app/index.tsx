@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, Image, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../constants/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import Animated, { 
@@ -14,35 +15,38 @@ import Animated, {
   withTiming, 
   withSequence,
   withRepeat,
-  interpolate,
-  Easing
+  FadeIn,
 } from 'react-native-reanimated';
 import ClockAnimation from '../components/ClockAnimation';
-import CalculatingText from '../components/CalculatingText';
+import OnboardingFlow from '../components/OnboardingFlow';
 
 const { width } = Dimensions.get('window');
 
 export default function Index() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
   // Animation values
   const containerFade = useSharedValue(0);
   const rotation = useSharedValue(0);
   const contentScale = useSharedValue(0.9);
-  const glowAnim = useSharedValue(0); // For the pulsing ring
+  const glowAnim = useSharedValue(0);
 
   useEffect(() => {
-    // 1. Entrance Fade & Scale
+    checkOnboarding();
+    
+    // Entrance Animations
     containerFade.value = withTiming(1, { duration: 1000 });
     contentScale.value = withSpring(1, { damping: 12 });
 
-    // 2. Flip Sequence (starts after fade-in)
     rotation.value = withDelay(
-      1500, // Wait 1.5s as a logo
+      1500,
       withSpring(180, { damping: 15, stiffness: 60 })
     );
     
-    // 3. Pulsing Glow (infinite)
     glowAnim.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 1200 }),
@@ -51,25 +55,59 @@ export default function Index() {
       -1,
       true
     );
+  }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const hasSeen = await AsyncStorage.getItem('hasSeenOnboarding');
+      setShowOnboarding(hasSeen !== 'true');
+    } catch (e) {
+      setShowOnboarding(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showOnboarding === null) return;
 
     // Authentication & Navigation
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // Navigate after the animations settle
+      // If we have a deep link intent (movieId), shorten the splash delay
+      const hasIntent = params.movieId || params.autoplay;
+      const delay = hasIntent ? 1500 : 5000;
+
       const timer = setTimeout(() => {
-        if (user) {
-          router.replace('/(tabs)');
+        if (showOnboarding) {
+          setIsReady(true);
         } else {
-          router.replace('/login');
+          if (user) {
+            router.replace({
+              pathname: '/(tabs)',
+              params: params // Pass through notification params
+            });
+          } else {
+            router.replace('/login');
+          }
         }
-      }, 5000); // Increased to 5s to allow for full flip & calculation
+      }, delay);
       
       return () => clearTimeout(timer);
     });
     
     return () => unsubscribe();
-  }, []);
+  }, [showOnboarding, params]);
 
-  // Flipping Styles
+  const handleOnboardingComplete = async () => {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+    
+    // After onboarding, check auth and navigate
+    if (auth.currentUser) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/login');
+    }
+  };
+
   const frontStyle = useAnimatedStyle(() => {
     const isFrontVisible = rotation.value < 90;
     return {
@@ -104,11 +142,13 @@ export default function Index() {
     opacity: glowAnim.value,
   }));
 
+  if (showOnboarding && isReady) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
-      {/* Signature App Background */}
       <LinearGradient
         colors={['#0a0a0f', '#1a1a2e', '#0a0a0f']}
         style={StyleSheet.absoluteFill}
@@ -117,8 +157,6 @@ export default function Index() {
       <View style={styles.center}>
         <Animated.View style={[styles.mainContainer, containerStyle]}>
           <View style={styles.flipWrapper}>
-            
-            {/* FRONT SIDE: LOGO IMAGE */}
             <Animated.View style={[styles.card, frontStyle]}>
               <Animated.View style={[styles.glowRing, glowStyle]} />
               <View style={styles.logoCircle}>
@@ -130,7 +168,6 @@ export default function Index() {
               </View>
             </Animated.View>
 
-            {/* BACK SIDE: BRAND TEXT */}
             <Animated.View style={[styles.card, backStyle]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 }}>
                 <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -144,7 +181,6 @@ export default function Index() {
                   </View>
                 </View>
 
-                {/* BRAND TEXT */}
                 <View style={[styles.contentWrap, { alignSelf: 'center', marginLeft: 15 }]}>
                   <Text style={styles.brandTitle}>
                     THE MOVIE <Text style={{ color: '#818cf8', textShadowColor: 'rgba(129, 140, 248, 0.4)' }}>ZONE</Text>
@@ -164,8 +200,15 @@ export default function Index() {
                   </View>
                 </View>
               </View>
+              
+              {/* Intent Indicator */}
+              {(params.movieId || params.autoplay) && (
+                <Animated.View entering={FadeIn.delay(1000)} style={styles.intentLoader}>
+                  <ActivityIndicator color="#818cf8" size="small" />
+                  <Text style={styles.intentText}>Opening your movie...</Text>
+                </Animated.View>
+              )}
             </Animated.View>
-
           </View>
         </Animated.View>
       </View>
@@ -212,7 +255,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   underline: {
-    /* Shadows removed as they break transparency in React Native LinearGradients */
   },
   subtitle: {
     color: '#ffffff',
@@ -228,7 +270,6 @@ const styles = StyleSheet.create({
   contentWrap: {
     alignItems: 'flex-start',
   },
-  // Logo Styles
   smallLogoCircle: {
     width: 65,
     height: 65,
@@ -248,7 +289,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 90,
     overflow: 'hidden',
-    backgroundColor: '#0a0a0f', // Match background to hide edges if any
+    backgroundColor: '#0a0a0f',
     shadowColor: '#1a5fa3',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.8,
@@ -288,6 +329,24 @@ const styles = StyleSheet.create({
   logoImg: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.27 }], // Zoom in to exactly 1.27 as requested
+    transform: [{ scale: 1.27 }],
   },
+  intentLoader: {
+    marginTop: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(129, 140, 248, 0.3)',
+  },
+  intentText: {
+    color: '#818cf8',
+    fontSize: 14,
+    fontWeight: '700',
+  }
 });
+

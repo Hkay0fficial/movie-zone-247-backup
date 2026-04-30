@@ -89,6 +89,7 @@ import {
 } from "../../components/GridComponents";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useMovies } from "@/app/context/MovieContext";
+import { FilterChips } from "../../components/FilterChips";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "../context/UserContext";
@@ -107,6 +108,7 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { db, auth } from "../../constants/firebaseConfig";
+import { PreviewEpisodeSkeleton } from "../../components/SkeletonLoader";
 import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { formatRelativeTime } from "../../utils/TimeUtils";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
@@ -3913,10 +3915,11 @@ export const MoviePreviewContent = memo(({
                 paddingTop: 0,
                 paddingBottom: 8,
                 zIndex: 100,
+                backgroundColor: "rgba(10, 10, 15, 0.95)",
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: "rgba(91, 95, 239, 0.5)",
               }}
             >
-              <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15, 15, 25, 0.95)" }]} />
               <Text
                 style={{
                   color: "rgba(255,255,255,0.4)",
@@ -3950,19 +3953,6 @@ export const MoviePreviewContent = memo(({
                 </Text>
               </View>
 
-              {/* Seamless Fade Gradient where cards scroll underneath */}
-              <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
-                style={{
-                  position: "absolute",
-                  bottom: -12,
-                  left: 0,
-                  right: 0,
-                  height: 12,
-                  zIndex: -1,
-                }}
-                pointerEvents="none"
-              />
             </View>
           )}
 
@@ -3991,23 +3981,13 @@ export const MoviePreviewContent = memo(({
                     outputRange: [0, 1],
                     extrapolate: "clamp",
                   }),
+                  backgroundColor: "rgba(10, 10, 15, 0.95)",
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: "rgba(91, 95, 239, 0.5)",
                 },
               ]}
               pointerEvents="none"
-            >
-              <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15, 15, 25, 0.95)" }]} />
-              <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
-                style={{
-                  position: "absolute",
-                  bottom: -12,
-                  left: 0,
-                  right: 0,
-                  height: 12,
-                }}
-              />
-            </Animated.View>
+            />
             
             {/* Mute Toggle on Left, aligned with Search on Right */}
             <TouchableOpacity
@@ -4908,9 +4888,8 @@ export const MoviePreviewContent = memo(({
                 )}
                   </>
                 ) : (
-                  <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#5B5FEF" />
-                    <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 10 }}>Preparing content...</Text>
+                  <View style={{ paddingTop: 24 }}>
+                    <PreviewEpisodeSkeleton />
                   </View>
                 )}
                 </View>
@@ -6386,7 +6365,23 @@ const HeroBanner = memo(({
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { allRows: liveRows, allSeries: liveSeries, heroMovies: liveHeroMovies, liveMovies, appUpdateConfig, myList, loading } = useMovies();
+  const { 
+    allRows: liveRows, 
+    allSeries: liveSeries, 
+    heroMovies: liveHeroMovies, 
+    liveMovies, 
+    appUpdateConfig, 
+    myList, 
+    loading,
+    selectedVJ, setSelectedVJ,
+    selectedGenre, setSelectedGenre,
+    selectedType, setSelectedType,
+    selectedYear, setSelectedYear,
+    minRating, setMinRating,
+    sortBy, setSortBy,
+    searchQuery, setSearchQuery,
+    clearFilters
+  } = useMovies();
   const allPool = useMemo(() => {
     const pool: (Movie | Series)[] = [];
     const seen = new Set<string>();
@@ -6947,6 +6942,26 @@ export default function HomeScreen() {
           paused={!!playingNow || !isFocused}
           isFocused={isFocused}
           appState={appState}
+        />
+        <FilterChips 
+          filters={{
+            vj: selectedVJ,
+            genre: selectedGenre,
+            type: selectedType,
+            year: selectedYear,
+            rating: minRating,
+            search: searchQuery
+          }}
+          onClear={(key) => {
+            if (key === 'vj') setSelectedVJ(null);
+            if (key === 'genre') setSelectedGenre(null);
+            if (key === 'type') setSelectedType(null);
+            if (key === 'year') setSelectedYear(null);
+            if (key === 'rating') setMinRating(0);
+            if (key === 'search') setSearchQuery("");
+          }}
+          onClearAll={clearFilters}
+          containerStyle={{ marginBottom: 15 }}
         />
 
         {ROWS.map((row) => (

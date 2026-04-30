@@ -100,6 +100,8 @@ function SystemUIGuard() {
   return null;
 }
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
@@ -159,33 +161,35 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <UserProvider>
-      <SubscriptionProvider>
-        <MovieProvider>
-          <DownloadProvider>
-            <View style={{ flex: 1 }}>
-              <Stack screenOptions={{ gestureEnabled: false }}>
-                <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <InAppNotification 
-                notification={activeNotification} 
-                onClose={() => setActiveNotification(null)} 
-              />
+    <SafeAreaProvider>
+      <UserProvider>
+        <SubscriptionProvider>
+          <MovieProvider>
+            <DownloadProvider>
+              <View style={{ flex: 1 }}>
+                <Stack screenOptions={{ gestureEnabled: false }}>
+                  <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="signup" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                </Stack>
+                <InAppNotification 
+                  notification={activeNotification} 
+                  onClose={() => setActiveNotification(null)} 
+                />
 
-              <ModernVideoPlayerWrapper />
-              <SystemUIGuard />
+                <ModernVideoPlayerWrapper />
+                <SystemUIGuard />
 
-              <VersionLockGuard />
-              <OTAUpdateGuard />
-            </View>
-            <StatusBar style="auto" />
-          </DownloadProvider>
-        </MovieProvider>
-      </SubscriptionProvider>
-    </UserProvider>
+                <VersionLockGuard />
+                <OTAUpdateGuard />
+              </View>
+              <StatusBar style="light" translucent backgroundColor="transparent" />
+            </DownloadProvider>
+          </MovieProvider>
+        </SubscriptionProvider>
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }

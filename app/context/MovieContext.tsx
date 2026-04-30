@@ -84,6 +84,7 @@ interface MovieContextType {
   romanceMovies: Movie[];
   kDramaMovies: Movie[];
   vjCollection: Movie[];
+  bukoleya: Series[];
   allMovies: Movie[];
   allSeries: Series[];
   globalSettings: {
@@ -91,6 +92,24 @@ interface MovieContextType {
     eventMessage: string;
     expiresAt: string;
   };
+  
+  // ─── Global Filter State ───
+  selectedVJ: string | null;
+  setSelectedVJ: (vj: string | null) => void;
+  selectedGenre: string | null;
+  setSelectedGenre: (genre: string | null) => void;
+  selectedType: "Movie" | "Series" | "Mini Series" | null;
+  setSelectedType: (type: "Movie" | "Series" | "Mini Series" | null) => void;
+  selectedYear: string | null;
+  setSelectedYear: (year: string | null) => void;
+  sortBy: "newest" | "oldest" | "rating" | null;
+  setSortBy: (sort: "newest" | "oldest" | "rating" | null) => void;
+  minRating: number;
+  setMinRating: (rating: number) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  clearFilters: () => void;
+  resetFilters: () => void;
 }
 
 const MovieContext = createContext<MovieContextType | undefined>(undefined);
@@ -111,6 +130,29 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     forceUpdate: false,
     isUpdateAvailable: false
   });
+
+  // ─── Global Filter State ───
+  const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<"Movie" | "Series" | "Mini Series" | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rating" | null>(null);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const clearFilters = () => {
+    setSelectedVJ(null);
+    setSelectedGenre(null);
+    setSelectedType(null);
+    setSelectedYear(null);
+    setSortBy(null);
+    setMinRating(0);
+    setSearchQuery('');
+  };
+
+  const resetFilters = () => {
+    clearFilters();
+  };
 
   useEffect(() => {
     // Listen to Firebase 'movies' collection in real-time
@@ -274,13 +316,57 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ? liveSeries.map(s => ({ ...s, isFree: true }))
       : liveSeries;
 
-    const allContent = [...actualLiveMovies, ...actualLiveSeries];
+    // ── Apply Global Filters ──
+    const applyGlobalFilters = (list: any[]) => {
+      let res = [...list];
+      if (selectedVJ) {
+        const vjQ = selectedVJ.toLowerCase().trim();
+        res = res.filter(m => (m.vj || "").toLowerCase().includes(vjQ));
+      }
+      if (selectedGenre) {
+        res = res.filter(m => (m.genre || "").toLowerCase().includes(selectedGenre.toLowerCase()));
+      }
+      if (selectedYear) {
+        res = res.filter(m => String(m.year) === selectedYear);
+      }
+      if (minRating > 0) {
+        res = res.filter(m => parseFloat(m.rating || "0") >= minRating);
+      }
+      if (searchQuery) {
+        const sQ = searchQuery.toLowerCase().trim();
+        res = res.filter(m => 
+          m.title.toLowerCase().includes(sQ) || 
+          (m.genre || "").toLowerCase().includes(sQ) || 
+          (m.vj || "").toLowerCase().includes(sQ)
+        );
+      }
+      return res;
+    };
 
-    // New Releases = items uploaded in the last 30 days (movies + series), newest first
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const newReleases = allContent
-      .filter((m: any) => (m.createdAt || 0) >= thirtyDaysAgo)
+    let filteredMovies = applyGlobalFilters(actualLiveMovies);
+    let filteredSeries = applyGlobalFilters(actualLiveSeries);
+
+    // Type filter specifically excludes categories
+    if (selectedType === "Movie") {
+      filteredSeries = [];
+    } else if (selectedType === "Series") {
+      filteredMovies = [];
+      filteredSeries = filteredSeries.filter(s => !(s as any).isMiniSeries);
+    } else if (selectedType === "Mini Series") {
+      filteredMovies = [];
+      filteredSeries = filteredSeries.filter(s => !!(s as any).isMiniSeries);
+    }
+
+    let allContent = [...filteredMovies, ...filteredSeries];
+
+    if (sortBy === "newest") allContent.sort((a, b) => (b.year || 0) - (a.year || 0));
+    else if (sortBy === "oldest") allContent.sort((a, b) => (a.year || 0) - (b.year || 0));
+    else if (sortBy === "rating") allContent.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
+
+    // New Releases = newest items uploaded (movies + series), newest first
+    const newReleases = [...allContent]
       .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
     // ── Smart Discovery Rows ──
     const trending = [...allContent]
       .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
@@ -295,7 +381,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       .slice(0, 15);
 
     // Latest = full movie catalog (movies only), sorted newest-first
-    const latest = [...actualLiveMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    const latest = [...filteredMovies].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // ── Personalized Rows ──
     // You May Also Like: Suggest based on genres in watch history
@@ -304,36 +390,35 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (h.category) watchedGenres.add(h.category);
     });
     
-    // Mixed recommendation list
-    let youMayAlsoLike = allContent
-      .filter(m => watchedGenres.has(m.category || ''))
-      .filter(m => !profile.watchHistory?.[m.id]) 
-      .slice(0, 15);
-
-    if (youMayAlsoLike.length < 5) {
-      youMayAlsoLike = [...trending].reverse().slice(0, 15);
+    // Mixed recommendation list - Populated with New Releases and Trending as requested
+    const mixedDiscovery = [];
+    const maxLenDiscovery = Math.max(newReleases.length, trending.length);
+    for (let i = 0; i < maxLenDiscovery; i++) {
+      if (newReleases[i]) mixedDiscovery.push(newReleases[i]);
+      if (trending[i]) mixedDiscovery.push(trending[i]);
     }
+    const youMayAlsoLike = Array.from(new Map(mixedDiscovery.map(item => [item.id, item])).values()).slice(0, 20);
 
     // Dedicated Series recommendation list (NO MOVIES)
-    let youMayAlsoLikeSeries = actualLiveSeries
+    let youMayAlsoLikeSeries = filteredSeries
       .filter(s => watchedGenres.has(s.genre || ''))
       .filter(s => !profile.watchHistory?.[s.id])
       .slice(0, 15);
     
     if (youMayAlsoLikeSeries.length < 5) {
-      youMayAlsoLikeSeries = actualLiveSeries
+      youMayAlsoLikeSeries = filteredSeries
         .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
         .slice(0, 15);
     }
 
     // Dedicated Movie recommendation list (NO SERIES)
-    let youMayAlsoLikeMovies = actualLiveMovies
+    let youMayAlsoLikeMovies = filteredMovies
       .filter(m => watchedGenres.has(m.genre || ''))
       .filter(m => !profile.watchHistory?.[m.id])
       .slice(0, 15);
     
     if (youMayAlsoLikeMovies.length < 5) {
-      youMayAlsoLikeMovies = actualLiveMovies
+      youMayAlsoLikeMovies = filteredMovies
         .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
         .slice(0, 15);
     }
@@ -356,31 +441,40 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const lastWatched = continueWatching.length > 0 ? [continueWatching[0]] : [];
     
     // Auto category filter
-    const actionMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('action'))];
-    const scifiMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('sci-fi'))];
-    const romanceMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('romance'))];
-    const horrorMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('horror'))];
-    const dramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('drama'))];
-    const indianMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('indian'))];
+    const actionMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('action'))];
+    const scifiMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('sci-fi'))];
+    const romanceMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('romance'))];
+    const horrorMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('horror'))];
+    const dramaMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('drama'))];
+    const indianMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('indian'))];
     const freeMovies = [
-      ...actualLiveMovies.filter(m => m.isFree),
-      ...actualLiveSeries.filter(s => s.isFree),
+      ...filteredMovies.filter(m => m.isFree),
+      ...filteredSeries.filter(s => s.isFree),
     ].filter((item, index, self) => index === self.findIndex((t) => t.id === item.id)); // Dedup
-    const kDramaMovies = [...actualLiveMovies.filter(m => m.genre?.toLowerCase().includes('korean') || m.genre?.toLowerCase().includes('kdrama') || m.genre?.toLowerCase().includes('k-drama'))];
+    const kDramaMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('korean') || m.genre?.toLowerCase().includes('kdrama') || m.genre?.toLowerCase().includes('k-drama'))];
+    const bukoleya = [...filteredSeries]
+      .filter(s => 
+        s.genre?.toLowerCase().includes('korean') || 
+        s.genre?.toLowerCase().includes('kdrama') || 
+        s.genre?.toLowerCase().includes('k-drama') ||
+        (s.country || '').toLowerCase().includes('korea')
+      )
+      .sort((a, b) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
+      .slice(0, 15);
     const vjCollection: Movie[] = [];
 
-    const allSeries = [...actualLiveSeries];
-    const newSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 15);
-    const trendingSeries = [...actualLiveSeries]
+    const allSeries = [...filteredSeries];
+    const newSeries = [...filteredSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 15);
+    const trendingSeries = [...filteredSeries]
       .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
       .slice(0, 15);
-    const mostViewedSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 15);
-    const mostDownloadedSeries = [...actualLiveSeries].sort((a: any, b: any) => (b.downloads || 0) - (a.downloads || 0)).slice(0, 15);
+    const mostViewedSeries = [...filteredSeries].sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 15);
+    const mostDownloadedSeries = [...filteredSeries].sort((a: any, b: any) => (b.downloads || 0) - (a.downloads || 0)).slice(0, 15);
 
     // Build live hero items — only content explicitly marked as hero by admin
     const adminHeroMovies: HeroMovie[] = [
       // Hero-marked movies
-      ...liveMovies
+      ...filteredMovies
         .filter(m => m.isHero)
         .map(m => ({
           title: m.title,
@@ -402,7 +496,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           type: 'Movie'
         })),
       // Hero-marked series
-      ...liveSeries
+      ...filteredSeries
         .filter(s => s.isHero)
         .map(s => ({
           title: s.title,
@@ -489,10 +583,14 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           sectionData = lastWatched;
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
-          sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => m.genre?.toLowerCase().includes(val));
+          sectionData = [...filteredMovies, ...filteredSeries]
+            .filter(m => m.genre?.toLowerCase().includes(val))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         } else if (type === 'country') {
           const val = (section.filterValue || '').toLowerCase();
-          sectionData = [...actualLiveMovies, ...actualLiveSeries].filter(m => (m.country || '').toLowerCase() === val);
+          sectionData = [...filteredMovies, ...filteredSeries]
+            .filter(m => (m.country || '').toLowerCase() === val)
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         }
         
         // Final safety dedup for each row
@@ -502,6 +600,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         
         return { title: section.title, data: uniqueSectionData };
       }).filter(row => row.data.length > 0);
+
+      // Force "New Release" to the top if it exists
+      allRows.sort((a, b) => {
+        const aIsNew = a.title.toLowerCase().includes('new release');
+        const bIsNew = b.title.toLowerCase().includes('new release');
+        if (aIsNew && !bIsNew) return -1;
+        if (!aIsNew && bIsNew) return 1;
+        return 0;
+      });
 
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
@@ -559,18 +666,29 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       indianMovies,
       kDramaMovies,
       vjCollection,
+      bukoleya,
       heroMovies,
       allRows,
-      allMovies: actualLiveMovies,
-      allSeries: actualLiveSeries,
+      allMovies: filteredMovies,
+      allSeries: filteredSeries,
       newSeries,
       trendingSeries,
       mostViewedSeries,
       mostDownloadedSeries,
       globalSettings,
-      appUpdateConfig
+      appUpdateConfig,
+      selectedVJ, setSelectedVJ,
+      selectedGenre, setSelectedGenre,
+      selectedType, setSelectedType,
+      selectedYear, setSelectedYear,
+      sortBy, setSortBy,
+      minRating, setMinRating,
+      searchQuery, setSearchQuery,
+      clearFilters,
+      resetFilters
     };
-  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig, myFavorites, profile]);
+  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig, myFavorites, profile,
+      selectedVJ, selectedGenre, selectedType, selectedYear, sortBy, minRating, searchQuery]);
 
   return (
     <MovieContext.Provider value={contextValue}>

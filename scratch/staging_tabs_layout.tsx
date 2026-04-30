@@ -41,12 +41,10 @@ import {
 } from "@/constants/movieData";
 import { GridModal, GridCard } from "../../components/GridComponents";
 import { useMovies } from "@/app/context/MovieContext";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
-import EmptyState from "../../components/EmptyState";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
@@ -66,35 +64,35 @@ const TABS: {
   iconActive: IoniconsName;
   label: string;
 }[] = [
-    {
-      name: "index",
-      route: "/(tabs)",
-      icon: "home-outline",
-      iconActive: "home",
-      label: "Home",
-    },
-    {
-      name: "saved",
-      route: "/(tabs)/saved",
-      icon: "tv-outline",
-      iconActive: "tv",
-      label: "Series",
-    },
-    {
-      name: "category",
-      route: "/(tabs)/category",
-      icon: "compass-outline",
-      iconActive: "compass",
-      label: "Discover",
-    },
-    {
-      name: "menu",
-      route: "/(tabs)/menu",
-      icon: "person-outline",
-      iconActive: "person",
-      label: "Profile",
-    },
-  ];
+  {
+    name: "index",
+    route: "/(tabs)",
+    icon: "home-outline",
+    iconActive: "home",
+    label: "Home",
+  },
+  {
+    name: "saved",
+    route: "/(tabs)/saved",
+    icon: "tv-outline",
+    iconActive: "tv",
+    label: "Series",
+  },
+  {
+    name: "category",
+    route: "/(tabs)/category",
+    icon: "compass-outline",
+    iconActive: "compass",
+    label: "Discover",
+  },
+  {
+    name: "menu",
+    route: "/(tabs)/menu",
+    icon: "person-outline",
+    iconActive: "person",
+    label: "Profile",
+  },
+];
 
 const SEARCH_OPTIONS = [
   "By Movies",
@@ -311,10 +309,10 @@ function NotificationOverlay({
     const unreadMovies = movies.filter(m => !checkedItemIds.has(m.id));
     const unreadSeries = series.filter(s => !checkedItemIds.has(s.id));
     const unreadVjs = vjs.filter(v => !checkedItemIds.has(v.id));
-    return {
-      movies,
-      series,
-      vjs,
+    return { 
+      movies, 
+      series, 
+      vjs, 
       unreadTotal: unreadMovies.length + unreadSeries.length,
       unreadMoviesCount: unreadMovies.length,
       unreadSeriesCount: unreadSeries.length,
@@ -404,7 +402,7 @@ function NotificationOverlay({
                       activeOpacity={0.7}
                     >
                       {item.id === highlightedId && (
-                        <Animated.View
+                        <Animated.View 
                           style={[
                             StyleSheet.absoluteFill,
                             {
@@ -436,8 +434,8 @@ function NotificationOverlay({
                               item.type === "movie"
                                 ? isRead ? "rgba(56,189,248,0.07)" : "rgba(56,189,248,0.15)"
                                 : item.type === "rating"
-                                  ? isRead ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.15)"
-                                  : isRead ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
+                                ? isRead ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.15)"
+                                : isRead ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
                           },
                           isUnread && styles.notificationIconWrapNew,
                         ]}
@@ -449,10 +447,10 @@ function NotificationOverlay({
                             isRead
                               ? "rgba(255,255,255,0.35)"
                               : item.type === "movie"
-                                ? "#38bdf8"
-                                : item.type === "rating"
-                                  ? "#f59e0b"
-                                  : "#fff"
+                              ? "#38bdf8"
+                              : item.type === "rating"
+                              ? "#f59e0b"
+                              : "#fff"
                           }
                         />
                       </View>
@@ -481,7 +479,7 @@ function NotificationOverlay({
                         <Text style={[styles.notificationMsg, isRead && { opacity: 0.4 }]} numberOfLines={2}>
                           {item.message}
                         </Text>
-
+                        
                         {!isRead && (item.id === expandedNotificationId && expandedType ? (
                           <View style={styles.detailListContainer}>
                             <View style={styles.detailListHeader}>
@@ -492,55 +490,55 @@ function NotificationOverlay({
                                 <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.4)" />
                               </TouchableOpacity>
                             </View>
-                            {(expandedType === 'movies' ? getFilteredItems(item).movies :
-                              expandedType === 'series' ? getFilteredItems(item).series :
-                                getFilteredItems(item).vjs).map((subItem: any) => {
-                                  const isSubRead = checkedItemIds.has(subItem.id);
-                                  return (
-                                    <View key={subItem.id} style={[styles.detailListItem, isSubRead && { opacity: 0.4 }]}>
-                                      <TouchableOpacity
-                                        style={{ flex: 1 }}
-                                        onPress={() => {
-                                          // Persistent state: mark for re-opening on back and defer checking
-                                          setLastViewedItemId(subItem.id);
-                                          setReopenOnBack(true);
+                            {(expandedType === 'movies' ? getFilteredItems(item).movies : 
+                              expandedType === 'series' ? getFilteredItems(item).series : 
+                              getFilteredItems(item).vjs).map((subItem: any) => {
+                              const isSubRead = checkedItemIds.has(subItem.id);
+                              return (
+                                <View key={subItem.id} style={[styles.detailListItem, isSubRead && { opacity: 0.4 }]}>
+                                  <TouchableOpacity 
+                                    style={{ flex: 1 }}
+                                    onPress={() => {
+                                      // Persistent state: mark for re-opening on back and defer checking
+                                      setLastViewedItemId(subItem.id);
+                                      setReopenOnBack(true);
 
-                                          // "Command" the app to navigate
-                                          if (expandedType === 'movies') {
-                                            router.setParams({ movieId: subItem.id } as any);
-                                          } else {
-                                            DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
-                                          }
-                                        }}
-                                      >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                          {isSubRead && <Ionicons name="checkmark-done" size={14} color="#10b981" style={{ marginRight: 6 }} />}
-                                          <Text style={[styles.detailItemText, isSubRead && { textDecorationLine: 'line-through' }]}>
-                                            {subItem.title || subItem.name}
-                                            {isSubRead && <Text style={{ color: '#10b981', fontWeight: '800' }}> (Checked)</Text>}
-                                          </Text>
-                                        </View>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        onPress={() => toggleCheckedItem(subItem.id)}
-                                        style={styles.checkBtn}
-                                      >
-                                        <Ionicons
-                                          name={isSubRead ? "checkmark-circle" : "checkmark-circle-outline"}
-                                          size={20}
-                                          color="#10b981"
-                                        />
-                                      </TouchableOpacity>
+                                      // "Command" the app to navigate
+                                      if (expandedType === 'movies') {
+                                        router.setParams({ movieId: subItem.id } as any);
+                                      } else {
+                                        DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
+                                      }
+                                    }}
+                                  >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                      {isSubRead && <Ionicons name="checkmark-done" size={14} color="#10b981" style={{ marginRight: 6 }} />}
+                                      <Text style={[styles.detailItemText, isSubRead && { textDecorationLine: 'line-through' }]}>
+                                        {subItem.title || subItem.name}
+                                        {isSubRead && <Text style={{ color: '#10b981', fontWeight: '800' }}> (Checked)</Text>}
+                                      </Text>
                                     </View>
-                                  );
-                                })}
+                                  </TouchableOpacity>
+                                  <TouchableOpacity 
+                                    onPress={() => toggleCheckedItem(subItem.id)}
+                                    style={styles.checkBtn}
+                                  >
+                                    <Ionicons 
+                                      name={isSubRead ? "checkmark-circle" : "checkmark-circle-outline"} 
+                                      size={20} 
+                                      color="#10b981" 
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              );
+                            })}
                           </View>
                         ) : (
                           <View style={styles.typeBadgesRow}>
                             {getFilteredItems(item).movies.length > 0 && (
-                              <TouchableOpacity
+                              <TouchableOpacity 
                                 style={[
-                                  styles.typeBadge,
+                                  styles.typeBadge, 
                                   styles.movieBadge
                                 ]}
                                 onPress={() => {
@@ -560,9 +558,9 @@ function NotificationOverlay({
                               </TouchableOpacity>
                             )}
                             {getFilteredItems(item).series.length > 0 && (
-                              <TouchableOpacity
+                              <TouchableOpacity 
                                 style={[
-                                  styles.typeBadge,
+                                  styles.typeBadge, 
                                   styles.seriesBadge
                                 ]}
                                 onPress={() => {
@@ -585,8 +583,8 @@ function NotificationOverlay({
                               <View style={styles.vjPillsRow}>
                                 {getFilteredItems(item).vjs.map((vj, idx) => {
                                   return (
-                                    <View
-                                      key={idx}
+                                    <View 
+                                      key={idx} 
                                       style={styles.vjPill}
                                     >
                                       <Text style={styles.vjPillText}>
@@ -640,9 +638,9 @@ function NotificationOverlay({
                   </TouchableOpacity>
                 ))}
               </View>
-
+              
               {selectedRating > 0 && !isRatingSubmitted && (
-                <TouchableOpacity
+                <TouchableOpacity 
                   style={styles.submitRatingBtn}
                   onPress={() => submitRating(selectedRating)}
                 >
@@ -783,8 +781,8 @@ function SearchOverlay({
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
   const { isPaid } = useSubscription();
-  const { liveMovies, liveSeries, allRows, loading, youMayAlsoLike, bukoleya, trendingSeries } = useMovies();
-
+  const { liveMovies, liveSeries, allRows } = useMovies();
+  
   // Combine all live content for absolute coverage
   const TOTAL_LIVE_ITEMS = React.useMemo(() => {
     const combined = [...liveMovies, ...liveSeries];
@@ -887,99 +885,99 @@ function SearchOverlay({
 
   const results = isFiltering
     ? (() => {
-      const q = query.toLowerCase().trim();
-      let base: (Movie | Series)[] = TOTAL_LIVE_ITEMS;
+        const q = query.toLowerCase().trim();
+        let base: (Movie | Series)[] = TOTAL_LIVE_ITEMS;
 
-      if (q) {
-        let searchQ = q;
-        // Aliases for sections
-        if (q === "trending movies") searchQ = "trending";
-        if (q === "newly released" || q === "newly movie" || q === "latest") searchQ = "new releases";
-        if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
+        if (q) {
+          let searchQ = q;
+          // Aliases for sections
+          if (q === "trending movies") searchQ = "trending";
+          if (q === "newly released" || q === "newly movie" || q === "latest") searchQ = "new releases";
+          if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
 
-        // 1. Match any section names (e.g. "Action", "Trending", "New") and grab their movies
-        const sectionMatches = allRows.filter((r) => r.title.toLowerCase().includes(searchQ))
-          .flatMap((r) => r.data);
+          // 1. Match any section names (e.g. "Action", "Trending", "New") and grab their movies
+          const sectionMatches = allRows.filter((r) => r.title.toLowerCase().includes(searchQ))
+            .flatMap((r) => r.data);
 
-        // 2. Fuzzy search across all items (movies + series)
-        const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
-        const attributeMatches = TOTAL_LIVE_ITEMS.filter((m) => {
-          return (
-            m.title.toLowerCase().includes(searchQ) ||
-            m.genre.toLowerCase().includes(searchQ) ||
-            String(m.year).includes(searchQ) ||
-            m.vj.toLowerCase().includes(vjSearchQuery) ||
-            m.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
+          // 2. Fuzzy search across all items (movies + series)
+          const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
+          const attributeMatches = TOTAL_LIVE_ITEMS.filter((m) => {
+            return (
+              m.title.toLowerCase().includes(searchQ) ||
+              m.genre.toLowerCase().includes(searchQ) ||
+              String(m.year).includes(searchQ) ||
+              m.vj.toLowerCase().includes(vjSearchQuery) ||
+              m.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
+            );
+          });
+
+          // Combine and deduplicate
+          const combined = [...sectionMatches, ...attributeMatches];
+          base = Array.from(new Map(combined.map(item => [item.id, item])).values());
+          
+          // Sort if we typed a vj name to bubble up VJ content matching the exact VJ
+          if (searchQ.startsWith("vj ") || ALL_ITEMS.some(m => m.vj.toLowerCase() === searchQ)) {
+            base.sort((a, b) => {
+               const aVJ = a.vj.toLowerCase() === vjSearchQuery || a.vj.toLowerCase() === searchQ;
+               const bVJ = b.vj.toLowerCase() === vjSearchQuery || b.vj.toLowerCase() === searchQ;
+               if (aVJ && !bVJ) return -1;
+               if (!aVJ && bVJ) return 1;
+               if (b.year !== a.year) return b.year - a.year;
+               return parseFloat(b.rating) - parseFloat(a.rating);
+            });
+          }
+        }
+
+        let filtered = base;
+        if (selectedVJ) {
+          const vjQ = selectedVJ.toLowerCase();
+          const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
+          filtered = filtered.filter(
+            (m) => m.vj.toLowerCase() === vjName || m.vj.toLowerCase() === vjQ,
           );
-        });
-
-        // Combine and deduplicate
-        const combined = [...sectionMatches, ...attributeMatches];
-        base = Array.from(new Map(combined.map(item => [item.id, item])).values());
-
-        // Sort if we typed a vj name to bubble up VJ content matching the exact VJ
-        if (searchQ.startsWith("vj ") || ALL_ITEMS.some(m => m.vj.toLowerCase() === searchQ)) {
-          base.sort((a, b) => {
-            const aVJ = a.vj.toLowerCase() === vjSearchQuery || a.vj.toLowerCase() === searchQ;
-            const bVJ = b.vj.toLowerCase() === vjSearchQuery || b.vj.toLowerCase() === searchQ;
-            if (aVJ && !bVJ) return -1;
-            if (!aVJ && bVJ) return 1;
-            if (b.year !== a.year) return b.year - a.year;
-            return parseFloat(b.rating) - parseFloat(a.rating);
+        }
+        if (selectedType) {
+          filtered = filtered.filter((m) => {
+            const isSeries = "seasons" in m;
+            if (selectedType === "Movie") return !isSeries;
+            if (selectedType === "Series") return isSeries && !(m as any).isMiniSeries;
+            if (selectedType === "Mini Series") return isSeries && !!(m as any).isMiniSeries;
+            return true;
           });
         }
-      }
+        if (selectedGenre)
+          filtered = filtered.filter((m) => m.genre.includes(selectedGenre));
+        if (selectedYear)
+          filtered = filtered.filter((m) => String(m.year) === selectedYear);
+        if (selectedSeason) {
+          filtered = filtered.filter((m) => {
+            if ("seasons" in m) {
+              return m.seasons >= parseInt(selectedSeason);
+            }
+            return false;
+          });
+        }
 
-      let filtered = base;
-      if (selectedVJ) {
-        const vjQ = selectedVJ.toLowerCase();
-        const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
-        filtered = filtered.filter(
-          (m) => m.vj.toLowerCase() === vjName || m.vj.toLowerCase() === vjQ,
-        );
-      }
-      if (selectedType) {
-        filtered = filtered.filter((m) => {
-          const isSeries = "seasons" in m;
-          if (selectedType === "Movie") return !isSeries;
-          if (selectedType === "Series") return isSeries && !(m as any).isMiniSeries;
-          if (selectedType === "Mini Series") return isSeries && !!(m as any).isMiniSeries;
-          return true;
-        });
-      }
-      if (selectedGenre)
-        filtered = filtered.filter((m) => m.genre.includes(selectedGenre));
-      if (selectedYear)
-        filtered = filtered.filter((m) => String(m.year) === selectedYear);
-      if (selectedSeason) {
-        filtered = filtered.filter((m) => {
-          if ("seasons" in m) {
-            return m.seasons >= parseInt(selectedSeason);
-          }
-          return false;
-        });
-      }
+        if (sortBy === "newest")
+          filtered = [...filtered].sort((a, b) => b.year - a.year);
+        else if (sortBy === "oldest")
+          filtered = [...filtered].sort((a, b) => a.year - b.year);
+        else if (sortBy === "rating")
+          filtered = [...filtered].sort(
+            (a, b) => parseFloat(b.rating) - parseFloat(a.rating),
+          );
 
-      if (sortBy === "newest")
-        filtered = [...filtered].sort((a, b) => b.year - a.year);
-      else if (sortBy === "oldest")
-        filtered = [...filtered].sort((a, b) => a.year - b.year);
-      else if (sortBy === "rating")
-        filtered = [...filtered].sort(
-          (a, b) => parseFloat(b.rating) - parseFloat(a.rating),
-        );
-
-      return filtered;
-    })()
+        return filtered;
+      })()
     : [];
 
   const renderFilters = () => (
     <View style={styles.resultsHeader}>
       {isFiltering ||
-        selectedType ||
-        selectedGenre ||
-        selectedYear ||
-        sortBy ? (
+      selectedType ||
+      selectedGenre ||
+      selectedYear ||
+      sortBy ? (
         <View style={styles.resultsHeaderTop}>
           {isPerformingFiltering ? (
             <>
@@ -1070,343 +1068,228 @@ function SearchOverlay({
           <SafeAreaView style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
               {/* ── Fixed Top Search Bar ── */}
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                pointerEvents="box-none"
-                style={{
-                  position: "absolute",
-                  left: 12,
-                  right: 12,
-                  top: 0, // exactly at the top of the safe area container
-                  flexDirection: "row",
-                  alignItems: "center",
-                  zIndex: 1000,
-                  height: 50, // outer container
-                }}
-              >
-                {Platform.OS !== 'android' && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (expandedFilter) {
-                        setExpandedFilter(null);
-                      } else if (hasActiveFilters) {
-                        clearFilters(true); // Step by step
-                      } else {
-                        onClose();
-                      }
-                    }}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 6,
-                    }}
-                  >
-                    <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
-                  </TouchableOpacity>
-                )}
-
-                {(!isPerformingFiltering || query.length > 0) && (
-                  <View
-                    style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
-                    onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-                  >
-                    <Ionicons
-                      name="search"
-                      size={15}
-                      color="rgba(255,255,255,0.4)"
-                      style={{ marginLeft: 10, marginRight: 6 }}
-                    />
-                    <TextInput
-                      ref={inputRef}
-                      style={[styles.universalSearchInput, { paddingHorizontal: 0 }]}
-                      placeholder={getPlaceholderText()}
-                      placeholderTextColor="rgba(255,255,255,0.45)"
-                      value={query}
-                      onChangeText={(text) => {
-                        if (
-                          text.length > 0 &&
-                          query.length === 0 &&
-                          results.length === 0 &&
-                          (selectedType || selectedGenre || selectedYear || selectedVJ || selectedSeason || sortBy)
-                        ) {
-                          clearFilters();
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  pointerEvents="box-none"
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    right: 12,
+                    top: 10, // slightly lower
+                    flexDirection: "row",
+                    alignItems: "center",
+                    zIndex: 1000,
+                    height: 50, // outer container
+                  }}
+                >
+                  {Platform.OS !== 'android' && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (expandedFilter) {
+                          setExpandedFilter(null);
+                        } else if (hasActiveFilters) {
+                          clearFilters(true); // Step by step
+                        } else {
+                          onClose();
                         }
-                        setQuery(text);
                       }}
-                      returnKeyType="search"
-                      multiline={false}
-                      numberOfLines={1}
-                      autoFocus={false}
-                    />
-                    {isFiltering && query.length > 0 && (
-                      <View style={{
-                        flexDirection: "row",
+                      style={{
+                        width: 32,
+                        height: 32,
                         alignItems: "center",
-                        backgroundColor: "rgba(91,95,239,0.25)",
-                        borderRadius: 10,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        marginRight: 4,
-                      }}>
-                        <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "700" }}>
-                          {results.length}
-                        </Text>
-                      </View>
-                    )}
-                    {query.length > 0 && (
-                      <TouchableOpacity onPress={() => setQuery("")} style={{ padding: 6 }}>
-                        <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.45)" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+                        justifyContent: "center",
+                        marginRight: 6,
+                      }}
+                    >
+                      <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
+                    </TouchableOpacity>
+                  )}
 
-              </KeyboardAvoidingView>
+                  {(!isPerformingFiltering || query.length > 0) && (
+                    <View
+                      style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
+                      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+                    >
+                      <Ionicons
+                        name="search"
+                        size={15}
+                        color="rgba(255,255,255,0.4)"
+                        style={{ marginLeft: 10, marginRight: 6 }}
+                      />
+                      <TextInput
+                        ref={inputRef}
+                        style={[styles.universalSearchInput, { paddingHorizontal: 0 }]}
+                        placeholder={getPlaceholderText()}
+                        placeholderTextColor="rgba(255,255,255,0.45)"
+                        value={query}
+                        onChangeText={(text) => {
+                          if (
+                            text.length > 0 &&
+                            query.length === 0 &&
+                            results.length === 0 &&
+                            (selectedType || selectedGenre || selectedYear || selectedVJ || selectedSeason || sortBy)
+                          ) {
+                            clearFilters();
+                          }
+                          setQuery(text);
+                        }}
+                        returnKeyType="search"
+                        multiline={false}
+                        numberOfLines={1}
+                        autoFocus={false}
+                      />
+                      {isFiltering && query.length > 0 && (
+                        <View style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          backgroundColor: "rgba(91,95,239,0.25)",
+                          borderRadius: 10,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          marginRight: 4,
+                        }}>
+                          <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "700" }}>
+                            {results.length}
+                          </Text>
+                        </View>
+                      )}
+                      {query.length > 0 && (
+                        <TouchableOpacity onPress={() => setQuery("")} style={{ padding: 6 }}>
+                          <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.45)" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                </KeyboardAvoidingView>
 
               <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 40 }}>
 
-                {isFiltering ? (
-                  <View style={{ flex: 1 }}>
-                    {renderFilters()}
-                    <FlatList
-                      ref={resultsRef}
-                      keyboardShouldPersistTaps="always"
-                      data={loading && results.length === 0 ? Array(12).fill({ id: "skeleton" }) : results}
-                      keyExtractor={(m, i) => `${m.id}-${i}`}
-                      numColumns={3}
-                      contentContainerStyle={{
-                        paddingHorizontal: 16,
-                        paddingBottom: 160,
-                      }}
-                      columnWrapperStyle={{
-                        justifyContent: "flex-start",
-                        gap: 6,
-                        marginBottom: 10,
-                      }}
-                      renderItem={({ item, index }) => {
-                        if (item.id === "skeleton") {
-                          return (
-                            <View style={[styles.searchResultCard, { height: 180 }]}>
-                              <SkeletonLoader width="100%" height={130} borderRadius={10} />
-                              <SkeletonLoader width="80%" height={12} style={{ marginTop: 8 }} />
-                              <SkeletonLoader width="50%" height={10} style={{ marginTop: 4 }} />
-                            </View>
-                          );
-                        }
-                        return (
-                          <TouchableOpacity
-                            style={styles.searchResultCard}
-                            onPress={() => {
-                              onSelect(item);
-                            }}
-                          >
-                            <View>
-                              <Image
-                                source={{ uri: item.poster }}
-                                style={styles.searchResultPoster}
-                              />
-                              <View style={styles.vjBadge}>
-                                <Text style={styles.vjBadgeText}>{item.vj}</Text>
-                              </View>
-
-                              {(!isPaid && !item.isFree) && (
-                                <View style={styles.lockBadge}>
-                                  <Ionicons name="lock-closed" size={9} color="#fff" />
-                                </View>
-                              )}
-                              <View style={styles.genreBadge}>
-                                <Text style={[styles.genreBadgeText, "seasons" in item && { color: "#fff" }]}>
-                                  {"seasons" in item ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                </Text>
-                              </View>
-                              {"seasons" in item && (
-                                <View style={styles.epBadgePremium}>
-                                  <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                  <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                </View>
-                              )}
-                            </View>
-                            <View style={styles.searchResultInfo}>
-                              <Text
-                                style={styles.searchResultTitle}
-                                numberOfLines={1}
-                              >
-                                {item.title}
-                              </Text>
-                              <Text
-                                style={styles.searchResultMetadata}
-                                numberOfLines={1}
-                              >
-                                {item.year} ·{" "}
-                                {"seasons" in item
-                                  ? ((item as any).isMiniSeries ? "Mini Series" : `Season ${item.seasons}`)
-                                  : item.duration}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      }}
-                      ListEmptyComponent={
-                        <EmptyState
-                          title="No matches found"
-                          description={`We couldn't find any content matching "${query || 'your filters'}". Try adjusting your search or filters.`}
-                          icon="search-outline"
-                          actionLabel="Clear Filters"
-                          onAction={() => clearFilters()}
-                        />
-                      }
-                    />
-                  </View>
-                ) : (
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
+              {isFiltering ? (
+                <View style={{ flex: 1 }}>
+                  {renderFilters()}
+                  <FlatList
+                    ref={resultsRef}
                     keyboardShouldPersistTaps="always"
-                    contentContainerStyle={{ paddingBottom: 160 }}
-                  >
-                    {!vjOnly && (
-                      <View>
-                        {youMayAlsoLike.length > 0 && (
-                          <View style={styles.discoverySection}>
-                            <Text style={styles.discoveryHeader}>You May Also Like</Text>
-                            <View style={styles.gridDiscoveryContainer}>
-                              {youMayAlsoLike.slice(0, 6).map((item) => (
-                                <TouchableOpacity
-                                  key={`you-may-like-${item.id}`}
-                                  style={styles.searchResultCard}
-                                  onPress={() => onSelect(item)}
-                                >
-                                  <View>
-                                    <Image source={{ uri: item.poster }} style={styles.searchResultPoster} />
-                                    <View style={styles.vjBadge}>
-                                      <Text style={styles.vjBadgeText}>{item.vj}</Text>
-                                    </View>
-                                    <View style={styles.genreBadge}>
-                                      <Text style={styles.genreBadgeText}>
-                                        {("seasons" in item) ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                      </Text>
-                                    </View>
-                                    {("seasons" in item) && (
-                                      <View style={styles.epBadgePremium}>
-                                        <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                        <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                      </View>
-                                    )}
-                                  </View>
-                                  <View style={styles.searchResultInfo}>
-                                    <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
-                                    <Text style={styles.searchResultMetadata}>
-                                      {("seasons" in item) ? `${item.year} · Season ${item.seasons}` : `${item.year} · ${item.vj}`}
-                                    </Text>
-                                  </View>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-                        )}
-
-                        <View style={styles.discoverySection}>
-                          <Text style={styles.discoveryHeader}>Bukoleya</Text>
-                          <View style={styles.gridDiscoveryContainer}>
-                            {bukoleya.slice(0, 6).map((item) => (
-                              <TouchableOpacity
-                                key={`bukoleya-${item.id}`}
-                                style={styles.searchResultCard}
-                                onPress={() => onSelect(item)}
-                              >
-                                <View>
-                                  <Image source={{ uri: item.poster }} style={styles.searchResultPoster} />
-                                  <View style={styles.vjBadge}>
-                                    <Text style={styles.vjBadgeText}>{item.vj}</Text>
-                                  </View>
-                                  <View style={styles.genreBadge}>
-                                    <Text style={styles.genreBadgeText}>
-                                      {("seasons" in item) ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                    </Text>
-                                  </View>
-                                  {("seasons" in item) && (
-                                    <View style={styles.epBadgePremium}>
-                                      <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                      <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                    </View>
-                                  )}
-                                </View>
-                                <View style={styles.searchResultInfo}>
-                                  <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
-                                  <Text style={styles.searchResultMetadata}>
-                                    {("seasons" in item) ? `${item.year} · Season ${item.seasons}` : `${item.year} · ${item.vj}`}
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
-
-                        <View style={styles.discoverySection}>
-                          <Text style={styles.discoveryHeader}>Trending Series</Text>
-                          <View style={styles.gridDiscoveryContainer}>
-                            {trendingSeries.slice(0, 6).map((item) => (
-                              <TouchableOpacity
-                                key={`trending-series-${item.id}`}
-                                style={styles.searchResultCard}
-                                onPress={() => onSelect(item)}
-                              >
-                                <View>
-                                  <Image source={{ uri: item.poster }} style={styles.searchResultPoster} />
-                                  <View style={styles.vjBadge}>
-                                    <Text style={styles.vjBadgeText}>{item.vj}</Text>
-                                  </View>
-                                  <View style={styles.genreBadge}>
-                                    <Text style={styles.genreBadgeText}>
-                                      {item.isMiniSeries ? "Mini Series" : "Series"}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.epBadgePremium}>
-                                    <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                    <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                  </View>
-                                </View>
-                                <View style={styles.searchResultInfo}>
-                                  <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
-                                  <Text style={styles.searchResultMetadata}>{item.year} · Season {item.seasons}</Text>
-                                </View>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {vjOnly && (
-                      <View style={styles.discoverySection}>
-                        <View style={styles.vjGlassWell}>
-                          <BlurView
-                            intensity={15}
-                            tint="dark"
-                            style={StyleSheet.absoluteFill}
+                    data={results}
+                    keyExtractor={(m, i) => `${m.id}-${i}`}
+                    numColumns={3}
+                    contentContainerStyle={{
+                      paddingHorizontal: 16,
+                      paddingBottom: 160,
+                    }}
+                    columnWrapperStyle={{
+                      justifyContent: "flex-start",
+                      gap: 6,
+                      marginBottom: 10,
+                    }}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.searchResultCard}
+                        onPress={() => {
+                          onSelect(item);
+                        }}
+                      >
+                        <View>
+                          <Image
+                            source={{ uri: item.poster }}
+                            style={styles.searchResultPoster}
                           />
-                          <View style={styles.trendingWrap}>
-                            {ALL_VJS.map((vj) => (
-                              <TouchableOpacity
-                                key={vj}
-                                style={styles.discoveryChip}
-                                onPress={() => setSelectedVJ(vj)}
-                              >
-                                <BlurView
-                                  intensity={35}
-                                  tint="dark"
-                                  style={StyleSheet.absoluteFill}
-                                />
-                                <Text style={styles.trendingText}>{vj}</Text>
-                              </TouchableOpacity>
-                            ))}
+                          <View style={styles.vjBadge}>
+                            <Text style={styles.vjBadgeText}>{item.vj}</Text>
                           </View>
+
+                          {(!isPaid && !item.isFree) && (
+                            <View style={styles.lockBadge}>
+                               <Ionicons name="lock-closed" size={9} color="#fff" />
+                            </View>
+                          )}
+                          <View style={styles.genreBadge}>
+                            <Text style={[styles.genreBadgeText, "seasons" in item && { color: "#fff" }]}>
+                              {"seasons" in item ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
+                            </Text>
+                          </View>
+                          {"seasons" in item && (
+                            <View style={styles.epBadgePremium}>
+                              <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
+                              <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.searchResultInfo}>
+                          <Text
+                            style={styles.searchResultTitle}
+                            numberOfLines={1}
+                          >
+                            {item.title}
+                          </Text>
+                          <Text
+                            style={styles.searchResultMetadata}
+                            numberOfLines={1}
+                          >
+                            {item.year} ·{" "}
+                            {"seasons" in item
+                              ? ((item as any).isMiniSeries ? "Mini Series" : `Season ${item.seasons}`)
+                              : item.duration}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                      <View style={styles.emptyResults}>
+                        <Text style={styles.emptyText}>
+                          No matches found for {(() => {
+                            const parts = [];
+                            if (query) parts.push(`"${query}"`);
+                            if (selectedType) parts.push(selectedType === 'Movie' ? "Movies" : selectedType);
+                            if (selectedGenre) parts.push(selectedGenre);
+                            if (selectedYear) parts.push(selectedYear);
+                            if (selectedVJ) parts.push(selectedVJ);
+                            if (selectedSeason) parts.push(`Season ${selectedSeason}`);
+                            
+                            return parts.length > 0 ? parts.join(" in ") : "these filters";
+                          })()}
+                        </Text>
+                      </View>
+                    }
+                  />
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always"
+                  contentContainerStyle={{ paddingBottom: 160 }}
+                >
+                  {vjOnly && (
+                    <View style={styles.discoverySection}>
+
+                      <View style={styles.vjGlassWell}>
+                        <BlurView
+                          intensity={15}
+                          tint="dark"
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <View style={styles.trendingWrap}>
+                          {ALL_VJS.map((vj) => (
+                            <TouchableOpacity
+                              key={vj}
+                              style={styles.discoveryChip}
+                              onPress={() => setSelectedVJ(vj)}
+                            >
+                              <BlurView
+                                intensity={35}
+                                tint="dark"
+                                style={StyleSheet.absoluteFill}
+                              />
+                              <Text style={styles.trendingText}>{vj}</Text>
+                            </TouchableOpacity>
+                          ))}
                         </View>
                       </View>
-                    )}
-                  </ScrollView>
-                )}
+                    </View>
+                  )}
+                </ScrollView>
+              )}
               </View>
 
               {/* ── Bottom Quick Search / Sections ── */}
@@ -1474,7 +1357,7 @@ function SearchOverlay({
                       style={[
                         styles.switcherTab,
                         discoveryMode === "trending" &&
-                        styles.switcherTabActive,
+                          styles.switcherTabActive,
                       ]}
                       onPress={() => setDiscoveryMode("trending")}
                     >
@@ -1495,7 +1378,7 @@ function SearchOverlay({
                         style={[
                           styles.switcherTabText,
                           discoveryMode === "trending" &&
-                          styles.switcherTabTextActive,
+                            styles.switcherTabTextActive,
                         ]}
                       >
                         Quick Search
@@ -1506,7 +1389,7 @@ function SearchOverlay({
                       style={[
                         styles.switcherTab,
                         discoveryMode === "sections" &&
-                        styles.switcherTabActive,
+                          styles.switcherTabActive,
                       ]}
                       onPress={() => setDiscoveryMode("sections")}
                     >
@@ -1527,7 +1410,7 @@ function SearchOverlay({
                         style={[
                           styles.switcherTabText,
                           discoveryMode === "sections" &&
-                          styles.switcherTabTextActive,
+                            styles.switcherTabTextActive,
                         ]}
                       >
                         Quick Sections
@@ -1547,17 +1430,17 @@ function SearchOverlay({
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
   const { liveMovies, liveSeries } = useMovies();
-  const {
-    allMoviesFree,
-    eventMessage,
-    playingNow,
+  const { 
+    allMoviesFree, 
+    eventMessage, 
+    playingNow, 
     setPlayingNow,
-    playerMode,
-    setPlayerMode,
-    playerTitle,
+    playerMode, 
+    setPlayerMode, 
+    playerTitle, 
     setPlayerTitle,
-    selectedVideoUrl,
-    setSelectedVideoUrl
+    selectedVideoUrl, 
+    setSelectedVideoUrl 
   } = useSubscription();
   const { activeDownloads } = useDownloads();
   const insets = useSafeAreaInsets();
@@ -1609,7 +1492,7 @@ function CustomTabBar() {
         if (savedDismissCount) setUpdateDismissCount(parseInt(savedDismissCount, 10));
         if (savedUpdateApplied) setIsUpdateApplied(savedUpdateApplied === "true");
         if (savedRatingRemoved) setIsRatingPermanentlyRemoved(savedRatingRemoved === "true");
-
+        
         setIsStateLoaded(true);
       } catch (e) {
         console.error("Failed to load notification state", e);
@@ -1721,7 +1604,7 @@ function CustomTabBar() {
     }).start();
   }, [isMenuHeaderBlurred]);
 
-  const dynamicBarBottom = Platform.OS === 'android'
+  const dynamicBarBottom = Platform.OS === 'android' 
     ? (hasThreeButtonNav ? 54 : (insets.bottom > 0 ? insets.bottom + 4 : 20))
     : 28;
 
@@ -1761,7 +1644,7 @@ function CustomTabBar() {
   // Construct notifications with live data
   const notifications = useMemo(() => {
     let baseData = [...MOCK_NOTIFICATIONS];
-
+    
     // Inject latest 5 live releases instead of the entire catalog
     const recentMovies = liveMovies.slice(0, 5);
     const recentSeries = liveSeries.slice(0, 5);
@@ -1773,7 +1656,7 @@ function CustomTabBar() {
         type: "movie",
         icon: "film",
         title: "New Release",
-        message: recentMovies.length > 0
+        message: recentMovies.length > 0 
           ? `🎬 "${recentMovies[0].title}" ${recentMovies.length > 1 ? `and ${recentMovies.length - 1} more` : ''} now streaming!`
           : `Showcasing the latest releases!`,
         time: "Just Now",
@@ -1788,7 +1671,7 @@ function CustomTabBar() {
         seriesList: recentSeries.map((s: Series) => ({ id: s.id, title: s.title })),
         vjsDetailed: Array.from(new Set([...recentMovies.map((m: Movie) => m.vj), ...recentSeries.map((s: Series) => s.vj)])).map((vj: string, i: number) => ({ id: `v_live_${i}`, name: vj.replace('VJ ', ''), count: (recentMovies.filter((m: Movie) => m.vj === vj).length + recentSeries.filter((s: Series) => s.vj === vj).length) })),
       };
-
+      
       // Prepend to top
       baseData = [liveNotif, ...baseData];
     }
@@ -1805,7 +1688,7 @@ function CustomTabBar() {
       };
       baseData = [eventNotif, ...baseData];
     }
-
+    
     // Inject Active Downloads
     const dlNotifications: Notification[] = Object.entries(activeDownloads)
       .filter(([id, dl]) => dl && dl.item)
@@ -1822,7 +1705,7 @@ function CustomTabBar() {
       }));
 
     baseData = [...dlNotifications, ...baseData];
-
+    
     return baseData;
   }, [liveMovies, liveSeries, allMoviesFree, eventMessage, activeDownloads]);
 
@@ -1866,7 +1749,7 @@ function CustomTabBar() {
 
     const sub6 = DeviceEventEmitter.addListener("openNotifications", (data?: { highlightId: string }) => {
       setIsFromHero(true);
-
+      
       // Direct Preview logic for Holiday Celebration if already read
       if (data?.highlightId === 'event_n1' && readIdsRef.current.has('event_n1')) {
         setShowEventPreview(true);
@@ -1896,7 +1779,7 @@ function CustomTabBar() {
         setInPlaceSearchQuery("");
         DeviceEventEmitter.emit("seriesSearchClosed");
         Keyboard.dismiss();
-        return true;
+        return true; 
       }
       if (globalGridVisible) {
         setGlobalGridVisible(false);
@@ -1914,7 +1797,7 @@ function CustomTabBar() {
         setSearchVisible(false);
         return true;
       }
-      return false;
+      return false; 
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -2010,8 +1893,7 @@ function CustomTabBar() {
     });
     const sub2 = DeviceEventEmitter.addListener("openLiveReleaseGrid", () => {
       setGlobalGridTitle("New Release");
-      const combined = [...liveMovies, ...liveSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-      setGlobalGridData(combined);
+      setGlobalGridData([...liveMovies, ...liveSeries]);
       setGlobalGridVisible(true);
     });
     const sub3 = DeviceEventEmitter.addListener("setDetailStackVisible", (visible: boolean) => {
@@ -2061,7 +1943,7 @@ function CustomTabBar() {
     };
     startRotation();
   }, []);
-
+  
   useEffect(() => {
     const pulseAnimation = () => {
       Animated.sequence([
@@ -2141,7 +2023,7 @@ function CustomTabBar() {
     if (item.id === "n2") {
       setIsUpdateApplied(true);
     }
-
+    
     // Handle "K-Drama" or "New Release" collections
     const hasMovies = item.moviesList && item.moviesList.length > 0;
     const hasSeries = item.seriesList && item.seriesList.length > 0;
@@ -2149,7 +2031,7 @@ function CustomTabBar() {
 
     if (item.title === "New Release" || item.title === "Trending Now" || item.title === "K-Drama" || isTrendingVj || item.id?.startsWith("live_new_")) {
       let gridData: (Movie | Series)[] = [];
-
+      
       const movieIds = new Set(item.moviesList?.map(m => m.id) || []);
       const seriesIds = new Set(item.seriesList?.map(s => s.id) || []);
 
@@ -2186,7 +2068,7 @@ function CustomTabBar() {
         DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
       }, 300);
     }
-    else if (item.route) {
+ else if (item.route) {
       router.push(item.route as any);
     }
   };
@@ -2196,7 +2078,7 @@ function CustomTabBar() {
   const submitRating = async (rating: number) => {
     setIsRatingSubmitted(true);
     setIsRatingPermanentlyRemoved(true);
-
+    
     // 1. Automated Notification Cleanup in Firestore
     try {
       const user = auth.currentUser;
@@ -2250,32 +2132,15 @@ function CustomTabBar() {
           }
         }}
       />
-      {/* Status Bar Guard (Synchronized with Header) */}
-      {!isDetailStackVisible && playerMode !== 'full' && (
-        <Animated.View 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: insets.top,
-            zIndex: 999,
-            backgroundColor: "#0f0f19", // Solid background matching header exactly
-            opacity: active("/") ? homeHeaderOpacity : (active("/menu") ? menuHeaderOpacity : 1),
-          }}
-          pointerEvents="none"
-        />
-      )}
-
       {/* Background for 3-button nav */}
       {Platform.OS === 'android' && hasThreeButtonNav && !isDetailStackVisible && (
-        <View
+        <View 
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: showInPlaceSearch ? dynamicBarBottom : dynamicBarBottom + 29,
+            height: showInPlaceSearch ? dynamicBarBottom : dynamicBarBottom + 29, 
             overflow: 'hidden',
             zIndex: 998,
           }}
@@ -2290,34 +2155,50 @@ function CustomTabBar() {
 
       {!searchVisible && !isDetailStackVisible && playerMode !== 'full' && (
         <View style={[
-          styles.topBarWrapper,
-          {
-            top: Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top) : 0,
+          styles.topBarWrapper, 
+          (active("/") || active("/menu")) ? { 
+            top: 0,
             left: 0,
             right: 0,
-            paddingTop: active("/") || active("/menu") ? 0 : 4,
+            paddingTop: active("/") 
+              ? (homeScrollY < (HERO_H - 120) 
+                  ? (insets.top + (Platform.OS === 'ios' ? 0 : 4)) 
+                  : Math.max(
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - 1, 
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - (homeScrollY - (HERO_H - 120))
+                    ))
+              : (menuScrollY < 50
+                  ? (insets.top + (Platform.OS === 'ios' ? 0 : 4))
+                  : Math.max(
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - 1,
+                      (insets.top + (Platform.OS === 'ios' ? 0 : 4)) - (menuScrollY - 50)
+                    )),
             paddingHorizontal: 16,
+          } : {
+            top: Platform.OS === "ios" ? 44 : (StatusBar.currentHeight ?? 0) + 4,
+            left: 4,
+            right: 8,
           }
         ]}>
           {(active("/") || active("/menu")) && (
-            <Animated.View
+            <Animated.View 
               style={[
-                StyleSheet.absoluteFill,
-                {
-                  zIndex: -1,
-                  opacity: active("/") ? homeHeaderOpacity : menuHeaderOpacity
+                StyleSheet.absoluteFill, 
+                { 
+                  zIndex: -1, 
+                  opacity: active("/") ? homeHeaderOpacity : menuHeaderOpacity 
                 }
               ]}
             >
-              <View
+              <View 
                 style={[
                   StyleSheet.absoluteFill,
-                  {
+                  { 
                     backgroundColor: "rgba(15, 15, 25, 0.98)",
                     borderBottomWidth: StyleSheet.hairlineWidth,
                     borderBottomColor: "rgba(255, 255, 255, 0.15)"
                   }
-                ]}
+                ]} 
               />
               <LinearGradient
                 colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
@@ -2420,9 +2301,9 @@ function CustomTabBar() {
             )}
 
             <View style={[
-              styles.topBarRight,
-              (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 },
-              (active("/") || active("/(tabs)/menu")) ? { transform: [{ translateX: 6 }] } : { transform: [{ translateX: -6 }] },
+              styles.topBarRight, 
+              (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 }, 
+              (active("/") || active("/(tabs)/menu")) ? { transform: [{ translateX: 6 }] } : { transform: [{ translateX: -6 }] }, 
               { height: 45 }
             ]}>
               {/* All VJs / Series Library Pill (Repositioned) */}
@@ -2503,64 +2384,64 @@ function CustomTabBar() {
                     </View>
                   </View>
                 ) : (
-                  <View
+                <View
+                  style={{
+                    flex: 1, // Let the pill occupy the remaining space
+                    height: 35,
+                    paddingHorizontal: 16,
+                    borderRadius: 17.5,
+                    overflow: "hidden",
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: "rgba(255,255,255,0.3)",
+                    backgroundColor: "rgba(91, 95, 239, 0.25)",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    shadowColor: "#5B5FEF",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.45,
+                    shadowRadius: 10,
+                    elevation: 8,
+                  }}
+                >
+                  <View style={styles.pillSheen} />
+                  
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="tv" size={14} color="#fff" />
+                    <Text style={{
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: "800",
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                    }}>SERIES LIBRARY</Text>
+                    {seriesCount !== null && (
+                      <View style={{
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        marginLeft: 2
+                      }}>
+                        <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{seriesCount} series</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity 
+                    onPress={() => DeviceEventEmitter.emit("toggleSeriesFilters")}
                     style={{
-                      flex: 1, // Let the pill occupy the remaining space
-                      height: 35,
-                      paddingHorizontal: 16,
-                      borderRadius: 17.5,
-                      overflow: "hidden",
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderColor: "rgba(255,255,255,0.3)",
-                      backgroundColor: "rgba(91, 95, 239, 0.25)",
                       flexDirection: "row",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      shadowColor: "#5B5FEF",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.45,
-                      shadowRadius: 10,
-                      elevation: 8,
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
                     }}
                   >
-                    <View style={styles.pillSheen} />
-
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Ionicons name="tv" size={14} color="#fff" />
-                      <Text style={{
-                        color: "#fff",
-                        fontSize: 12,
-                        fontWeight: "800",
-                        letterSpacing: 0.5,
-                        textTransform: "uppercase",
-                      }}>SERIES LIBRARY</Text>
-                      {seriesCount !== null && (
-                        <View style={{
-                          backgroundColor: "rgba(255,255,255,0.2)",
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
-                          borderRadius: 10,
-                          marginLeft: 2
-                        }}>
-                          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{seriesCount} series</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() => DeviceEventEmitter.emit("toggleSeriesFilters")}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: "rgba(255,255,255,0.2)",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                      }}
-                    >
-                      <Ionicons name="options-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
-                      <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.7)" />
-                    </TouchableOpacity>
+                    <Ionicons name="options-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+                    <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.7)" />
+                  </TouchableOpacity>
                   </View>
                 )) : active("/(tabs)/category") ? null : (
                   <TouchableOpacity
@@ -2664,7 +2545,7 @@ function CustomTabBar() {
             // Navigate to series detail (which is the saved tab)
             router.push(`/(tabs)/saved?seriesId=${movie.id}`);
           }
-          else {
+ else {
             // For movies, we keep search open in background
             // The Preview will open ON TOP because it's now also a Modal
             DeviceEventEmitter.emit("movieSelected", movie);
@@ -2700,7 +2581,7 @@ function CustomTabBar() {
         setExpandedNotificationId={setExpandedNotificationId}
         setReopenOnBack={setReopenOnBack}
         setLastViewedItemId={setLastViewedItemId}
-        isUpdateLocked={updateDismissCount >= 3}
+isUpdateLocked={updateDismissCount >= 3}
         isUpdateApplied={isUpdateApplied}
         isRatingPermanentlyRemoved={isRatingPermanentlyRemoved}
         setGlobalGridVisible={setGlobalGridVisible}
@@ -2774,80 +2655,80 @@ function CustomTabBar() {
               </ScrollView>
 
               <View style={{ marginTop: 40, width: '100%' }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowEventPreview(false);
-                    if (isFromHero) {
-                      setNotificationVisible(false);
-                      setIsFromHero(false);
-                    }
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                    height: 54,
-                    borderRadius: 27,
-                    borderWidth: StyleSheet.hairlineWidth,
-                    borderColor: 'rgba(16, 185, 129, 0.4)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: '#10b981', fontSize: 18, fontWeight: '800' }}>OK</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowEventPreview(false);
+                      if (isFromHero) {
+                        setNotificationVisible(false);
+                        setIsFromHero(false);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      height: 54,
+                      borderRadius: 27,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: 'rgba(16, 185, 129, 0.4)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#10b981', fontSize: 18, fontWeight: '800' }}>OK</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
           </View>
         </SafeAreaView>
       </Modal>
 
       {!showInPlaceSearch && !isDetailStackVisible && playerMode === 'closed' && !isOverlayVisible && (
-        <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : insets.bottom + 8 }]} pointerEvents="box-none">
+        <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : Math.max(16, insets.bottom + 12) }]} pointerEvents="box-none">
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <View style={styles.glassFill} />
           <View style={styles.barInner}>
-            {TABS.map((tab) => {
-              const isFocused = active(tab.route);
-              return (
-                <TouchableOpacity
-                  key={tab.name}
-                  style={styles.tabItem}
-                  onPress={() => {
-                    if (isFocused && tab.name === "index") {
-                      DeviceEventEmitter.emit("homeTabPress");
-                    } else {
-                      router.push(tab.route as never);
-                    }
-                  }}
-                  activeOpacity={0.75}
-                >
-                  {isFocused ? (
-                    <View style={styles.pill}>
-                      <View style={styles.pillSheen} />
-                      <Ionicons name={tab.iconActive} size={18} color="#fff" />
-                      <Text style={styles.pillLabel} numberOfLines={1}>
-                        {tab.label}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.inactiveIconWrap}>
-                      <Ionicons
-                        name={tab.icon}
-                        size={22}
-                        color="rgba(255,255,255,0.45)"
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {TABS.map((tab) => {
+            const isFocused = active(tab.route);
+            return (
+              <TouchableOpacity
+                key={tab.name}
+                style={styles.tabItem}
+                onPress={() => {
+                  if (isFocused && tab.name === "index") {
+                    DeviceEventEmitter.emit("homeTabPress");
+                  } else {
+                    router.push(tab.route as never);
+                  }
+                }}
+                activeOpacity={0.75}
+              >
+                {isFocused ? (
+                  <View style={styles.pill}>
+                    <View style={styles.pillSheen} />
+                    <Ionicons name={tab.iconActive} size={18} color="#fff" />
+                    <Text style={styles.pillLabel} numberOfLines={1}>
+                      {tab.label}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.inactiveIconWrap}>
+                    <Ionicons
+                      name={tab.icon}
+                      size={22}
+                      color="rgba(255,255,255,0.45)"
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
+      </View>
       )}
 
       {/* In-place search handled inline in header */}
-
+      
 
     </>
   );
@@ -3004,7 +2885,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   notificationCardNew: {
-    backgroundColor: "rgba(16, 185, 129, 0.04)",
+    backgroundColor: "rgba(16, 185, 129, 0.04)", 
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(16, 185, 129, 0.15)",
     borderTopColor: "rgba(16, 185, 129, 0.45)", // Bright top edge
@@ -3087,7 +2968,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#10b981",
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 20, 
     marginLeft: 10,
     overflow: "hidden",
     shadowColor: "#10b981",
@@ -3296,8 +3177,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.22)", // Sharper thin line
-    borderBottomColor: "rgba(255,255,255,0.35)", // Slightly brighter bottom edge for separation
+    borderColor: "rgba(255,255,255,0.15)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -3458,18 +3338,18 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   navLogoSmallCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    overflow: 'hidden',
-    backgroundColor: '#0a0a0f',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(80,150,230,0.5)',
+     width: 26,
+     height: 26,
+     borderRadius: 13,
+     overflow: 'hidden',
+     backgroundColor: '#0a0a0f',
+     borderWidth: StyleSheet.hairlineWidth,
+     borderColor: 'rgba(80,150,230,0.5)',
   },
   navLogoSmallImg: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.25 }],
+     width: '100%',
+     height: '100%',
+     transform: [{ scale: 1.25 }],
   },
   navLogoTitle: {
     fontSize: 14,
@@ -4093,118 +3973,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  // ── You May Also Like Horizontal Row ──
-  youMayLikeCard: {
-    width: 105,
-  },
-  youMayLikePosterContainer: {
-    width: 105,
-    height: 155,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  youMayLikePoster: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  youMayLikeTitle: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 8,
-    paddingHorizontal: 2,
-  },
-  youMayLikeMeta: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: 9,
-    fontWeight: "600",
-    marginTop: 2,
-    paddingHorizontal: 2,
-  },
-  youMayLikeBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.15)",
-  },
-  youMayLikeBadgeText: {
-    color: "#fff",
-    fontSize: 7,
-    fontWeight: "900",
-  },
-  youMayLikeSeriesBadge: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-    backgroundColor: "rgba(239, 68, 68, 0.8)",
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  youMayLikeSeriesBadgeText: {
-    color: "#fff",
-    fontSize: 7,
-    fontWeight: "900",
-  },
-  gridDiscoveryContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    gap: 6,
-    justifyContent: "space-between",
-  },
-  vjBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  vjBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
-  genreBadge: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  genreBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
-  epBadgePremium: {
-    position: "absolute",
-    bottom: 6,
-    right: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  epBadgeTextPremium: {
-    color: "#FFC107",
-    fontSize: 7,
-    fontWeight: "900",
-    letterSpacing: 0.2,
   },
 });
