@@ -7,11 +7,14 @@ import { useDownloads } from '@/app/context/DownloadContext';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { useMovies } from '@/app/context/MovieContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import EmptyState from '@/components/EmptyState';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function DownloadsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { downloadedMovies, removeDownload, activeDownloads } = useDownloads();
   const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
   const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series'>('All');
@@ -128,11 +131,13 @@ export default function DownloadsScreen() {
             </TouchableOpacity>
           ))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="cloud-download-outline" size={64} color="rgba(255,255,255,0.05)" />
-            <Text style={styles.emptyText}>No downloads found</Text>
-            <Text style={styles.emptySubText}>Movies and series you download will appear here.</Text>
-          </View>
+          <EmptyState 
+            icon="cloud-download-outline"
+            title="No Downloads"
+            description="Save your favorite movies and series to watch them offline anytime, anywhere."
+            buttonText="Explore Movies"
+            onPress={() => router.push('/')}
+          />
         )}
       </ScrollView>
     </View>

@@ -347,7 +347,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                   title="No Downloads"
                   description="Save your favorite movies and series to watch them offline anytime, anywhere."
                   buttonText="Explore Movies"
-                  onPress={onCloseSettings}
+                  onPress={() => {
+                    onCloseSettings();
+                    router.push('/');
+                  }}
                 />
               )}
             </Animated.View>
@@ -413,7 +416,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
               title="Quiet in here"
               description="You'll see alerts about new releases, recommendations, and account updates here."
               buttonText="Go Home"
-              onPress={onCloseSettings}
+              onPress={() => {
+                onCloseSettings();
+                router.push('/');
+              }}
             />
           )}
         </View>
@@ -515,7 +521,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
               title="Your List is Empty"
               description="Start adding movies and series to your watchlist so you never miss what you want to watch next."
               buttonText="Browse Content"
-              onPress={onCloseSettings}
+              onPress={() => {
+                onCloseSettings();
+                router.push('/');
+              }}
             />
           )}
         </View>
@@ -607,7 +616,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
               title="No Watch History"
               description="Items you watch will appear here so you can easily continue where you left off."
               buttonText="Start Watching"
-              onPress={onCloseSettings}
+              onPress={() => {
+                onCloseSettings();
+                router.push('/');
+              }}
             />
           )}
         </View>
