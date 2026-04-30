@@ -1065,38 +1065,38 @@ function SearchOverlay({
         } else onClose();
       }}
     >
-      <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={{ flex: 1 }}>
-              {/* Status Bar background to prevent cards overlapping behind status bar area */}
-              <View style={{ 
-                position: 'absolute', 
-                top: -insets.top, 
-                left: 0, 
-                right: 0, 
-                height: insets.top, 
-                backgroundColor: "#0a0a0f",
-                zIndex: 1000 
-              }} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
+        <View style={{ flex: 1 }}>
+          {/* Status Bar Background */}
+          <View style={{ 
+            height: insets.top, 
+            backgroundColor: "#0a0a0f",
+            zIndex: 2000
+          }} />
 
-              {/* ── Fixed Top Search Bar Container ── */}
-              <View 
-                style={{ 
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  zIndex: 1000,
-                  backgroundColor: "#0a0a0f",
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                  borderTopColor: "rgba(255,255,255,0.22)",
-                  height: 56,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingHorizontal: 12,
-                }}
-              >
+          {/* Thin Separator Line from Status Bar */}
+          <View style={{ 
+            height: StyleSheet.hairlineWidth, 
+            backgroundColor: "rgba(255,255,255,0.25)",
+            zIndex: 2000 
+          }} />
+
+          {/* ── Fixed Top Search Bar Container ── */}
+          <View 
+            style={{ 
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: insets.top + StyleSheet.hairlineWidth,
+              zIndex: 1000,
+              backgroundColor: "#0a0a0f",
+              height: 60,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              elevation: 4, // Shadow for Android
+            }}
+          >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                   pointerEvents="box-none"
@@ -1187,7 +1187,7 @@ function SearchOverlay({
                 </KeyboardAvoidingView>
               </View>
 
-              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 56 }}>
+              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 64 }}>
 
                 {isFiltering ? (
                   <View style={{ flex: 1 }}>
@@ -1559,9 +1559,7 @@ function SearchOverlay({
                 </KeyboardAvoidingView>
               )}
             </View>
-          </SafeAreaView>
-        </View>
-      </BlurView>
+          </View>
     </Modal>
   );
 }
