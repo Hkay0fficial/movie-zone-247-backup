@@ -17,7 +17,6 @@ import {
   Easing,
   ViewToken,
   useWindowDimensions,
-  TextInput,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,9 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Movie, Series } from "@/constants/movieData";
 import { MoviePreviewModal } from "./index";
 import { GridModal, GridContent } from "../../components/GridComponents";
-import { SkeletonLoader, SkeletonRow } from "../../components/SkeletonLoader";
 import { useMovies } from "@/app/context/MovieContext";
-import { FilterChips } from '../../components/FilterChips';
 import { useSubscription } from "@/app/context/SubscriptionContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
@@ -44,7 +41,69 @@ import {
 // ─── Constants ───────────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
+// ─── Skeleton Loader Component ───────────────────────────────────────────────
+const SkeletonLoader = React.memo(({ width, height, borderRadius = 12, style, shimmer = true }: { width: any, height: any, borderRadius?: number, style?: any, shimmer?: boolean }) => {
+  const translateX = useRef(new Animated.Value(-1)).current;
 
+  useEffect(() => {
+    if (shimmer) {
+      Animated.loop(
+        Animated.timing(translateX, {
+          toValue: 2,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [shimmer]);
+
+  return (
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderRadius,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      {shimmer && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-1, 2],
+                    outputRange: [-width * 1.5, width * 1.5],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'transparent',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+});
 
 const VJ_PROFILES = ALL_VJS.map(name => ({
   name,
@@ -223,77 +282,74 @@ const DiscoverCard = React.memo(({
 export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
   const { width: windowW, height: windowH } = useWindowDimensions();
-  const { 
-    allMovies, allSeries, loading,
-    selectedVJ, setSelectedVJ,
-    selectedGenre, setSelectedGenre,
-    selectedType, setSelectedType,
-    selectedYear, setSelectedYear,
-    sortBy, setSortBy,
-    minRating, setMinRating,
-    searchQuery, setSearchQuery,
-    clearFilters
-  } = useMovies();
-
+  const { allMovies, allSeries, loading } = useMovies();
   const { 
     favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
     playerMode, setPlayerMode, playerTitle, setPlayerTitle,
     selectedVideoUrl, setSelectedVideoUrl, playerPos, playerSize,
     isPaid, allMoviesFree, setPlayingNow
   } = useSubscription();
-
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const isFocused = useIsFocused();
   const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  // Calculate Genre Counters
-  const genreCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const pool = [...(allMovies || []), ...(allSeries || [])];
-    pool.forEach(item => {
-      const g = item.genre || "Other";
-      if (counts[g]) counts[g]++;
-      else counts[g] = 1;
-    });
-    return counts;
-  }, [allMovies, allSeries]);
+  const [isMuted, setIsMuted] = useState(true);
 
-  const DiscoverSkeleton = React.memo(() => {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-        <View style={{ flex: 1 }}>
-           <SkeletonLoader width={windowW} height={windowH} borderRadius={0} />
-           <View style={{ position: 'absolute', bottom: 100, left: 20, right: 20, gap: 15 }}>
-              <SkeletonLoader width="60%" height={32} />
-              <SkeletonLoader width="40%" height={16} />
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <SkeletonLoader width={120} height={45} borderRadius={25} />
-                <SkeletonLoader width={45} height={45} borderRadius={23} />
-              </View>
-           </View>
-        </View>
-      </View>
-    );
-  });
+  // Filter States
+  const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<"Movie" | "Series" | "Mini Series" | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rating" | null>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
+  const resetFilters = () => {
+    setSelectedVJ(null);
+    setSelectedGenre(null);
+    setSelectedType(null);
+    setSelectedYear(null);
+    setSortBy(null);
+  };
+
 
   // Prepare filtered items for the feed
   const discoverItems = useMemo(() => {
     let filtered = [...(allMovies || []), ...(allSeries || [])];
 
-    // Note: The global context already filters allMovies/allSeries, 
-    // but the feed here needs the items that match the filters.
-    // Actually, in MovieContext we filter `allContent`.
-    // Let's use the raw data and apply filters here to keep the Discovery feed independent 
-    // IF desired, but the user said "filter the entire app".
-    // So allRows etc. in Home are already filtered.
-    // We'll just use the already filtered content from context.
+    if (selectedVJ) {
+      const vjQ = selectedVJ.toLowerCase().trim();
+      const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
+      filtered = filtered.filter(m => {
+        const mVJ = (m.vj || "").toLowerCase().trim();
+        return mVJ === vjQ || mVJ === vjName || mVJ.includes(vjQ);
+      });
+    }
+    if (selectedGenre) {
+      filtered = filtered.filter(m => (m.genre || "").toLowerCase().includes(selectedGenre.toLowerCase()));
+    }
+    if (selectedType) {
+      filtered = filtered.filter(m => {
+        const isSeries = "seasons" in m;
+        if (selectedType === "Movie") return !isSeries;
+        if (selectedType === "Series") return isSeries && !(m as any).isMiniSeries;
+        if (selectedType === "Mini Series") return isSeries && !!(m as any).isMiniSeries;
+        return true;
+      });
+    }
+    if (selectedYear) {
+      filtered = filtered.filter(m => String(m.year) === selectedYear);
+    }
+
+    if (sortBy === "newest") filtered.sort((a, b) => b.year - a.year);
+    else if (sortBy === "oldest") filtered.sort((a, b) => a.year - b.year);
+    else if (sortBy === "rating") filtered.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    else filtered.sort(() => Math.random() - 0.5);
+
     return filtered;
-  }, [allMovies, allSeries]);
+  }, [allMovies, allSeries, selectedVJ, selectedGenre, selectedType, selectedYear, sortBy]);
 
   // Scroll to top when filters change
   useEffect(() => {
@@ -368,7 +424,7 @@ export default function CategoryScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={80} color="rgba(255,255,255,0.1)" />
             <Text style={styles.emptyText}>No matches found</Text>
-            <TouchableOpacity style={styles.resetInlineBtn} onPress={clearFilters}>
+            <TouchableOpacity style={styles.resetInlineBtn} onPress={resetFilters}>
               <Text style={styles.resetInlineText}>Clear All Filters</Text>
             </TouchableOpacity>
           </View>
@@ -392,57 +448,26 @@ export default function CategoryScreen() {
         )}
       />
 
-      <View style={[styles.headerControls, { top: insets.top + 10 }]}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.searchBarWrap}>
-            <Ionicons name="search" size={20} color="rgba(255,255,255,0.4)" style={{ marginLeft: 12 }} />
-            <TextInput
-              style={styles.searchBarInput}
-              placeholder="Search movies, series..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" style={{ marginRight: 10 }} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.filterBtn, (selectedVJ || selectedGenre || selectedType || selectedYear || minRating > 0) && styles.filterBtnActive]}
-            onPress={() => setShowFilterModal(true)}
-          >
-            <Ionicons 
-              name={(selectedVJ || selectedGenre || selectedType || selectedYear || minRating > 0) ? "options" : "options-outline"} 
-              size={22} 
-              color={(selectedVJ || selectedGenre || selectedType || selectedYear || minRating > 0) ? "#5B5FEF" : "#fff"} 
-            />
-          </TouchableOpacity>
+      {/* Top Header Controls */}
+      <View style={[styles.headerControls, { top: Math.max(insets.top, 24) + 10 }]}>
+        <View style={styles.discoverTitleWrap}>
+          <Text style={styles.discoverTitle}>DISCOVER</Text>
+          <View style={styles.activeDot} />
         </View>
 
-        <FilterChips 
-          filters={{
-            vj: selectedVJ,
-            genre: selectedGenre,
-            type: selectedType,
-            year: selectedYear,
-            rating: minRating,
-            search: searchQuery
-          }}
-          onClear={(key) => {
-            if (key === 'vj') setSelectedVJ(null);
-            if (key === 'genre') setSelectedGenre(null);
-            if (key === 'type') setSelectedType(null);
-            if (key === 'year') setSelectedYear(null);
-            if (key === 'rating') setMinRating(0);
-            if (key === 'search') setSearchQuery("");
-          }}
-          onClearAll={clearFilters}
-          containerStyle={{ marginTop: 12 }}
-        />
+        <TouchableOpacity 
+          style={[styles.filterBtn, (selectedVJ || selectedGenre) && styles.filterBtnActive]}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <Ionicons 
+            name={(selectedVJ || selectedGenre) ? "options" : "options-outline"} 
+            size={22} 
+            color={(selectedVJ || selectedGenre) ? "#5B5FEF" : "#fff"} 
+          />
+          <Text style={[styles.filterBtnText, (selectedVJ || selectedGenre) && { color: '#5B5FEF' }]}>
+            {(selectedVJ || selectedGenre) ? "Active" : "Filters"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Preview Modal */}
@@ -558,31 +583,6 @@ export default function CategoryScreen() {
                     >
                       <Text style={[styles.genreFilterText, selectedGenre === g.name && styles.activeFilterText]}>
                         {g.name}
-                      </Text>
-                      <Text style={styles.genreCountText}>{genreCounts[g.name] || 0}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <View style={styles.filterSectionHeader}>
-                  <Text style={styles.filterSectionTitle}>MINIMUM RATING</Text>
-                  {minRating > 0 && (
-                    <TouchableOpacity onPress={() => setMinRating(0)}>
-                      <Text style={styles.clearText}>Clear</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View style={styles.ratingRow}>
-                  {[0, 6, 7, 8, 9].map(r => (
-                    <TouchableOpacity 
-                      key={r}
-                      style={[styles.ratingBtn, minRating === r && styles.activeGenreBtn]}
-                      onPress={() => setMinRating(r)}
-                    >
-                      <Text style={[styles.genreFilterText, minRating === r && styles.activeFilterText]}>
-                        {r === 0 ? "Any" : `${r}+ ★`}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -809,79 +809,12 @@ const styles = StyleSheet.create({
   },
   headerControls: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  headerTopRow: {
+    left: 20,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 10,
-  },
-  searchBarWrap: {
-    flex: 1,
-    height: 44,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  searchBarInput: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    paddingHorizontal: 10,
-  },
-  chipsRow: {
-    marginTop: 5,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(91, 95, 239, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#5B5FEF',
-  },
-  chipText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  genreCountText: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#5B5FEF',
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '900',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  ratingRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
-  },
-  ratingBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    zIndex: 10,
   },
   discoverTitleWrap: {
     flexDirection: 'row',

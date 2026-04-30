@@ -5,7 +5,6 @@ import { styles } from './menu.styles';
 import { useRouter } from 'expo-router';
 import { getRelativeTime } from '../../constants/utils';
 import { useSubscription } from "@/app/context/SubscriptionContext";
-import EmptyState from '../EmptyState';
 
 interface Movie {
   id: string;
@@ -342,13 +341,12 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                   );
                 })
               ) : (
-                <EmptyState 
-                  icon="cloud-download-outline"
-                  title="No Downloads"
-                  description="Save your favorite movies and series to watch them offline anytime, anywhere."
-                  buttonText="Explore Movies"
-                  onPress={onCloseSettings}
-                />
+                <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+                  <Ionicons name="cloud-download-outline" size={48} color="rgba(255,255,255,0.1)" />
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14, textAlign: 'center' }}>
+                    No downloads yet. Save movies or series for offline viewing.
+                  </Text>
+                </View>
               )}
             </Animated.View>
           )}
@@ -408,13 +406,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
               </TouchableOpacity>
             ))
           ) : (
-            <EmptyState 
-              icon="notifications-off-outline"
-              title="Quiet in here"
-              description="You'll see alerts about new releases, recommendations, and account updates here."
-              buttonText="Go Home"
-              onPress={onCloseSettings}
-            />
+            <View style={{ padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+              <Ionicons name="notifications-off-outline" size={48} color="rgba(255,255,255,0.1)" />
+              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14 }}>No new notifications</Text>
+            </View>
           )}
         </View>
 
@@ -510,13 +505,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                 </TouchableOpacity>
             ))
           ) : (
-            <EmptyState 
-              icon="bookmark-outline"
-              title="Your List is Empty"
-              description="Start adding movies and series to your watchlist so you never miss what you want to watch next."
-              buttonText="Browse Content"
-              onPress={onCloseSettings}
-            />
+            <View style={{ width: '100%', padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+              <Ionicons name="bookmark-outline" size={48} color="rgba(255,255,255,0.1)" />
+              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14 }}>Watchlist is empty</Text>
+            </View>
           )}
         </View>
       </View>
@@ -602,13 +594,10 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
               </TouchableOpacity>
             ))
           ) : (
-            <EmptyState 
-              icon="time-outline"
-              title="No Watch History"
-              description="Items you watch will appear here so you can easily continue where you left off."
-              buttonText="Start Watching"
-              onPress={onCloseSettings}
-            />
+            <View style={{ width: '100%', padding: 40, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 }}>
+              <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.1)" />
+              <Text style={{ color: 'rgba(255,255,255,0.3)', marginTop: 12, fontSize: 14 }}>History is empty</Text>
+            </View>
           )}
         </View>
       </View>
