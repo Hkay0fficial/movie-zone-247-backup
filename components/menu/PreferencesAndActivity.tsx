@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter, TextInput, ScrollView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, DeviceEventEmitter, TextInput, ScrollView, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './menu.styles';
 import { useRouter } from 'expo-router';
