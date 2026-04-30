@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, doc, limit } from 'firebase/firestore';
 import { db } from '../../constants/firebaseConfig';
 import { 
   Movie, 
@@ -60,6 +60,7 @@ interface MovieContextType {
   trending: (Movie | Series)[];
   heroMovies: HeroMovie[];
   announcements: any[];
+  loadingAnnouncements: boolean;
   appUpdateConfig: AppUpdateConfig;
 
   allRows: { title: string; data: (Movie | Series)[] }[];
@@ -132,6 +133,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     isUpdateAvailable: false
   });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
 
   // ─── Global Filter State ───
   const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
@@ -308,7 +310,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Listen to Announcements
-    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(15));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetched = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -316,6 +318,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
       }));
       setAnnouncements(fetched);
+      setLoadingAnnouncements(false);
     });
     return () => unsubscribe();
   }, []);
@@ -693,6 +696,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       mostDownloadedSeries,
       globalSettings,
       announcements,
+      loadingAnnouncements,
       appUpdateConfig,
       selectedVJ, setSelectedVJ,
       selectedGenre, setSelectedGenre,

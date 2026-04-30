@@ -19,6 +19,7 @@ import {
   Keyboard,
   Linking,
   BackHandler,
+  ActivityIndicator,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -256,6 +257,7 @@ function NotificationOverlay({
   notifications,
   highlightedId,
   markAllRead,
+  loading,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -285,6 +287,7 @@ function NotificationOverlay({
   notifications: Notification[];
   highlightedId: string | null;
   markAllRead: () => void;
+  loading: boolean;
   TOTAL_LIVE_ITEMS: (Movie | Series)[];
 }) {
   const highlightAnim = useRef(new Animated.Value(0)).current;
@@ -384,8 +387,15 @@ function NotificationOverlay({
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 20 }}
               >
-                {[
-                  ...notifications.filter((n) => {
+                {loading ? (
+                  <View style={{ flex: 1, paddingVertical: 100, alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color="#5B5FEF" />
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', marginTop: 12, fontSize: 13 }}>Loading notifications...</Text>
+                  </View>
+                ) : (
+                  <>
+                    {[
+                      ...notifications.filter((n) => {
                     if (n.id === "n2") return !isUpdateApplied;
                     if (n.type === "rating") return !isRatingPermanentlyRemoved;
                     return !readIds.has(n.id);
@@ -494,7 +504,7 @@ function NotificationOverlay({
                           {item.message}
                         </Text>
 
-                        {!isRead && (item.id === expandedNotificationId && expandedType ? (
+                        {!isRead && item.id === expandedNotificationId && expandedType ? (
                           <View style={styles.detailListContainer}>
                             <View style={styles.detailListHeader}>
                               <Text style={styles.detailListTitle}>
@@ -610,7 +620,7 @@ function NotificationOverlay({
                               </View>
                             )}
                           </View>
-                        ))}
+                        )}
                       </View>
                       {isUnread && (
                         <View style={styles.newBadgePill}>
@@ -626,6 +636,8 @@ function NotificationOverlay({
                     </TouchableOpacity>
                   );
                 })}
+                  </>
+                )}
               </ScrollView>
             </View>
           ) : (
@@ -1578,7 +1590,7 @@ function SearchOverlay({
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
-  const { liveMovies, liveSeries, announcements } = useMovies();
+  const { liveMovies, liveSeries, announcements, loadingAnnouncements } = useMovies();
   const {
     allMoviesFree,
     eventMessage,
@@ -2731,6 +2743,7 @@ function CustomTabBar() {
         setGlobalGridData={setGlobalGridData}
         notifications={notifications}
         markAllRead={markAllRead}
+        loading={loadingAnnouncements}
       />
 
       {/* ── Holiday Event Preview Modal ── */}
