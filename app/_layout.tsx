@@ -54,7 +54,7 @@ function ModernVideoPlayerWrapper() {
       episodeId={playingEpisodeId || undefined}
       onClose={() => {
         // Detect if we are playing a local download
-        const isLocal = selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http');
+        const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
         setPlayerMode('closed');
         setPlayingNow(null);
         setPlayingEpisodeId(null);
