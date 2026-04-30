@@ -2714,7 +2714,7 @@ function CustomTabBar() {
         setGlobalGridTitle={setGlobalGridTitle}
         setGlobalGridData={setGlobalGridData}
         notifications={notifications}
-        markAllRead={markAllRead}
+        markAllRead={handleMarkAllRead}
         loading={loadingAnnouncements}
       />
 

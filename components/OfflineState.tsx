@@ -103,8 +103,12 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(229, 9, 20, 0.2)', // Subtle red glow for offline
-    filter: 'blur(20px)',
+    backgroundColor: 'rgba(229, 9, 20, 0.1)', // Subtle red glow for offline
+    shadowColor: 'rgba(229, 9, 20, 1)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
     zIndex: 1,
   },
   title: {
