@@ -1069,21 +1069,43 @@ function SearchOverlay({
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
           <SafeAreaView style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
-              {/* ── Fixed Top Search Bar ── */}
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                pointerEvents="box-none"
-                style={{
+              {/* Status Bar background to prevent cards overlapping behind status bar area */}
+              <View style={{ 
+                position: 'absolute', 
+                top: -insets.top, 
+                left: 0, 
+                right: 0, 
+                height: insets.top, 
+                backgroundColor: "#0a0a0f",
+                zIndex: 1000 
+              }} />
+
+              {/* ── Fixed Top Search Bar Container ── */}
+              <View 
+                style={{ 
                   position: "absolute",
-                  left: 12,
-                  right: 12,
-                  top: 0, // exactly at the top of the safe area container
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  zIndex: 1000,
+                  backgroundColor: "#0a0a0f",
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: "rgba(255,255,255,0.22)",
+                  height: 56,
                   flexDirection: "row",
                   alignItems: "center",
-                  zIndex: 1000,
-                  height: 50, // outer container
+                  paddingHorizontal: 12,
                 }}
               >
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  pointerEvents="box-none"
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
                 {Platform.OS !== 'android' && (
                   <TouchableOpacity
                     onPress={() => {
@@ -1162,10 +1184,10 @@ function SearchOverlay({
                     )}
                   </View>
                 )}
+                </KeyboardAvoidingView>
+              </View>
 
-              </KeyboardAvoidingView>
-
-              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 40 }}>
+              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 56 }}>
 
                 {isFiltering ? (
                   <View style={{ flex: 1 }}>
