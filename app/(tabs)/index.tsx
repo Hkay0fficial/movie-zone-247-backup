@@ -117,7 +117,6 @@ import DeviceManagerModal from "../../components/DeviceManagerModal";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 
 import { ExpiryReminderModal } from "../../components/ExpiryReminderModal";
-import * as Network from 'expo-network';
 import OfflineState from "../../components/OfflineState";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -6454,10 +6453,13 @@ export default function HomeScreen() {
 
   const checkNetwork = useCallback(async () => {
     try {
-      const state = await Network.getNetworkStateAsync();
-      setIsOffline(!state.isConnected);
+      const response = await fetch('https://www.google.com/generate_204', { 
+        method: 'HEAD', 
+        cache: 'no-store' 
+      });
+      setIsOffline(!response.ok && response.status !== 204);
     } catch (e) {
-      console.warn("Network check failed:", e);
+      setIsOffline(true);
     }
   }, []);
 
