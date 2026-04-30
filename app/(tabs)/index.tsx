@@ -117,6 +117,8 @@ import DeviceManagerModal from "../../components/DeviceManagerModal";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 
 import { ExpiryReminderModal } from "../../components/ExpiryReminderModal";
+import * as Network from 'expo-network';
+import OfflineState from "../../components/OfflineState";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   try {
@@ -6442,12 +6444,28 @@ export default function HomeScreen() {
   const [isStackLoading, setIsStackLoading] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
   const [loadingDeepLink, setLoadingDeepLink] = useState(false);
   const lastProcessedId = useRef<string | null>(null);
   const { movieId, autoplay, playMovieId } = useLocalSearchParams();
+
+  const checkNetwork = useCallback(async () => {
+    try {
+      const state = await Network.getNetworkStateAsync();
+      setIsOffline(!state.isConnected);
+    } catch (e) {
+      console.warn("Network check failed:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkNetwork();
+    const interval = setInterval(checkNetwork, 10000);
+    return () => clearInterval(interval);
+  }, [checkNetwork]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -6837,6 +6855,15 @@ export default function HomeScreen() {
       subscription.remove();
     };
   }, [auth.currentUser]); // Re-run pulse setup when current user changes (e.g. on login/logout)
+
+  if (isOffline && liveRows.length === 0) {
+    return (
+      <OfflineState 
+        hasDownloads={downloadedMovies.length > 0} 
+        onRetry={checkNetwork} 
+      />
+    );
+  }
 
   if (loading) {
     return <HomeSkeleton />;

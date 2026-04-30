@@ -1461,7 +1461,7 @@ function SearchOverlay({
                   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                   style={[
                     styles.universalSearchBottomFilters,
-                    { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 2 }
+                    { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 12) }
                   ]}
                 >
                   {/* Filter Chips Layer — above the pill switcher */}
@@ -1630,7 +1630,6 @@ function CustomTabBar() {
     const loadState = async () => {
       try {
         const [
-          savedReadIds,
           savedCheckedIds,
           savedDismissCount,
           savedUpdateApplied,
