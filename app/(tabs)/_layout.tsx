@@ -255,6 +255,7 @@ function NotificationOverlay({
   setGlobalGridVisible,
   notifications,
   highlightedId,
+  markAllRead,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -283,6 +284,7 @@ function NotificationOverlay({
   setGlobalGridVisible: (visible: boolean) => void;
   notifications: Notification[];
   highlightedId: string | null;
+  markAllRead: () => void;
   TOTAL_LIVE_ITEMS: (Movie | Series)[];
 }) {
   const highlightAnim = useRef(new Animated.Value(0)).current;
@@ -358,14 +360,24 @@ function NotificationOverlay({
               />
               <View style={styles.notificationHeader}>
                 <Text style={styles.notificationTitle}>Notifications</Text>
-                {!isUpdateLocked && (
-                  <TouchableOpacity
-                    onPress={onClose}
-                    style={styles.notificationCloseBtn}
-                  >
-                    <Ionicons name="close" size={20} color="#fff" />
-                  </TouchableOpacity>
-                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {notifications.some(n => !readIds.has(n.id)) && (
+                    <TouchableOpacity
+                      onPress={markAllRead}
+                      style={styles.markAllReadBtn}
+                    >
+                      <Text style={styles.markAllReadText}>Mark all as read</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!isUpdateLocked && (
+                    <TouchableOpacity
+                      onPress={onClose}
+                      style={styles.notificationCloseBtn}
+                    >
+                      <Ionicons name="close" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               <ScrollView
@@ -1566,7 +1578,7 @@ function SearchOverlay({
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
-  const { liveMovies, liveSeries } = useMovies();
+  const { liveMovies, liveSeries, announcements } = useMovies();
   const {
     allMoviesFree,
     eventMessage,
@@ -1782,36 +1794,22 @@ function CustomTabBar() {
   const notifications = useMemo(() => {
     let baseData = [...MOCK_NOTIFICATIONS];
 
-    // Inject latest 5 live releases instead of the entire catalog
-    const recentMovies = liveMovies.slice(0, 5);
-    const recentSeries = liveSeries.slice(0, 5);
+    // Inject real Announcements from Firestore
+    const realNotifications: Notification[] = (announcements || []).map((ann: any) => ({
+      id: ann.id,
+      type: ann.type === 'hero_promotion' ? 'trending' : (ann.type === 'movie_release' ? 'movie' : 'update'),
+      icon: ann.type === 'hero_promotion' ? 'flame' : (ann.type === 'movie_release' ? 'film' : 'notifications'),
+      title: ann.subject || 'Announcement',
+      message: ann.message || '',
+      time: ann.createdAt ? new Date(ann.createdAt).toLocaleDateString() : 'Just Now',
+      image: ann.imageUrl || undefined,
+      isNew: !readIds.has(ann.id),
+      movieId: ann.movieId || undefined,
+    }));
 
-    if (recentMovies.length > 0 || recentSeries.length > 0) {
-      const latestItemId = recentMovies[0]?.id || recentSeries[0]?.id || "none";
-      const liveNotif: Notification = {
-        id: `live_new_${latestItemId}`,
-        type: "movie",
-        icon: "film",
-        title: "New Release",
-        message: recentMovies.length > 0
-          ? `🎬 "${recentMovies[0].title}" ${recentMovies.length > 1 ? `and ${recentMovies.length - 1} more` : ''} now streaming!`
-          : `Showcasing the latest releases!`,
-        time: "Just Now",
-        image: recentMovies[0]?.poster || recentSeries[0]?.poster,
-        isNew: true,
-        movieId: recentMovies[0]?.id,
-        sectionTitle: "New Releases",
-        count: recentMovies.length + recentSeries.length,
-        moviesCount: recentMovies.length,
-        seriesCount: recentSeries.length,
-        moviesList: recentMovies.map(m => ({ id: m.id, title: m.title })),
-        seriesList: recentSeries.map((s: Series) => ({ id: s.id, title: s.title })),
-        vjsDetailed: Array.from(new Set([...recentMovies.map((m: Movie) => m.vj), ...recentSeries.map((s: Series) => s.vj)])).map((vj: string, i: number) => ({ id: `v_live_${i}`, name: vj.replace('VJ ', ''), count: (recentMovies.filter((m: Movie) => m.vj === vj).length + recentSeries.filter((s: Series) => s.vj === vj).length) })),
-      };
+    // Prepend real announcements to base data
+    baseData = [...realNotifications, ...baseData];
 
-      // Prepend to top
-      baseData = [liveNotif, ...baseData];
-    }
     if (allMoviesFree) {
       const eventNotif: Notification = {
         id: "event_n1",
@@ -1844,7 +1842,7 @@ function CustomTabBar() {
     baseData = [...dlNotifications, ...baseData];
 
     return baseData;
-  }, [liveMovies, liveSeries, allMoviesFree, eventMessage, activeDownloads]);
+  }, [liveMovies, liveSeries, announcements, allMoviesFree, eventMessage, activeDownloads, readIds]);
 
   const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
 
@@ -2131,6 +2129,11 @@ function CustomTabBar() {
     if (id === "n2" && !isUpdateApplied) {
       setUpdateDismissCount((prev) => Math.min(prev + 1, 3));
     }
+  };
+
+  const markAllRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadIds(new Set([...readIds, ...allIds]));
   };
 
   // Reset update notification to "Unread" if dismissed but not locked
@@ -2727,6 +2730,7 @@ function CustomTabBar() {
         setGlobalGridTitle={setGlobalGridTitle}
         setGlobalGridData={setGlobalGridData}
         notifications={notifications}
+        markAllRead={markAllRead}
       />
 
       {/* ── Holiday Event Preview Modal ── */}
@@ -4226,5 +4230,19 @@ const styles = StyleSheet.create({
     fontSize: 7,
     fontWeight: "900",
     letterSpacing: 0.2,
+  },
+  markAllReadBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  markAllReadText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 11,
+    fontWeight: "700",
   },
 });

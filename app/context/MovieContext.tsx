@@ -59,6 +59,7 @@ interface MovieContextType {
   newReleases: (Movie | Series)[];
   trending: (Movie | Series)[];
   heroMovies: HeroMovie[];
+  announcements: any[];
   appUpdateConfig: AppUpdateConfig;
 
   allRows: { title: string; data: (Movie | Series)[] }[];
@@ -130,6 +131,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     forceUpdate: false,
     isUpdateAvailable: false
   });
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
   // ─── Global Filter State ───
   const [selectedVJ, setSelectedVJ] = useState<string | null>(null);
@@ -300,6 +302,20 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (docSnap.exists() && docSnap.data().sections) {
         setAppLayout(docSnap.data().sections);
       }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Listen to Announcements
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
+      }));
+      setAnnouncements(fetched);
     });
     return () => unsubscribe();
   }, []);
@@ -676,6 +692,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       mostViewedSeries,
       mostDownloadedSeries,
       globalSettings,
+      announcements,
       appUpdateConfig,
       selectedVJ, setSelectedVJ,
       selectedGenre, setSelectedGenre,
@@ -687,7 +704,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       clearFilters,
       resetFilters
     };
-  }, [liveMovies, liveSeries, loading, globalSettings, appLayout, appUpdateConfig, myFavorites, profile,
+  }, [liveMovies, liveSeries, loading, globalSettings, announcements, appLayout, appUpdateConfig, myFavorites, profile,
       selectedVJ, selectedGenre, selectedType, selectedYear, sortBy, minRating, searchQuery]);
 
   return (
