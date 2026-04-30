@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, getDocs, doc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, doc, limit, setDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../../constants/firebaseConfig';
 import { 
   Movie, 
@@ -62,6 +62,9 @@ interface MovieContextType {
   announcements: any[];
   loadingAnnouncements: boolean;
   appUpdateConfig: AppUpdateConfig;
+  readIds: Set<string>;
+  markRead: (id: string) => void;
+  markAllRead: (ids: string[]) => void;
 
   allRows: { title: string; data: (Movie | Series)[] }[];
   allSeries: Series[];
@@ -133,6 +136,8 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     isUpdateAvailable: false
   });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [isReadStateLoaded, setIsReadStateLoaded] = useState(false);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
 
   // ─── Global Filter State ───
@@ -323,8 +328,83 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const { user, profile } = useUser();
+
+  // 1. Load initial read state from AsyncStorage (fast)
+  useEffect(() => {
+    const loadLocalReadState = async () => {
+      try {
+        const saved = await require('@react-native-async-storage/async-storage').default.getItem('readIds');
+        if (saved) {
+          setReadIds(new Set(JSON.parse(saved)));
+        }
+      } catch (e) {
+        console.error('Failed to load local readIds', e);
+      } finally {
+        setIsReadStateLoaded(true);
+      }
+    };
+    loadLocalReadState();
+  }, []);
+
+  // 2. Sync with Firestore when user logs in or profile updates
+  useEffect(() => {
+    if (user && !user.isAnonymous) {
+      // Fetch readAnnouncements from Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const unsubscribe = onSnapshot(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data.readAnnouncements) {
+            setReadIds(new Set(data.readAnnouncements));
+          }
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  // 3. Helper functions for marking read
+  const markRead = async (id: string) => {
+    setReadIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      
+      // Update AsyncStorage
+      require('@react-native-async-storage/async-storage').default.setItem('readIds', JSON.stringify([...next]));
+      
+      // Update Firestore if logged in
+      if (user && !user.isAnonymous) {
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, { readAnnouncements: arrayUnion(id) }, { merge: true })
+          .catch(err => console.error('Failed to sync read status to Firestore', err));
+      }
+      
+      return next;
+    });
+  };
+
+  const markAllRead = async (ids: string[]) => {
+    setReadIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.add(id));
+      
+      // Update AsyncStorage
+      require('@react-native-async-storage/async-storage').default.setItem('readIds', JSON.stringify([...next]));
+      
+      // Update Firestore if logged in
+      if (user && !user.isAnonymous) {
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, { readAnnouncements: Array.from(next) }, { merge: true })
+          .catch(err => console.error('Failed to sync all read status to Firestore', err));
+      }
+      
+      return next;
+    });
+  };
+
   const { favorites: myFavorites } = useSubscription();
-  const { profile } = useUser();
 
   // Merge live data with mock data so the beautiful UI stays populated
   const contextValue = useMemo(() => {
@@ -697,6 +777,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       globalSettings,
       announcements,
       loadingAnnouncements,
+      readIds,
+      markRead,
+      markAllRead,
       appUpdateConfig,
       selectedVJ, setSelectedVJ,
       selectedGenre, setSelectedGenre,
@@ -709,6 +792,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       resetFilters
     };
   }, [liveMovies, liveSeries, loading, globalSettings, announcements, appLayout, appUpdateConfig, myFavorites, profile,
+      readIds, markRead, markAllRead,
       selectedVJ, selectedGenre, selectedType, selectedYear, sortBy, minRating, searchQuery]);
 
   return (

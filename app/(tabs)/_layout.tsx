@@ -1590,7 +1590,7 @@ function SearchOverlay({
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
 function CustomTabBar() {
-  const { liveMovies, liveSeries, announcements, loadingAnnouncements } = useMovies();
+  const { liveMovies, liveSeries, announcements, loadingAnnouncements, readIds, markRead, markAllRead } = useMovies();
   const {
     allMoviesFree,
     eventMessage,
@@ -1617,11 +1617,6 @@ function CustomTabBar() {
   const [showEventPreview, setShowEventPreview] = useState(false);
   const [isFromHero, setIsFromHero] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const readIdsRef = useRef(readIds);
-  useEffect(() => {
-    readIdsRef.current = readIds;
-  }, [readIds]);
   const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
   const [updateDismissCount, setUpdateDismissCount] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -1641,14 +1636,12 @@ function CustomTabBar() {
           savedUpdateApplied,
           savedRatingRemoved
         ] = await Promise.all([
-          AsyncStorage.getItem("readIds"),
           AsyncStorage.getItem("checkedItemIds"),
           AsyncStorage.getItem("updateDismissCount"),
           AsyncStorage.getItem("isUpdateApplied"),
           AsyncStorage.getItem("isRatingPermanentlyRemoved"),
         ]);
 
-        if (savedReadIds) setReadIds(new Set(JSON.parse(savedReadIds)));
         if (savedCheckedIds) setCheckedItemIds(new Set(JSON.parse(savedCheckedIds)));
         if (savedDismissCount) setUpdateDismissCount(parseInt(savedDismissCount, 10));
         if (savedUpdateApplied) setIsUpdateApplied(savedUpdateApplied === "true");
@@ -1664,12 +1657,6 @@ function CustomTabBar() {
   }, []);
 
   // Persist states when they change (only after initial load)
-  useEffect(() => {
-    if (isStateLoaded) {
-      AsyncStorage.setItem("readIds", JSON.stringify([...readIds]));
-    }
-  }, [readIds, isStateLoaded]);
-
   useEffect(() => {
     if (isStateLoaded) {
       AsyncStorage.setItem("checkedItemIds", JSON.stringify([...checkedItemIds]));
@@ -2132,35 +2119,18 @@ function CustomTabBar() {
 
   // Segment logic moved to top of component
 
-  const markRead = (id: string) => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
+  const handleMarkRead = (id: string) => {
+    markRead(id);
     if (id === "n2" && !isUpdateApplied) {
       setUpdateDismissCount((prev) => Math.min(prev + 1, 3));
     }
   };
 
-  const markAllRead = () => {
+  const handleMarkAllRead = () => {
     const allIds = notifications.map(n => n.id);
-    setReadIds(new Set([...readIds, ...allIds]));
+    markAllRead(allIds);
   };
 
-  // Reset update notification to "Unread" if dismissed but not locked
-  useEffect(() => {
-    if (notificationVisible && updateDismissCount < 3) {
-      setReadIds((prev) => {
-        if (prev.has("n2")) {
-          const next = new Set(prev);
-          next.delete("n2");
-          return next;
-        }
-        return prev;
-      });
-    }
-  }, [notificationVisible, updateDismissCount]);
 
   const onSelect = (item: Notification) => {
     if (item.id === "event_n1") {
@@ -2726,7 +2696,10 @@ function CustomTabBar() {
         submitRating={submitRating}
         isRatingSubmitted={isRatingSubmitted}
         readIds={readIds}
-        markRead={markRead}
+        markRead={(id) => {
+            markRead(id);
+            if (id === 'n2') setUpdateDismissCount(3);
+        }}
         checkedItemIds={checkedItemIds}
         toggleCheckedItem={toggleCheckedItem}
         expandedType={expandedType}

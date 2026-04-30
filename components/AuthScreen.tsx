@@ -638,7 +638,24 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
           }
         }
 
-        await signInWithEmailAndPassword(auth, targetEmail.trim(), password);
+        // If it is an email, check if it exists in Firestore first to provide specific error
+        if (isEmail(targetEmail)) {
+          const q = query(collection(db, "users"), where("email", "==", targetEmail));
+          const snapshot = await getDocs(q);
+          if (snapshot.empty) {
+            throw { code: 'auth/user-not-found' };
+          }
+        }
+
+        try {
+          await signInWithEmailAndPassword(auth, targetEmail.trim(), password);
+        } catch (err: any) {
+          // In modern Firebase, wrong-password is often returned as invalid-credential
+          if (err.code === 'auth/invalid-credential') {
+            throw { code: 'auth/wrong-password' };
+          }
+          throw err;
+        }
         
         // Immediate lastActive update on login
         if (auth.currentUser) {
@@ -676,15 +693,16 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       console.error('Auth Error:', error.code, error.message);
       triggerHaptic('error');
       
-      let errorMsg = error.message.replace("Firebase: ", "") || "Authentication failed";
-      if (error.code === 'auth/email-already-in-use') errorMsg = "Email already in use";
-      else if (error.code === 'auth/invalid-email') errorMsg = "Invalid email address";
-      else if (error.code === 'auth/weak-password') errorMsg = "Password is too weak";
-      else if (error.code === 'auth/wrong-password') errorMsg = "Incorrect password";
-      else if (error.code === 'auth/user-not-found') errorMsg = "No account with this email";
-      else if (error.code === 'auth/network-request-failed') errorMsg = "Network error. Please check your connection.";
+      let errorMsg = "Authentication failed. Please try again.";
+      if (error.code === 'auth/email-already-in-use') errorMsg = "This email is already registered. Please login instead.";
+      else if (error.code === 'auth/invalid-email') errorMsg = "Please enter a valid email address.";
+      else if (error.code === 'auth/weak-password') errorMsg = "Password should be at least 6 characters.";
+      else if (error.code === 'auth/wrong-password') errorMsg = "Incorrect password. Please try again.";
+      else if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email or username.";
+      else if (error.code === 'auth/invalid-credential') errorMsg = "Incorrect email or password.";
+      else if (error.code === 'auth/network-request-failed') errorMsg = "Connection error. Check your internet.";
       
-      alert(errorMsg);
+      Alert.alert("Login Failed", errorMsg);
       setLoading(false);
     }
   };
