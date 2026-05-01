@@ -1078,12 +1078,19 @@ function SeriesPreviewModal({
     }
   
     const count = series.episodes; 
+    const multiplier = series.episodesPerPart || 1;
     return Array.from({ length: count }, (_, i) => {
       const isFree = i < (series.freeEpisodesCount || 0) || series.isFree;
+      let displayIdx: any = i + 1;
+      if (multiplier > 1) {
+        const start = (i * multiplier) + 1;
+        const end = (i + 1) * multiplier;
+        displayIdx = `${start}-${end}`;
+      }
       return {
         id: `${series.id}-ep-${i}-${selectedSeason}`,
-        displayIndex: i + 1,
-        title: `${series.title} - Ep ${i + 1}${isFree ? " (Preview)" : ""}`,
+        displayIndex: displayIdx,
+        title: `${series.title} - Ep ${displayIdx}${isFree ? " (Preview)" : ""}`,
         duration: series.episodeDuration || "45m",
         isPremium: !isFree,
         thumbnail: series.poster,

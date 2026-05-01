@@ -3696,19 +3696,28 @@ export const MoviePreviewContent = memo(({
     } 
     // 2. Try explicit parts field (Movies legacy feature)
     else if ((movie as Movie).parts && (movie as Movie).parts!.length > 0) {
-      parts = (movie as Movie).parts!.map((p, index) => ({
-        ...p,
-        displayIndex: index + 1,
-        poster: (p as any).poster || movie.poster,
-        duration: (p as any).duration || (movie as any).duration,
-        videoUrl: (p as any).videoUrl || (movie as Movie).videoUrl,
-        previewUrl: (p as any).previewUrl || (movie as Movie).previewUrl,
-        vj: (p as any).vj || movie.vj,
-        year: (p as any).year || movie.year,
-        genre: (p as any).genre || movie.genre,
-        rating: (p as any).rating || movie.rating,
-        isFree: (p as any).isFree || movie.isFree,
-      }));
+      const multiplier = (movie as Movie).episodesPerPart || 1;
+      parts = (movie as Movie).parts!.map((p, index) => {
+        let displayIdx: any = index + 1;
+        if (multiplier > 1) {
+          const start = (index * multiplier) + 1;
+          const end = (index + 1) * multiplier;
+          displayIdx = `${start}-${end}`;
+        }
+        return {
+          ...p,
+          displayIndex: displayIdx,
+          poster: (p as any).poster || movie.poster,
+          duration: (p as any).duration || (movie as any).duration,
+          videoUrl: (p as any).videoUrl || (movie as Movie).videoUrl,
+          previewUrl: (p as any).previewUrl || (movie as Movie).previewUrl,
+          vj: (p as any).vj || movie.vj,
+          year: (p as any).year || movie.year,
+          genre: (p as any).genre || movie.genre,
+          rating: (p as any).rating || movie.rating,
+          isFree: (p as any).isFree || movie.isFree,
+        };
+      });
     } 
     // 3. Fallback to fuzzy title-matching for sequels/parts
     else {

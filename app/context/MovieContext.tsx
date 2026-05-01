@@ -219,6 +219,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
             createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
             country: getFullCountryName(data.country || ''),
+            episodesPerPart: data.episodesPerPart || 1,
           });
         } else {
           fetchedMovies.push({
@@ -248,6 +249,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
             createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
             country: getFullCountryName(data.country || ''),
+            episodesPerPart: data.episodesPerPart || 1,
           });
         }
       });
