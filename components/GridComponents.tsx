@@ -149,14 +149,28 @@ export function GridCard({
         <View style={styles.epBadgePremium}>
           <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
           <Text style={styles.epBadgeTextPremium}>
-            {Math.max((movie as any).episodes || 0, ((movie as any).episodeList?.length || 0) * ((movie as any).episodesPerPart || 1))} EP
+            {(() => {
+              const multiplier = (movie as any).episodesPerPart || 1;
+              const count = (movie as any).episodes || 0;
+              const listCount = ((movie as any).episodeList?.length || 0) * multiplier;
+              const total = Math.max(count, listCount);
+              return `${total} EP`;
+            })()}
           </Text>
         </View>
       ) : (
         ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
           <View style={styles.epBadgePremium}>
             <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
-            <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+            <Text style={styles.epBadgeTextPremium}>
+              {(() => {
+                const multiplier = (movie as any).episodesPerPart || 1;
+                const count = (movie as any).episodes || 0;
+                const listCount = ((movie as any).episodeList?.length || 0) * multiplier;
+                const total = Math.max(count, listCount);
+                return `${total} PART`;
+              })()}
+            </Text>
           </View>
         )
       )}

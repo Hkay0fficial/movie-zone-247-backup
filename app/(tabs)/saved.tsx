@@ -1003,6 +1003,13 @@ function SeriesPreviewModal({
     startAnims();
   }, [wavePulseAnim, shimmerAnim]);
 
+  // Sync activeEpisodeId with the first episode if not set
+  useEffect(() => {
+    if (episodes.length > 0 && !activeEpisodeId) {
+      setActiveEpisodeId(episodes[0].id);
+    }
+  }, [episodes, activeEpisodeId]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ y: 0, animated: false });
@@ -1745,12 +1752,15 @@ function SeriesPreviewModal({
                     ]}
                   >
                     {activeDl ? (
-                      <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
-                        <Ionicons
-                          name={activeDl?.isPaused ? "play-circle" : "pause-circle"}
-                          size={24}
-                          color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
-                        />
+                      <Animated.View style={[{ transform: [{ scale: downloadPulse }] }, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ 
+                          color: activeDl?.isPaused ? "#ef4444" : "#22c55e", 
+                          fontSize: 12, 
+                          fontWeight: '900',
+                          textAlign: 'center'
+                        }}>
+                          {Math.round(activeDl.progress)}%
+                        </Text>
                       </Animated.View>
                     ) : episodeDownloads[activeEpisodeId] ? (
                       <Ionicons
@@ -1776,8 +1786,8 @@ function SeriesPreviewModal({
                   >
                     {activeDl
                       ? activeDl?.isPaused
-                        ? `PAUSED (${Math.round(activeDl.progress)}%)`
-                        : `${Math.round(activeDl.progress)}% • ${activeDl.speedString?.split('•')[1]?.trim() || '...'}`
+                        ? `Paused (${Math.round(activeDl.progress)}%)`
+                        : "Saving..."
                       : episodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
                   </Text>
                 </TouchableOpacity>

@@ -205,6 +205,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     completedIdsRef.current.delete(entry.id);
     cancelledIdsRef.current.delete(entry.id);
     setDownloadQueue(prev => [...prev, entry.id]);
+    setActiveDownloads(prev => ({ ...prev, [entry.id]: entry }));
     return true;
   };
 
@@ -407,7 +408,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 entriesRef.current[id].speedString = speedString;
               }
               updateNotification(id, title, pct, speedString, false, false);
-              setActiveDownloads(prev => prev[id] ? { ...prev, [id]: { ...prev[id], progress: pct, speedString } } : prev);
+              setActiveDownloads(prev => ({ 
+                ...prev, 
+                [id]: { ...(prev[id] || entriesRef.current[id]), progress: pct, speedString } 
+              }));
             }
           };
 

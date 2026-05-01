@@ -2285,6 +2285,7 @@ export function SeriesPreviewContent({
   const [descExpanded, setDescExpanded] = useState(false);
   const [isMuted, setIsMuted] = useState(isMutedProp ?? false);
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>("");
+  const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -2299,7 +2300,7 @@ export function SeriesPreviewContent({
     if (!series) return;
     
     // Use the currently selected episode if none passed
-    const targetEp = episode || episodes.find((e: any) => e.id === activeEpisodeId);
+    const targetEp = episode || episodes.find((e: any) => e.id === activeEpisodeId) || episodes[0];
     if (!targetEp) return;
 
     // If actively downloading this episode, toggle pause/resume
@@ -2383,6 +2384,13 @@ export function SeriesPreviewContent({
     }
   }, [isTop]);
 
+  // Sync activeEpisodeId with the first episode if not set
+  useEffect(() => {
+    if (episodes.length > 0 && !activeEpisodeId) {
+      setActiveEpisodeId(episodes[0].id);
+    }
+  }, [episodes, activeEpisodeId]);
+
   const previewVideoUrl = useMemo(() => {
     if (!series) return undefined;
     if (series.previewUrl && series.previewUrl.startsWith('http')) return series.previewUrl;
@@ -2393,7 +2401,20 @@ export function SeriesPreviewContent({
   const episodes = useMemo(() => {
     if (series.episodeList && series.episodeList.length > 0) {
       const multiplier = series.episodesPerPart || 1;
-      return series.episodeList.map((ep: any, index: number) => {
+      let list = series.episodeList;
+
+      // Attempt to filter by season if multiple seasons exist
+      if (series.seasons > 1) {
+        const filteredList = list.filter((ep: any) => {
+          const title = (ep.title || "").toLowerCase();
+          const sMatch = title.match(/s(\d+)/i) || title.match(/season\s*(\d+)/i);
+          if (sMatch) return parseInt(sMatch[1]) === selectedSeason;
+          return true;
+        });
+        if (filteredList.length > 0) list = filteredList;
+      }
+
+      return list.map((ep: any, index: number) => {
         const isFree = index < (series.freeEpisodesCount || 0) || series.isFree;
         let displayIdx: any = index + 1;
         if (multiplier > 1) {
@@ -2402,7 +2423,7 @@ export function SeriesPreviewContent({
           displayIdx = `${start}-${end}`;
         }
         return {
-          id: `${series.id}-ep-${index}`,
+          id: `${series.id}-ep-${index}-${selectedSeason}`,
           displayIndex: displayIdx,
           title: ep.title,
           duration: series.episodeDuration || "45m",
@@ -2414,12 +2435,19 @@ export function SeriesPreviewContent({
       });
     }
     const count = series.episodes || 1;
+    const multiplier = series.episodesPerPart || 1;
     return Array.from({ length: count }, (_, i) => {
       const isFree = i < (series.freeEpisodesCount || 0) || series.isFree;
+      let displayIdx: any = i + 1;
+      if (multiplier > 1) {
+        const start = (i * multiplier) + 1;
+        const end = (i + 1) * multiplier;
+        displayIdx = `${start}-${end}`;
+      }
       return {
-        id: `${series.id}-ep-${i}`,
-        displayIndex: i + 1,
-        title: `${series.title} - Ep ${i + 1}${isFree ? " (Preview)" : ""}`,
+        id: `${series.id}-ep-${i}-${selectedSeason}`,
+        displayIndex: displayIdx,
+        title: `${series.title} - Ep ${displayIdx}${isFree ? " (Preview)" : ""}`,
         duration: series.episodeDuration || "45m",
         isPremium: !isFree,
         thumbnail: series.poster,
@@ -2427,9 +2455,15 @@ export function SeriesPreviewContent({
         description: `This exciting episode follows the journey in ${series.title}.`,
       };
     });
-  }, [series, previewVideoUrl]);
+  }, [series, previewVideoUrl, selectedSeason]);
 
   const activeEpisode = useMemo(() => episodes.find((e) => e.id === activeEpisodeId) || episodes[0], [episodes, activeEpisodeId]);
+
+  const activeDl = ctxActiveDownloads[activeEpisode?.id] || 
+                   ctxActiveDownloads[series.id] || 
+                   Object.values(ctxActiveDownloads).find(d => (d as any).item?.id === series.id);
+  
+  const isDownloaded = !!ctxEpisodeDownloads[activeEpisode?.id] || !!ctxEpisodeDownloads[series.id];
 
   const computedTotalDuration = useMemo(() => {
     if ((series as any).duration && (series as any).duration !== "N/A" && (series as any).duration !== "") return (series as any).duration;
@@ -2661,22 +2695,25 @@ export function SeriesPreviewContent({
               <View 
                 style={[
                   styles.previewActionIconBg, 
-                  (ctxActiveDownloads[activeEpisodeId] || ctxEpisodeDownloads[activeEpisodeId]) && { 
-                    borderColor: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e",
-                    backgroundColor: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
+                  (activeDl || isDownloaded) && { 
+                    borderColor: activeDl?.isPaused ? "#ef4444" : "#22c55e",
+                    backgroundColor: activeDl?.isPaused ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)"
                   }
                 ]}
               >
-                {ctxActiveDownloads[activeEpisodeId] ? (
-                  <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
-                    <Ionicons 
-                      name={ctxActiveDownloads[activeEpisodeId]?.isPaused ? "play" : "pause"} 
-                      size={20} 
-                      color={ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e"} 
-                    />
+                {activeDl ? (
+                  <Animated.View style={[{ transform: [{ scale: downloadPulse }] }, { alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ 
+                      color: activeDl?.isPaused ? "#ef4444" : "#22c55e", 
+                      fontSize: 12, 
+                      fontWeight: '900',
+                      textAlign: 'center'
+                    }}>
+                      {Math.round(activeDl.progress)}%
+                    </Text>
                   </Animated.View>
-                ) : ctxEpisodeDownloads[activeEpisodeId] ? (
-                  <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                ) : isDownloaded ? (
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
                 ) : (
                   <Ionicons name="download-outline" size={22} color="#fff" />
                 )}
@@ -2684,16 +2721,16 @@ export function SeriesPreviewContent({
               <Text 
                 style={[
                   styles.previewActionLabel, 
-                  (ctxActiveDownloads[activeEpisodeId] || ctxEpisodeDownloads[activeEpisodeId]) && { 
-                    color: ctxActiveDownloads[activeEpisodeId]?.isPaused ? "#ef4444" : "#22c55e" 
+                  (activeDl || isDownloaded) && { 
+                    color: activeDl?.isPaused ? "#ef4444" : "#22c55e" 
                   }
                 ]}
               >
-                {ctxActiveDownloads[activeEpisodeId]
-                  ? ctxActiveDownloads[activeEpisodeId]?.isPaused
-                    ? `Paused (${Math.round(ctxActiveDownloads[activeEpisodeId].progress)}%)`
-                    : `${Math.round(ctxActiveDownloads[activeEpisodeId].progress)}% • ${ctxActiveDownloads[activeEpisodeId].speedString?.split('•')[1]?.trim() || 'Starting...'}`
-                  : ctxEpisodeDownloads[activeEpisodeId] ? "Saved Offline" : "Download"}
+                {activeDl
+                  ? activeDl?.isPaused
+                    ? `Paused (${Math.round(activeDl.progress)}%)`
+                    : "Saving..."
+                  : isDownloaded ? "Saved Offline" : "Download"}
               </Text>
             </TouchableOpacity>
 
@@ -4433,12 +4470,15 @@ export const MoviePreviewContent = memo(({
                             ]}
                           >
                             {isDl ? (
-                              <Animated.View style={{ transform: [{ scale: downloadPulse }] }}>
-                                <Ionicons
-                                  name={activeDl?.isPaused ? "play" : "pause"}
-                                  size={20}
-                                  color={activeDl?.isPaused ? "#ef4444" : "#22c55e"}
-                                />
+                              <Animated.View style={[{ transform: [{ scale: downloadPulse }] }, { alignItems: 'center', justifyContent: 'center' }]}>
+                                <Text style={{ 
+                                  color: activeDl?.isPaused ? "#ef4444" : "#22c55e", 
+                                  fontSize: 12, 
+                                  fontWeight: '900',
+                                  textAlign: 'center'
+                                }}>
+                                  {Math.round(activeDl.progress)}%
+                                </Text>
                               </Animated.View>
                             ) : isDownloaded ? (
                               <Ionicons name="checkmark-circle" size={22} color="#10b981" />
@@ -4460,7 +4500,7 @@ export const MoviePreviewContent = memo(({
                             {isDl
                               ? activeDl?.isPaused
                                 ? `Paused (${activeDl.progress}%)`
-                                : `${activeDl.progress}% • ${activeDl.speedString?.split('•')[1]?.trim() || 'Starting...'}`
+                                : "Saving..."
                               : isDownloaded
                                 ? "Saved Offline"
                                 : "Download"}
