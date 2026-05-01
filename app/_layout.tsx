@@ -6,6 +6,11 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
 import { Platform, View, DeviceEventEmitter } from 'react-native';
 import 'react-native-reanimated';
+import { useFonts } from 'expo-font';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SubscriptionProvider } from '@/app/context/SubscriptionContext';
@@ -107,6 +112,17 @@ export default function RootLayout() {
   const router = useRouter();
   const [activeNotification, setActiveNotification] = useState<LocalNotification | null>(null);
 
+  const [fontsLoaded, fontError] = useFonts({
+    ...MaterialIcons.font,
+    ...Ionicons.font,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
   useEffect(() => {
     if (Platform.OS !== 'web') {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
@@ -159,6 +175,10 @@ export default function RootLayout() {
       localNotifSub.remove();
     };
   }, []);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
