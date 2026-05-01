@@ -1,6 +1,6 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { initializeAuth, Auth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -32,7 +32,11 @@ try {
 }
 
 export const auth = authInstance;
-export const db = getFirestore(app);
+
+// Enable persistent local cache for Firestore
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: undefined })
+});
 export const storage = getStorage(app);
 
 export default app;

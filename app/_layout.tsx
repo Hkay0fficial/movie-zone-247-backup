@@ -145,7 +145,7 @@ export default function RootLayout() {
       setActiveNotification({
         title: content.title || 'Notification',
         body: content.body || '',
-        imageUrl: content.data?.imageUrl || (content.attachments?.[0]?.url),
+        imageUrl: content.data?.imageUrl || content.data?.image || (content.attachments?.[0]?.url),
         data: content.data
       });
     });

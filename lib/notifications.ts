@@ -43,7 +43,7 @@ export async function registerForPushNotificationsAsync() {
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
-    await Notifications.setNotificationChannelAsync('movie_updates_v2', {
+    await Notifications.setNotificationChannelAsync('movie_updates_v3', {
       name: 'New Movie Alerts',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
@@ -82,12 +82,19 @@ export async function registerForPushNotificationsAsync() {
   ]);
 
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    let finalStatus = 'undetermined';
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+    } catch (e) {
+      console.warn('Failed to check/request notification permissions:', e);
+      return null;
     }
+
     if (finalStatus !== 'granted') {
       return null;
     }

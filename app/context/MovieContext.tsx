@@ -12,6 +12,7 @@ import { SubscriptionProvider, useSubscription } from './SubscriptionContext';
 import { useUser } from './UserContext';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const COUNTRY_MAP: Record<string, string> = {
   'KR': 'South Korea',
@@ -334,7 +335,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadLocalReadState = async () => {
       try {
-        const saved = await require('@react-native-async-storage/async-storage').default.getItem('readIds');
+        const saved = await AsyncStorage.getItem('readIds');
         if (saved) {
           setReadIds(new Set(JSON.parse(saved)));
         }
@@ -372,7 +373,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       next.add(id);
       
       // Update AsyncStorage
-      require('@react-native-async-storage/async-storage').default.setItem('readIds', JSON.stringify([...next]));
+      AsyncStorage.setItem('readIds', JSON.stringify([...next]));
       
       // Update Firestore if logged in
       if (user && !user.isAnonymous) {
@@ -391,7 +392,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ids.forEach(id => next.add(id));
       
       // Update AsyncStorage
-      require('@react-native-async-storage/async-storage').default.setItem('readIds', JSON.stringify([...next]));
+      AsyncStorage.setItem('readIds', JSON.stringify([...next]));
       
       // Update Firestore if logged in
       if (user && !user.isAnonymous) {
@@ -485,7 +486,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     // ── Personalized Rows ──
     // You May Also Like: Suggest based on genres in watch history
     const watchedGenres = new Set<string>();
-    Object.values(profile.watchHistory || {}).forEach((h: any) => {
+    const watchHistory = profile?.watchHistory || {};
+    
+    Object.values(watchHistory).forEach((h: any) => {
       if (h.category) watchedGenres.add(h.category);
     });
     
@@ -501,7 +504,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     // Dedicated Series recommendation list (NO MOVIES)
     let youMayAlsoLikeSeries = filteredSeries
       .filter(s => watchedGenres.has(s.genre || ''))
-      .filter(s => !profile.watchHistory?.[s.id])
+      .filter(s => !watchHistory[s.id])
       .slice(0, 15);
     
     if (youMayAlsoLikeSeries.length < 5) {
@@ -513,7 +516,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     // Dedicated Movie recommendation list (NO SERIES)
     let youMayAlsoLikeMovies = filteredMovies
       .filter(m => watchedGenres.has(m.genre || ''))
-      .filter(m => !profile.watchHistory?.[m.id])
+      .filter(m => !watchHistory[m.id])
       .slice(0, 15);
     
     if (youMayAlsoLikeMovies.length < 5) {
@@ -524,14 +527,14 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     
     // ── Personalized Rows ──
     // Continue Watching: Map watchHistory IDs to full objects, sorted by timestamp
-    const continueWatching = Object.entries(profile.watchHistory || {})
+    const continueWatching = Object.entries(watchHistory)
       .map(([key, history]) => {
         const movieId = key.includes('_') ? key.split('_')[0] : key;
         const item = allContent.find(m => m.id === movieId);
-        return item ? { ...item, ...history } as any : null;
+        return item ? { ...item, ...(history as any) } as any : null;
       })
       .filter((m): m is any => m !== null)
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
       .slice(0, 15);
 
     const favourites = myFavorites.map((fav: any) => allContent.find(m => m.id === fav.id)).filter(Boolean) as (Movie | Series)[];
@@ -683,7 +686,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
           sectionData = [...filteredMovies, ...filteredSeries]
-            .filter(m => m.genre?.toLowerCase().includes(val))
+            .filter(m => (m.genre || "").toLowerCase().includes(val))
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         } else if (type === 'country') {
           const val = (section.filterValue || '').toLowerCase();
