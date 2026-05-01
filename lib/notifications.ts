@@ -38,7 +38,9 @@ export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'General Notifications',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
     await Notifications.setNotificationChannelAsync('movie_updates_v2', {
@@ -93,14 +95,10 @@ export async function registerForPushNotificationsAsync() {
     try {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
       
-      // On Android, use getDevicePushTokenAsync for native FCM tokens which support images much better
-      if (Platform.OS === 'android') {
-        const deviceToken = (await Notifications.getDevicePushTokenAsync()).data;
-        console.log('Registered Native FCM Token:', deviceToken);
-        return deviceToken;
-      }
-
+      // Always use Expo Push Token so the Expo Push Service handles delivery
+      // (native FCM tokens skip Expo's image/attachment support)
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      console.log('Registered Expo Push Token:', token);
       return token;
     } catch (e) {
       console.error('Failed to get push token:', e);
