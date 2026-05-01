@@ -98,11 +98,39 @@ async function ensureUserDocument(user: User) {
 }
 
 import { registerForPushNotificationsAsync } from '../../lib/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CACHE_KEY = '@user_profile_v3';
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
+
+  // Load profile from cache on mount
+  useEffect(() => {
+    const loadCachedProfile = async () => {
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+          setProfile(JSON.parse(cached));
+          setLoading(false);
+        }
+      } catch (e) {
+        console.warn('UserContext: Failed to load cached profile:', e);
+      }
+    };
+    loadCachedProfile();
+  }, []);
+
+  // Save profile to cache whenever it changes
+  useEffect(() => {
+    if (profile && profile !== DEFAULT_PROFILE) {
+      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(profile)).catch(e => 
+        console.warn('UserContext: Failed to cache profile:', e)
+      );
+    }
+  }, [profile]);
 
   // Push Notification Registration
   useEffect(() => {

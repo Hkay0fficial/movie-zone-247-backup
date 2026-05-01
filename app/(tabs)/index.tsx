@@ -2243,6 +2243,7 @@ export function SeriesPreviewContent({
   onUpgrade: () => void;
   isFocused: boolean;
   appState: string;
+  isTop?: boolean;
 }) {
   const router = useRouter();
   const { 
@@ -2375,6 +2376,12 @@ export function SeriesPreviewContent({
   useEffect(() => {
     if (isMutedProp !== undefined) setIsMuted(isMutedProp);
   }, [isMutedProp]);
+
+  useEffect(() => {
+    if (isTop === false) {
+      setIsMuted(true);
+    }
+  }, [isTop]);
 
   const previewVideoUrl = useMemo(() => {
     if (!series) return undefined;
@@ -3095,7 +3102,8 @@ export const MoviePreviewContent = memo(({
   onUpgrade,
   isFocused,
   appState,
-  hideSearchBy
+  hideSearchBy,
+  isTop
 }: { 
   movie: Movie | Series | null;
   onClose: () => void;
@@ -3115,6 +3123,7 @@ export const MoviePreviewContent = memo(({
   isFocused: boolean;
   appState: string;
   hideSearchBy?: boolean;
+  isTop?: boolean;
 }) => {
   const [isRenderReady, setIsRenderReady] = useState(false);
   useEffect(() => {
@@ -3208,6 +3217,19 @@ export const MoviePreviewContent = memo(({
   const [showOtherParts, setShowOtherParts] = useState(false);
   const [isMuted, setIsMuted] = useState(isMutedProp ?? false);
   const [prevIsMuted, setPrevIsMuted] = useState(isMuted);
+
+  useEffect(() => {
+    if (isMutedProp !== undefined) {
+      setIsMuted(isMutedProp);
+    }
+  }, [isMutedProp]);
+
+  useEffect(() => {
+    if (isTop === false) {
+      setIsMuted(true);
+    }
+  }, [isTop]);
+
   const [videoError, setVideoError] = useState<string | null>(null);
 
   // ── Swipe-to-dismiss gesture ──
@@ -5919,7 +5941,7 @@ const MovieRow = memo(({
         </TouchableOpacity>
       </View>
       <FlatList
-        data={data}
+        data={data.slice(0, 12)}
         keyExtractor={(m, index) => (m.id || `fallback-id-${index}`)}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -6413,7 +6435,6 @@ export default function HomeScreen() {
     deviceLimit,
     remainingDays,
     isSubscribed,
-    downloadedMovies,
     favorites,
     playingNow,
     setPlayingNow,
@@ -6425,6 +6446,8 @@ export default function HomeScreen() {
     setSelectedVideoUrl,
     setIsPreview
   } = useSubscription();
+
+  const { downloadedMovies = [] } = useDownloads() || {};
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
@@ -6965,10 +6988,10 @@ export default function HomeScreen() {
                });
             }
           }}
-          isMuted={isHeroMuted}
+          isMuted={isHeroMuted || navigationStack.length > 0}
           setIsMuted={setIsUserMuted}
           onShowPremium={() => setShowPremiumModal(true)}
-          paused={!!playingNow || !isFocused}
+          paused={!!playingNow || !isFocused || navigationStack.length > 0}
           isFocused={isFocused}
           appState={appState}
         />
@@ -7142,6 +7165,7 @@ export default function HomeScreen() {
                       onUpgrade={() => setShowPlanModal(true)}
                       isFocused={isFocused}
                       appState={appState}
+                      isTop={index === navigationStack.length - 1}
                     />
                   );
                 })}

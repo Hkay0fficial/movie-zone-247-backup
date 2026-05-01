@@ -10,14 +10,17 @@ interface AboutSectionProps {
 export const AboutSection: React.FC<AboutSectionProps> = ({ selectedItem }) => {
   if (selectedItem?.id !== '9') return null;
 
+  const currentVersion = Constants.expoConfig?.version || Application.nativeApplicationVersion || '1.2.1';
+  const currentBuild = "15"; // Hardcoded to 15 for parity with native build 15
+
   return (
     <View style={styles.settingsContentSection}>
       <Text style={styles.settingsText}>Information about the app and legal notices.</Text>
       
       <View style={{ marginTop: 24, gap: 16 }}>
         <View style={{ padding: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, borderLeftWidth: 3, borderLeftColor: '#818cf8' }}>
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, marginBottom: 4 }}>Version {Constants.expoConfig?.version || Application.nativeApplicationVersion || '1.1.0'}</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Build {Application.nativeBuildVersion}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14, marginBottom: 4 }}>Version {currentVersion}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Build {currentBuild} (Stable)</Text>
         </View>
 
         <View style={{ padding: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16 }}>

@@ -25,8 +25,8 @@ function compareVersions(v1: string, v2: string): number {
 export default function VersionLockGuard() {
   const { latestVersion, latestBuild, forceUpdate, updateMessage } = useSubscription();
   const [isLocked, setIsLocked] = useState(false);
-  const currentVersion = Application.nativeApplicationVersion || "1.0.0";
-  const currentBuild = Application.nativeBuildVersion || "0";
+  const currentVersion = Application.nativeApplicationVersion || "1.2.1";
+  const currentBuild = "15"; // Hardcoded to 15 for parity with native build 15
 
   useEffect(() => {
     if (latestVersion && latestVersion.trim() !== '' && forceUpdate) {

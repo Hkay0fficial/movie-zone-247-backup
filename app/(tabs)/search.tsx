@@ -225,10 +225,7 @@ export default function SearchScreen() {
         </Animated.View>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#5B5FEF" />
-            <Text style={styles.loadingText}>Fetching latest content...</Text>
-          </View>
+          <GridSkeleton />
         ) : query.trim() === '' ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>

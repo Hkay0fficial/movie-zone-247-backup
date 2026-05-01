@@ -93,8 +93,13 @@ class DownloadNotificationManager {
       color: isComplete ? '#10b981' : (isPaused ? '#fcd34d' : '#818cf8'),
     };
 
-    if (posterUrl && Platform.OS === 'ios') {
-      content.attachments = [{ url: posterUrl, identifier: id, type: 'image' }];
+    if (posterUrl) {
+      if (Platform.OS === 'ios') {
+        content.attachments = [{ url: posterUrl, identifier: id, type: 'image' }];
+      } else {
+        // @ts-ignore - 'image' is supported in SDK 50+ but may not be in all type definitions
+        content.image = posterUrl;
+      }
     }
 
     await Notifications.scheduleNotificationAsync({

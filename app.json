@@ -13,12 +13,14 @@
       "bundleIdentifier": "com.moviezone247.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
       "package": "com.moviezone247.app",
-      "versionCode": 13,
+      "versionCode": 15,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"

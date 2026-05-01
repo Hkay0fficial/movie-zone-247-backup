@@ -23,6 +23,7 @@ import { useDownloads } from "@/app/context/DownloadContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useUser } from "../context/UserContext";
+import OfflineState from "../../components/OfflineState";
 import { db, auth } from "../../constants/firebaseConfig";
 import { 
   collection, 
@@ -36,6 +37,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { formatRelativeTime } from "../../utils/TimeUtils";
+import { SkeletonLoader, SkeletonRow } from "../../components/SkeletonLoader";
 
 import {
   StyleSheet,
@@ -284,6 +286,44 @@ function HorizontalSeriesRow({ data, onSelect }: { data: Series[]; onSelect: (s:
 }
 
 // ─── Series Screen ────────────────────────────────────────────────────────────
+const SeriesSkeleton = React.memo(() => {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: Platform.OS === 'ios' ? 60 : 70 }}>
+        {/* Header Skeleton */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 25, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+           <SkeletonLoader width={160} height={40} borderRadius={20} />
+           <SkeletonLoader width={40} height={40} borderRadius={20} />
+           <SkeletonLoader width={40} height={40} borderRadius={20} />
+        </View>
+
+        {/* Quick Access Pills */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 25 }}>
+          <SkeletonLoader width={100} height={36} borderRadius={18} />
+          <SkeletonLoader width={120} height={36} borderRadius={18} />
+          <SkeletonLoader width={90} height={36} borderRadius={18} />
+          <SkeletonLoader width={110} height={36} borderRadius={18} />
+        </View>
+
+        {/* Large Featured Section */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 30 }}>
+          <SkeletonLoader width="100%" height={220} borderRadius={20} />
+          <View style={{ marginTop: 15, gap: 8 }}>
+            <SkeletonLoader width="60%" height={24} />
+            <SkeletonLoader width="40%" height={16} />
+          </View>
+        </View>
+
+        {/* Multiple Rows */}
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </ScrollView>
+    </View>
+  );
+});
+
 export default function SeriesScreen() {
   const router = useRouter();
   const { 
@@ -322,6 +362,26 @@ export default function SeriesScreen() {
   } = useSubscription();
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
+  const [isOffline, setIsOffline] = useState(false);
+  const { downloadedMovies = [] } = useDownloads() || {};
+
+  const checkNetwork = useCallback(async () => {
+    try {
+      const response = await fetch('https://www.google.com/generate_204', { 
+        method: 'HEAD', 
+        cache: 'no-store' 
+      });
+      setIsOffline(!response.ok && response.status !== 204);
+    } catch (e) {
+      setIsOffline(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkNetwork();
+    const interval = setInterval(checkNetwork, 10000);
+    return () => clearInterval(interval);
+  }, [checkNetwork]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -526,13 +586,20 @@ export default function SeriesScreen() {
     }
   }, [seriesStack.length, isFocused]);
 
-  if (loading) {
+  if (isOffline) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#5B5FEF" />
-        <Text style={{ color: 'rgba(255,255,255,0.5)', marginTop: 12, fontSize: 13, fontWeight: '600' }}>Fetching latest content...</Text>
+      <View style={styles.container}>
+        <OfflineState 
+          hasDownloads={downloadedMovies.length > 0} 
+          onRetry={checkNetwork} 
+        />
       </View>
     );
+  }
+
+
+  if (loading) {
+    return <SeriesSkeleton />;
   }
 
   return (
@@ -607,24 +674,24 @@ export default function SeriesScreen() {
                 <HorizontalSeriesRow 
                   data={(() => {
                     const activeSec = appLayout.quickAccess.find(s => s.title === featuredTab) || appLayout.quickAccess[0];
-                    if (!activeSec) return NEW_SERIES;
+                    if (!activeSec) return NEW_SERIES.slice(0, 12);
                     
                     const filterVal = (activeSec.filterValue || '').toLowerCase().trim();
                     switch(activeSec.filterType) {
-                      case 'newReleases': return NEW_SERIES;
-                      case 'trending': return TRENDING_SERIES;
-                      case 'mostViewed': return MOST_VIEWED_SERIES;
-                      case 'mostDownloaded': return MOST_DOWNLOADED_SERIES;
-                      case 'miniSeries': return ALL_SERIES.filter(s => s.isMiniSeries === true);
+                      case 'newReleases': return NEW_SERIES.slice(0, 12);
+                      case 'trending': return TRENDING_SERIES.slice(0, 12);
+                      case 'mostViewed': return MOST_VIEWED_SERIES.slice(0, 12);
+                      case 'mostDownloaded': return MOST_DOWNLOADED_SERIES.slice(0, 12);
+                      case 'miniSeries': return ALL_SERIES.filter(s => s.isMiniSeries === true).slice(0, 12);
                       case 'genre': return ALL_SERIES.filter(s => 
                         (s.genre || '').toLowerCase().includes(filterVal) ||
                         (s.country || '').toLowerCase().includes(filterVal)
-                      );
+                      ).slice(0, 12);
                       case 'country': return ALL_SERIES.filter(s => 
                         (s.country || '').toLowerCase().includes(filterVal) ||
                         (s.genre || '').toLowerCase().includes(filterVal)
-                      );
-                      default: return NEW_SERIES;
+                      ).slice(0, 12);
+                      default: return NEW_SERIES.slice(0, 12);
                     }
                   })()} 
                   onSelect={(s) => setSeriesStack([s])} 
@@ -667,7 +734,7 @@ export default function SeriesScreen() {
                       onSeeAll={() => setActiveSection({ title: section.title, data: sectionData })} 
                     />
                     <HorizontalSeriesRow 
-                      data={sectionData} 
+                      data={sectionData.slice(0, 12)} 
                       onSelect={(s) => setSeriesStack([s])} 
                     />
                   </View>

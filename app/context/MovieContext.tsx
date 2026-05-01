@@ -212,10 +212,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             episodeDuration: data.episodeDuration || '45m',
             isMiniSeries: data.isMiniSeries || false,
             isHero: data.isHero || false,
+            isNewRelease: data.isNewRelease || false,
+            isNewReleaseSeries: data.isNewReleaseSeries || false,
             heroType: data.heroType || 'video',
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
             country: getFullCountryName(data.country || ''),
           });
         } else {
@@ -239,10 +241,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             isFree: data.isFree || false,
             isHero: data.isHero || false,
+            isNewRelease: data.isNewRelease || false,
+            isNewReleaseSeries: data.isNewReleaseSeries || false,
             heroType: data.heroType || 'video',
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : Date.now()),
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
             country: getFullCountryName(data.country || ''),
           });
         }
@@ -463,9 +467,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     else if (sortBy === "oldest") allContent.sort((a, b) => (a.year || 0) - (b.year || 0));
     else if (sortBy === "rating") allContent.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
 
-    // New Releases = newest items uploaded (movies + series), newest first
+    // New Releases = admin-pinned items first, then newest by upload date
     const newReleases = [...allContent]
-      .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+      .sort((a: any, b: any) => {
+        // Pinned new releases come first
+        const aPin = a.isNewRelease ? 1 : 0;
+        const bPin = b.isNewRelease ? 1 : 0;
+        if (bPin !== aPin) return bPin - aPin;
+        // Then sort by newest upload date
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
 
     // ── Smart Discovery Rows ──
     const trending = [...allContent]
@@ -566,7 +577,13 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const vjCollection: Movie[] = [];
 
     const allSeries = [...filteredSeries];
-    const newSeries = [...filteredSeries].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 15);
+    const newSeries = [...filteredSeries].sort((a: any, b: any) => {
+      // Series-specific pin flag (separate from home screen pin)
+      const aPin = a.isNewReleaseSeries ? 1 : 0;
+      const bPin = b.isNewReleaseSeries ? 1 : 0;
+      if (bPin !== aPin) return bPin - aPin;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
     const trendingSeries = [...filteredSeries]
       .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
       .slice(0, 15);

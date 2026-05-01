@@ -66,6 +66,8 @@ interface SubscriptionContextType {
   setIsPreview: (v: boolean) => void;
   playingEpisodeId: string | null;
   setPlayingEpisodeId: (id: string | null) => void;
+  isSubscribed: boolean;
+  remainingDays: number;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -111,6 +113,26 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return null;
     }
   };
+
+  // Load cached subscription on init
+  useEffect(() => {
+    const loadCachedSubscription = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('cached_subscription');
+        if (cached) {
+          const { bundle, expiresAt, guestStatus } = JSON.parse(cached);
+          setSubscriptionBundle(bundle || 'None');
+          setSubscriptionExpiresAt(expiresAt || null);
+          setIsGuest(guestStatus !== undefined ? guestStatus : true);
+        }
+      } catch (e) {
+        console.error("Failed to load cached subscription:", e);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    loadCachedSubscription();
+  }, []);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | undefined;
@@ -163,18 +185,31 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             
             if (expiresAt && expiresAt.seconds) {
               const expirationMs = expiresAt.seconds * 1000;
-              if (Date.now() > expirationMs) {
-                setSubscriptionBundle('None');
-                setSubscriptionExpiresAt(null);
-              } else {
-                setSubscriptionBundle(bundle);
-                setSubscriptionExpiresAt(expirationMs);
-              }
+              const isExpired = Date.now() > expirationMs;
+              const finalBundle = isExpired ? 'None' : bundle;
+              const finalExpires = isExpired ? null : expirationMs;
+
+              setSubscriptionBundle(finalBundle);
+              setSubscriptionExpiresAt(finalExpires);
+              
+              // Cache the result
+              AsyncStorage.setItem('cached_subscription', JSON.stringify({
+                bundle: finalBundle,
+                expiresAt: finalExpires,
+                guestStatus: user.isAnonymous
+              })).catch(() => {});
             } else {
               setSubscriptionBundle(bundle);
               setSubscriptionExpiresAt(null);
+              AsyncStorage.setItem('cached_subscription', JSON.stringify({
+                bundle: bundle,
+                expiresAt: null,
+                guestStatus: user.isAnonymous
+              })).catch(() => {});
             }
-          } else {
+          } else if (!snap.metadata.fromCache) {
+            // Only reset if we have confirmed with the server that the doc doesn't exist
+            // This prevents overwriting our cached data when offline
             setSubscriptionBundle('None');
             setSubscriptionExpiresAt(null);
             setHasUsedGuestTrial(false);
@@ -395,6 +430,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
   const playerSize = React.useMemo(() => new Animated.Value(SCREEN_W), []);
 
+  const isSubscribed = isPaid && subscriptionExpiresAt !== null && subscriptionExpiresAt > Date.now();
+  const remainingDays = subscriptionExpiresAt 
+    ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   return (
     <SubscriptionContext.Provider value={{
       subscriptionBundle,
@@ -432,6 +472,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsPreview,
       playingEpisodeId,
       setPlayingEpisodeId,
+      isSubscribed,
+      remainingDays,
     }}>
       {children}
     </SubscriptionContext.Provider>

@@ -40,6 +40,7 @@ import {
   getStreamUrl,
   ALL_ROWS
 } from "@/constants/movieData";
+import { useDownloads } from "@/app/context/DownloadContext";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -60,18 +61,6 @@ const SORT_OPTIONS = [
   { label: "Oldest", value: "oldest", icon: "hourglass" },
 ];
 
-const DiscoverSkeleton = React.memo(() => (
-    <View style={{ position: 'absolute', bottom: 120, left: 20, right: 20 }}>
-      <SkeletonLoader width={200} height={30} style={{ marginBottom: 12 }} />
-      <SkeletonLoader width={150} height={15} style={{ marginBottom: 8 }} />
-      <SkeletonLoader width={100} height={15} style={{ marginBottom: 20 }} />
-      <View style={{ flexDirection: 'row', gap: 15 }}>
-        <SkeletonLoader width={120} height={50} borderRadius={25} />
-        <SkeletonLoader width={50} height={50} borderRadius={25} />
-        <SkeletonLoader width={50} height={50} borderRadius={25} />
-      </View>
-    </View>
-));
 
 // ─── Discover Feed Card ────────────────────────────────────────────────────────
 const DiscoverCard = React.memo(({ 
@@ -244,25 +233,6 @@ export default function CategoryScreen() {
     isPaid, allMoviesFree, setPlayingNow
   } = useSubscription();
 
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  // Calculate Genre Counters
-  const genreCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const pool = [...(allMovies || []), ...(allSeries || [])];
-    pool.forEach(item => {
-      const g = item.genre || "Other";
-      if (counts[g]) counts[g]++;
-      else counts[g] = 1;
-    });
-    return counts;
-  }, [allMovies, allSeries]);
-
   const DiscoverSkeleton = React.memo(() => {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -280,6 +250,28 @@ export default function CategoryScreen() {
       </View>
     );
   });
+
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+
+  // Calculate Genre Counters
+  const genreCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const pool = [...(allMovies || []), ...(allSeries || [])];
+    pool.forEach(item => {
+      const g = item.genre || "Other";
+      if (counts[g]) counts[g]++;
+      else counts[g] = 1;
+    });
+    return counts;
+  }, [allMovies, allSeries]);
+
 
   // Prepare filtered items for the feed
   const discoverItems = useMemo(() => {
