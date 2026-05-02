@@ -79,7 +79,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: '2', title: 'My Subscription', subtitle: 'Plan, billing, renewal', icon: 'diamond-outline', color: '#f59e0b' },
   { id: '3', title: 'Choose Your Plan', subtitle: 'Explore our membership tiers', icon: 'options-outline', color: '#8b5cf6' },
   { id: '5', title: 'Downloads', subtitle: 'Offline movies & series', icon: 'cloud-download-outline', color: '#34d399' },
-  { id: '6', title: 'Notifications', subtitle: 'Alerts & recommendations', icon: 'notifications-outline', color: '#f59e0b' },
+
    { id: '7', title: 'My List', subtitle: 'Your saved movies & series', icon: 'bookmark-outline', color: '#f472b6' },
    { id: '10', title: 'Watch History', subtitle: 'Continue where you left off', icon: 'time-outline', color: '#6366f1' },
   { id: '8', title: 'Help & Support', subtitle: 'FAQs, feedback, contact us', icon: 'help-circle-outline', color: '#a78bfa' },

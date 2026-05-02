@@ -709,11 +709,11 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   };
   
   const handleForgotPassword = async () => {
-    if (!emailOrPhone || !isEmail(emailOrPhone)) {
+    if (!emailOrPhone) {
       triggerHaptic('warning');
       Alert.alert(
-        "Email Required", 
-        "Please enter your email address in the field above to reset your password."
+        "Identifier Required", 
+        "Please enter your email, username, or phone number to reset your password."
       );
       setEmailTouched(true);
       return;
@@ -722,18 +722,54 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     triggerHaptic('impact');
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, emailOrPhone.trim());
+      let targetEmail = emailOrPhone.trim();
+
+      // If not a valid email, fetch it from Firestore
+      if (!isEmail(targetEmail)) {
+        const identifier = targetEmail;
+        const normalizedPhone = identifier.replace(/\D/g, '');
+
+        // 1. Search by username
+        let q = query(collection(db, "users"), where("username", "==", identifier));
+        let snapshot = await getDocs(q);
+
+        // 2. If not found, search by phone number
+        if (snapshot.empty && normalizedPhone) {
+          q = query(collection(db, "users"), where("phoneNumber", "==", normalizedPhone));
+          snapshot = await getDocs(q);
+        }
+
+        if (!snapshot.empty) {
+          targetEmail = snapshot.docs[0].data().email;
+          if (!targetEmail) {
+            throw new Error("No email associated with this account.");
+          }
+        } else {
+          throw { code: 'auth/user-not-found' };
+        }
+      }
+
+      await sendPasswordResetEmail(auth, targetEmail.trim());
+      
+      // Better obfuscation for identification
+      const obfuscateEmail = (email: string) => {
+        const [name, domain] = email.split('@');
+        if (name.length <= 4) return `${name[0]}***@${domain}`;
+        return `${name.substring(0, 3)}***${name.substring(name.length - 2)}@${domain}`;
+      };
+
       triggerHaptic('success');
       Alert.alert(
-        "Email Sent",
-        "A password reset link has been sent to your email address. Please check your inbox (and spam folder)."
+        "Email Sent Successfully",
+        `A secure password reset link has been sent to: ${obfuscateEmail(targetEmail)}\n\nSteps to finish:\n1. Open your Gmail app.\n2. Click the reset link in the email.\n3. Set your new password on the secure page.\n\nNote: If you don't see it, please check your Spam folder.`,
+        [{ text: "OK", style: "default" }]
       );
     } catch (error: any) {
       console.error('Password Reset Error:', error.code, error.message);
       triggerHaptic('error');
       
-      let errorMsg = "Could not send reset email. Please try again later.";
-      if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email.";
+      let errorMsg = error.message || "Could not send reset email. Please try again later.";
+      if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email, username, or phone number.";
       else if (error.code === 'auth/invalid-email') errorMsg = "Invalid email address format.";
       else if (error.code === 'auth/network-request-failed') errorMsg = "Network error. Please check your connection.";
       

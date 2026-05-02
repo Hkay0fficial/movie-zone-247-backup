@@ -514,16 +514,34 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       });
 
     // ── Smart Discovery Rows ──
+    const hash = (str: string) => {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+      return h;
+    };
+
     const trending = [...allContent]
-      .sort((a: any, b: any) => ((b.views || 0) + (b.createdAt || 0) / 10000000) - ((a.views || 0) + (a.createdAt || 0) / 10000000))
+      .sort((a: any, b: any) => {
+        const vDiff = (b.views || 0) - (a.views || 0);
+        if (vDiff !== 0) return vDiff;
+        return hash(b.id) - hash(a.id); // Deterministic scatter
+      })
       .slice(0, 15);
 
     const mostViewed = [...allContent]
-      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
+      .sort((a: any, b: any) => {
+        const vDiff = (b.views || 0) - (a.views || 0);
+        if (vDiff !== 0) return vDiff;
+        return parseFloat(b.rating || "0") - parseFloat(a.rating || "0"); // Fallback to rating
+      })
       .slice(0, 15);
 
     const mostDownloaded = [...allContent]
-      .sort((a: any, b: any) => (b.downloads || 0) - (a.downloads || 0))
+      .sort((a: any, b: any) => {
+        const dDiff = (b.downloads || 0) - (a.downloads || 0);
+        if (dDiff !== 0) return dDiff;
+        return a.title.localeCompare(b.title); // Alphabetical fallback
+      })
       .slice(0, 15);
 
     // Latest = full movie catalog (movies only), sorted newest-first

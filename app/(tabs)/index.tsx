@@ -2761,7 +2761,7 @@ export function SeriesPreviewContent({
                     const isDl = ctxActiveDownloads[ep.id];
                     const isDownloaded = ctxEpisodeDownloads[ep.id];
                     if (!isDl && !isDownloaded) {
-                      if (isGuest) onShowPremium();
+                      if (!isPaid) onShowPremium();
                       else downloadEpisode(series, ep, 'internal');
                     }
                   });
@@ -2809,7 +2809,7 @@ export function SeriesPreviewContent({
                         } else if (isDownloaded) {
                           setAlreadyDownloadedState({ visible: true, episode: ep, localItem: { localUri: ctxEpisodeDownloads[ep.id] } });
                         } else {
-                           if (isGuest) onShowPremium();
+                           if (!isPaid) onShowPremium();
                            else downloadEpisode(series, ep, 'internal');
                         }
                       }}
@@ -3036,7 +3036,7 @@ export function SeriesPreviewContent({
                   }
                   if (getRemainingDownloads() === 0) {
                      setShowDownloadModal(false);
-                     onShowPremium();
+                     Alert.alert("Limit Reached", "You have reached your daily download limit for external downloads.");
                      return;
                   }
                   setShowDownloadModal(false);
@@ -3471,11 +3471,11 @@ export const MoviePreviewContent = memo(({
       return;
     }
 
-    if (isGuest && !(movie.isFree || allMoviesFree)) {
+    if (!isPaid && !(movie.isFree || allMoviesFree)) {
       onShowPremium();
       return;
     }
-    if (getRemainingDownloads() === 0) {
+    if (getRemainingDownloads() === 0 && !isPaid) {
       onShowPremium();
       return;
     }
@@ -3508,7 +3508,7 @@ export const MoviePreviewContent = memo(({
 
 
   const handleCast = () => {
-    if (isGuest) {
+    if (!isPaid) {
       if (onShowPremium) onShowPremium();
       return;
     }
@@ -5075,7 +5075,7 @@ export const MoviePreviewContent = memo(({
                         }
                         if (getRemainingDownloads() === 0) {
                            setShowDownloadModal(false);
-                           onShowPremium();
+                           Alert.alert("Limit Reached", "You have reached your daily download limit for external downloads.");
                            return;
                         }
                         

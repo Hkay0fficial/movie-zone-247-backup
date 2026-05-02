@@ -169,9 +169,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (isGuest) return 1; // 1 Free Trial
     if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit;
     const limits: Record<string, number> = {
-      '1 week': 1, '2 weeks': 2, '1 Month': 3, '2 months': 5, 'Premium': 10, 'VIP': 999, 'None': 0
+      '1 week': 1, '2 weeks': 2, '1 month': 3, '2 months': 5, 'premium': 10, 'vip': 999, 'none': 0
     };
-    return limits[subscriptionBundle] || 0;
+    const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
+    return limits[normalizedBundle] || 0;
   };
 
   const getRemainingDownloads = () => {

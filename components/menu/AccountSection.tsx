@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from './menu.styles';
 import { auth, db } from '../../constants/firebaseConfig';
-import { deleteUser, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { deleteUser, signOut, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, deleteDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -594,10 +594,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Text style={styles.settingsRowText}>Login Activity</Text>
                 <Ionicons name="time" size={14} color="#475569" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Linked Accounts'); }}>
-                <Text style={styles.settingsRowText}>Linked Accounts</Text>
-                <Ionicons name="link-outline" size={14} color="#34d399" />
-              </TouchableOpacity>
+
             </View>
           </View>
         ) : selectedSecurityItem === 'Change Password' ? (
@@ -707,17 +704,38 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                   <View style={{ gap: 8 }}>
                     {[
                       { id: 'google', label: 'Registered Google', icon: 'logo-google', color: '#ea4335', detail: linkedAccounts.google ? 'Account Linked - Ready for Recovery' : 'Recovery via linked Google Account' },
-                      { id: 'phone', label: 'Phone Numbers', icon: 'phone-portrait-outline', color: '#34d399', detail: 'Recovery via SMS verification' },
+                      { id: 'phone', label: 'Phone Numbers', icon: 'phone-portrait-outline', color: '#34d399', detail: 'Recovery link via Gmail' },
                       { id: 'apple', label: 'Apple ID', icon: 'logo-apple', color: '#fff', detail: 'Apple ID recovery support coming soon' },
                     ].map((method) => (
                       <TouchableOpacity
                         key={method.id}
                         style={[styles.settingsRow, { paddingHorizontal: 15, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, borderBottomWidth: 0 }]}
-                        onPress={() => {
+                        onPress={async () => {
                           if (method.id === 'apple') {
                             Alert.alert('Coming Soon', 'Apple ID password recovery is currently being finalized and will be available in a future update.');
                           } else {
-                            Alert.alert('Password Recovery', `A recovery link has been sent to your registered ${method.label}. Please check your inbox.`);
+                            if (!userEmail) {
+                              Alert.alert('Error', 'No email address found for this account.');
+                              return;
+                            }
+                            
+                            try {
+                              await sendPasswordResetEmail(auth, userEmail);
+                              
+                              const [name, domain] = userEmail.split('@');
+                              const obfuscated = name.length <= 4 
+                                ? `${name[0]}***@${domain}` 
+                                : `${name.substring(0, 3)}***${name.substring(name.length - 2)}@${domain}`;
+                              
+                              Alert.alert(
+                                'Check Your Gmail', 
+                                `A secure password reset link has been sent to: ${obfuscated}\n\nNext steps:\n1. Open your Gmail inbox.\n2. Click the link in the email.\n3. Create your new password on the secure web page.\n\nNote: If it's missing, check your Spam folder.`,
+                                [{ text: "Got it", style: "default" }]
+                              );
+                            } catch (error: any) {
+                              console.error('Recovery Reset Error:', error);
+                              Alert.alert('Reset Failed', 'Could not send reset email. Please try again later.');
+                            }
                           }
                         }}
                       >
@@ -799,42 +817,6 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       </TouchableOpacity>
                     )}
                   </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        ) : selectedSecurityItem === 'Linked Accounts' ? (
-          <View style={{ width: '100%', marginBottom: 20 }}>
-            <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
-              <Text style={styles.securityTitle}>Linked Accounts</Text>
-              <Text style={styles.securityDesc}>Manage your connected social login providers to enable quick and easy access to your account.</Text>
-
-              <View style={{ gap: 12, marginTop: 10 }}>
-                {[
-                  { id: 'google', label: 'Google', icon: 'logo-google', color: '#ea4335' },
-                  { id: 'facebook', label: 'Facebook', icon: 'logo-facebook', color: '#1877f2' },
-                  { id: 'apple', label: 'Apple ID', icon: 'logo-apple', color: '#fff' },
-                ].map((social) => (
-                  <TouchableOpacity 
-                    key={social.label} 
-                    style={styles.socialLinkBtn}
-                    onPress={() => handleLinkAccount(social.id as any)}
-                    disabled={linkingProvider !== null}
-                  >
-                    {linkingProvider === social.id ? (
-                      <ActivityIndicator size="small" color="#818cf8" style={{ marginRight: 10 }} />
-                    ) : (
-                      <Ionicons name={social.icon as any} size={20} color={social.color} />
-                    )}
-                    <Text style={[styles.socialLinkText, linkedAccounts[social.id as keyof typeof linkedAccounts] && { color: '#f1f5f9' }, { fontSize: 14, marginLeft: 6 }]}>
-                      {linkingProvider === social.id ? 'Connecting...' : linkedAccounts[social.id as keyof typeof linkedAccounts] ? `Unlink ${social.label}` : `Link ${social.label}`}
-                    </Text>
-                    <View style={{ flex: 1 }} />
-                    <Text style={[styles.linkStatus, { color: linkedAccounts[social.id as keyof typeof linkedAccounts] ? '#10b981' : '#475569', fontSize: 11, fontWeight: '700' }]}>
-                      {linkedAccounts[social.id as keyof typeof linkedAccounts] ? 'LINKED' : 'UNLINKED'}
-                    </Text>
-                  </TouchableOpacity>
                 ))}
               </View>
             </View>

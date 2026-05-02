@@ -621,30 +621,38 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-                {billingHistory.map((item, idx) => (
-                  <View key={item.id} style={{
-                    marginBottom: 16,
-                    padding: 16,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    borderWidth: StyleSheet.hairlineWidth,
-                    borderColor: 'rgba(255, 255, 255, 0.12)'
-                  }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <View>
-                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{item.plan}</Text>
-                        <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{item.date}</Text>
-                      </View>
-                      <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(52,211,153,0.1)' }}>
-                        <Text style={{ color: '#34d399', fontSize: 11, fontWeight: '800' }}>PAID</Text>
-                      </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255, 255, 255, 0.12)' }}>
-                      <Text style={{ color: '#94a3b8', fontSize: 14 }}>{item.method}</Text>
-                      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>{item.amount}</Text>
-                    </View>
+                {billingHistory.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="receipt-outline" size={48} color="#475569" style={{ marginBottom: 16 }} />
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 6 }}>No Billing History</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center' }}>You haven't made any subscription payments yet.</Text>
                   </View>
-                ))}
+                ) : (
+                  billingHistory.map((item, idx) => (
+                    <View key={item.id} style={{
+                      marginBottom: 16,
+                      padding: 16,
+                      borderRadius: 20,
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: 'rgba(255, 255, 255, 0.12)'
+                    }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <View>
+                          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{item.plan}</Text>
+                          <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{item.date}</Text>
+                        </View>
+                        <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(52,211,153,0.1)' }}>
+                          <Text style={{ color: '#34d399', fontSize: 11, fontWeight: '800' }}>PAID</Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255, 255, 255, 0.12)' }}>
+                        <Text style={{ color: '#94a3b8', fontSize: 14 }}>{item.method}</Text>
+                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>{item.amount}</Text>
+                      </View>
+                    </View>
+                  ))
+                )}
               </ScrollView>
 
               <TouchableOpacity
