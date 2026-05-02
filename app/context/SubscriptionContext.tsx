@@ -212,11 +212,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   }
                 } else if (isAlreadyRegistered) {
                   setIsDeviceBlocked(false);
-                  // Update last used timestamp and name atomically
-                  updateDoc(doc(db, 'users', user.uid), {
-                    [`activeDevicesMeta.${currentId}.lastUsed`]: new Date().toISOString(),
-                    [`activeDevicesMeta.${currentId}.name`]: currentName
-                  }).catch(() => {});
+                  
+                  // Only update if metadata is missing, name changed, or lastUsed is more than 30 mins old
+                  const meta = fetchedDeviceMeta[currentId] || {};
+                  const lastUpdate = meta.lastUsed ? new Date(meta.lastUsed).getTime() : 0;
+                  const thirtyMins = 30 * 60 * 1000;
+                  const now = Date.now();
+                  const nameChanged = meta.name !== currentName;
+                  const isOld = (now - lastUpdate) > thirtyMins;
+
+                  if (nameChanged || isOld) {
+                    updateDoc(doc(db, 'users', user.uid), {
+                      [`activeDevicesMeta.${currentId}.lastUsed`]: new Date().toISOString(),
+                      [`activeDevicesMeta.${currentId}.name`]: currentName
+                    }).catch(() => {});
+                  }
                 } else {
                   // Not registered and list is full (10 devices max for history) or hit plan limit
                   if (bundle !== 'None') {
