@@ -2611,30 +2611,33 @@ export function SeriesPreviewContent({
         </TouchableOpacity>
 
         <View style={styles.previewContent}>
-          <View style={styles.previewTags}>
-            <View style={styles.epTitleBadge}><Text style={styles.epTitleBadgeText}>{series.genre}</Text></View>
+          <View style={[styles.previewTags, { alignItems: 'center', flexWrap: 'wrap' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <Ionicons name="mic-outline" size={11} color="#f59e0b" />
               <Text style={[styles.previewMetaText, { color: '#f59e0b' }]}>{series.vj}</Text>
+              
               <View style={styles.previewDot} />
               <Text style={styles.previewMetaText}>{series.year}</Text>
-              <View style={styles.previewDot} />
-              <Text style={styles.previewMetaText}>{computedTotalDuration}</Text>
-              {series.episodeDuration && (
-                <>
-                  <View style={styles.previewDot} />
-                  <Ionicons name="play-outline" size={10} color="#475569" />
-                  <Text style={styles.previewMetaText}>{series.episodeDuration}/ep</Text>
-                </>
-              )}
-              {!!series.createdAt && (
-                <>
-                  <View style={styles.previewDot} />
-                  <Ionicons name="calendar-outline" size={10} color="#475569" />
-                  <Text style={styles.previewMetaText}>{formatRelativeTime(series.createdAt)}</Text>
-                </>
-              )}
-            </View>
+              
+               
+               {series.episodeDuration && (
+                 <>
+                   <View style={styles.previewDot} />
+                   <Ionicons name="play-outline" size={10} color="#475569" />
+                   <Text style={styles.previewMetaText}>{series.episodeDuration}/ep</Text>
+                 </>
+               )}
+               {/* Robust Added Timestamp */}
+               {(series.createdAt || (series as any).addedAt || (series as any).timestamp || (series as any).date) ? (
+                 <>
+                   <View style={styles.previewDot} />
+                   <Ionicons name="calendar-outline" size={10} color="#475569" />
+                   <Text style={styles.previewMetaText}>
+                     Added {formatRelativeTime(series.createdAt || (series as any).addedAt || (series as any).timestamp || (series as any).date)}
+                   </Text>
+                 </>
+               ) : null}
+             </View>
           </View>
 
           <View style={{ marginVertical: 12 }}>
@@ -2682,6 +2685,20 @@ export function SeriesPreviewContent({
                   EP {currentIndex + 1} / {episodes.length}
                 </Text>
               </View>
+
+              {/* Moved Genres Here */}
+              {(series.genre || "").split(" · ").filter(Boolean).map((g, idx) => (
+                <View key={`genre-${idx}`} style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                }}>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11, fontWeight: '900' }}>{g.toUpperCase()}</Text>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -4299,7 +4316,7 @@ export const MoviePreviewContent = memo(({
                 <View style={styles.previewContent}>
                   {/* Genre pills + compact VJ · year · time — matches series preview */}
                   <View style={[styles.previewTags, { alignItems: 'center', flexWrap: 'wrap' }]}>
-                    {(movie.genre || "")
+                    {!("seasons" in movie) && (movie.genre || "")
                       .split(" · ")
                       .filter(Boolean)
                       .map((g) => (
@@ -4313,32 +4330,34 @@ export const MoviePreviewContent = memo(({
                         </View>
                       ))}
 
-                    {/* Compact meta: VJ · year · duration · uploaded time */}
+                    {/* Metadata Row (Reverted Order) */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      {/* Gold VJ Badge */}
-                      {movie.vj && (
+                      <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+                      <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
+                      <View style={styles.previewDot} />
+
+                      <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
+                      {/* Show Duration ONLY for Movies (not Series/Mini Series) */}
+                      {!movie.seasons && (
                         <>
-                          <Ionicons name="mic-outline" size={11} color="#f59e0b" />
-                          <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
                           <View style={styles.previewDot} />
+                          <Ionicons name="time-outline" size={11} color="#475569" />
+                          <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
+                            {computedTotalDuration}
+                          </Text>
                         </>
                       )}
-                      <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
-                      <View style={styles.previewDot} />
-                      <Ionicons name="time-outline" size={11} color="#475569" />
-                      <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                        {computedTotalDuration}
-                      </Text>
                       
-                      {!!movie.createdAt && (
+                      {/* Robust Added Timestamp */}
+                      {(movie.createdAt || (movie as any).addedAt || (movie as any).timestamp || (movie as any).date) ? (
                         <>
                           <View style={styles.previewDot} />
                           <Ionicons name="calendar-outline" size={11} color="#475569" />
                           <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                            {formatRelativeTime(movie.createdAt)}
+                            Added {formatRelativeTime(movie.createdAt || (movie as any).addedAt || (movie as any).timestamp || (movie as any).date)}
                           </Text>
                         </>
-                      )}
+                      ) : null}
 
                       {/* --- Series Info Pills (New Design) --- */}
                       {"seasons" in movie && (
@@ -4659,18 +4678,20 @@ export const MoviePreviewContent = memo(({
                       }}>
                         {movie.isMiniSeries ? "MINI SERIES" : "SERIES SEASONS"}
                       </Text>
-                      <View style={{
-                        backgroundColor: 'rgba(91, 95, 239, 0.15)',
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 6,
-                        borderWidth: StyleSheet.hairlineWidth,
-                        borderColor: 'rgba(91, 95, 239, 0.3)'
-                      }}>
-                        <Text style={{ color: '#5B5FEF', fontSize: 10, fontWeight: '900' }}>
-                          {movie.seasons} {movie.seasons === 1 ? 'SEASON' : 'SEASONS'}
-                        </Text>
-                      </View>
+
+                      {/* Genres Here for Series in MoviePreviewContent */}
+                      {(movie.genre || "").split(" · ").filter(Boolean).map((g, idx) => (
+                        <View key={`genre-${idx}`} style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                        }}>
+                          <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11, fontWeight: '900' }}>{g.toUpperCase()}</Text>
+                        </View>
+                      ))}
                     </View>
                     <ScrollView 
                       horizontal 
@@ -6344,7 +6365,7 @@ const HeroBanner = memo(({
             ))}
           </View>
 
-          {/* New Metadata Row */}
+          {/* Metadata Row */}
           <View style={styles.heroMetadataRow}>
             {/* Type Badge (Series/Mini Series) */}
             {(movie as any).type && (movie as any).type !== 'Movie' && (
@@ -6355,27 +6376,22 @@ const HeroBanner = memo(({
                 <View style={styles.heroMetaDot} />
               </>
             )}
+
             <Text style={styles.heroMetaText}>
               {movie.genre}
             </Text>
             <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{movie.year}</Text>
-            <View style={styles.heroMetaDot} />
+
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="mic-outline" size={11} color="#f59e0b" />
               <Text style={[styles.heroMetaText, { color: '#f59e0b' }]}>{movie.vj}</Text>
             </View>
             <View style={styles.heroMetaDot} />
+
+            <Text style={styles.heroMetaText}>{movie.year}</Text>
+            <View style={styles.heroMetaDot} />
             <Text style={styles.heroMetaText}>{movie.duration}</Text>
-            {!!movie.createdAt && (
-              <>
-                <View style={styles.heroMetaDot} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="calendar-outline" size={11} color="#cbd5e1" />
-                  <Text style={styles.heroMetaText}>{formatRelativeTime(movie.createdAt)}</Text>
-                </View>
-              </>
-            )}
+
           </View>
 
           {/* New Action Row - Redesigned to match Home Preview */}

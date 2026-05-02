@@ -218,7 +218,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
       await reauthenticateWithCredential(user, credential);
 
       // Reauthenticated — now delete
-      try { await deleteDoc(doc(db, 'users', user.uid)); } catch (_) {}
+      try { await deleteDoc(doc(db, 'users', user.uid)); } catch (_) { }
       await deleteUser(user);
       await AsyncStorage.removeItem('userToken');
       setShowReauthPrompt(false);
@@ -280,12 +280,12 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               { label: 'Personal Info', icon: 'person-outline' },
               { label: 'Password & Security', icon: 'lock-closed-outline' },
             ].map((item, index, l) => (
-              <TouchableOpacity 
-                key={item.label} 
+              <TouchableOpacity
+                key={item.label}
                 style={[
-                  styles.settingsRow, 
+                  styles.settingsRow,
                   index === l.length - 1 && { borderBottomWidth: 0 }
-                ]} 
+                ]}
                 onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSubItem(item.label); }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -349,8 +349,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
             <Text style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 20 }}>
               You are currently browsing as a guest. Sign in or create an account to update your profile, customize preferences, and sync your history.
             </Text>
-            <TouchableOpacity 
-              style={[styles.piSaveBtn, { width: '100%', paddingVertical: 14 }]} 
+            <TouchableOpacity
+              style={[styles.piSaveBtn, { width: '100%', paddingVertical: 14 }]}
               onPress={() => router.replace('/login')}
             >
               <LinearGradient colors={['#5B5FEF', '#4A4ED1']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
@@ -395,10 +395,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
             <View style={[styles.compactProfileHeader, { marginBottom: 20 }]}>
               <TouchableOpacity style={styles.compactAvatarWrapper} activeOpacity={0.7} onPress={handleChangePhoto}>
                 {!imageError ? (
-                  <Image 
-                    source={{ uri: profilePhoto || "" }} 
-                    style={styles.compactAvatar} 
-                    onError={() => setImageError(true)} 
+                  <Image
+                    source={{ uri: profilePhoto || "" }}
+                    style={styles.compactAvatar}
+                    onError={() => setImageError(true)}
                   />
                 ) : (
                   <View style={[styles.compactAvatar, { backgroundColor: 'rgba(30, 30, 45, 0.98)', justifyContent: 'center', alignItems: 'center' }]}>
@@ -448,7 +448,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       </View>
                     </View>
                   ))}
-                  
+
                   <View style={styles.piNameGrid}>
                     {[
                       { label: 'First Name', value: firstName, temp: tempFirstName, set: setTempFirstName },
@@ -531,19 +531,19 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
               {!isEditingProfile ? (
                 <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                   <View style={[styles.piMetadataPill, { flex: 1.4, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10 }]}>
-                     <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.4)" />
-                     <Text 
-                       style={styles.piMetadataText}
-                       numberOfLines={1}
-                       adjustsFontSizeToFit
-                     >
-                       Member Since: {getMemberSinceDate()}
-                     </Text>
-                   </View>
+                  <View style={[styles.piMetadataPill, { flex: 1.4, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10 }]}>
+                    <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.4)" />
+                    <Text
+                      style={styles.piMetadataText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      Member Since: {getMemberSinceDate()}
+                    </Text>
+                  </View>
 
-                  <TouchableOpacity 
-                    style={[styles.piMainEditBtnWrapper, { flex: 1, marginTop: 0, marginBottom: 0 }]} 
+                  <TouchableOpacity
+                    style={[styles.piMainEditBtnWrapper, { flex: 1, marginTop: 0, marginBottom: 0 }]}
                     onPress={startEditing}
                     activeOpacity={0.7}
                   >
@@ -622,14 +622,14 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       placeholderTextColor="#64748b"
                       secureTextEntry={!showCurrentPass}
                     />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.passEye}
                       onPress={() => setShowCurrentPass(!showCurrentPass)}
                     >
-                      <Ionicons 
-                        name={showCurrentPass ? "eye-off-outline" : "eye-outline"} 
-                        size={20} 
-                        color="#64748b" 
+                      <Ionicons
+                        name={showCurrentPass ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color="#64748b"
                       />
                     </TouchableOpacity>
                   </View>
@@ -645,14 +645,14 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       placeholderTextColor="#64748b"
                       secureTextEntry={!showNewPass}
                     />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.passEye}
                       onPress={() => setShowNewPass(!showNewPass)}
                     >
-                      <Ionicons 
-                        name={showNewPass ? "eye-off-outline" : "eye-outline"} 
-                        size={20} 
-                        color="#64748b" 
+                      <Ionicons
+                        name={showNewPass ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color="#64748b"
                       />
                     </TouchableOpacity>
                   </View>
@@ -668,14 +668,14 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       placeholderTextColor="#64748b"
                       secureTextEntry={!showConfirmPass}
                     />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.passEye}
                       onPress={() => setShowConfirmPass(!showConfirmPass)}
                     >
-                      <Ionicons 
-                        name={showConfirmPass ? "eye-off-outline" : "eye-outline"} 
-                        size={20} 
-                        color="#64748b" 
+                      <Ionicons
+                        name={showConfirmPass ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color="#64748b"
                       />
                     </TouchableOpacity>
                   </View>
@@ -687,8 +687,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Text style={styles.requestCodeText}>Update Password</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={{ marginTop: 20, alignSelf: 'center' }} 
+              <TouchableOpacity
+                style={{ marginTop: 20, alignSelf: 'center' }}
                 onPress={() => setShowRecoveryMethods(!showRecoveryMethods)}
               >
                 <Text style={{ color: '#818cf8', fontSize: 14, fontWeight: '700' }}>
@@ -700,7 +700,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <View style={{ marginTop: 20, paddingTop: 20, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)' }}>
                   <Text style={[styles.securityTitle, { fontSize: 16, marginBottom: 8 }]}>Password Recovery</Text>
                   <Text style={[styles.securityDesc, { marginBottom: 16 }]}>Select a registered method to recover your password access if you can't remember your current one.</Text>
-                  
+
                   <View style={{ gap: 8 }}>
                     {[
                       { id: 'google', label: 'Registered Google', icon: 'logo-google', color: '#ea4335', detail: linkedAccounts.google ? 'Account Linked - Ready for Recovery' : 'Recovery via linked Google Account' },
@@ -718,17 +718,17 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                               Alert.alert('Error', 'No email address found for this account.');
                               return;
                             }
-                            
+
                             try {
                               await sendPasswordResetEmail(auth, userEmail);
-                              
+
                               const [name, domain] = userEmail.split('@');
-                              const obfuscated = name.length <= 4 
-                                ? `${name[0]}***@${domain}` 
+                              const obfuscated = name.length <= 4
+                                ? `${name[0]}***@${domain}`
                                 : `${name.substring(0, 3)}***${name.substring(name.length - 2)}@${domain}`;
-                              
+
                               Alert.alert(
-                                'Check Your Gmail', 
+                                'Check Your Gmail',
                                 `A secure password reset link has been sent to: ${obfuscated}\n\nNext steps:\n1. Open your Gmail inbox.\n2. Click the link in the email.\n3. Create your new password on the secure web page.\n\nNote: If it's missing, check your Spam folder.`,
                                 [{ text: "Got it", style: "default" }]
                               );
@@ -844,8 +844,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     <Text style={styles.detailLabel}>Answer</Text>
                     <Text style={[styles.detailValue, { color: '#64748b', fontSize: 13 }]}>••••••••</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={[styles.requestCodeBtn, { marginTop: 24, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]} 
+                  <TouchableOpacity
+                    style={[styles.requestCodeBtn, { marginTop: 24, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]}
                     onPress={() => setSelectedSecurityItem('Password Recovery')} // Back to recovery
                   >
                     <Text style={[styles.requestCodeText, { color: '#94a3b8' }]}>Back to Recovery Models</Text>
@@ -901,7 +901,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
     return (
       <View style={styles.settingsContentSection}>
         <Text style={styles.settingsText}>Deleting your account is permanent and cannot be undone.</Text>
-        
+
         <View style={{ width: '100%', marginBottom: 30, marginTop: -4 }}>
           <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
           <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(239, 68, 68, 0.3)', shadowColor: '#ef4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 12 }]}>
@@ -912,7 +912,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
             <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: 16, borderRadius: 16, marginBottom: 0, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(239, 68, 68, 0.1)' }}>
               <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '800', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Consequences of Deletion</Text>
-              
+
               {[
                 'Your premium subscription will be immediately canceled without refund.',
                 'All offline downloads and saved movies will be erased from your device.',
@@ -931,8 +931,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>To confirm, type "DELETE" below:</Text>
             <TextInput
-              style={[styles.editInput, { 
-                borderColor: deleteConfirmationText === 'DELETE' ? '#34d399' : 'rgba(239, 68, 68, 0.3)', 
+              style={[styles.editInput, {
+                borderColor: deleteConfirmationText === 'DELETE' ? '#34d399' : 'rgba(239, 68, 68, 0.3)',
                 color: '#fff',
                 borderWidth: StyleSheet.hairlineWidth,
                 textAlign: 'center',
@@ -966,19 +966,19 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
             />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.requestCodeBtn, 
-              { 
-                marginTop: 24, 
-                backgroundColor: deleteConfirmationText === 'DELETE' ? '#ef4444' : 'rgba(239, 68, 68, 0.15)', 
+              styles.requestCodeBtn,
+              {
+                marginTop: 24,
+                backgroundColor: deleteConfirmationText === 'DELETE' ? '#ef4444' : 'rgba(239, 68, 68, 0.15)',
                 borderWidth: 0,
                 shadowColor: deleteConfirmationText === 'DELETE' ? '#ef4444' : 'transparent',
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
                 shadowOffset: { width: 0, height: 4 }
               }
-            ]} 
+            ]}
             disabled={deleteConfirmationText !== 'DELETE'}
             onPress={handleDeleteAccount}
           >
@@ -1046,11 +1046,11 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           >
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 24 }}>
               <BlurView intensity={30} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
-              <View style={{ 
-                backgroundColor: 'rgba(30, 30, 45, 0.98)', 
-                borderRadius: 32, 
-                padding: 30, 
-                borderWidth: StyleSheet.hairlineWidth, 
+              <View style={{
+                backgroundColor: 'rgba(30, 30, 45, 0.98)',
+                borderRadius: 32,
+                padding: 30,
+                borderWidth: StyleSheet.hairlineWidth,
                 borderColor: 'rgba(239, 68, 68, 0.4)',
                 alignItems: 'center',
                 shadowColor: '#ef4444',
@@ -1059,12 +1059,12 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 shadowRadius: 25,
                 elevation: 20
               }}>
-                <View style={{ 
-                  width: 70, 
-                  height: 70, 
-                  borderRadius: 35, 
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                  alignItems: 'center', 
+                <View style={{
+                  width: 70,
+                  height: 70,
+                  borderRadius: 35,
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 20,
                   borderWidth: StyleSheet.hairlineWidth,
@@ -1078,13 +1078,13 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                   This action is irreversible. All your personal data, movie history, and premium benefits will be <Text style={{ color: '#ef4444', fontWeight: '800' }}>deleted forever</Text>. Are you absolutely sure?
                 </Text>
 
-                <TouchableOpacity 
-                  style={{ 
-                    width: '100%', 
-                    height: 56, 
-                    borderRadius: 28, 
-                    backgroundColor: '#ef4444', 
-                    alignItems: 'center', 
+                <TouchableOpacity
+                  style={{
+                    width: '100%',
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: '#ef4444',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: 12,
                     shadowColor: '#ef4444',
@@ -1098,13 +1098,13 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                   <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>PERMANENTLY DELETE</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={{ 
-                    width: '100%', 
-                    height: 56, 
-                    borderRadius: 28, 
-                    backgroundColor: 'rgba(255,255,255,0.06)', 
-                    alignItems: 'center', 
+                <TouchableOpacity
+                  style={{
+                    width: '100%',
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: 'rgba(255,255,255,0.06)',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: StyleSheet.hairlineWidth,
                     borderColor: 'rgba(255,255,255,0.1)'

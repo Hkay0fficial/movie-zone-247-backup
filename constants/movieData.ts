@@ -31,6 +31,7 @@ export interface Movie {
   bunnyLibraryId2?: string;
   episodesPerPart?: number;
   country?: string;
+  createdAt?: number;
 }
 
 export interface Series {
@@ -237,6 +238,7 @@ export interface HeroMovie {
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
   heroType?: 'video' | 'photo';
+  createdAt?: number;
 }
 
 export const HERO_MOVIES: HeroMovie[] = [];

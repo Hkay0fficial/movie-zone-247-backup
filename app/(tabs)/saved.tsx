@@ -1632,14 +1632,10 @@ function SeriesPreviewModal({
 
             {/* Info */}
             <View style={styles.previewContent}>
-              {/* Genre & Metadata Row */}
-              <View style={[styles.previewTags, { alignItems: 'center' }]}>
-                <View style={styles.previewTag}>
-                  <Text style={styles.previewTagText}>{series.genre}</Text>
-                </View>
-                
+              {/* Metadata Row */}
+              <View style={[styles.previewTags, { alignItems: 'center', flexWrap: 'wrap' }]}>
                 {/* Compact Metadata (VJ, Year, Duration) */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Ionicons name="mic-outline" size={11} color="#f59e0b" />
                   <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{series.vj}</Text>
                   
@@ -1647,26 +1643,21 @@ function SeriesPreviewModal({
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{series.year}</Text>
                   
                   <View style={styles.previewDot} />
-                  <Ionicons name="time-outline" size={11} color="#475569" />
-                  <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                    {computedTotalDuration}
-                  </Text>
-                  
-                  <View style={styles.previewDot} />
                   <Ionicons name="play-circle-outline" size={11} color="#475569" />
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
                     {series.episodeDuration || (episodes?.[0]?.duration) || "45m"}/ep
                   </Text>
                   
-                  {!!series.createdAt && (
+                  {/* Robust Added Timestamp */}
+                  {(series.createdAt || (series as any).addedAt || (series as any).timestamp || (series as any).date) ? (
                     <>
                       <View style={styles.previewDot} />
                       <Ionicons name="calendar-outline" size={11} color="#475569" />
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
-                        {formatRelativeTime(series.createdAt)}
+                        Added {formatRelativeTime(series.createdAt || (series as any).addedAt || (series as any).timestamp || (series as any).date)}
                       </Text>
                     </>
-                  )}
+                  ) : null}
                 </View>
               </View>
 
@@ -1693,6 +1684,13 @@ function SeriesPreviewModal({
                       EP {episodes[currentIndex]?.displayIndex || (currentIndex >= 0 ? currentIndex + 1 : 1)} / {series.episodes || (episodes.length * (series.episodesPerPart || 1))}
                     </Text>
                   </View>
+
+                  {/* Moved Genres Here */}
+                  {(series.genre || "").split(" · ").filter(Boolean).map((g, idx) => (
+                    <View key={`genre-${idx}`} style={[styles.epTitleBadge, { backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                      <Text style={[styles.epTitleBadgeText, { color: 'rgba(255, 255, 255, 0.8)' }]}>{g.toUpperCase()}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
               {/* ── Collapsible Description ── */}

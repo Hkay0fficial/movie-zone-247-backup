@@ -217,7 +217,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroType: data.heroType || 'video',
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0))),
             country: getFullCountryName(data.country || ''),
             episodesPerPart: data.episodesPerPart || 1,
           });
@@ -247,7 +247,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             heroType: data.heroType || 'video',
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
             heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0)),
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0))),
             country: getFullCountryName(data.country || ''),
             episodesPerPart: data.episodesPerPart || 1,
           });
@@ -337,7 +337,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       const fetched = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
+        createdAt: typeof doc.data().createdAt === 'number' ? doc.data().createdAt : (typeof doc.data().createdAt?.toMillis === 'function' ? doc.data().createdAt.toMillis() : (doc.data().createdAt?.seconds ? doc.data().createdAt.seconds * 1000 : (doc.data().createdAt ? new Date(doc.data().createdAt).getTime() : Date.now())))
       }));
       setAnnouncements(fetched);
       setLoadingAnnouncements(false);

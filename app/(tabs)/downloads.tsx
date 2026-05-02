@@ -93,8 +93,8 @@ export default function DownloadsScreen() {
 
               <View style={styles.info}>
                 <Text style={styles.title} numberOfLines={1}>{m.title}</Text>
-                <Text style={styles.meta}>
-                  {m.year} · {shortenGenre(m.genre)}
+                <Text style={styles.meta} numberOfLines={1}>
+                  {m.year} · {shortenGenre(m.genre)}{m.vj ? ` · ${m.vj}` : ''}
                 </Text>
                 
                 <View style={styles.actionRow}>

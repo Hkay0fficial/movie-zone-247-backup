@@ -67,7 +67,9 @@ export default function MyListScreen() {
 
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle} numberOfLines={1}>{m.title}</Text>
-                  <Text style={styles.cardMeta}>{m.year} · {shortenGenre(m.genre)}</Text>
+                  <Text style={styles.cardMeta} numberOfLines={1}>
+                    {m.year} · {shortenGenre(m.genre)}{(m as any).vj ? ` · ${(m as any).vj}` : ''}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
