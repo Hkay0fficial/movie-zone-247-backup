@@ -2623,6 +2623,13 @@ export function SeriesPreviewContent({
                   <Text style={styles.previewMetaText}>{series.episodeDuration}/ep</Text>
                 </>
               )}
+              {series.createdAt && (
+                <>
+                  <View style={styles.previewDot} />
+                  <Ionicons name="calendar-outline" size={10} color="#475569" />
+                  <Text style={styles.previewMetaText}>{formatRelativeTime(series.createdAt)}</Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -4301,7 +4308,7 @@ export const MoviePreviewContent = memo(({
                         </View>
                       ))}
 
-                    {/* Compact meta: VJ · year · duration */}
+                    {/* Compact meta: VJ · year · duration · uploaded time */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
                       <View style={styles.previewDot} />
@@ -4310,6 +4317,15 @@ export const MoviePreviewContent = memo(({
                         {computedTotalDuration}
                       </Text>
                       
+                      {movie.createdAt && (
+                        <>
+                          <View style={styles.previewDot} />
+                          <Ionicons name="calendar-outline" size={11} color="#475569" />
+                          <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
+                            {formatRelativeTime(movie.createdAt)}
+                          </Text>
+                        </>
+                      )}
 
                       {/* --- Series Info Pills (New Design) --- */}
                       {"seasons" in movie && (
@@ -6338,6 +6354,15 @@ const HeroBanner = memo(({
             </View>
             <View style={styles.heroMetaDot} />
             <Text style={styles.heroMetaText}>{movie.duration}</Text>
+            {movie.createdAt && (
+              <>
+                <View style={styles.heroMetaDot} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="calendar-outline" size={11} color="#cbd5e1" />
+                  <Text style={styles.heroMetaText}>{formatRelativeTime(movie.createdAt)}</Text>
+                </View>
+              </>
+            )}
           </View>
 
           {/* New Action Row - Redesigned to match Home Preview */}

@@ -1653,6 +1653,16 @@ function SeriesPreviewModal({
                   <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
                     {series.episodeDuration || (episodes?.[0]?.duration) || "45m"}/ep
                   </Text>
+                  
+                  {series.createdAt && (
+                    <>
+                      <View style={styles.previewDot} />
+                      <Ionicons name="calendar-outline" size={11} color="#475569" />
+                      <Text style={[styles.previewMetaText, { fontSize: 11 }]}>
+                        {formatRelativeTime(series.createdAt)}
+                      </Text>
+                    </>
+                  )}
                 </View>
               </View>
 
