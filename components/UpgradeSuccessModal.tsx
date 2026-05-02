@@ -102,7 +102,7 @@ export default function UpgradeSuccessModal({
 
           {/* Unlocked Features */}
           <View style={styles.featuresList}>
-            <FeatureRow icon="flash" text="Instant 4K Playback" delay={1000} />
+            <FeatureRow icon="flash" text="FHD/HD Instant Playback" delay={1000} />
             <FeatureRow icon="download" text="Unlimited Offline Saves" delay={1200} />
             <FeatureRow icon="shield-checkmark" text="Ad-Free Experience" delay={1400} />
           </View>
