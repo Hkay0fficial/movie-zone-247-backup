@@ -72,7 +72,7 @@ export default function PremiumAccessModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { paddingTop: insets.top }]}>
         <Pressable 
           style={StyleSheet.absoluteFill} 
           onPress={() => {
@@ -84,10 +84,7 @@ export default function PremiumAccessModal({
         <Animated.View 
           entering={FadeInDown.springify().damping(22).stiffness(120)}
           exiting={FadeOutDown.duration(250)}
-          style={[
-            styles.modalContent,
-            { marginBottom: Math.max(insets.bottom, 40) + 120 }
-          ]}
+          style={styles.modalContent}
         >
           <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           
