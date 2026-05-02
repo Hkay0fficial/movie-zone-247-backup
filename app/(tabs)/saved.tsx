@@ -1654,7 +1654,7 @@ function SeriesPreviewModal({
                     {series.episodeDuration || (episodes?.[0]?.duration) || "45m"}/ep
                   </Text>
                   
-                  {series.createdAt && (
+                  {!!series.createdAt && (
                     <>
                       <View style={styles.previewDot} />
                       <Ionicons name="calendar-outline" size={11} color="#475569" />

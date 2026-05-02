@@ -2623,7 +2623,7 @@ export function SeriesPreviewContent({
                   <Text style={styles.previewMetaText}>{series.episodeDuration}/ep</Text>
                 </>
               )}
-              {series.createdAt && (
+              {!!series.createdAt && (
                 <>
                   <View style={styles.previewDot} />
                   <Ionicons name="calendar-outline" size={10} color="#475569" />
@@ -4317,7 +4317,7 @@ export const MoviePreviewContent = memo(({
                         {computedTotalDuration}
                       </Text>
                       
-                      {movie.createdAt && (
+                      {!!movie.createdAt && (
                         <>
                           <View style={styles.previewDot} />
                           <Ionicons name="calendar-outline" size={11} color="#475569" />
@@ -6354,7 +6354,7 @@ const HeroBanner = memo(({
             </View>
             <View style={styles.heroMetaDot} />
             <Text style={styles.heroMetaText}>{movie.duration}</Text>
-            {movie.createdAt && (
+            {!!movie.createdAt && (
               <>
                 <View style={styles.heroMetaDot} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
