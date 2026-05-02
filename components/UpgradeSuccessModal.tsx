@@ -167,7 +167,8 @@ function AnimatedGlow({ color, size, delay }: any) {
     position: 'absolute',
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
-    filter: 'blur(60px)',
+    // Note: filter: blur() is web-only and crashes Android native renderer.
+    // The glow is achieved via opacity + large scale animation instead.
   }));
 
   return <Animated.View style={animatedStyle} />;
