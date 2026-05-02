@@ -286,7 +286,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setSubscriptionExpiresAt(null);
             setHasUsedGuestTrial(false);
           }
-        }, (error) => {
+        }, (error: any) => {
+          if (error.code === 'permission-denied') return;
           console.error("SubscriptionContext snapshot error:", error);
         });
       } else {

@@ -516,6 +516,9 @@ export default function MenuScreen() {
           ...doc.data()
         }));
         setBillingHistory(history);
+      }, (error: any) => {
+        if (error.code === 'permission-denied') return;
+        console.error("Billing history snapshot error:", error);
       });
       return () => unsubscribe();
     }
