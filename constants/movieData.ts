@@ -19,6 +19,7 @@ export interface Movie {
   isFree?: boolean;
   isHero?: boolean;
   isPinned?: boolean;
+  pinnedTo?: string[];
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';
@@ -56,6 +57,7 @@ export interface Series {
   isFree?: boolean;
   isHero?: boolean;
   isPinned?: boolean;
+  pinnedTo?: string[];
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';

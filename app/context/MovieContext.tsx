@@ -471,8 +471,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
 
     // Global Pin Sort for Discovery Grids
     const pinSort = (a: any, b: any) => {
-      const aPin = a.isPinned ? 1 : 0;
-      const bPin = b.isPinned ? 1 : 0;
+      const isGloballyPinned = (item: any) => item.isPinned && (!item.pinnedTo || item.pinnedTo.length === 0);
+      const isGenrePinned = (item: any) => selectedGenre && item.pinnedTo && Array.isArray(item.pinnedTo) && item.pinnedTo.some((p: string) => p.toLowerCase() === selectedGenre.toLowerCase());
+      
+      const aPin = isGloballyPinned(a) || isGenrePinned(a) ? 1 : 0;
+      const bPin = isGloballyPinned(b) || isGenrePinned(b) ? 1 : 0;
+      
       if (bPin !== aPin) return bPin - aPin;
       return 0;
     };
@@ -744,8 +748,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
 
         // Force pinned content to the front of the row
         const sortedWithPins = uniqueSectionData.sort((a, b) => {
-          const aPin = a.isPinned ? 1 : 0;
-          const bPin = b.isPinned ? 1 : 0;
+          const isGloballyPinned = (item: any) => item.isPinned && (!item.pinnedTo || item.pinnedTo.length === 0);
+          const isSpecificallyPinned = (item: any) => item.pinnedTo && Array.isArray(item.pinnedTo) && item.pinnedTo.some((p: string) => p.toLowerCase() === section.title.toLowerCase());
+          
+          const aPin = isGloballyPinned(a) || isSpecificallyPinned(a) ? 1 : 0;
+          const bPin = isGloballyPinned(b) || isSpecificallyPinned(b) ? 1 : 0;
+          
           if (bPin !== aPin) return bPin - aPin;
           return 0; // Maintain existing secondary sort order
         });
