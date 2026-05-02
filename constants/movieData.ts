@@ -18,6 +18,7 @@ export interface Movie {
   qualityOptions?: { label: string; url: string }[]; // NEW: Multi-quality support
   isFree?: boolean;
   isHero?: boolean;
+  isPinned?: boolean;
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';
@@ -54,6 +55,7 @@ export interface Series {
   isMiniSeries?: boolean;
   isFree?: boolean;
   isHero?: boolean;
+  isPinned?: boolean;
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';

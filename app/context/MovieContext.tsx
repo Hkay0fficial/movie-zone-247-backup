@@ -469,6 +469,18 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     else if (sortBy === "oldest") allContent.sort((a, b) => (a.year || 0) - (b.year || 0));
     else if (sortBy === "rating") allContent.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
 
+    // Global Pin Sort for Discovery Grids
+    const pinSort = (a: any, b: any) => {
+      const aPin = a.isPinned ? 1 : 0;
+      const bPin = b.isPinned ? 1 : 0;
+      if (bPin !== aPin) return bPin - aPin;
+      return 0;
+    };
+    
+    allContent.sort(pinSort);
+    filteredMovies.sort(pinSort);
+    filteredSeries.sort(pinSort);
+
     // New Releases = admin-pinned items first, then newest by upload date
     const newReleases = [...allContent]
       .sort((a: any, b: any) => {
@@ -729,8 +741,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         const uniqueSectionData = sectionData.filter((item, index, self) => 
           index === self.findIndex((t) => t.id === item.id)
         );
+
+        // Force pinned content to the front of the row
+        const sortedWithPins = uniqueSectionData.sort((a, b) => {
+          const aPin = a.isPinned ? 1 : 0;
+          const bPin = b.isPinned ? 1 : 0;
+          if (bPin !== aPin) return bPin - aPin;
+          return 0; // Maintain existing secondary sort order
+        });
         
-        return { title: section.title, data: uniqueSectionData };
+        return { title: section.title, data: sortedWithPins };
       }).filter(row => row.data.length > 0);
 
       // Force "New Release" to the top if it exists
