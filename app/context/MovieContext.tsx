@@ -561,7 +561,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     const romanceMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('romance'))];
     const horrorMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('horror'))];
     const dramaMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('drama'))];
-    const indianMovies = [...filteredMovies.filter(m => m.genre?.toLowerCase().includes('indian'))];
+    const indianMovies = [...filteredMovies, ...filteredSeries].filter(m => 
+      (m.genre || "").toLowerCase().includes('indian') || 
+      (m.country || "").toLowerCase().includes('india')
+    );
     const freeMovies = [
       ...filteredMovies.filter(m => m.isFree),
       ...filteredSeries.filter(s => s.isFree),
@@ -705,7 +708,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
           sectionData = [...filteredMovies, ...filteredSeries]
-            .filter(m => (m.genre || "").toLowerCase().includes(val))
+            .filter(m => {
+              const genre = (m.genre || "").toLowerCase();
+              const country = (m.country || "").toLowerCase();
+              // Robust matching for Indian Movies section
+              if (val === 'indian' || val === 'indian movies') {
+                return genre.includes('indian') || country.includes('india');
+              }
+              return genre.includes(val);
+            })
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         } else if (type === 'country') {
           const val = (section.filterValue || '').toLowerCase();

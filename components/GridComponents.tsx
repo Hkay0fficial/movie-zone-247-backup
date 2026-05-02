@@ -145,35 +145,35 @@ export function GridCard({
       </View>
 
 
-      {"seasons" in movie ? (
-        <View style={styles.epBadgePremium}>
-          <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
-          <Text style={styles.epBadgeTextPremium}>
-            {(() => {
-              const multiplier = (movie as any).episodesPerPart || 1;
-              const count = (movie as any).episodes || 0;
-              const listCount = ((movie as any).episodeList?.length || 0) * multiplier;
-              const total = Math.max(count, listCount);
-              return `${total} EP`;
-            })()}
-          </Text>
-        </View>
-      ) : (
-        ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+      {/* Episode/Part Badge */}
+      {(() => {
+        const isSeries = "seasons" in movie;
+        const multiplier = (movie as any).episodesPerPart || 1;
+        const epList = (movie as any).episodeList || [];
+        const count = (movie as any).episodes || 0;
+        const listCount = epList.length * multiplier;
+        const total = Math.max(count, listCount);
+
+        if (total <= 1 && !isSeries) return null;
+
+        let badgeText = "";
+        if (multiplier > 1 && epList.length > 0) {
+          const start = (epList.length - 1) * multiplier + 1;
+          const end = epList.length * multiplier;
+          badgeText = `${start}-${end}`;
+        } else {
+          badgeText = `${total}`;
+        }
+
+        return (
           <View style={styles.epBadgePremium}>
             <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
             <Text style={styles.epBadgeTextPremium}>
-              {(() => {
-                const multiplier = (movie as any).episodesPerPart || 1;
-                const count = (movie as any).episodes || 0;
-                const listCount = ((movie as any).episodeList?.length || 0) * multiplier;
-                const total = Math.max(count, listCount);
-                return `${total} PART`;
-              })()}
+              {badgeText} {isSeries ? "EP" : "PART"}
             </Text>
           </View>
-        )
-      )}
+        );
+      })()}
 
       {/* Card info */}
       <View style={styles.cardInfo}>
