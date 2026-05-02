@@ -17,7 +17,7 @@ import { SubscriptionProvider } from '@/app/context/SubscriptionContext';
 import { MovieProvider } from '@/app/context/MovieContext';
 import { UserProvider } from '@/app/context/UserContext';
 import { DownloadProvider } from '@/app/context/DownloadContext';
-import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener } from '../lib/notifications';
+import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener, useLastNotificationResponse } from '../lib/notifications';
 import InAppNotification, { LocalNotification } from '../components/InAppNotification';
 import VersionLockGuard from '../components/VersionLockGuard';
 import OTAUpdateGuard from '../components/OTAUpdateGuard';
@@ -111,6 +111,24 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const [activeNotification, setActiveNotification] = useState<LocalNotification | null>(null);
+  const lastNotificationResponse = useLastNotificationResponse();
+
+  useEffect(() => {
+    if (lastNotificationResponse) {
+      const data = lastNotificationResponse.notification.request.content.data;
+      const actionId = lastNotificationResponse.actionIdentifier;
+      
+      if (data?.movieId) {
+        // Wait a brief moment to ensure navigation stack is ready before pushing
+        setTimeout(() => {
+          router.push({
+            pathname: '/(tabs)',
+            params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
+          });
+        }, 500);
+      }
+    }
+  }, [lastNotificationResponse]);
 
   const [fontsLoaded, fontError] = useFonts({
     ...MaterialIcons.font,
@@ -158,10 +176,12 @@ export default function RootLayout() {
       if (data?.movieId) {
         // If it's a 'New Release' or 'Alert', open the details page
         // Standard tapping (DefaultIdentifier) or specific buttons (watch_now, view_details)
-        router.push({
-          pathname: '/(tabs)',
-          params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
-        });
+        setTimeout(() => {
+          router.push({
+            pathname: '/(tabs)',
+            params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
+          });
+        }, 500);
       }
     });
 
@@ -171,6 +191,7 @@ export default function RootLayout() {
     });
 
     return () => {
+      subscription.remove();
       responseSubscription.remove();
       localNotifSub.remove();
     };

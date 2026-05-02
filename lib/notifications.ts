@@ -126,3 +126,8 @@ export const addNotificationResponseListener = (callback: (r: any) => void) => {
   if (shouldSkip || !Notifications) return { remove: () => {} };
   return Notifications.addNotificationResponseReceivedListener(callback);
 };
+
+export const useLastNotificationResponse = () => {
+  if (shouldSkip || !Notifications) return null;
+  return Notifications.useLastNotificationResponse();
+};
