@@ -4310,6 +4310,14 @@ export const MoviePreviewContent = memo(({
 
                     {/* Compact meta: VJ · year · duration · uploaded time */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                      {/* Gold VJ Badge */}
+                      {movie.vj && (
+                        <>
+                          <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+                          <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
+                          <View style={styles.previewDot} />
+                        </>
+                      )}
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
                       <View style={styles.previewDot} />
                       <Ionicons name="time-outline" size={11} color="#475569" />
