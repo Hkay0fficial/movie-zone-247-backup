@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import { Platform, Animated, Dimensions, StyleSheet } from 'react-native';
@@ -176,19 +176,32 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setCustomExternalLimit(extLimit);
             setCustomDeviceLimit(devLimit);
 
-            // Device limit check
-            const runDeviceCheck = async () => {
-              if (user && !user.isAnonymous) {
-                const { id: currentId, name: currentName } = await getDeviceInfo();
-                if (currentId === 'unknown_device') return;
+                // Device limit check
+                const runDeviceCheck = async () => {
+                  if (user && !user.isAnonymous) {
+                    const { id: currentId, name: currentName } = await getDeviceInfo();
+                    if (currentId === 'unknown_device') return;
 
-                const normalizedBundle = bundle.toLowerCase();
-                const baseLimit = planDeviceLimits[normalizedBundle] || 1;
-                const limit = devLimit > 0 ? devLimit : baseLimit;
-                const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+                    // 0. Check if this device has been explicitly kicked
+                    const kickedDevices = userData.kickedDevices || {};
+                    if (kickedDevices[currentId]) {
+                      // Remove the kick flag first to prevent loops
+                      await updateDoc(doc(db, 'users', user.uid), {
+                        [`kickedDevices.${currentId}`]: deleteField()
+                      }).catch(() => {});
+                      
+                      // Perform logout
+                      await signOut(auth).catch(() => {});
+                      return;
+                    }
 
-                // 1. Ensure current device is registered for activity tracking
-                if (!isAlreadyRegistered && fetchedActiveDevices.length < 10) {
+                    const normalizedBundle = bundle.toLowerCase();
+                    const baseLimit = planDeviceLimits[normalizedBundle] || 1;
+                    const limit = devLimit > 0 ? devLimit : baseLimit;
+                    const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+
+                    // 1. Ensure current device is registered for activity tracking
+                    if (!isAlreadyRegistered && fetchedActiveDevices.length < 10) {
                   // Use atomic update to prevent race conditions between devices
                   const updateData: any = {
                     activeDeviceIds: arrayUnion(currentId),
@@ -475,18 +488,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (auth.currentUser && !isGuest) {
       try {
         const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userDoc = await getDoc(userRef);
-        if (!userDoc.exists()) return;
         
-        const userData = userDoc.data();
-        const nextIds = (userData.activeDeviceIds || []).filter((id: string) => id !== targetId);
-        const nextMeta = { ...(userData.activeDevicesMeta || {}) };
-        delete nextMeta[targetId];
-
-        await setDoc(userRef, { 
-          activeDeviceIds: nextIds,
-          activeDevicesMeta: nextMeta
-        }, { merge: true });
+        // Atomically remove from ID list, delete metadata, and set kick flag
+        await updateDoc(userRef, {
+          activeDeviceIds: arrayRemove(targetId),
+          [`activeDevicesMeta.${targetId}`]: deleteField(),
+          [`kickedDevices.${targetId}`]: true
+        });
       } catch (err) {
         console.error("Failed to remove device:", err);
       }
