@@ -11,6 +11,9 @@ interface UserProfile {
   email: string;
   isGuest: boolean;
   watchHistory: Record<string, { position: number; timestamp: number; episodeId?: string }>;
+  createdAt?: any;
+  is2FAEnabled: boolean;
+  activeDeviceIds: string[];
 }
 
 interface UserContextType {
@@ -32,6 +35,8 @@ const DEFAULT_PROFILE: UserProfile = {
   email: 'Sign in to save your history',
   isGuest: true,
   watchHistory: {},
+  is2FAEnabled: false,
+  activeDeviceIds: [],
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -187,6 +192,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               email: data.email || currentUser.email || '',
               isGuest: currentUser.isAnonymous,
               watchHistory: data.watchHistory || {},
+              createdAt: data.createdAt,
+              is2FAEnabled: data.is2FAEnabled || false,
+              activeDeviceIds: data.activeDeviceIds || [],
             });
           } else {
             setProfile({
@@ -197,6 +205,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               email: currentUser.email || '',
               isGuest: currentUser.isAnonymous,
               watchHistory: {},
+              is2FAEnabled: false,
+              activeDeviceIds: [],
             });
           }
           setLoading(false);

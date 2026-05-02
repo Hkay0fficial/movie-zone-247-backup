@@ -2,9 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import * as Application from 'expo-application';
-import { Platform, Animated, Dimensions } from 'react-native';
+import * as Device from 'expo-device';
+import { Platform, Animated, Dimensions, StyleSheet } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -23,11 +24,11 @@ const planLimits: Record<string, number> = {
 const planDeviceLimits: Record<string, number> = {
   '1 week': 1,
   '2 weeks': 1,
-  '1 Month': 2,
+  '1 month': 2,
   '2 months': 3,
-  'Premium': 5,
-  'VIP': 999,
-  'None': 0
+  'premium': 5,
+  'vip': 999,
+  'none': 0
 };
 
 interface SubscriptionContextType {
@@ -44,6 +45,7 @@ interface SubscriptionContextType {
   recordTrialUsage: () => Promise<void>;
   isDeviceBlocked: boolean;
   activeDeviceIds: string[];
+  deviceId: string | null;
   removeDevice: (id: string) => Promise<void>;
   deviceLimit: number;
   customExternalLimit: number;
@@ -66,6 +68,7 @@ interface SubscriptionContextType {
   setIsPreview: (v: boolean) => void;
   playingEpisodeId: string | null;
   setPlayingEpisodeId: (id: string | null) => void;
+  activeDevicesMeta: Record<string, any>;
   isSubscribed: boolean;
   remainingDays: number;
 }
@@ -97,20 +100,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isInitialized, setIsInitialized] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
+  const [activeDevicesMeta, setActiveDevicesMeta] = useState<Record<string, any>>({});
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
 
   // Helper to get persistent hardware ID
-  const getDeviceId = async () => {
+  const getDeviceInfo = async () => {
     try {
+      let id = null;
       if (Platform.OS === 'android') {
-        return (Application as any).androidId;
+        id = (Application as any).androidId || await Application.getAndroidId();
       } else if (Platform.OS === 'ios') {
-        return await Application.getIosIdForVendorAsync();
+        id = await Application.getIosIdForVendorAsync();
       }
-      return null;
+      
+      const model = Device.modelName || Device.designName || (Platform.OS === 'ios' ? 'iPhone' : 'Android Device');
+      return { 
+        id: id || 'unknown_device', 
+        name: model 
+      };
     } catch (e) {
-      console.error("Failed to get device ID:", e);
-      return null;
+      console.error("Failed to get device info:", e);
+      return { id: 'unknown_device', name: 'Unknown Device' };
     }
   };
 
@@ -157,7 +167,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setHasUsedGuestTrial(userData.hasUsedGuestTrial || false);
 
             const fetchedActiveDevices = userData.activeDeviceIds || [];
+            const fetchedDeviceMeta = userData.activeDevicesMeta || {};
             setActiveDeviceIds(fetchedActiveDevices);
+            setActiveDevicesMeta(fetchedDeviceMeta);
             
             const extLimit = userData.customExternalLimit || 0;
             const devLimit = userData.customDeviceLimit || 0;
@@ -165,23 +177,60 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setCustomDeviceLimit(devLimit);
 
             // Device limit check
-            if (user && !user.isAnonymous && bundle !== 'None' && deviceId) {
-              const baseLimit = planDeviceLimits[bundle] || 1;
-              const limit = devLimit > 0 ? devLimit : baseLimit;
-              const isAllowed = fetchedActiveDevices.includes(deviceId);
+            const runDeviceCheck = async () => {
+              if (user && !user.isAnonymous) {
+                const { id: currentId, name: currentName } = await getDeviceInfo();
+                if (currentId === 'unknown_device') return;
 
-              if (isAllowed) {
-                setIsDeviceBlocked(false);
-              } else if (fetchedActiveDevices.length < limit) {
-                const newDevices = [...fetchedActiveDevices, deviceId];
-                setDoc(doc(db, 'users', user.uid), { activeDeviceIds: newDevices }, { merge: true }).catch(() => {});
-                setIsDeviceBlocked(false);
+                const normalizedBundle = bundle.toLowerCase();
+                const baseLimit = planDeviceLimits[normalizedBundle] || 1;
+                const limit = devLimit > 0 ? devLimit : baseLimit;
+                const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+
+                // 1. Ensure current device is registered for activity tracking
+                if (!isAlreadyRegistered && fetchedActiveDevices.length < 10) {
+                  // Use atomic update to prevent race conditions between devices
+                  const updateData: any = {
+                    activeDeviceIds: arrayUnion(currentId),
+                    [`activeDevicesMeta.${currentId}`]: { 
+                      name: currentName, 
+                      lastUsed: new Date().toISOString() 
+                    }
+                  };
+                  
+                  updateDoc(doc(db, 'users', user.uid), updateData).catch((err) => {
+                    console.error("Failed to register device:", err);
+                    // Fallback to setDoc if updateDoc fails (e.g. doc doesn't exist yet)
+                    setDoc(doc(db, 'users', user.uid), updateData, { merge: true }).catch(() => {});
+                  });
+
+                  // If they have a bundle, check if this new registration is within limits
+                  if (bundle !== 'None') {
+                    setIsDeviceBlocked(fetchedActiveDevices.length >= limit);
+                  } else {
+                    setIsDeviceBlocked(false);
+                  }
+                } else if (isAlreadyRegistered) {
+                  setIsDeviceBlocked(false);
+                  // Update last used timestamp and name atomically
+                  updateDoc(doc(db, 'users', user.uid), {
+                    [`activeDevicesMeta.${currentId}.lastUsed`]: new Date().toISOString(),
+                    [`activeDevicesMeta.${currentId}.name`]: currentName
+                  }).catch(() => {});
+                } else {
+                  // Not registered and list is full (10 devices max for history) or hit plan limit
+                  if (bundle !== 'None') {
+                    setIsDeviceBlocked(true);
+                  } else {
+                    setIsDeviceBlocked(false);
+                  }
+                }
               } else {
-                setIsDeviceBlocked(true);
+                setIsDeviceBlocked(false);
               }
-            } else {
-              setIsDeviceBlocked(false);
-            }
+            };
+
+            runDeviceCheck();
             
             if (expiresAt && expiresAt.seconds) {
               const expirationMs = expiresAt.seconds * 1000;
@@ -233,7 +282,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     const checkDeviceTrial = async () => {
-      const id = await getDeviceId();
+      const { id } = await getDeviceInfo();
       if (id) {
         setDeviceId(id);
         try {
@@ -415,11 +464,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const removeDevice = async (targetId: string) => {
     if (auth.currentUser && !isGuest) {
       try {
-        const nextDevices = activeDeviceIds.filter(id => id !== targetId);
-        await setDoc(doc(db, 'users', auth.currentUser.uid), { 
-          activeDeviceIds: nextDevices 
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        if (!userDoc.exists()) return;
+        
+        const userData = userDoc.data();
+        const nextIds = (userData.activeDeviceIds || []).filter((id: string) => id !== targetId);
+        const nextMeta = { ...(userData.activeDevicesMeta || {}) };
+        delete nextMeta[targetId];
+
+        await setDoc(userRef, { 
+          activeDeviceIds: nextIds,
+          activeDevicesMeta: nextMeta
         }, { merge: true });
-      } catch (err) {}
+      } catch (err) {
+        console.error("Failed to remove device:", err);
+      }
     }
   };
 
@@ -450,6 +510,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       recordTrialUsage,
       isDeviceBlocked,
       activeDeviceIds,
+      activeDevicesMeta,
+      deviceId,
       removeDevice,
       deviceLimit,
       customExternalLimit,

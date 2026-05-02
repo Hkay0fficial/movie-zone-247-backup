@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, ScrollView, ActivityIndicator, StyleSheet, Platform, Alert, Keyboard } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image, ScrollView, ActivityIndicator, StyleSheet, Platform, Alert, Keyboard, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +26,7 @@ interface AccountSectionProps {
   username: string;
   phoneNumber: string;
   profilePhoto?: string;
+  createdAt?: any;
   isEditingProfile: boolean;
   startEditing: () => void;
   saveProfile: () => void;
@@ -128,13 +129,30 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   SUB_ITEM_ICONS,
   scrollRef,
   profilePhoto,
+  createdAt,
 }) => {
   const [imageError, setImageError] = React.useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = React.useState('');
-  const [isDeleteFocused, setIsDeleteFocused] = React.useState(false);
   const [showReauthPrompt, setShowReauthPrompt] = React.useState(false);
+  const [showFinalDeleteModal, setShowFinalDeleteModal] = React.useState(false);
   const [reauthPassword, setReauthPassword] = React.useState('');
   const [reauthError, setReauthError] = React.useState('');
+  const [isDeleteFocused, setIsDeleteFocused] = React.useState(false);
+  const [focusedPIField, setFocusedPIField] = React.useState<string | null>(null);
+  const [showCurrentPass, setShowCurrentPass] = React.useState(false);
+  const [showNewPass, setShowNewPass] = React.useState(false);
+  const [showConfirmPass, setShowConfirmPass] = React.useState(false);
+  const [showRecoveryMethods, setShowRecoveryMethods] = React.useState(false);
+
+  const getMemberSinceDate = () => {
+    if (!createdAt) return 'March 2024';
+    try {
+      const date = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } catch (e) {
+      return 'March 2024';
+    }
+  };
 
   React.useEffect(() => {
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
@@ -148,6 +166,11 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmationText !== 'DELETE') return;
+    setShowFinalDeleteModal(true);
+  };
+
+  const proceedWithDeletion = async () => {
+    setShowFinalDeleteModal(false);
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -399,7 +422,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Text style={styles.piInfoGroupTitle}>Identity</Text>
                 <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
                   {[
-                    { label: 'Username', value: `@${username}`, temp: tempUsername, set: setTempUsername, icon: 'at-outline' },
+                    { label: 'Username', value: username ? `@${username}` : 'Set username', temp: tempUsername, set: setTempUsername, icon: 'at-outline' },
                   ].map((field) => (
                     <View key={field.label} style={[styles.piInfoRow, styles.piNoBorder]}>
                       <Ionicons name={field.icon as any} size={18} color="#818cf8" style={styles.piInfoIcon} />
@@ -407,12 +430,17 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                         <Text style={styles.piInfoLabel}>{field.label}</Text>
                         {isEditingProfile ? (
                           <TextInput
-                            style={styles.piInfoInput}
+                            style={[
+                              styles.piInfoInput,
+                              focusedPIField === field.label && styles.piInfoInputFocused
+                            ]}
                             value={field.temp}
                             onChangeText={field.set}
                             placeholder={field.label}
                             placeholderTextColor="rgba(255,255,255,0.2)"
                             autoCapitalize="none"
+                            onFocus={() => setFocusedPIField(field.label)}
+                            onBlur={() => setFocusedPIField(null)}
                           />
                         ) : (
                           <Text style={styles.piInfoValue}>{field.value}</Text>
@@ -430,11 +458,16 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                         <Text style={styles.piInfoLabel}>{field.label}</Text>
                         {isEditingProfile ? (
                           <TextInput
-                            style={styles.piInfoInput}
+                            style={[
+                              styles.piInfoInput,
+                              focusedPIField === field.label && styles.piInfoInputFocused
+                            ]}
                             value={field.temp}
                             onChangeText={field.set}
                             placeholder={field.label}
                             placeholderTextColor="rgba(255,255,255,0.2)"
+                            onFocus={() => setFocusedPIField(field.label)}
+                            onBlur={() => setFocusedPIField(null)}
                           />
                         ) : (
                           <Text style={styles.piInfoValue}>{field.value}</Text>
@@ -454,12 +487,17 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       <Text style={styles.piInfoLabel}>Email Address</Text>
                       {isEditingProfile ? (
                         <TextInput
-                          style={styles.piInfoInput}
+                          style={[
+                            styles.piInfoInput,
+                            focusedPIField === 'Email Address' && styles.piInfoInputFocused
+                          ]}
                           value={tempEmail}
                           onChangeText={setTempEmail}
                           placeholder="Email"
                           keyboardType="email-address"
                           autoCapitalize="none"
+                          onFocus={() => setFocusedPIField('Email Address')}
+                          onBlur={() => setFocusedPIField(null)}
                         />
                       ) : (
                         <Text style={styles.piInfoValue}>{userEmail}</Text>
@@ -472,11 +510,16 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       <Text style={styles.piInfoLabel}>Phone Number</Text>
                       {isEditingProfile ? (
                         <TextInput
-                          style={styles.piInfoInput}
+                          style={[
+                            styles.piInfoInput,
+                            focusedPIField === 'Phone Number' && styles.piInfoInputFocused
+                          ]}
                           value={tempPhoneNumber}
                           onChangeText={setTempPhoneNumber}
                           placeholder="Phone"
                           keyboardType="phone-pad"
+                          onFocus={() => setFocusedPIField('Phone Number')}
+                          onBlur={() => setFocusedPIField(null)}
                         />
                       ) : (
                         <Text style={styles.piInfoValue}>{phoneNumber || 'Link your phone'}</Text>
@@ -488,9 +531,15 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
               {!isEditingProfile ? (
                 <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                   <View style={[styles.piMetadataPill, { flex: 1, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
+                   <View style={[styles.piMetadataPill, { flex: 1.4, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10 }]}>
                      <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.4)" />
-                     <Text style={styles.piMetadataText}>Member Since: March 2024</Text>
+                     <Text 
+                       style={styles.piMetadataText}
+                       numberOfLines={1}
+                       adjustsFontSizeToFit
+                     >
+                       Member Since: {getMemberSinceDate()}
+                     </Text>
                    </View>
 
                   <TouchableOpacity 
@@ -545,10 +594,6 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Text style={styles.settingsRowText}>Login Activity</Text>
                 <Ionicons name="time" size={14} color="#475569" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Password Recovery'); }}>
-                <Text style={styles.settingsRowText}>Password Recovery</Text>
-                <Ionicons name="key-outline" size={14} color="#818cf8" />
-              </TouchableOpacity>
               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Linked Accounts'); }}>
                 <Text style={styles.settingsRowText}>Linked Accounts</Text>
                 <Ionicons name="link-outline" size={14} color="#34d399" />
@@ -571,36 +616,72 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               <View style={styles.detailCard}>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Current Password</Text>
-                  <TextInput
-                    style={styles.editInput}
-                    value={currentPass}
-                    onChangeText={setCurrentPass}
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748b"
-                    secureTextEntry
-                  />
+                  <View style={styles.passInputContainer}>
+                    <TextInput
+                      style={styles.passInput}
+                      value={currentPass}
+                      onChangeText={setCurrentPass}
+                      placeholder="••••••••"
+                      placeholderTextColor="#64748b"
+                      secureTextEntry={!showCurrentPass}
+                    />
+                    <TouchableOpacity 
+                      style={styles.passEye}
+                      onPress={() => setShowCurrentPass(!showCurrentPass)}
+                    >
+                      <Ionicons 
+                        name={showCurrentPass ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#64748b" 
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>New Password</Text>
-                  <TextInput
-                    style={styles.editInput}
-                    value={newPass}
-                    onChangeText={setNewPass}
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748b"
-                    secureTextEntry
-                  />
+                  <View style={styles.passInputContainer}>
+                    <TextInput
+                      style={styles.passInput}
+                      value={newPass}
+                      onChangeText={setNewPass}
+                      placeholder="••••••••"
+                      placeholderTextColor="#64748b"
+                      secureTextEntry={!showNewPass}
+                    />
+                    <TouchableOpacity 
+                      style={styles.passEye}
+                      onPress={() => setShowNewPass(!showNewPass)}
+                    >
+                      <Ionicons 
+                        name={showNewPass ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#64748b" 
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Confirm New Password</Text>
-                  <TextInput
-                    style={styles.editInput}
-                    value={confirmPass}
-                    onChangeText={setConfirmPass}
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748b"
-                    secureTextEntry
-                  />
+                  <View style={styles.passInputContainer}>
+                    <TextInput
+                      style={styles.passInput}
+                      value={confirmPass}
+                      onChangeText={setConfirmPass}
+                      placeholder="••••••••"
+                      placeholderTextColor="#64748b"
+                      secureTextEntry={!showConfirmPass}
+                    />
+                    <TouchableOpacity 
+                      style={styles.passEye}
+                      onPress={() => setShowConfirmPass(!showConfirmPass)}
+                    >
+                      <Ionicons 
+                        name={showConfirmPass ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#64748b" 
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
               </View>
@@ -608,6 +689,53 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               <TouchableOpacity style={[styles.requestCodeBtn, { marginTop: 24 }]} onPress={handleUpdatePassword}>
                 <Text style={styles.requestCodeText}>Update Password</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={{ marginTop: 20, alignSelf: 'center' }} 
+                onPress={() => setShowRecoveryMethods(!showRecoveryMethods)}
+              >
+                <Text style={{ color: '#818cf8', fontSize: 14, fontWeight: '700' }}>
+                  {showRecoveryMethods ? "Hide recovery options" : "Forgot password?"}
+                </Text>
+              </TouchableOpacity>
+
+              {showRecoveryMethods && (
+                <View style={{ marginTop: 20, paddingTop: 20, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={[styles.securityTitle, { fontSize: 16, marginBottom: 8 }]}>Password Recovery</Text>
+                  <Text style={[styles.securityDesc, { marginBottom: 16 }]}>Select a registered method to recover your password access if you can't remember your current one.</Text>
+                  
+                  <View style={{ gap: 8 }}>
+                    {[
+                      { id: 'google', label: 'Registered Google', icon: 'logo-google', color: '#ea4335', detail: linkedAccounts.google ? 'Account Linked - Ready for Recovery' : 'Recovery via linked Google Account' },
+                      { id: 'phone', label: 'Phone Numbers', icon: 'phone-portrait-outline', color: '#34d399', detail: 'Recovery via SMS verification' },
+                      { id: 'apple', label: 'Apple ID', icon: 'logo-apple', color: '#fff', detail: 'Apple ID recovery support coming soon' },
+                    ].map((method) => (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[styles.settingsRow, { paddingHorizontal: 15, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, borderBottomWidth: 0 }]}
+                        onPress={() => {
+                          if (method.id === 'apple') {
+                            Alert.alert('Coming Soon', 'Apple ID password recovery is currently being finalized and will be available in a future update.');
+                          } else {
+                            Alert.alert('Password Recovery', `A recovery link has been sent to your registered ${method.label}. Please check your inbox.`);
+                          }
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                          <View style={[styles.menuIcon, { backgroundColor: method.color + '18', width: 32, height: 32 }]}>
+                            <Ionicons name={method.icon as any} size={16} color={method.color} />
+                          </View>
+                          <View>
+                            <Text style={[styles.settingsRowText, { fontSize: 14 }]}>{method.label}</Text>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>{method.detail}</Text>
+                          </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={14} color="#475569" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
         ) : selectedSecurityItem === 'Two-Factor Authentication' ? (
@@ -671,47 +799,6 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                       </TouchableOpacity>
                     )}
                   </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        ) : selectedSecurityItem === 'Password Recovery' ? (
-          <View style={styles.settingsContentSection}>
-            <Text style={styles.settingsText}>Select a registered method to recover your password access.</Text>
-
-            <View style={{ width: '100%', marginBottom: 20, marginTop: 10 }}>
-              <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 32, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
-              <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
-                {[
-                  { id: 'google', label: 'Registered Google', icon: 'logo-google', color: '#ea4335', detail: linkedAccounts.google ? 'Account Linked - Ready for Recovery' : 'Recovery via linked Google Account' },
-                  { id: 'phone', label: 'Phone Numbers', icon: 'phone-portrait-outline', color: '#34d399', detail: 'Recovery via SMS verification' },
-                  { id: 'facebook', label: 'Facebook', icon: 'logo-facebook', color: '#1877f2', detail: linkedAccounts.facebook ? 'Account Linked - Ready for Recovery' : 'Recovery via Facebook Auth' },
-                  { id: 'apple', label: 'Apple ID', icon: 'logo-apple', color: '#fff', detail: linkedAccounts.apple ? 'Account Linked - Ready for Recovery' : 'Recovery via Apple Secure Link' },
-                  { id: 'security', label: 'Security Questions', icon: 'help-buoy-outline', color: '#818cf8', detail: isQuestionSaved ? 'Questions Set - Ready for Recovery' : 'Recovery via personal questions' },
-                ].map((method) => (
-                  <TouchableOpacity
-                    key={method.label}
-                    style={styles.settingsRow}
-                    onPress={() => {
-                      if (method.label === 'Security Questions') {
-                        setSavedScrollPosition(currentScrollY);
-                        setSelectedSecurityItem('Security Questions');
-                      } else {
-                        alert(`Password recovery link sent to your registered ${method.label}`);
-                      }
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                      <View style={[styles.menuIcon, { backgroundColor: method.color + '18', width: 32, height: 32 }]}>
-                        <Ionicons name={method.icon as any} size={16} color={method.color} />
-                      </View>
-                      <View>
-                        <Text style={styles.settingsRowText}>{method.label}</Text>
-                        <Text style={{ color: '#64748b', fontSize: 11 }}>{method.detail}</Text>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color="#475569" />
-                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -968,6 +1055,85 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               </View>
             </View>
           )}
+          {/* Custom Final Confirmation Modal */}
+          <Modal
+            visible={showFinalDeleteModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowFinalDeleteModal(false)}
+          >
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 24 }}>
+              <BlurView intensity={30} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+              <View style={{ 
+                backgroundColor: 'rgba(30, 30, 45, 0.98)', 
+                borderRadius: 32, 
+                padding: 30, 
+                borderWidth: StyleSheet.hairlineWidth, 
+                borderColor: 'rgba(239, 68, 68, 0.4)',
+                alignItems: 'center',
+                shadowColor: '#ef4444',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3,
+                shadowRadius: 25,
+                elevation: 20
+              }}>
+                <View style={{ 
+                  width: 70, 
+                  height: 70, 
+                  borderRadius: 35, 
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(239, 68, 68, 0.3)'
+                }}>
+                  <Ionicons name="warning" size={36} color="#ef4444" />
+                </View>
+
+                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 12 }}>Final Confirmation</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 30 }}>
+                  This action is irreversible. All your personal data, movie history, and premium benefits will be <Text style={{ color: '#ef4444', fontWeight: '800' }}>deleted forever</Text>. Are you absolutely sure?
+                </Text>
+
+                <TouchableOpacity 
+                  style={{ 
+                    width: '100%', 
+                    height: 56, 
+                    borderRadius: 28, 
+                    backgroundColor: '#ef4444', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                    shadowColor: '#ef4444',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 12,
+                    elevation: 10
+                  }}
+                  onPress={proceedWithDeletion}
+                >
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>PERMANENTLY DELETE</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={{ 
+                    width: '100%', 
+                    height: 56, 
+                    borderRadius: 28, 
+                    backgroundColor: 'rgba(255,255,255,0.06)', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                  }}
+                  onPress={() => setShowFinalDeleteModal(false)}
+                >
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: '700' }}>CANCEL</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </View>
       </View>
     );

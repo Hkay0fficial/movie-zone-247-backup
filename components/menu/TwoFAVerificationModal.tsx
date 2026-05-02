@@ -20,6 +20,7 @@ interface TwoFAVerificationModalProps {
   verificationCode: string;
   setVerificationCode: (value: string) => void;
   isLoading: boolean;
+  onResend?: () => void;
 }
 
 export const TwoFAVerificationModal: React.FC<TwoFAVerificationModalProps> = ({
@@ -28,14 +29,14 @@ export const TwoFAVerificationModal: React.FC<TwoFAVerificationModalProps> = ({
   onConfirm,
   verificationCode,
   setVerificationCode,
-  isLoading
+  isLoading,
+  onResend
 }) => {
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
     >
       <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill}>
         <KeyboardAvoidingView 
@@ -44,11 +45,12 @@ export const TwoFAVerificationModal: React.FC<TwoFAVerificationModalProps> = ({
         >
           <View style={styles.verifyModalContent}>
             <View style={styles.verifyIconWrap}>
-              <Ionicons name="shield-checkmark" size={32} color="#34d399" />
+              <Ionicons name="lock-closed" size={32} color="#818cf8" />
             </View>
             <Text style={styles.verifyTitle}>Verify Identity</Text>
             <Text style={styles.verifyDesc}>
-              Enter the 6-digit code sent to your registered device to confirm this change.
+              Enter the 6-digit code sent to your registered device. 
+              <Text style={{ color: '#818cf8', fontWeight: '800' }}> Tap notification to auto-fill.</Text>
             </Text>
 
             <TextInput
@@ -61,6 +63,15 @@ export const TwoFAVerificationModal: React.FC<TwoFAVerificationModalProps> = ({
               maxLength={6}
               autoFocus
             />
+
+            <TouchableOpacity 
+              style={{ marginTop: 12, alignSelf: 'center' }} 
+              onPress={onResend}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>
+                Didn't get a code? Resend
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.verifyActions}>
               <TouchableOpacity 

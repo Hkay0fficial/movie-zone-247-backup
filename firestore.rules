@@ -1,60 +1,100 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper: Check if user has an admin role
+
+    // Helper function to check if user is the master admin
     function isAdmin() {
-      return request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'Admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      return request.auth != null &&
+             request.auth.token.email.lower() == 'sserunkumaharuna01@gmail.com';
     }
 
-    // --- Cafe Menu Content ---
-    match /categories/{catId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    match /menu_items/{itemId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    match /cafe_orders/{orderId} {
-      // Allow anyone to read, create and update orders (public QR menu)
-      // Filtered by tableId in the app logic
-      allow read, create, update: if true;
-      allow delete: if isAdmin();
-    }
-
-    // --- User Profiles & Legacy Movie App Rules ---
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isAdmin();
-      
-      // Explicitly allow sub-collections like favorites/watchHistory
-      match /{allSubcollections=**} {
-        allow read, write: if request.auth.uid == userId || isAdmin();
-      }
-    }
-
+    // --- Movies & Content (Allow everyone to browse) ---
     match /movies/{movieId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    match /audit_logs/{logId} {
-      allow read, write: if isAdmin();
+    // --- Settings & Branding ---
+    match /settings/{docId} {
+      allow read, write: if true;
     }
 
-    match /settings/{settingId} {
+    // --- App Layout (Public read, admin write) ---
+    match /app_layout/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Default deny for everything else
+    // --- Users Collection ---
+    match /users/{uid} {
+      // Allow searching for login lookup (username/phone)
+      // We allow list for the query logic in AuthScreen.tsx
+      // Note: We should ideally use a more restrictive check here, 
+      // but for mobile login via identifier we need list access.
+      allow list: if true; 
+      
+      // Allow users to read their own profile or admin to read all
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      
+      // Allow users to update their own profile or admin to update all
+      allow write: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+    }
+
+    match /user_activity/{id} {
+      allow read: if isAdmin();
+      allow write: if request.auth != null; // allow mobile app to write activity
+    }
+
+    match /payments/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /audit_logs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin(); // only admin portal logs audit events
+    }
+
+    // --- Announcements ---
+    match /announcements/{id} {
+      allow read: if true; // mobile users can read
+      allow write: if isAdmin();
+    }
+
+    // --- Hero Slider ---
+    match /hero_slides/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Feedback Hub ---
+    match /feedback/{id} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null; // users can submit feedback
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Cafe Menu Content ---
+    match /categories/{catId} {
+      allow read, write: if true;
+    }
+
+    match /menu_items/{itemId} {
+      allow read, write: if true;
+    }
+
+    match /cafe_orders/{orderId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // --- Session Management ---
+    match /table_sessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // Default for everything else (authenticated users)
     match /{path=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }

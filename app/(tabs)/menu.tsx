@@ -56,7 +56,7 @@ import { styles } from '../../components/menu/menu.styles';
 import PremiumAccessModal from '../../components/PremiumAccessModal';
 import { MoviePreviewContent, SeriesPreviewModal } from './index';
 import { GridContent } from './index';
-
+import { sendLocalNotification, addNotificationResponseListener } from '../../lib/notifications';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -173,7 +173,6 @@ export default function MenuScreen() {
     };
   }, []);
 
-  // One Window Architecture: Global UI Visibility
   React.useEffect(() => {
     if (isFocused) {
       if (selectedItem) {
@@ -184,9 +183,25 @@ export default function MenuScreen() {
     }
   }, [selectedItem, isFocused]);
 
+  // Auto-fill 2FA code when notification is tapped
+  React.useEffect(() => {
+    const subscription = addNotificationResponseListener(response => {
+      const body = response.notification.request.content.body || '';
+      const codeMatch = body.match(/\d{6}/);
+      if (codeMatch && show2FAVerifyModal) {
+        setTfaVerificationCode(codeMatch[0]);
+      }
+    });
+    return () => subscription.remove();
+  }, [show2FAVerifyModal]);
+
   // Handle Android Hardware Back Button
   React.useEffect(() => {
     const onBackPress = () => {
+      if (show2FAVerifyModal) {
+        // Prevent back button from closing the modal or settings
+        return true;
+      }
       if (selectedItem) {
         handleSettingsDone();
         return true;
@@ -382,6 +397,7 @@ export default function MenuScreen() {
     toggleFavorite,
     deviceId,
     activeDeviceIds,
+    activeDevicesMeta,
     removeDevice,
   } = useSubscription();
 
@@ -706,7 +722,11 @@ export default function MenuScreen() {
 
   // Security Sub-section State
   const [selectedSecurityItem, setSelectedSecurityItem] = React.useState<string | null>(null);
-  const [is2FAEnabled, setIs2FAEnabled] = React.useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = React.useState(profile.is2FAEnabled);
+
+  React.useEffect(() => {
+    setIs2FAEnabled(profile.is2FAEnabled);
+  }, [profile.is2FAEnabled]);
   const [currentPass, setCurrentPass] = React.useState('');
   const [newPass, setNewPass] = React.useState('');
   const [confirmPass, setConfirmPass] = React.useState('');
@@ -742,18 +762,24 @@ export default function MenuScreen() {
   React.useEffect(() => {
     // Map the string array to device viewer objects
     if (activeDeviceIds && activeDeviceIds.length > 0) {
-      const mapped = activeDeviceIds.map((id, index) => ({
-        id,
-        device: `Registered Device ${index + 1}`,
-        location: 'Authorized',
-        time: 'Active',
-        current: false // We could add matching against current deviceId if exposed
-      }));
-      setActiveDevices(mapped);
+      const mapped = activeDeviceIds.map((id, index) => {
+        const meta = activeDevicesMeta[id] || {};
+        const isCurrent = id === deviceId;
+        return {
+          id,
+          device: meta.name || (isCurrent ? 'This Device' : `Registered Device ${index + 1}`),
+          location: `ID: ...${id.slice(-6).toUpperCase()} • Authorized`,
+          time: meta.lastUsed ? new Date(meta.lastUsed).toLocaleDateString() : (isCurrent ? 'Active Now' : 'Authorized'),
+          current: isCurrent
+        };
+      });
+      // Sort so "This Device" is always at the top
+      const sorted = [...mapped].sort((a, b) => (a.current === b.current ? 0 : a.current ? -1 : 1));
+      setActiveDevices(sorted);
     } else {
       setActiveDevices([]);
     }
-  }, [activeDeviceIds]);
+  }, [activeDeviceIds, deviceId, activeDevicesMeta]);
 
   const getDeviceLimit = () => {
     if (!isSubscribed) return 1;
@@ -969,12 +995,32 @@ export default function MenuScreen() {
   };
 
   const handleToggle2FA = () => {
+    // If a code was already sent and is still valid (not confirmed yet), just show the modal
+    if (tfaSentCode && show2FAVerifyModal === false) {
+      setShow2FAVerifyModal(true);
+      return;
+    }
+
     // Generate a random 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setTfaSentCode(code);
     setShow2FAVerifyModal(true);
-    // In a real app, send via SMS/Email. Here we simulate with alert.
-    alert(`[SECURITY] Your 2FA verification code is: ${code}`);
+    
+    // Send local notification for the code
+    sendLocalNotification(
+      '🔐 Identity Verification',
+      `Your 2FA verification code is: ${code}. Tap this notification to auto-fill.`
+    );
+  };
+
+  const handleResend2FA = () => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setTfaSentCode(code);
+    setTfaVerificationCode('');
+    sendLocalNotification(
+      '🔐 New Verification Code',
+      `Your new 2FA code is: ${code}. Tap to auto-fill.`
+    );
   };
 
   const handleVerify2FA = async () => {
@@ -1305,6 +1351,7 @@ export default function MenuScreen() {
                     username={username}
                     phoneNumber={phoneNumber}
                     profilePhoto={profilePhoto}
+                    createdAt={profile.createdAt}
                     isEditingProfile={isEditingProfile}
                     startEditing={startEditing}
                     saveProfile={saveProfile}
@@ -1742,6 +1789,7 @@ export default function MenuScreen() {
           setTfaVerificationCode('');
         }}
         onConfirm={handleVerify2FA}
+        onResend={handleResend2FA}
         verificationCode={tfaVerificationCode}
         setVerificationCode={setTfaVerificationCode}
         isLoading={is2FALoading}

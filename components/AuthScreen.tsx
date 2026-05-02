@@ -85,7 +85,8 @@ const FloatingLabelInput = ({
   onFocus,
   onBlur,
   showPasswordToggle,
-  onPasswordToggle
+  onPasswordToggle,
+  hasError
 }: any) => {
   const [isFocused, setIsFocused] = useState(false);
   const labelAnim = useSharedValue(value ? 1 : 0);
@@ -109,7 +110,11 @@ const FloatingLabelInput = ({
   return (
     <Pressable 
       onPress={handlePress}
-      style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}
+      style={[
+        styles.inputContainer, 
+        isFocused && styles.inputContainerFocused,
+        hasError && { borderColor: '#ff4b4b', borderBottomWidth: 1.5 }
+      ]}
     >
       <Ionicons name={icon} size={20} color={isFocused ? "#818cf8" : "#94a3b8"} />
       <Animated.Text style={[styles.watermarkLabel, labelStyle]}>
@@ -419,7 +424,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   // Validation regex
   const isEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
   const isPhone = (val: string) => /^\+?\d{7,15}$/.test(val.replace(/[\s-]/g, ''));
-  const isValidInput = isEmail(emailOrPhone) || isPhone(emailOrPhone);
+  const isUsername = (val: string) => /^[a-zA-Z0-9_ ]{2,20}$/.test(val);
+  const isValidInput = isEmail(emailOrPhone) || isPhone(emailOrPhone) || isUsername(emailOrPhone);
 
   // Biometric states
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
@@ -434,6 +440,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   // Flip state for Header
   const [flipCount, setFlipCount] = useState(0);
   const prevFocusedField = useRef<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
   const btnScale = useSharedValue(1);
@@ -692,7 +699,11 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       else if (error.code === 'auth/invalid-credential') errorMsg = "Incorrect email or password.";
       else if (error.code === 'auth/network-request-failed') errorMsg = "Connection error. Check your internet.";
       
-      Alert.alert("Login Failed", errorMsg);
+      if (isLogin) {
+        setAuthError(errorMsg);
+      } else {
+        Alert.alert("Signup Failed", errorMsg);
+      }
       setLoading(false);
     }
   };
@@ -880,10 +891,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     const firstName = parts[0] || "";
     const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
     
-    if (firstName.length < 3) return "First name must be atleast 3 characters and above";
+    if (firstName.length < 2) return "First name must be at least 2 characters and above";
     if (!name.includes(' ')) return "Please add a space and your last name";
     if (lastName.trim().length === 0) return "Please enter your last names";
-    if (lastName.trim().length < 3) return "Last name must be atleast 3 characters and above";
+    if (lastName.trim().length < 2) return "Last name must be at least 2 characters and above";
     
     return null;
   };
@@ -986,12 +997,16 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                     /* Login Fields */
                     <>
                       <FloatingLabelInput
-                        label="Email or Phone Number"
+                        label="Email, Phone or Username"
                         value={emailOrPhone}
                         icon="mail-outline"
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        onChangeText={setEmailOrPhone}
+                        onChangeText={(val) => {
+                          setEmailOrPhone(val);
+                          setAuthError(null);
+                        }}
+                        hasError={!!authError}
                         onFocus={() => setFocusedField('email')}
                         onBlur={() => {
                           setFocusedField(null);
@@ -1003,9 +1018,13 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         value={password}
                         icon="lock-closed-outline"
                         secureTextEntry={!showPassword}
-                        onChangeText={setPassword}
+                        onChangeText={(val) => {
+                          setPassword(val);
+                          setAuthError(null);
+                        }}
                         showPasswordToggle
                         onPasswordToggle={() => setShowPassword(!showPassword)}
+                        hasError={!!authError}
                         onFocus={() => setFocusedField('password')}
                         onBlur={() => {
                           setFocusedField(null);
@@ -1014,10 +1033,15 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                       />
                       {emailTouched && (emailOrPhone.length === 0 || !isValidInput) && (
                         <Text style={styles.errorText}>
-                          {emailOrPhone.length === 0 ? "Please enter your email or phone" : "Please enter a valid email or phone number"}
+                          {emailOrPhone.length === 0 ? "Please enter your email, phone or username" : "Please enter a valid email, phone number or username"}
                         </Text>
                       )}
-                      {passwordTouched && getPasswordStrength(password) && (
+                      {authError && (
+                        <Text style={[styles.errorText, { marginTop: 4 }]}>
+                          {authError}
+                        </Text>
+                      )}
+                      {passwordTouched && getPasswordStrength(password) && !authError && (
                         <Text style={[styles.errorText, { color: getPasswordStrength(password)?.color }]}>
                           {getPasswordStrength(password)?.message}
                         </Text>
@@ -1140,7 +1164,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                             onPress={() => {
                               if (!isNextStepEnabled()) {
                                 if (signupStep === 1) setFullNameTouched(true);
-                                if (signupStep === 2) setEmailTouched(true); // Assuming I add this for consistency
+                                if (signupStep === 2) setEmailTouched(true);
                                 triggerHaptic('error');
                                 return;
                               }
@@ -1154,12 +1178,33 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                               end={{ x: 1, y: 0 }}
                               style={styles.nextStepBtnGradient}
                             >
-                              {/* Premium Sheen Pill Effect */}
                               <View style={[styles.pillSheen, !isNextStepEnabled() && { opacity: 0.1 }]} />
                               <Text style={styles.nextStepText}>Continue</Text>
                             </LinearGradient>
                           </TouchableOpacity>
-                        ) : null}
+                        ) : (
+                          <TouchableOpacity 
+                            style={[styles.loginBtnContainer, { flex: 2 }, (loading || !isFormValid) && { opacity: 0.5 }]} 
+                            activeOpacity={0.8}
+                            onPress={handleAuthAction}
+                            disabled={loading || !isFormValid}
+                          >
+                            <LinearGradient
+                              colors={!isFormValid ? ['rgba(91, 95, 239, 0.1)', 'rgba(91, 95, 239, 0.1)'] : ['rgba(91, 95, 239, 0.25)', 'rgba(129, 140, 248, 0.25)']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={styles.loginBtnGradient}
+                            >
+                              <View style={[styles.pillSheen, !isFormValid && { opacity: 0.1 }]} />
+                              
+                              {loading ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                              ) : (
+                                <Text style={styles.loginBtnText}>Create Account</Text>
+                              )}
+                            </LinearGradient>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </>
                   )}
@@ -1198,7 +1243,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                 )}
 
                 <Animated.View style={[animatedBtnStyle, { marginTop: (isLogin || signupStep === 3) ? 10 : 0 }]}>
-                  {(isLogin || signupStep === 3) && (
+                  {isLogin && (
                     <TouchableOpacity 
                       style={styles.loginBtnContainer} 
                       activeOpacity={0.8}
@@ -1216,9 +1261,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         {loading ? (
                           <ActivityIndicator color="#fff" size="small" />
                         ) : (
-                          <Text style={styles.loginBtnText}>
-                            {isLogin ? "Sign In" : "Create Account"}
-                          </Text>
+                          <Text style={styles.loginBtnText}>Sign In</Text>
                         )}
                       </LinearGradient>
                     </TouchableOpacity>

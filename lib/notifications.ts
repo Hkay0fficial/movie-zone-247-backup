@@ -131,3 +131,20 @@ export const useLastNotificationResponse = () => {
   if (shouldSkip || !Notifications) return null;
   return Notifications.useLastNotificationResponse();
 };
+
+export async function sendLocalNotification(title: string, body: string, data?: any) {
+  if (!Notifications) {
+    console.log('[Mock Notification]', title, body);
+    return;
+  }
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      data,
+      sound: true,
+      priority: 'high',
+    },
+    trigger: null,
+  });
+}
