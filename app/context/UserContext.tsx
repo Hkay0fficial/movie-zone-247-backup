@@ -210,7 +210,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             });
           }
           setLoading(false);
-        }, (error) => {
+        }, (error: any) => {
+          if (error.code === 'permission-denied') return;
           console.error("UserContext profile listener error:", error);
         });
       } else {

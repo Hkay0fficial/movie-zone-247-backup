@@ -121,6 +121,10 @@ export default function MenuScreen() {
         }
       }
       setIsMenuLoading(false);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Menu Config listener error:", error);
+      setIsMenuLoading(false);
     });
     return () => unsub();
   }, []);
@@ -291,6 +295,9 @@ export default function MenuScreen() {
         ...doc.data()
       }));
       setNotifications(docs);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Notifications listener error:", error);
     });
 
     return () => unsubscribe();

@@ -267,7 +267,8 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => {
         setLoading(false);
       }, 1500);
-    }, (error) => {
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
       console.warn("Firestore listener error (MovieContext):", error);
       // Fallback to offline/mock data if offline
       setLoading(false);
@@ -296,6 +297,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           isUpdateAvailable
         });
       }
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("AppVersion snapshot error:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -306,6 +310,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (docSnap.exists()) {
         setGlobalSettings(docSnap.data() as any);
       }
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Global settings snapshot error:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -316,6 +323,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       if (docSnap.exists() && docSnap.data().sections) {
         setAppLayout(docSnap.data().sections);
       }
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("App layout snapshot error:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -330,6 +340,10 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
       }));
       setAnnouncements(fetched);
+      setLoadingAnnouncements(false);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Announcements snapshot error:", error);
       setLoadingAnnouncements(false);
     });
     return () => unsubscribe();
@@ -366,6 +380,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             setReadIds(new Set(data.readAnnouncements));
           }
         }
+      }, (error: any) => {
+        if (error.code === 'permission-denied') return;
+        console.error("User readIds snapshot error:", error);
       });
       return () => unsubscribe();
     }

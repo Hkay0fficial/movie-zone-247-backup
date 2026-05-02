@@ -2486,6 +2486,10 @@ export function SeriesPreviewContent({
       fetched.sort((a, b) => (b as any).createdAt?.seconds - (a as any).createdAt?.seconds);
       setComments(fetched);
       setIsLoadingComments(false);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Series comments listener error:", error);
+      setIsLoadingComments(false);
     });
   }, [showComments, series?.id]);
 
@@ -3357,7 +3361,8 @@ export const MoviePreviewContent = memo(({
 
       setComments(fetchedComments);
       setIsLoadingComments(false);
-    }, (error) => {
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
       console.error("Comments listener error:", error);
       setIsLoadingComments(false);
     });

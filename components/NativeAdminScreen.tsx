@@ -654,6 +654,10 @@ export default function NativeAdminScreen() {
       });
       setUsers(uData);
       setLoading(false);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Admin Users listener error:", error);
+      setLoading(false);
     });
   };
 
@@ -702,6 +706,10 @@ export default function NativeAdminScreen() {
       if (docSnap.exists()) {
         setLayoutSections(docSnap.data().sections || []);
       }
+      setLoading(false);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Admin Layout listener error:", error);
       setLoading(false);
     });
   };

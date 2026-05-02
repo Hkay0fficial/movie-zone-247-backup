@@ -404,6 +404,9 @@ export default function SeriesScreen() {
           sections: (data.sections || []).filter((s: any) => s.isVisible)
         });
       }
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("Series Layout listener error:", error);
     });
     return () => unsub();
   }, []);
@@ -1200,7 +1203,8 @@ function SeriesPreviewModal({
 
       setComments(fetchedComments);
       setIsLoadingComments(false);
-    }, (error) => {
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
       console.error("Series Comments listener error:", error);
       setIsLoadingComments(false);
     });

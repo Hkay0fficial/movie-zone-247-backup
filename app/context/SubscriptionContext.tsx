@@ -329,7 +329,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       unsubFavs = onSnapshot(favsRef, (snap) => {
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Movie | Series)));
         setFavorites(list);
-      }, (err) => console.error("Favorites snapshot error:", err));
+      }, (error: any) => {
+        if (error.code === 'permission-denied') return;
+        console.error("Favorites snapshot error:", error);
+      });
     } else {
       // For guests or logged out, try to load from local storage as fallback
       AsyncStorage.getItem('my_list_movies').then(val => {
@@ -387,7 +390,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           timerRef.current = setInterval(checkExpiration, 30000);
         }
       }
-    }, (err) => console.error("SubscriptionContext: Global settings listener error:", err));
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("SubscriptionContext: Global settings listener error:", error);
+    });
     return () => {
       unsub();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -403,7 +409,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setForceUpdate(data.forceUpdate || false);
         setUpdateMessage(data.updateMessage || '');
       }
-    }, (err) => console.error("SubscriptionContext: Version settings listener error:", err));
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("SubscriptionContext: Version settings listener error:", error);
+    });
     return unsub;
   }, []);
 
