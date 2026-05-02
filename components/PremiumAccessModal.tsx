@@ -265,8 +265,9 @@ function BenefitItem({ icon, title, desc, color, isMC }: any) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: 'rgba(15,15,20,0.95)',
@@ -275,7 +276,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.22)',
     overflow: 'hidden',
     marginHorizontal: 16,
-    maxHeight: SCREEN_H * 0.85, // Ensure it fits the screen
+    marginVertical: 40,
+    width: SCREEN_W - 32,
+    maxHeight: SCREEN_H * 0.85,
   },
   dragIndicator: {
     width: 36,
