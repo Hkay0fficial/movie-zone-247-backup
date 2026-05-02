@@ -1046,8 +1046,7 @@ function SeriesPreviewModal({
   const previewVideoUrl = React.useMemo(() => {
     if (!series) return undefined;
     if (series.previewUrl && series.previewUrl.startsWith('http')) return series.previewUrl;
-    if (series.videoUrl && series.videoUrl.startsWith('http')) return series.videoUrl;
-    return '';
+    return undefined;
   }, [series]);
 
   const episodes = useMemo(() => {
