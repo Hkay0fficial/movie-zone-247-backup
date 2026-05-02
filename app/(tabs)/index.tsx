@@ -6028,7 +6028,7 @@ const HeroBanner = memo(({
   appState: string;
 }) => {
   const router = useRouter();
-  const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites } = useSubscription();
+  const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites, playerMode } = useSubscription();
   // ✅ Pull live hero movies from Firebase context (not the static import)
   const { heroMovies: LIVE_HERO_MOVIES } = useMovies();
   const videoRef = useRef<Video>(null);
