@@ -630,28 +630,18 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
           }
 
           if (!snapshot.empty) {
-            // Found a user! Get their primary email
             targetEmail = snapshot.docs[0].data().email;
           } else {
-            // No match found
             throw new Error("no account found with this username or phone number");
           }
         }
 
-        // If it is an email, check if it exists in Firestore first to provide specific error
-        if (isEmail(targetEmail)) {
-          const q = query(collection(db, "users"), where("email", "==", targetEmail));
-          const snapshot = await getDocs(q);
-          if (snapshot.empty) {
-            throw { code: 'auth/user-not-found' };
-          }
-        }
-
+        // Attempt Firebase Auth sign-in directly — let Firebase report the actual error
         try {
           await signInWithEmailAndPassword(auth, targetEmail.trim(), password);
         } catch (err: any) {
-          // In modern Firebase, wrong-password is often returned as invalid-credential
-          if (err.code === 'auth/invalid-credential') {
+          // Modern Firebase returns invalid-credential for both wrong email and wrong password
+          if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
             throw { code: 'auth/wrong-password' };
           }
           throw err;

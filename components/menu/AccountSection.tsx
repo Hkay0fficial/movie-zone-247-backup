@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles } from './menu.styles';
 import { auth, db } from '../../constants/firebaseConfig';
-import { deleteUser, signOut } from 'firebase/auth';
+import { deleteUser, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { doc, deleteDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -132,6 +132,9 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   const [imageError, setImageError] = React.useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = React.useState('');
   const [isDeleteFocused, setIsDeleteFocused] = React.useState(false);
+  const [showReauthPrompt, setShowReauthPrompt] = React.useState(false);
+  const [reauthPassword, setReauthPassword] = React.useState('');
+  const [reauthError, setReauthError] = React.useState('');
 
   React.useEffect(() => {
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
@@ -151,32 +154,58 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         Alert.alert("Error", "You must be signed in to delete your account.");
         return;
       }
-      
+
       // Clean up Firestore data
       try {
         await deleteDoc(doc(db, 'users', user.uid));
       } catch (err) {
         console.warn("Could not delete user document from firestore:", err);
       }
-      
+
       // Delete user from Firebase Auth
       await deleteUser(user);
-      
+
       // Clear states and redirect
       setDeleteConfirmationText('');
       await AsyncStorage.removeItem('userToken');
       Alert.alert("Success", "Your account has been permanently deleted.");
       router.replace('/login');
-      
+
     } catch (error: any) {
       if (error.code === 'auth/requires-recent-login') {
-        Alert.alert(
-          "Security Verification Required", 
-          "For your security, you must have signed in recently to delete your account. Please log out, log back in, and try again.",
-          [{ text: "OK" }]
-        );
+        // Show inline reauthentication prompt
+        setShowReauthPrompt(true);
+        setReauthError('');
+        setReauthPassword('');
       } else {
         Alert.alert('Error', error.message);
+      }
+    }
+  };
+
+  const handleReauthAndDelete = async () => {
+    const user = auth.currentUser;
+    if (!user || !user.email) return;
+    if (!reauthPassword) {
+      setReauthError('Please enter your password.');
+      return;
+    }
+    try {
+      const credential = EmailAuthProvider.credential(user.email, reauthPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Reauthenticated — now delete
+      try { await deleteDoc(doc(db, 'users', user.uid)); } catch (_) {}
+      await deleteUser(user);
+      await AsyncStorage.removeItem('userToken');
+      setShowReauthPrompt(false);
+      Alert.alert("Success", "Your account has been permanently deleted.");
+      router.replace('/login');
+    } catch (err: any) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setReauthError('Incorrect password. Please try again.');
+      } else {
+        setReauthError(err.message || 'Reauthentication failed.');
       }
     }
   };
@@ -888,6 +917,57 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               Permanently Delete Account
             </Text>
           </TouchableOpacity>
+
+          {/* Inline Reauth Prompt */}
+          {showReauthPrompt && (
+            <View style={{
+              marginTop: 20,
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              borderRadius: 16,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              padding: 20,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Ionicons name="shield-outline" size={18} color="#ef4444" />
+                <Text style={{ color: '#fca5a5', fontSize: 14, fontWeight: '800' }}>Confirm Your Identity</Text>
+              </View>
+              <Text style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16, lineHeight: 19 }}>
+                For security, please enter your password to confirm account deletion.
+              </Text>
+              <TextInput
+                style={[styles.editInput, {
+                  borderColor: reauthError ? '#ef4444' : 'rgba(255,255,255,0.1)',
+                  borderWidth: StyleSheet.hairlineWidth,
+                  color: '#fff',
+                  marginBottom: 8,
+                }]}
+                value={reauthPassword}
+                onChangeText={(t) => { setReauthPassword(t); setReauthError(''); }}
+                placeholder="Enter your password"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                secureTextEntry
+                autoFocus
+              />
+              {!!reauthError && (
+                <Text style={{ color: '#ef4444', fontSize: 12, marginBottom: 10 }}>{reauthError}</Text>
+              )}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' }}
+                  onPress={() => { setShowReauthPrompt(false); setReauthPassword(''); setReauthError(''); }}
+                >
+                  <Text style={{ color: '#94a3b8', fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#ef4444', alignItems: 'center' }}
+                  onPress={handleReauthAndDelete}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Confirm Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     );
