@@ -176,17 +176,22 @@ export default function PremiumAccessModal({
                   color="#5B5FEF"
                 />
                 <BenefitItem 
-                  icon="ad-off" 
+                  icon="ban-outline" 
                   title="Zero Advertisements" 
                   desc="No interruptions during your cinema time" 
                   color="#ef4444"
-                  isMC
                 />
                 <BenefitItem 
                   icon="cloud-download-outline" 
                   title="Offline Viewing" 
                   desc="Unlimited downloads for on-the-go" 
                   color="#3b82f6"
+                />
+                <BenefitItem 
+                  icon="phone-portrait-outline" 
+                  title="External Downloads" 
+                  desc="Save movies directly to your device storage" 
+                  color="#f59e0b"
                 />
                 <BenefitItem 
                   icon="gift-outline" 
