@@ -342,9 +342,9 @@ function NotificationOverlay({
         }
       }}
     >
-      <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill}>
+      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill}>
         <TouchableOpacity
-          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15,15,25,0.95)" }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(10,10,18,0.92)" }]}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -356,10 +356,17 @@ function NotificationOverlay({
 
           {!showRatingModal ? (
             <View style={styles.notificationContent}>
-              <BlurView
-                intensity={80}
-                tint="dark"
-                style={StyleSheet.absoluteFill}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { 
+                    backgroundColor: "rgba(255,255,255,0.03)", 
+                    borderRadius: 24, 
+                    overflow: 'hidden',
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                  }
+                ]}
               />
               <View style={styles.notificationHeader}>
                 <Text style={styles.notificationTitle}>Notifications</Text>
@@ -1625,6 +1632,11 @@ function CustomTabBar() {
   const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
   const [isDetailStackVisible, setIsDetailStackVisible] = useState(false);
 
+  const readIdsRef = useRef(readIds);
+  useEffect(() => {
+    readIdsRef.current = readIds;
+  }, [readIds]);
+
   // Load persisted states on mount
   useEffect(() => {
     const loadState = async () => {
@@ -1822,20 +1834,24 @@ function CustomTabBar() {
       baseData = [eventNotif, ...baseData];
     }
 
-    // Inject Active Downloads
+    // Inject Active Downloads - throttled to only show meaningful progress or if tray is open
     const dlNotifications: Notification[] = Object.entries(activeDownloads)
       .filter(([id, dl]) => dl && dl.item)
-      .map(([id, dl]) => ({
-        id: `dl_${id}`,
-        type: "update",
-        icon: "cloud-download",
-        title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
-        message: `${dl.progress === 100 ? "Finished" : "Saving"} "${(dl as any)?.episodeTitle || dl.item?.title || 'Unknown'}" (${dl.progress}%)`,
-        time: "ACTIVE",
-        isNew: true,
-        color: "#00ffcc",
-        image: dl.item?.poster
-      }));
+      .map(([id, dl]) => {
+        // Show progress in chunks or 100% to reduce re-renders
+        const displayProgress = dl.progress === 100 ? 100 : Math.floor(dl.progress / 5) * 5;
+        return {
+          id: `dl_${id}`,
+          type: "update",
+          icon: "cloud-download",
+          title: dl.progress === 100 ? "Download Complete!" : "Downloading...",
+          message: `${dl.progress === 100 ? "Finished" : "Saving"} "${(dl as any)?.episodeTitle || dl.item?.title || 'Unknown'}" (${dl.progress}%)`,
+          time: "ACTIVE",
+          isNew: true,
+          color: "#00ffcc",
+          image: dl.item?.poster
+        };
+      });
 
     baseData = [...dlNotifications, ...baseData];
 
@@ -2160,12 +2176,12 @@ function CustomTabBar() {
       if (item.id?.startsWith("live_new_")) {
         gridData = [...liveMovies, ...liveSeries];
       } else if (movieIds.size > 0 || seriesIds.size > 0) {
-        // Collect specifically listed items first
-        gridData = ALL_ITEMS.filter(m => movieIds.has(m.id) || seriesIds.has(m.id));
+        // Collect specifically listed items first from TOTAL_LIVE_ITEMS for performance and accuracy
+        gridData = TOTAL_LIVE_ITEMS.filter(m => movieIds.has(m.id) || seriesIds.has(m.id));
       } else if (isTrendingVj) {
         // Collect movies for all featured VJs only if no specific list is provided
         const vjNames = item.vjsDetailed?.map(v => v.name.toLowerCase()) || [];
-        gridData = ALL_ITEMS.filter(m => vjNames.some(name => m.vj.toLowerCase().includes(name)));
+        gridData = TOTAL_LIVE_ITEMS.filter(m => m.vj && vjNames.some(name => m.vj.toLowerCase().includes(name)));
       }
 
       if (gridData.length > 0) {
