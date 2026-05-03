@@ -7,25 +7,18 @@ import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import { Platform, Animated, Dimensions, StyleSheet } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
+import { Plan, PLANS } from '../../constants/planData';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-// Define the limits per plan type
-const planLimits: Record<string, number> = {
-  '1 week': 1,
-  '2 weeks': 2,
-  '1 Month': 3,
-  '2 months': 5,
+// These will now be computed dynamically from the 'plans' collection
+let dynamicPlanLimits: Record<string, number> = {
   'Premium': 10,
   'VIP': 999,
   'None': 0
 };
 
-const planDeviceLimits: Record<string, number> = {
-  '1 week': 1,
-  '2 weeks': 1,
-  '1 month': 2,
-  '2 months': 3,
+let dynamicDeviceLimits: Record<string, number> = {
   'premium': 5,
   'vip': 999,
   'none': 0
@@ -71,6 +64,7 @@ interface SubscriptionContextType {
   activeDevicesMeta: Record<string, any>;
   isSubscribed: boolean;
   remainingDays: number;
+  availablePlans: Plan[];
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -102,6 +96,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
   const [activeDevicesMeta, setActiveDevicesMeta] = useState<Record<string, any>>({});
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<Plan[]>(PLANS);
 
   // Helper to get persistent hardware ID
   const getDeviceInfo = async () => {
@@ -142,6 +137,31 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     };
     loadCachedSubscription();
+  }, []);
+
+  // Fetch plans from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'plans'), (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      if (list.length > 0) {
+        setAvailablePlans(list);
+        
+        // Update dynamic maps
+        const pLimits: Record<string, number> = { 'Premium': 10, 'VIP': 999, 'None': 0 };
+        const dLimits: Record<string, number> = { 'premium': 5, 'vip': 999, 'none': 0 };
+        
+        list.forEach(p => {
+          pLimits[p.name] = p.downloadLimit || 1;
+          dLimits[p.name.toLowerCase()] = p.deviceLimit || 1;
+        });
+        
+        dynamicPlanLimits = pLimits;
+        dynamicDeviceLimits = dLimits;
+      }
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -196,7 +216,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     }
 
                     const normalizedBundle = bundle.toLowerCase();
-                    const baseLimit = planDeviceLimits[normalizedBundle] || 1;
+                    const baseLimit = dynamicDeviceLimits[normalizedBundle] || 1;
                     const limit = devLimit > 0 ? devLimit : baseLimit;
                     const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
 
@@ -512,7 +532,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const isPaid = subscriptionBundle !== 'None';
-  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (planDeviceLimits[subscriptionBundle] || 1);
+  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] || 1);
 
   // Global Player Animated Values
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
@@ -564,6 +584,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setPlayingEpisodeId,
       isSubscribed,
       remainingDays,
+      availablePlans,
     }}>
       {children}
     </SubscriptionContext.Provider>

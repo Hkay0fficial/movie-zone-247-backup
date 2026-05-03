@@ -23,7 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { PLANS, Plan } from '../constants/planData';
+import { Plan } from '../constants/planData';
 import { useSubscription } from '../app/context/SubscriptionContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../constants/firebaseConfig';
@@ -38,7 +38,7 @@ interface PlanSelectionModalProps {
 
 export default function PlanSelectionModal({ visible, onClose }: PlanSelectionModalProps) {
   const insets = useSafeAreaInsets();
-  const { isPaid, subscriptionBundle } = useSubscription();
+  const { isPaid, subscriptionBundle, availablePlans } = useSubscription();
   
   // Flow State
   const [step, setStep] = useState<'plans' | 'payment-method' | 'payment-details'>('plans');
@@ -86,15 +86,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
     }
 
     try {
-      // Calculate Expiry Date based on Plan ID
-      let durationDays = 0;
-      switch (selectedPlan.id) {
-        case 'week_1': durationDays = 8; break; // 7 + 1 bonus
-        case 'weeks_2': durationDays = 16; break; // 14 + 2 bonus
-        case 'month_1': durationDays = 34; break; // 30 + 4 bonus
-        case 'months_2': durationDays = 67; break; // 60 + 7 bonus
-        default: durationDays = 30;
-      }
+      const durationDays = selectedPlan.durationDays || 30;
 
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + durationDays);
@@ -145,7 +137,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {step === 'plans' && (
               <View style={styles.plansContainer}>
-                {PLANS.map((plan) => {
+                {availablePlans.map((plan) => {
                   const isActive = isPaid && subscriptionBundle === plan.name;
                   return (
                     <TouchableOpacity 
