@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: '100%',
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     marginVertical: 24,
   },
   button: {

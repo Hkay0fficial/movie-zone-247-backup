@@ -102,6 +102,7 @@ interface ModernVideoPlayerProps {
   playingNow?: Movie | Series | null;
   setPlayingNow?: (m: Movie | Series | null) => void;
   isPreview?: boolean;
+  subtitles?: { id: string; label: string; url: string }[];
 }
 
 export default function ModernVideoPlayer({
@@ -128,7 +129,8 @@ export default function ModernVideoPlayer({
   episodeId,
   playingNow,
   setPlayingNow,
-  isPreview
+  isPreview,
+  subtitles = [],
 }: ModernVideoPlayerProps) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
@@ -217,11 +219,16 @@ export default function ModernVideoPlayer({
   const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN); // CONTAIN (Fit), COVER (Fill), STRETCH (Stretch)
   const [isAirPlaying, setIsAirPlaying] = useState(false);
   
+  const [currentVolume, setCurrentVolume] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+  
   // Overlays
   const [isBufferingDelayed, setIsBufferingDelayed] = useState(false);
   const bufferTimeoutRef = useRef<any>(null);
   const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false);
   const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
+  const [showSubtitleOverlay, setShowSubtitleOverlay] = useState(false);
+  const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null);
   const [showTimerOptions, setShowTimerOptions] = useState(false);
   const [sleepTimerMs, setSleepTimerMs] = useState(0);
   const [selectedTimerMins, setSelectedTimerMins] = useState(0); 
@@ -230,7 +237,6 @@ export default function ModernVideoPlayer({
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
   const [currentBrightness, setCurrentBrightness] = useState(1);
   const [isAdjustingVolume, setIsAdjustingVolume] = useState(false);
-  const [currentVolume, setCurrentVolume] = useState(1);
   
   // Animations
   const controlsOpacity = useRef(new Animated.Value(1)).current;
@@ -252,6 +258,7 @@ export default function ModernVideoPlayer({
   const scrubPositionRef = useRef(0);
   const statusUpdateRef = useRef<any>(null);
   const isInteractingRef = useRef(false); // Global lock to prevent main swipe from stealing control touches
+  const fullPlayerAnim = useRef(new Animated.Value(0)).current; // For smooth entry
 
   // Orientation & Status Bar
   useEffect(() => {
@@ -272,6 +279,18 @@ export default function ModernVideoPlayer({
     };
     manageLayout();
     if (playerMode !== 'closed') resetControlsTimer();
+
+    if (playerMode === 'full') {
+      Animated.parallel([
+        Animated.timing(fullPlayerAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      fullPlayerAnim.setValue(0);
+    }
 
     // Auto-animate PIP size/position
     if (playerMode === 'mini') {
@@ -311,8 +330,7 @@ export default function ModernVideoPlayer({
       };
       
       forceHide();
-      hideInterval = setInterval(forceHide, 500);
-      setTimeout(() => clearInterval(hideInterval), 3000);
+      hideInterval = setInterval(forceHide, 2500); // Optimized from 500ms to 2500ms to reduce CPU load
     }
 
     return () => { 
@@ -434,6 +452,9 @@ export default function ModernVideoPlayer({
 
   // Controls Visibility Logic
   const resetControlsTimer = () => {
+    if (playerMode === 'full') {
+      safeSetNavigationBar('hidden');
+    }
     setShowControls(true);
     showControlsRef.current = true;
     Animated.timing(controlsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
@@ -443,6 +464,9 @@ export default function ModernVideoPlayer({
         setShowControls(false);
         showControlsRef.current = false;
         Animated.timing(controlsOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start();
+        if (playerMode === 'full') {
+          safeSetNavigationBar('hidden');
+        }
       }
     }, 4000);
   };
@@ -504,7 +528,7 @@ export default function ModernVideoPlayer({
   const gestureStartXRef = useRef(0);
   const gestureStartYRef = useRef(0);
   const gestureStartValueRef = useRef(0);
-  const gestureTypeRef = useRef<'brightness' | 'volume' | 'scrub' | null>(null);
+  const gestureTypeRef = useRef<'brightness' | 'volume' | 'scrub' | 'close' | null>(null);
 
   const isScrubbingRef = useRef(false);
 
@@ -538,6 +562,9 @@ export default function ModernVideoPlayer({
           if (statusRef.current.isLoaded) {
             scrubPositionRef.current = statusRef.current.positionMillis;
           }
+        } else if (g.dy > 0 && Math.abs(g.dy) > Math.abs(g.dx) && playerMode === 'full') {
+          // Detect swipe down to close
+          gestureTypeRef.current = 'close';
         } else {
           if (pageX < currentW / 2) {
             gestureTypeRef.current = 'brightness';
@@ -579,12 +606,23 @@ export default function ModernVideoPlayer({
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentVolume(newValue);
           videoRef.current?.setVolumeAsync(newValue);
+        } else if (gestureTypeRef.current === 'close') {
+          playerPos.setValue({ x: 0, y: Math.max(0, g.dy) });
         }
       },
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (_, g) => {
         if (gestureTypeRef.current === 'scrub') {
           videoRef.current?.setPositionAsync(scrubPosition);
           setIsScrubbing(false);
+        } else if (gestureTypeRef.current === 'close') {
+          if (g.dy > 150 || g.vy > 0.5) {
+            onClose();
+          } else {
+            Animated.spring(playerPos, {
+              toValue: { x: 0, y: 0 },
+              useNativeDriver: false,
+            }).start();
+          }
         }
         setIsAdjustingBrightness(false);
         setIsAdjustingVolume(false);
@@ -781,8 +819,37 @@ export default function ModernVideoPlayer({
             if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
               onNext();
             }
+
+            // Error handling
+            if (!s.isLoaded && (s as any).error) {
+              setError((s as any).error || "An error occurred while loading the video.");
+            } else if (s.isLoaded) {
+              setError(null);
+            }
           }}
         />
+        
+        {/* Error UI */}
+        {error && (
+          <View style={[styles.absFill, styles.overlayBackdrop, { zIndex: 200 }]}>
+            <BlurView intensity={90} tint="dark" style={styles.absFill} />
+            <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+            <Text style={styles.errorTitle}>Playback Error</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryBtn} 
+              onPress={() => {
+                setError(null);
+                videoRef.current?.unloadAsync().then(() => videoRef.current?.loadAsync({ uri: videoUrl || "" }));
+              }}
+            >
+              <Text style={styles.retryBtnText}>TRY AGAIN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 20 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>GO BACK</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         {/* Premium Loading Indicator */}
         {((!status.isLoaded && playerMode !== 'closed') || (status.isLoaded && isBufferingDelayed)) && (
@@ -1003,6 +1070,29 @@ export default function ModernVideoPlayer({
                         <MaterialIcons name="speed" size={24} color="#fff" />
                       </TouchableOpacity>
 
+                      {/* SUBTITLES Button */}
+                      <TouchableOpacity onPress={() => setShowSubtitleOverlay(true)} style={styles.circleBtn}>
+                        <MaterialCommunityIcons name="closed-caption" size={24} color="#fff" />
+                      </TouchableOpacity>
+
+                      {/* Google Cast Button — Android only, renders custom button that opens picker */}
+                      {CAN_CAST && Platform.OS === 'android' && (
+                        <TouchableOpacity 
+                          onPress={() => {
+                            const gc = getCastModule();
+                            if (gc) gc.showCastPicker();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }} 
+                          style={styles.circleBtn}
+                        >
+                          <MaterialCommunityIcons 
+                            name="google-cast" 
+                            size={24} 
+                            color={castSession ? '#818cf8' : '#fff'} 
+                          />
+                        </TouchableOpacity>
+                      )}
+
                       {/* AirPlay Button — iOS only, renders native MPVolumeView route picker */}
                       {Platform.OS === 'ios' && (
                         <View style={[
@@ -1189,6 +1279,46 @@ export default function ModernVideoPlayer({
               </View>
             </TouchableOpacity>
           )}
+
+          {showSubtitleOverlay && (
+            <TouchableOpacity 
+              style={[styles.overlayBackdrop]}
+              activeOpacity={1}
+              onPress={() => setShowSubtitleOverlay(false)}
+            >
+              <BlurView intensity={80} tint="dark" style={styles.absFill} />
+              <View style={[styles.overlayContent, { width: '40%' }]}>
+                <View style={styles.overlayHeader}>
+                  <Text style={styles.overlayTitle}>Subtitles</Text>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+                  <TouchableOpacity 
+                    style={[styles.speedOption, selectedSubtitleId === null && styles.speedOptionActive]}
+                    onPress={() => {
+                      setSelectedSubtitleId(null);
+                      setShowSubtitleOverlay(false);
+                    }}
+                  >
+                    <Text style={[styles.speedOptionText, selectedSubtitleId === null && { color: '#818cf8' }]}>Off</Text>
+                    {selectedSubtitleId === null && <Ionicons name="checkmark" size={20} color="#818cf8" />}
+                  </TouchableOpacity>
+                  {subtitles.map(sub => (
+                    <TouchableOpacity 
+                      key={sub.id} 
+                      style={[styles.speedOption, selectedSubtitleId === sub.id && styles.speedOptionActive]}
+                      onPress={() => {
+                        setSelectedSubtitleId(sub.id);
+                        setShowSubtitleOverlay(false);
+                      }}
+                    >
+                      <Text style={[styles.speedOptionText, selectedSubtitleId === sub.id && { color: '#818cf8' }]}>{sub.label}</Text>
+                      {selectedSubtitleId === sub.id && <Ionicons name="checkmark" size={20} color="#818cf8" />}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
     </TouchableWithoutFeedback>
   );
@@ -1224,34 +1354,31 @@ export default function ModernVideoPlayer({
 
   if (playerMode === 'full') {
     return (
-      <RNModal
-        visible={true}
-        transparent={false}
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => onClose()}
+      <Animated.View 
+        style={[
+          StyleSheet.absoluteFill, 
+          { 
+            backgroundColor: '#000', 
+            zIndex: 2147483647, 
+            elevation: 1000,
+            opacity: fullPlayerAnim,
+            transform: [
+              { scale: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+              { rotate: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: ['-1deg', '0deg'] }) }
+            ]
+          }
+        ]}
+        onLayout={() => {
+          if (Platform.OS === 'android') {
+            NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+            NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+            StatusBar.setHidden(true);
+          }
+        }}
       >
-        <View 
-          style={[
-            StyleSheet.absoluteFill, 
-            { 
-              backgroundColor: '#000', 
-              zIndex: 2147483647, 
-              elevation: 1000 
-            }
-          ]}
-          onLayout={() => {
-            if (Platform.OS === 'android') {
-              NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-              NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
-              StatusBar.setHidden(true);
-            }
-          }}
-        >
-          <ExpoStatusBar hidden={true} translucent />
-          {renderPlayer()}
-        </View>
-      </RNModal>
+        <ExpoStatusBar hidden={true} translucent />
+        {renderPlayer()}
+      </Animated.View>
     );
   }
 
@@ -1598,6 +1725,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  errorTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  errorText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+  },
+  retryBtn: {
+    marginTop: 30,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    backgroundColor: '#ef4444',
+    borderRadius: 30,
+    elevation: 4,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   overlayTitle: {
     color: '#fff',

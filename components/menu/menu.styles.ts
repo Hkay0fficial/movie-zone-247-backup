@@ -371,9 +371,9 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   legalDivider: {
-    width: 1,
+    width: StyleSheet.hairlineWidth,
     height: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   updateCheckCard: {
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -579,7 +579,7 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
   cardDivider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.03)',
     marginVertical: 12,
   },
@@ -693,7 +693,7 @@ export const styles = StyleSheet.create({
     borderRadius: 32,
     marginBottom: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
   analyticsTotal: {

@@ -113,7 +113,7 @@ const FloatingLabelInput = ({
       style={[
         styles.inputContainer,
         isFocused && styles.inputContainerFocused,
-        hasError && { borderColor: '#ff4b4b', borderBottomWidth: 1.5 }
+        hasError && { borderColor: '#ff4b4b', borderBottomWidth: StyleSheet.hairlineWidth }
       ]}
     >
       <Ionicons name={icon} size={20} color={isFocused ? "#818cf8" : "#94a3b8"} />
@@ -285,7 +285,7 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
                     colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[flipStyles.accentLine, { flex: 1, height: 1.5, marginRight: 10 }]}
+                    style={[flipStyles.accentLine, { flex: 1, height: StyleSheet.hairlineWidth, marginRight: 10 }]}
                   />
                   <View style={flipStyles.subtitleRow}>
                     <ClockAnimation size={15} color="#ffffff" />
@@ -1691,7 +1691,7 @@ const styles = StyleSheet.create({
   },
   dividerLine: {
     flex: 1,
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   dividerText: {

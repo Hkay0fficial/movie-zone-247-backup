@@ -94,7 +94,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
             {billingHistory.map((item) => (
-              <View key={item.id} style={[styles.historyCard, { borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1 }]}>
+              <View key={item.id} style={[styles.historyCard, { borderColor: 'rgba(255,255,255,0.08)', borderWidth: StyleSheet.hairlineWidth }]}>
                 <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
                 <View style={{ padding: 20 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>

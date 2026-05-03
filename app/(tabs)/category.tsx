@@ -344,6 +344,19 @@ export default function CategoryScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
+      {/* Top Line Separator (Synchronized with global theme) */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: insets.top,
+          left: 0,
+          right: 0,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          zIndex: 1000,
+        }} 
+      />
+
       {/* Main Discover Feed */}
       <FlatList
         ref={flatListRef}

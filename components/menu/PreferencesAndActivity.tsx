@@ -272,73 +272,77 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                 filteredDownloads.map((m, index) => {
                   const isSelected = selectedIds.has((m as any).id);
                   return (
-                    <TouchableOpacity 
-                      key={(m as any).id ?? `dl-${index}`} 
-                      style={[styles.downloadCard, isEditMode && { paddingLeft: 8 }]}
-                      activeOpacity={isEditMode ? 0.7 : 1}
-                      onPress={() => isEditMode && toggleSelect((m as any).id)}
-                    >
-                      {isEditMode && (
-                        <View style={{ marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons 
-                            name={isSelected ? "checkbox" : "square-outline"} 
-                            size={22} 
-                            color={isSelected ? "#5B5FEF" : "rgba(255,255,255,0.3)"} 
-                          />
-                        </View>
-                      )}
-                      <View style={styles.downloadPosterContainer}>
-                        <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
-                        <View style={styles.vjBadgeSmall}>
-                          <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
-                        </View>
-                        <View style={styles.genreBadgeSmall}>
-                          <Text style={styles.genreBadgeTextSmall}>
-                            {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.downloadInfo}>
-                        <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
-                        <Text style={styles.downloadMeta}>
-                          {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
-                        </Text>
-                        {!isEditMode && (
-                          <View style={styles.downloadActionRow}>
-                            <TouchableOpacity 
-                              style={styles.downloadPlayBtn}
-                              onPress={() => {
-                                // Trigger global playback immediately
-                                // We close the settings modal to prevent it from overlapping the player
-                                setPlayerTitle(m.title);
-                                setSelectedVideoUrl(m.localUri || m.videoUrl);
-                                setPlayingNow(m as any);
-                                setPlayerMode('full');
-                                onCloseSettings();
-                              }}
-                            >
-                              <Ionicons name="play" size={12} color="#fff" />
-                              <Text style={styles.downloadPlayText}>PLAY</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                              style={styles.downloadDeleteBtn}
-                              onPress={() => {
-                                Alert.alert(
-                                  'Remove Download',
-                                  `Remove "${m.title}" from your downloads?`,
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
-                                  ]
-                                );
-                              }}
-                            >
-                              <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                            </TouchableOpacity>
+                    <View key={(m as any).id ?? `dl-${index}`}>
+                      <TouchableOpacity 
+                        style={[styles.downloadCard, isEditMode && { paddingLeft: 8 }]}
+                        activeOpacity={isEditMode ? 0.7 : 1}
+                        onPress={() => isEditMode && toggleSelect((m as any).id)}
+                      >
+                        {isEditMode && (
+                          <View style={{ marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons 
+                              name={isSelected ? "checkbox" : "square-outline"} 
+                              size={22} 
+                              color={isSelected ? "#5B5FEF" : "rgba(255,255,255,0.3)"} 
+                            />
                           </View>
                         )}
-                      </View>
-                    </TouchableOpacity>
+                        <View style={styles.downloadPosterContainer}>
+                          <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                          <View style={styles.vjBadgeSmall}>
+                            <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                          </View>
+                          <View style={styles.genreBadgeSmall}>
+                            <Text style={styles.genreBadgeTextSmall}>
+                              {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.downloadInfo}>
+                          <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                          <Text style={styles.downloadMeta}>
+                            {m.year} · {'duration' in m ? (m as any).duration : ('seasons' in m ? `${(m as any).seasons} Season${(m as any).seasons > 1 ? 's' : ''}` : '')}
+                          </Text>
+                          {!isEditMode && (
+                            <View style={styles.downloadActionRow}>
+                              <TouchableOpacity 
+                                style={styles.downloadPlayBtn}
+                                onPress={() => {
+                                  // Trigger global playback immediately
+                                  // We close the settings modal to prevent it from overlapping the player
+                                  setPlayerTitle(m.title);
+                                  setSelectedVideoUrl(m.localUri || m.videoUrl);
+                                  setPlayingNow(m as any);
+                                  setPlayerMode('full');
+                                  onCloseSettings();
+                                }}
+                              >
+                                <Ionicons name="play" size={12} color="#fff" />
+                                <Text style={styles.downloadPlayText}>PLAY</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity 
+                                style={styles.downloadDeleteBtn}
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Remove Download',
+                                    `Remove "${m.title}" from your downloads?`,
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
+                                    ]
+                                  );
+                                }}
+                              >
+                                <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                      {index < filteredDownloads.length - 1 && (
+                        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 }} />
+                      )}
+                    </View>
                   );
                 })
               ) : (
@@ -376,39 +380,43 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
 
         <View style={{ gap: 12, marginBottom: 24 }}>
           {allNotificationsWithUpdate.length > 0 ? (
-            allNotificationsWithUpdate.map((n) => (
-              <TouchableOpacity 
-                key={n.id} 
-                style={[styles.notificationCard, n.id.startsWith('sys_update_') && { borderColor: '#f59e0b33', borderWidth: 1 }]}
-                onPress={() => {
-                  if (n.id.startsWith('sys_update_')) {
-                    const { Linking, Platform } = require('react-native');
-                    const url = Platform.OS === 'android'
-                      ? 'market://details?id=com.serunkumaharuna.app'
-                      : 'https://play.google.com/store/apps/details?id=com.serunkumaharuna.app';
-                    Linking.openURL(url).catch(() =>
-                      Linking.openURL('https://play.google.com/store/apps/details?id=com.serunkumaharuna.app')
-                    );
-                  } else {
-                    handleNotificationPress(n);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.notificationIcon, { backgroundColor: `${n.color}15` }]}>
-                  <Ionicons name={n.icon as any} size={20} color={n.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <Text style={styles.notifTitle}>{n.title}</Text>
-                    <Text style={styles.notifTime}>
-                      {getRelativeTime(n.createdAt)}
-                    </Text>
+            allNotificationsWithUpdate.map((n, idx) => (
+              <View key={n.id}>
+                <TouchableOpacity 
+                  style={[styles.notificationCard, n.id.startsWith('sys_update_') && { borderColor: '#f59e0b33', borderWidth: 1 }]}
+                  onPress={() => {
+                    if (n.id.startsWith('sys_update_')) {
+                      const { Linking, Platform } = require('react-native');
+                      const url = Platform.OS === 'android'
+                        ? 'market://details?id=com.serunkumaharuna.app'
+                        : 'https://play.google.com/store/apps/details?id=com.serunkumaharuna.app';
+                      Linking.openURL(url).catch(() =>
+                        Linking.openURL('https://play.google.com/store/apps/details?id=com.serunkumaharuna.app')
+                      );
+                    } else {
+                      handleNotificationPress(n);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.notificationIcon, { backgroundColor: `${n.color}15` }]}>
+                    <Ionicons name={n.icon as any} size={20} color={n.color} />
                   </View>
-                  <Text style={styles.notifMessage} numberOfLines={2}>{n.message}</Text>
-                </View>
-                {n.unread && <View style={styles.unreadDot} />}
-              </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <Text style={styles.notifTitle}>{n.title}</Text>
+                      <Text style={styles.notifTime}>
+                        {getRelativeTime(n.createdAt)}
+                      </Text>
+                    </View>
+                    <Text style={styles.notifMessage} numberOfLines={2}>{n.message}</Text>
+                  </View>
+                  {n.unread && <View style={styles.unreadDot} />}
+                </TouchableOpacity>
+                {idx < allNotificationsWithUpdate.length - 1 && (
+                  <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 6 }} />
+                )}
+              </View>
             ))
           ) : (
             <EmptyState 
@@ -476,44 +484,48 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
         <View style={{ marginTop: 8 }}>
           {favorites.length > 0 ? (
             favorites.map((m, index) => (
-                <TouchableOpacity 
-                  key={(m as any).id ?? `fav-${index}`} 
-                  style={styles.downloadCard}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setPlayerTitle(m.title);
-                    setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
-                    setPlayingNow(m as any);
-                    setPlayerMode('full');
-                  }}
-                >
-                  <View style={styles.downloadPosterContainer}>
-                    <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
-                    <View style={styles.vjBadgeSmall}>
-                      <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                <View key={(m as any).id ?? `fav-${index}`}>
+                  <TouchableOpacity 
+                    style={styles.downloadCard}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setPlayerTitle(m.title);
+                      setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
+                      setPlayingNow(m as any);
+                      setPlayerMode('full');
+                    }}
+                  >
+                    <View style={styles.downloadPosterContainer}>
+                      <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                      <View style={styles.vjBadgeSmall}>
+                        <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
+                      </View>
+                      <View style={styles.genreBadgeSmall}>
+                        <Text style={styles.genreBadgeTextSmall}>
+                          {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.genreBadgeSmall}>
-                      <Text style={styles.genreBadgeTextSmall}>
-                        {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(m.genre)}
+                    <View style={styles.downloadInfo}>
+                      <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                      <Text style={styles.downloadMeta}>
+                        {m.year} · {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : `Season ${(m as any).seasons}`) : (m as any).duration}
                       </Text>
-                    </View>
-                  </View>
-                  <View style={styles.downloadInfo}>
-                    <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
-                    <Text style={styles.downloadMeta}>
-                      {m.year} · {("seasons" in m) ? ((m as any).isMiniSeries ? "Mini Series" : `Season ${(m as any).seasons}`) : (m as any).duration}
-                    </Text>
-                    <View style={styles.downloadActionRow}>
+                      <View style={styles.downloadActionRow}>
 
-                      <TouchableOpacity 
-                        style={styles.downloadDeleteBtn}
-                        onPress={() => toggleFavorite(m)}
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                      </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.downloadDeleteBtn}
+                          onPress={() => toggleFavorite(m)}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                  {index < favorites.length - 1 && (
+                    <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 }} />
+                  )}
+                </View>
             ))
           ) : (
             <EmptyState 
@@ -561,54 +573,58 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
         <View style={{ marginTop: 8 }}>
           {watchHistory.length > 0 ? (
             watchHistory.map((m, index) => (
-              <TouchableOpacity 
-                key={(m as any).id ?? `hist-${index}`} 
-                style={styles.downloadCard}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setPlayerTitle(m.title);
-                  setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
-                  setPlayingNow(m as any);
-                  setPlayerMode('full');
-                  onCloseSettings();
-                }}
-              >
-                <View style={styles.downloadPosterContainer}>
-                  <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
-                  <View style={styles.vjBadgeSmall}>
-                    <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
-                  </View>
-                  {m.position > 0 && (
-                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                      <View style={{ width: `${Math.min(100, (m.position / (m.duration || m.totalDuration || 1)) * 100)}%`, height: '100%', backgroundColor: '#5B5FEF' }} />
+              <View key={(m as any).id ?? `hist-${index}`}>
+                <TouchableOpacity 
+                  style={styles.downloadCard}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setPlayerTitle(m.title);
+                    setSelectedVideoUrl((m as any).localUri || (m as any).videoUrl);
+                    setPlayingNow(m as any);
+                    setPlayerMode('full');
+                    onCloseSettings();
+                  }}
+                >
+                  <View style={styles.downloadPosterContainer}>
+                    <Image source={{ uri: m.poster }} style={styles.downloadPoster} />
+                    <View style={styles.vjBadgeSmall}>
+                      <Text style={styles.vjBadgeTextSmall}>{m.vj}</Text>
                     </View>
-                  )}
-                </View>
-                <View style={styles.downloadInfo}>
-                  <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
-                  <Text style={styles.downloadMeta}>
-                    {m.year} · {m.episodeId ? `EP ${m.episodeId}` : (m.duration || m.totalDuration || 'Movie')}
-                  </Text>
-                  <View style={styles.downloadActionRow}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.4)" />
-                      <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
-                        {getRelativeTime(m.timestamp)}
-                      </Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.downloadDeleteBtn}
-                      onPress={() => {
-                        if (removeFromWatchHistory) {
-                          removeFromWatchHistory(m.id, m.episodeId);
-                        }
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                    </TouchableOpacity>
+                    {m.position > 0 && (
+                      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                        <View style={{ width: `${Math.min(100, (m.position / (m.duration || m.totalDuration || 1)) * 100)}%`, height: '100%', backgroundColor: '#5B5FEF' }} />
+                      </View>
+                    )}
                   </View>
-                </View>
-              </TouchableOpacity>
+                  <View style={styles.downloadInfo}>
+                    <Text style={styles.downloadTitle} numberOfLines={1}>{m.title}</Text>
+                    <Text style={styles.downloadMeta}>
+                      {m.year} · {m.episodeId ? `EP ${m.episodeId}` : (m.duration || m.totalDuration || 'Movie')}
+                    </Text>
+                    <View style={styles.downloadActionRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.4)" />
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+                          {getRelativeTime(m.timestamp)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.downloadDeleteBtn}
+                        onPress={() => {
+                          if (removeFromWatchHistory) {
+                            removeFromWatchHistory(m.id, m.episodeId);
+                          }
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                {index < watchHistory.length - 1 && (
+                  <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 }} />
+                )}
+              </View>
             ))
           ) : (
             <EmptyState 

@@ -295,7 +295,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
               </TouchableOpacity>
             ))}
-            <View style={{ height: 1.5, backgroundColor: 'rgba(255,255,255,0.03)', marginHorizontal: 16 }} />
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 16 }} />
             <TouchableOpacity
               style={[styles.settingsRow, { borderBottomWidth: 0, paddingTop: 20 }]}
               onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSubItem('Delete Account'); }}

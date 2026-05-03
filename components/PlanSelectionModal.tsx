@@ -184,7 +184,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
                       </View>
 
                       {/* Divider */}
-                      <View style={{ alignSelf: 'center', width: '50%', height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 16 }} />
+                      <View style={{ alignSelf: 'center', width: '50%', height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 16 }} />
                       <View style={styles.specsContainer}>
                         {plan.specs.map((spec, i) => {
                           let iconName = "checkmark-circle";

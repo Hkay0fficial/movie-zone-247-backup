@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
   appName: {
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     zIndex: 100,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.25)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   eventBannerContent: {
     flex: 1,
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 50,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.45)",
+    borderColor: "rgba(255, 255, 255, 0.35)",
     overflow: "hidden",
     shadowColor: "#5B5FEF",
     shadowOffset: { width: 0, height: 4 },
@@ -604,8 +604,8 @@ const styles = StyleSheet.create({
     width: "120%",
     height: "140%",
     borderRadius: 60,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.4)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   heroMuteBtn: {
     position: "absolute",
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   previewMuteBtn: {
     position: "absolute",
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     zIndex: 10,
   },
   tagsRow: {
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(91,95,239,0.12)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(91,95,239,0.35)",
+    borderColor: "rgba(91, 95, 239, 0.22)",
   },
   commentToggleBtnActive: {
     backgroundColor: "#e50914",
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255,215,0,0.08)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,215,0,0.35)",
+    borderColor: "rgba(255, 215, 0, 0.22)",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 50,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.35)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     overflow: "hidden",
     shadowColor: "#5B5FEF",
     shadowOffset: { width: 0, height: 4 },
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 95, 239, 0.35)',
+    borderColor: 'rgba(91, 95, 239, 0.22)',
   },
   premiumEmptyTitle: {
     color: '#fff',
@@ -1559,7 +1559,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(10, 10, 15, 0.4)",
     shadowColor: "#5B5FEF",
     shadowOffset: { width: 0, height: 4 },
@@ -1588,7 +1588,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   epCountTextPremium: {
     color: "#fff",
@@ -1755,7 +1755,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   playerPlayBtnLarge: {
     width: 60,
@@ -2578,8 +2578,13 @@ export function SeriesPreviewContent({
           onPress={() => {
             // Prioritize local downloaded file for offline playback
             const localUri = ctxEpisodeDownloads[activeEpisode.id];
+            const finalUrl = localUri || activeEpisode.videoUrl || previewVideoUrl;
+            if (!finalUrl) {
+              Alert.alert("Coming Soon", "The video for this content is currently being prepared by our servers. Please check back later!");
+              return;
+            }
             if (setIsPreview) setIsPreview(true);
-            if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || activeEpisode.videoUrl || previewVideoUrl || "");
+            if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
           }}
@@ -2690,7 +2695,7 @@ export function SeriesPreviewContent({
                 <View key={`genre-${idx}`} style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   borderWidth: StyleSheet.hairlineWidth,
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  borderColor: 'rgba(255, 255, 255, 0.22)',
                   borderRadius: 6,
                   paddingHorizontal: 8,
                   paddingVertical: 3,
@@ -4433,7 +4438,7 @@ export const MoviePreviewContent = memo(({
                       <View style={{
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                         borderWidth: StyleSheet.hairlineWidth,
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        borderColor: 'rgba(255, 255, 255, 0.22)',
                         borderRadius: 6,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
@@ -4697,7 +4702,7 @@ export const MoviePreviewContent = memo(({
                         <View key={`genre-${idx}`} style={{
                           backgroundColor: 'rgba(255, 255, 255, 0.1)',
                           borderWidth: StyleSheet.hairlineWidth,
-                          borderColor: 'rgba(255, 255, 255, 0.2)',
+                          borderColor: 'rgba(255, 255, 255, 0.22)',
                           borderRadius: 6,
                           paddingHorizontal: 8,
                           paddingVertical: 3,
@@ -5865,17 +5870,22 @@ export const MoviePreviewContent = memo(({
 
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
 export const MoviePreviewModal = memo((props: any) => {
+  useEffect(() => {
+    if (props.movie) {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        props.onClose();
+        return true;
+      });
+      return () => backHandler.remove();
+    }
+  }, [props.movie, props.onClose]);
+
   if (!props.movie) return null;
+
   return (
-    <Modal
-      visible={!!props.movie}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={props.onClose}
-    >
+    <View style={[StyleSheet.absoluteFill, { zIndex: 100000 }]}>
       <MoviePreviewContent {...props} />
-    </Modal>
+    </View>
   );
 }); // End of MoviePreviewModal memo
 
@@ -6616,11 +6626,6 @@ export default function HomeScreen() {
 
   useEffect(() => {
     DeviceEventEmitter.emit('setOverlayVisible', navigationStack.length > 0 || playerMode === 'full');
-    
-    // Auto-dismiss preview if video starts playing
-    if (playerMode === 'full' && navigationStack.length > 0) {
-      setNavigationStack([]);
-    }
   }, [navigationStack.length, playerMode]);
 
   useEffect(() => {
@@ -7059,7 +7064,7 @@ export default function HomeScreen() {
               { 
                 backgroundColor: "rgba(10, 10, 15, 0.9)",
                 borderWidth: StyleSheet.hairlineWidth,
-                borderColor: "rgba(255, 255, 255, 0.2)"
+                borderColor: "rgba(255, 255, 255, 0.22)"
               }
             ]}
             activeOpacity={0.9}
@@ -7191,20 +7196,8 @@ export default function HomeScreen() {
             style={StyleSheet.absoluteFill} 
             pointerEvents={playerMode === 'full' ? 'none' : 'auto'}
           >
-            <Modal
-              visible={navigationStack.length > 0}
-              transparent={true}
-              animationType="fade"
-              statusBarTranslucent
-              onRequestClose={() => {
-                if (playerMode === 'full') return;
-                if (navigationStack.length > 0) {
-                  setNavigationStack(prev => prev.slice(0, -1));
-                }
-              }}
-
-            >
-              <View style={StyleSheet.absoluteFill}>
+            {navigationStack.length > 0 && (
+              <View style={[StyleSheet.absoluteFill, { zIndex: 10000, backgroundColor: '#0a0a0f' }]}>
                 {navigationStack.map((item, index) => {
                   const onClose = () => {
                     setNavigationStack((prev) => {
@@ -7259,6 +7252,8 @@ export default function HomeScreen() {
                         }
                       }}
                       onSeeAll={(title: string, data: (Movie | Series)[]) => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        setIsStackLoading(true);
                         setNavigationStack((prev) => {
                           if (prev.length > 0) {
                             const top = prev[prev.length - 1];
@@ -7266,6 +7261,7 @@ export default function HomeScreen() {
                           }
                           return [...prev, { type: 'grid', title, data }];
                         });
+                        setTimeout(() => setIsStackLoading(false), 600);
                       }}
                       playingNow={playingNow}
                       setPlayingNow={setPlayingNow}
@@ -7285,7 +7281,7 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            </Modal>
+            )}
 
             {isStackLoading && (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 15, 0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>

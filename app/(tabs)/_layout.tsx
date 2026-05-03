@@ -291,6 +291,7 @@ function NotificationOverlay({
   TOTAL_LIVE_ITEMS: (Movie | Series)[];
 }) {
   const highlightAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible && highlightedId) {
@@ -340,22 +341,42 @@ function NotificationOverlay({
     return [...unread, ...read];
   }, [notifications, isUpdateApplied, isRatingPermanentlyRemoved, readIds]);
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={() => {
+  useEffect(() => {
+    if (visible) {
+      const backAction = () => {
         if (showRatingModal) {
           setShowRatingModal(false);
-        } else if (expandedType) {
-          setExpandedType(null);
-        } else {
-          onClose();
+          return true;
         }
-      }}
-    >
+        if (expandedType) {
+          setExpandedType(null);
+          return true;
+        }
+        onClose();
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+      return () => backHandler.remove();
+    }
+  }, [visible, showRatingModal, expandedType, onClose]);
+
+  if (!visible) return null;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { zIndex: 20000 }]}>
+      {/* Top Line Separator (Synchronized with global theme) */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: insets.top,
+          left: 0,
+          right: 0,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          zIndex: 1000,
+        }} 
+      />
       <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill}>
         <TouchableOpacity
           style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(10,10,18,0.92)" }]}
@@ -416,13 +437,13 @@ function NotificationOverlay({
                 ) : (
                   <>
                     {displayNotifications.length > 0 ? (
-                      displayNotifications.map((item) => {
+                      displayNotifications.map((item, index) => {
                   const isRead = readIds.has(item.id);
                   const isUnread = !isRead;
                   const isLockedUpdate = item.id === "n2" && isUpdateLocked;
                   return (
+                    <View key={item.id}>
                     <TouchableOpacity
-                      key={item.id}
                       style={[
                         styles.notificationCard,
                         isUnread && styles.notificationCardNew,
@@ -655,6 +676,10 @@ function NotificationOverlay({
                         </View>
                       )}
                     </TouchableOpacity>
+                    {index < displayNotifications.length - 1 && (
+                      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 16 }} />
+                    )}
+                    </View>
                   );
                 })) : (
                   <View style={{ flex: 1, paddingVertical: 100 }}>
@@ -731,7 +756,7 @@ function NotificationOverlay({
           )}
         </SafeAreaView>
       </BlurView>
-    </Modal>
+    </View>
   );
 }
 import { Easing } from "react-native";
@@ -1041,20 +1066,46 @@ function SearchOverlay({
     <View style={styles.resultsHeader} />
   );
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={() => {
-        if (isFiltering) {
+  useEffect(() => {
+    if (visible) {
+      const backAction = () => {
+        if (expandedFilter) {
+          setExpandedFilter(null);
+          return true;
+        }
+        if (hasActiveFilters) {
+          clearFilters(true); // Step-by-step clearing
+          return true;
+        }
+        if (query.trim().length > 0) {
           setQuery("");
-          setSelectedVJ(null);
-          clearFilters();
-        } else onClose();
-      }}
-    >
+          return true;
+        }
+        onClose();
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+      return () => backHandler.remove();
+    }
+  }, [visible, expandedFilter, hasActiveFilters, query, onClose]);
+
+  if (!visible) return null;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { zIndex: 30000 }]}>
+      {/* Top Line Separator (Synchronized with global theme) */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: insets.top,
+          left: 0,
+          right: 0,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          zIndex: 1000,
+        }} 
+      />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
         <View style={{ flex: 1 }}>
           {/* ── Fixed Top Search Bar Container ── */}
@@ -1568,7 +1619,7 @@ function SearchOverlay({
               )}
             </View>
           </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -1931,6 +1982,10 @@ function CustomTabBar() {
 
   useEffect(() => {
     const onBackPress = () => {
+      if (showEventPreview) {
+        setShowEventPreview(false);
+        return true;
+      }
       if (showInPlaceSearch) {
         setShowInPlaceSearch(false);
         setInPlaceSearchQuery("");
@@ -1963,7 +2018,7 @@ function CustomTabBar() {
     );
 
     return () => backHandler.remove();
-  }, [showInPlaceSearch, notificationVisible, searchVisible, globalGridVisible, reopenOnBack]);
+  }, [showInPlaceSearch, notificationVisible, searchVisible, globalGridVisible, reopenOnBack, showEventPreview]);
 
   useEffect(() => {
     if (!active("/(tabs)/saved") && showInPlaceSearch) {
@@ -2204,15 +2259,37 @@ function CustomTabBar() {
     }
 
     if (item.movieId) {
-      setReopenOnBack(true); // Ensure we come back here
-      router.setParams({ movieId: item.movieId } as any);
-      // We keep notification visible in background
+      // 1. Close overlay first to ensure clean navigation transition
+      setNotificationVisible(false);
+
+      // 2. Delay navigation slightly to allow modal state cleanup and avoid stack conflicts
+      setTimeout(() => {
+        // Identify if it's a series or movie to navigate to the correct tab
+        const targetItem = TOTAL_LIVE_ITEMS.find(m => m.id === item.movieId);
+        const isSeries = targetItem && ("seasons" in targetItem || (targetItem as any).type === 'Series' || (targetItem as any).isMiniSeries);
+
+        if (isSeries) {
+          // Navigate to Series tab (saved) with reliable navigate() and ensure param is passed
+          router.navigate({
+            pathname: "/(tabs)/saved",
+            params: { seriesId: item.movieId }
+          } as any);
+        } else {
+          // Navigate to Home tab for movie preview
+          router.navigate({
+            pathname: "/(tabs)/",
+            params: { movieId: item.movieId }
+          } as any);
+        }
+      }, 100);
     } else if (item.sectionTitle) {
       setReopenOnBack(true);
-      // We keep notification visible in background
+      setNotificationVisible(false);
+      // Switch to Home tab first then emit
+      router.push("/(tabs)/");
       setTimeout(() => {
         DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
-      }, 300);
+      }, 500);
     }
     else if (item.route) {
       router.push(item.route as any);
@@ -2273,6 +2350,11 @@ function CustomTabBar() {
             router.push(`/(tabs)/saved?seriesId=${m.id}`);
           } else {
             setGlobalGridVisible(false);
+            if (reopenOnBack) {
+              setNotificationVisible(false);
+            }
+            // Switch to Home tab to show preview
+            router.push("/(tabs)/");
             // Emit to Home stack to show preview
             DeviceEventEmitter.emit("movieSelected", m);
           }
@@ -2290,6 +2372,8 @@ function CustomTabBar() {
             zIndex: 999,
             backgroundColor: "#0f0f19", // Solid background matching header exactly
             opacity: active("/") ? homeHeaderOpacity : (active("/menu") ? menuHeaderOpacity : 1),
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderColor: "rgba(255,255,255,0.15)",
           }}
           pointerEvents="none"
         />
@@ -2309,8 +2393,6 @@ function CustomTabBar() {
           }}
           pointerEvents="none"
         >
-          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
-          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <View style={styles.glassFill} />
         </View>
@@ -2360,7 +2442,10 @@ function CustomTabBar() {
               />
             </Animated.View>
           )}
-          <View style={styles.topBarContainer}>
+          <View style={[
+            styles.topBarContainer,
+            (active("/(tabs)/saved") || active("/(tabs)/category")) && { paddingLeft: 4, paddingRight: 0 }
+          ]}>
             {/* Logo replacement conditionally removed to allow pill expansion */}
             {!active("/(tabs)/saved") && !active("/(tabs)/category") && (
               <TouchableOpacity
@@ -2449,8 +2534,8 @@ function CustomTabBar() {
 
             <View style={[
               styles.topBarRight,
-              (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0 },
-              (active("/") || active("/(tabs)/menu")) ? { transform: [{ translateX: 6 }] } : { transform: [{ translateX: -6 }] },
+              (active("/(tabs)/saved") || active("/(tabs)/category")) && { flex: 1, paddingLeft: 0, gap: 4 },
+              (active("/") || active("/(tabs)/menu")) ? { transform: [{ translateX: 6 }] } : { transform: [{ translateX: 0 }] },
               { height: 45 }
             ]}>
               {/* All VJs / Series Library Pill (Repositioned) */}
@@ -2709,8 +2794,17 @@ function CustomTabBar() {
             router.push(`/(tabs)/saved?seriesId=${movie.id}`);
           }
           else {
-            // For movies, we keep search open in background
-            // The Preview will open ON TOP because it's now also a Modal
+            // For movies, we close search so the preview (rendered in index.tsx) can show on top.
+            // When preview closes, search will reopen via "previewClosed" listener.
+            setShouldReopenSearch(true);
+            setSearchVisible(false);
+            setSearchVjOnly(false);
+            setSearchAutoFocus(false);
+            
+            // Switch to Home tab to show preview
+            router.push("/(tabs)/");
+            
+            // Emit to Home stack
             DeviceEventEmitter.emit("movieSelected", movie);
           }
 
@@ -2759,13 +2853,15 @@ function CustomTabBar() {
       />
 
       {/* ── Holiday Event Preview Modal ── */}
-      <Modal
-        visible={showEventPreview}
-        animationType="fade"
-        transparent
-        statusBarTranslucent
-        onRequestClose={() => setShowEventPreview(false)}
-      >
+      {showEventPreview && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 50000 }]}>
+          <BackHandlerListener 
+            visible={showEventPreview} 
+            onBack={() => {
+              setShowEventPreview(false);
+              return true;
+            }} 
+          />
         <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
         <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(10, 10, 15, 0.94)' }}>
           <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
@@ -2847,12 +2943,11 @@ function CustomTabBar() {
             </View>
           </View>
         </SafeAreaView>
-      </Modal>
+        </View>
+      )}
 
       {!showInPlaceSearch && !isDetailStackVisible && playerMode === 'closed' && !isOverlayVisible && (
         <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : insets.bottom + 8 }]} pointerEvents="box-none">
-          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
-          <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <View style={styles.glassFill} />
           <View style={styles.barInner}>

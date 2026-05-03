@@ -114,7 +114,7 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
                     gap: 24,
                     backgroundColor: isActivePlan ? 'rgba(30, 30, 48, 0.98)' : isQueuedPlan ? 'rgba(30, 32, 55, 0.98)' : 'rgba(30, 30, 45, 0.95)',
                     borderRadius: 32,
-                    borderWidth: (isActivePlan || isQueuedPlan) ? 1.5 : 1,
+                    borderWidth: (isActivePlan || isQueuedPlan) ? 1.5 : StyleSheet.hairlineWidth,
                     borderColor: isActivePlan ? p.color : isQueuedPlan ? '#818cf8' : 'rgba(255, 255, 255, 0.1)',
                     shadowColor: isActivePlan ? p.color : isQueuedPlan ? '#818cf8' : '#000',
                     shadowOffset: { width: 0, height: 10 },
@@ -169,7 +169,7 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
                 </View>
 
                 {/* Divider */}
-                <View style={{ width: '60%', height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+                <View style={{ width: '60%', height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
 
                 {/* Varied Benefit Icons */}
                 <View style={{ width: '100%', gap: 12 }}>

@@ -217,9 +217,16 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!episode || !episode.id || isEpisodeDownloaded(episode.id)) return;
     const url = getStreamUrl(episode) || episode.videoUrl || '';
     if (!url) {
-      Alert.alert('Cannot Download', 'This episode does not have a video URL.');
+      Alert.alert('Coming Soon', 'This episode is not available for download yet. Stay tuned!');
       return;
     }
+
+    // Strict Validation: Prevent downloading the preview as an episode
+    if (series.previewUrl && url === series.previewUrl) {
+      Alert.alert('Content Unavailable', 'This episode is currently only available as a preview and cannot be downloaded yet.');
+      return;
+    }
+
     enqueue({
       id: episode.id, title: episode.title || `${series.title} — Episode`,
       movieId: series.id, type: 'Series', poster: series.poster || '',
@@ -238,7 +245,14 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external') => {
     if (!movie.id) return;
     const url = getStreamUrl(movie) || (movie as any).videoUrl || '';
-    if (!url) { Alert.alert('Cannot Download', 'This movie does not have a video URL yet.'); return; }
+    if (!url) { Alert.alert('Coming Soon', 'This movie is not available for download yet. Stay tuned!'); return; }
+    
+    // Strict Validation: Prevent downloading the preview as full content
+    if ((movie as any).previewUrl && url === (movie as any).previewUrl) {
+      Alert.alert('Content Unavailable', 'This content is currently only available as a preview and cannot be downloaded yet.');
+      return;
+    }
+
     if (isMovieDownloaded(movie.id)) return;
     enqueue({
       id: movie.id, title: movie.title, movieId: movie.id, type: 'Movie',

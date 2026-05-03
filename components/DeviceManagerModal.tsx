@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     marginVertical: 20,
   },

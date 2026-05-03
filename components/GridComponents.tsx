@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   TouchableWithoutFeedback,
   Animated,
+  BackHandler,
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -228,6 +229,20 @@ export function GridContent({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={StyleSheet.absoluteFill} />
       </TouchableWithoutFeedback>
+
+      {/* Top Line Separator (Synchronized with global theme) */}
+      <View 
+        style={{
+          position: 'absolute',
+          top: insets.top,
+          left: 0,
+          right: 0,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          zIndex: 1000,
+        }} 
+      />
+
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ flex: 1 }}>
         
@@ -308,21 +323,27 @@ export function GridModal({
   onClose: () => void;
   onSelect: (m: Movie | Series) => void;
 }) {
+  useEffect(() => {
+    if (visible) {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        onClose();
+        return true;
+      });
+      return () => backHandler.remove();
+    }
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
+    <View style={[StyleSheet.absoluteFill, { zIndex: 40000 }]}>
       <GridContent 
         title={title}
         data={data}
         onClose={onClose}
         onSelect={onSelect}
       />
-    </Modal>
+    </View>
   );
 }
 

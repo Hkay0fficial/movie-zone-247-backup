@@ -933,6 +933,7 @@ function SeriesPreviewModal({
     getExternalDownloadLimit,
   } = useDownloads();
 
+
   const { profile } = useUser();
   const { 
     allSeries: ALL_SERIES,
@@ -951,9 +952,17 @@ function SeriesPreviewModal({
     }
     const firstEp = episodes[0];
     if (firstEp) {
-      const finalUrl = (episodeDownloads[firstEp.id] || firstEp.videoUrl) || previewVideoUrl;
-      setSelectedVideoUrl(finalUrl || "");
-      setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
+      // Prioritize actual content (downloaded or stream) over preview
+      const contentUrl = episodeDownloads[firstEp.id] || firstEp.videoUrl;
+      const finalUrl = contentUrl || previewVideoUrl;
+      
+      if (!finalUrl) {
+        Alert.alert("Coming Soon", "The video for this content is currently being prepared by our servers. Please check back later!");
+        return;
+      }
+      setSelectedVideoUrl(finalUrl);
+      // If we are playing the preview, reflect that in the title
+      setPlayerTitle(series.title + (contentUrl ? "" : " - Preview"));
       setActivePartId(firstEp.id);
       setPlayerMode('full');
     }
@@ -1104,7 +1113,7 @@ function SeriesPreviewModal({
         duration: series.episodeDuration || "45m",
         isPremium: !isFree,
         thumbnail: series.poster,
-        videoUrl: previewVideoUrl,
+        videoUrl: '',
         description: `This exciting episode follows the journey in ${series.title}. Join the adventure as characters face new challenges and unexpected turns in this highly acclaimed series.`,
       };
     });
@@ -1546,8 +1555,14 @@ function SeriesPreviewModal({
               activeOpacity={0.9}
               onPress={() => {
                 const firstEp = episodes[0];
-                // Prioritize Actual Episode Video (online or downloaded) over short preview teaser
-                const finalUrl = (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl)) || previewVideoUrl;
+                // Prioritize actual content (downloaded or stream) over preview teaser
+                const contentUrl = firstEp ? (episodeDownloads[firstEp.id] || firstEp.videoUrl) : undefined;
+                const finalUrl = contentUrl || previewVideoUrl;
+
+                if (!finalUrl) {
+                  Alert.alert("Coming Soon", "The preview for this series is currently being prepared by our servers. Please check back later!");
+                  return;
+                }
                 setSelectedVideoUrl(finalUrl);
                 setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
                 setActivePartId(firstEp?.id || '');
@@ -2038,9 +2053,11 @@ function SeriesPreviewModal({
                               onShowPremium?.();
                               return;
                             }
-                            const finalUrl = episodeDownloads[ep.id] || ep.videoUrl || previewVideoUrl;
+                            // Prioritize actual content (downloaded or stream) over preview
+                            const contentUrl = episodeDownloads[ep.id] || ep.videoUrl;
+                            const finalUrl = contentUrl || previewVideoUrl;
                             setSelectedVideoUrl(finalUrl);
-                            setPlayerTitle(ep.title);
+                            setPlayerTitle(ep.title + (contentUrl ? "" : " - Preview"));
                             setPlayerMode('full');
                           }}
                           activeOpacity={0.8}
@@ -3507,7 +3524,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(91, 95, 239, 0.3)",
+    borderColor: "rgba(91, 95, 239, 0.22)",
   },
   downloadTitle: {
     color: "#fff",
@@ -3536,7 +3553,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   downloadPrimaryBtnText: {
     color: "#fff",
@@ -3552,7 +3569,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   downloadSecondaryBtnText: {
     color: "#94a3b8",
@@ -3572,8 +3589,8 @@ const styles = StyleSheet.create({
   // Episodes
   episodesSection: {
     marginTop: 32,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.05)",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.15)",
     paddingTop: 8,
   },
   episodesHeader: {
@@ -3593,7 +3610,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(91, 95, 239, 0.4)",
+    borderColor: "rgba(91, 95, 239, 0.22)",
   },
   episodesCountText: {
     color: "#818cf8",
@@ -3608,11 +3625,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.02)",
     marginBottom: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   episodeItemActive: {
     backgroundColor: "rgba(91, 95, 239, 0.1)",
-    borderColor: "rgba(91, 95, 239, 0.3)",
+    borderColor: "rgba(91, 95, 239, 0.22)",
   },
   epThumbWrap: {
     width: 100,
@@ -3621,7 +3638,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#1e1e2e",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   epThumb: {
     width: "100%",
@@ -3675,7 +3692,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(16, 185, 129, 0.3)",
+    borderColor: "rgba(16, 185, 129, 0.22)",
   },
   epNowPlayingText: {
     color: "#10b981",
@@ -3764,7 +3781,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   playerPlayBtnLarge: {
     width: 60,
@@ -3772,7 +3789,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -3782,7 +3799,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -3817,8 +3834,8 @@ const styles = StyleSheet.create({
   playerProgressBarOuter: {
     width: "100%",
     height: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 1.5,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   playerProgressBarInner: {
@@ -3877,7 +3894,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: "rgba(91, 95, 239, 0.4)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -3896,7 +3913,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     maxWidth: 280,
   },
   playerNextEpBtnLabel: {
@@ -3933,7 +3950,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     width: 140,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
@@ -3957,7 +3974,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(10, 10, 15, 0.4)",
     shadowColor: "#5B5FEF",
     shadowOffset: { width: 0, height: 4 },
@@ -3986,7 +4003,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   epCountTextPremium: {
     color: "#fff",
@@ -4025,7 +4042,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
     backgroundColor: "rgba(30, 30, 45, 0.4)",
   },
   epThumbWrapPremiumLarge: {
@@ -4035,7 +4052,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#1e1e2e",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   epThumbPlayIconOverlay: {
     ...StyleSheet.absoluteFillObject,
