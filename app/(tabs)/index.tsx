@@ -4331,8 +4331,22 @@ export const MoviePreviewContent = memo(({
 
                     {/* Metadata Row (Reverted Order) */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <Ionicons name="mic-outline" size={11} color="#f59e0b" />
-                      <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        onPress={() => {
+                          if (onSeeAll && movie.vj) {
+                            const vjName = movie.vj.toLowerCase();
+                            const gridData = ALL_ROWS.flatMap(r => r.data).filter(m => m.vj?.toLowerCase().includes(vjName));
+                            const uniqueGridData = Array.from(new Map(gridData.map(item => [item.id, item])).values());
+                            if (uniqueGridData.length > 0) {
+                              onSeeAll(`${movie.vj} - Collection`, uniqueGridData);
+                            }
+                          }
+                        }}
+                      >
+                        <Ionicons name="mic-outline" size={11} color="#f59e0b" />
+                        <Text style={[styles.previewMetaText, { fontSize: 11, color: '#f59e0b' }]}>{movie.vj}</Text>
+                      </TouchableOpacity>
                       <View style={styles.previewDot} />
 
                       <Text style={[styles.previewMetaText, { fontSize: 11 }]}>{movie.year}</Text>
@@ -6205,8 +6219,7 @@ const HeroBanner = memo(({
   if (!movie) return null;
 
   const heroSource = (movie.heroVideoUrl ? resolveCDNUrl(movie.heroVideoUrl) : undefined) || 
-                     (movie.previewUrl ? resolveCDNUrl(movie.previewUrl) : undefined) || 
-                     getStreamUrl(movie) || '';
+                     (movie.previewUrl ? resolveCDNUrl(movie.previewUrl) : undefined) || '';
   const isHLS = Boolean(heroSource && (heroSource.includes('.m3u8') || heroSource.includes('playlist')));
 
   return (

@@ -38,6 +38,7 @@ import {
 } from 'firebase/firestore';
 import { formatRelativeTime } from "../../utils/TimeUtils";
 import { SkeletonLoader, SkeletonRow } from "../../components/SkeletonLoader";
+import { GridModal } from "../../components/GridComponents";
 
 import {
   StyleSheet,
@@ -830,7 +831,7 @@ export default function SeriesScreen() {
       ))}
 
       {/* Series Grid Modal */}
-      <SeriesGridModal
+      <GridModal
         visible={!!activeSection && playerMode !== 'full'}
         title={activeSection?.title ?? ""}
         data={activeSection?.data ?? []}
@@ -838,7 +839,7 @@ export default function SeriesScreen() {
         onSelect={(s) => {
           setActiveSection(null);
           setTimeout(() => {
-            setSeriesStack(prev => [...prev, s]);
+            setSeriesStack(prev => [...prev, s as Series]);
             setIsExternalSearch(false);
           }, 300);
         }}
@@ -3022,95 +3023,7 @@ function SeriesPreviewModal({
 const TOP_OFFSET =
   Platform.OS === "ios" ? 44 : (StatusBar.currentHeight ?? 0) + 4;
 
-// ─── Series Grid Modal ────────────────────────────────────────────────────────
-function SeriesGridModal({
-  visible,
-  title,
-  data,
-  onClose,
-  onSelect,
-}: {
-  visible: boolean;
-  title: string;
-  data: Series[];
-  onClose: () => void;
-  onSelect: (s: Series) => void;
-}) {
-  const insets = useSafeAreaInsets();
 
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
-        <StatusBar
-          barStyle="light-content"
-          translucent
-          backgroundColor="transparent"
-        />
-        <SafeAreaView style={{ flex: 1 }}>
-          <View
-            style={{
-              padding: 16,
-              paddingTop: insets.top + (Platform.OS === 'ios' ? 0 : 10),
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => {
-                Keyboard.dismiss();
-                onClose();
-              }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "rgba(255,255,255,0.05)",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>
-              {title}
-            </Text>
-          </View>
-
-          <FlatList
-            data={data}
-            keyExtractor={(s) => s.id}
-            numColumns={3}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-            columnWrapperStyle={{ gap: 6, marginBottom: 10 }}
-            removeClippedSubviews={Platform.OS === "android"}
-            initialNumToRender={12}
-            maxToRenderPerBatch={6}
-            windowSize={5}
-            renderItem={({ item }) => (
-              <SeriesCard item={item} onPress={() => onSelect(item)} />
-            )}
-            ListEmptyComponent={
-              <View style={{ alignItems: "center", marginTop: 100 }}>
-                <Ionicons name="search-outline" size={60} color="#1e293b" />
-                <Text style={{ color: "#475569", marginTop: 12 }}>
-                  No matches found
-                </Text>
-              </View>
-            }
-          />
-        </SafeAreaView>
-      </View>
-    </Modal>
-  );
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0a0a0f" },

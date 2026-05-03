@@ -28,8 +28,8 @@ import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { auth, db } from '../constants/firebaseConfig';
 import ClockAnimation from './ClockAnimation';
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
   signInAnonymously,
@@ -44,13 +44,13 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { signinWithGoogle } from '../lib/authHelpers';
-import Animated, { 
-  FadeInDown, 
+import Animated, {
+  FadeInDown,
   FadeOutDown,
-  FadeOutUp, 
-  Layout, 
-  useSharedValue, 
-  useAnimatedStyle, 
+  FadeOutUp,
+  Layout,
+  useSharedValue,
+  useAnimatedStyle,
   withSpring,
   withTiming,
   withDelay,
@@ -74,12 +74,12 @@ const GOOGLE_WEB_CLIENT_ID = '1005273436856-h08kd1sqg14cp2d3ih7khc9tk271qevg.app
 const GOOGLE_ANDROID_CLIENT_ID = '1005273436856-0rrf2a337f9bu4qtprhsl85gohv6conu.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = ''; // Leave empty if not using iOS native login
 
-const FloatingLabelInput = ({ 
-  label, 
-  value, 
-  onChangeText, 
-  icon, 
-  secureTextEntry, 
+const FloatingLabelInput = ({
+  label,
+  value,
+  onChangeText,
+  icon,
+  secureTextEntry,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
   onFocus,
@@ -108,10 +108,10 @@ const FloatingLabelInput = ({
   };
 
   return (
-    <Pressable 
+    <Pressable
       onPress={handlePress}
       style={[
-        styles.inputContainer, 
+        styles.inputContainer,
         isFocused && styles.inputContainerFocused,
         hasError && { borderColor: '#ff4b4b', borderBottomWidth: 1.5 }
       ]}
@@ -190,7 +190,7 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
     if (rotation.value !== flipCount * 180) {
       rotation.value = withSpring(flipCount * 180, { damping: 12, stiffness: 90 });
     }
-    
+
     glowAnim.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 1200 }),
@@ -206,7 +206,7 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
     // Back is visible when rotation is close to 180, 540, 900...
     const normalized = ((rotation.value % 360) + 360) % 360;
     const isFront = normalized < 90 || normalized > 270;
-    
+
     return {
       transform: [
         { perspective: 1000 },
@@ -223,7 +223,7 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
   const backStyle = useAnimatedStyle(() => {
     const normalized = ((rotation.value % 360) + 360) % 360;
     const isBack = normalized >= 90 && normalized <= 270;
-    
+
     return {
       transform: [
         { perspective: 1000 },
@@ -266,7 +266,7 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
               <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                 <Animated.View style={[flipStyles.glowRingSmall, glowStyle]} />
                 <View style={flipStyles.smallLogoCircle}>
-                  <Image 
+                  <Image
                     source={require('../assets/images/movie_zone_logo_new.png')}
                     style={flipStyles.logoImg}
                     resizeMode="cover"
@@ -279,13 +279,13 @@ function FlippingLogoHeader({ flipCount, onFlip }: { flipCount: number, onFlip: 
                 <Text style={flipStyles.brandTitle}>
                   THE MOVIE <Text style={{ color: '#818cf8', textShadowColor: 'rgba(129, 140, 248, 0.4)' }}>ZONE</Text>
                 </Text>
-                
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, width: '100%' }}>
-                  <LinearGradient 
-                    colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
-                    start={{ x: 0, y: 0 }} 
-                    end={{ x: 1, y: 0 }} 
-                    style={[flipStyles.accentLine, { flex: 1, height: 1.5, marginRight: 10 }]} 
+                  <LinearGradient
+                    colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[flipStyles.accentLine, { flex: 1, height: 1.5, marginRight: 10 }]}
                   />
                   <View style={flipStyles.subtitleRow}>
                     <ClockAnimation size={15} color="#ffffff" />
@@ -404,7 +404,7 @@ const flipStyles = StyleSheet.create({
 export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'login' | 'signup' }) {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   // Auth mode: 'login' or 'signup'
   const [authMode, setAuthMode] = useState<'login' | 'signup'>((params.mode as 'signup') || initialMode);
   const isLogin = authMode === 'login';
@@ -420,7 +420,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   // Validation regex
   const isEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
   const isPhone = (val: string) => /^\+?\d{7,15}$/.test(val.replace(/[\s-]/g, ''));
@@ -431,12 +431,12 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<LocalAuthentication.AuthenticationType[]>([]);
   const [hasAccount, setHasAccount] = useState(false);
-  
+
   // Signup Step (Progressive Disclosure)
   const [signupStep, setSignupStep] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  
+
   // Flip state for Header
   const [flipCount, setFlipCount] = useState(0);
   const prevFocusedField = useRef<string | null>(null);
@@ -458,7 +458,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices();
-      
+
       // Force account picker by clearing any cached Google session first
       try {
         const isSignedIn = await GoogleSignin.isSignedIn();
@@ -471,7 +471,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || (userInfo as any).idToken;
-      
+
       if (idToken) {
         await handleGoogleSuccess(idToken);
       } else {
@@ -499,11 +499,11 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     try {
       const { user, isNewUser } = await signinWithGoogle(idToken);
       triggerHaptic('success');
-      
+
       if (isNewUser) {
         Alert.alert("Welcome!", "Your account has been created using Google.");
       }
-      
+
       router.replace('/(tabs)');
     } catch (error: any) {
       console.error('Google Auth Handler Error:', error);
@@ -515,7 +515,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   const animatedBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }]
   }));
-  
+
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
@@ -538,7 +538,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   // Automatic Flip Timer (10 Seconds)
   useEffect(() => {
     let timer: any;
-    
+
     if (!isKeyboardVisible) {
       timer = setInterval(() => {
         setFlipCount(c => c + 1);
@@ -563,7 +563,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       if (stored === 'true') {
         setHasAccount(true);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const checkBiometrics = async () => {
@@ -602,7 +602,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       if (!isValidInput) setEmailTouched(true);
       if (password.length < 6) setPasswordTouched(true);
       if (password !== confirmPassword || confirmPassword.length < 6) setConfirmPasswordTouched(true);
-      
+
       if (!fullName || !isValidInput || password.length < 6 || password !== confirmPassword) {
         triggerHaptic('error');
         return;
@@ -615,7 +615,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     });
 
     setLoading(true);
-    
+
     try {
       if (isLogin) {
         // --- REAL FIREBASE LOGIN ---
@@ -653,7 +653,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
           }
           throw err;
         }
-        
+
         // Immediate lastActive update on login
         if (auth.currentUser) {
           await setDoc(doc(db, "users", auth.currentUser.uid), {
@@ -662,7 +662,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
           }, { merge: true });
         }
         await AsyncStorage.setItem('hasAccount', 'true');
-        
+
         triggerHaptic('success');
         router.replace('/(tabs)');
       } else {
@@ -689,7 +689,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     } catch (error: any) {
       console.error('Auth Error:', error.code, error.message);
       triggerHaptic('error');
-      
+
       let errorMsg = "Authentication failed. Please try again.";
       if (error.code === 'auth/email-already-in-use') errorMsg = "This email is already registered. Please login instead.";
       else if (error.code === 'auth/invalid-email') errorMsg = "Please enter a valid email address.";
@@ -698,7 +698,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       else if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email or username.";
       else if (error.code === 'auth/invalid-credential') errorMsg = "Incorrect email or password.";
       else if (error.code === 'auth/network-request-failed') errorMsg = "Connection error. Check your internet.";
-      
+
       if (isLogin) {
         setAuthError(errorMsg);
       } else {
@@ -707,12 +707,12 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       setLoading(false);
     }
   };
-  
+
   const handleForgotPassword = async () => {
     if (!emailOrPhone) {
       triggerHaptic('warning');
       Alert.alert(
-        "Identifier Required", 
+        "Identifier Required",
         "Please enter your email, username, or phone number to reset your password."
       );
       setEmailTouched(true);
@@ -750,7 +750,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       }
 
       await sendPasswordResetEmail(auth, targetEmail.trim());
-      
+
       // Better obfuscation for identification
       const obfuscateEmail = (email: string) => {
         const [name, domain] = email.split('@');
@@ -767,12 +767,12 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     } catch (error: any) {
       console.error('Password Reset Error:', error.code, error.message);
       triggerHaptic('error');
-      
+
       let errorMsg = error.message || "Could not send reset email. Please try again later.";
       if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email, username, or phone number.";
       else if (error.code === 'auth/invalid-email') errorMsg = "Invalid email address format.";
       else if (error.code === 'auth/network-request-failed') errorMsg = "Network error. Please check your connection.";
-      
+
       Alert.alert("Reset Failed", errorMsg);
     } finally {
       setLoading(false);
@@ -781,10 +781,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
   const handleBiometricLogin = async () => {
     triggerHaptic('impact');
-    
+
     try {
       const isEnrolled = await LocalAuthentication.hasHardwareAsync() && await LocalAuthentication.isEnrolledAsync();
-      
+
       if (!isEnrolled) {
         Alert.alert("Not Enrolled", "Please set up Biometrics (FaceID/TouchID) in your device settings first.");
         return;
@@ -799,12 +799,12 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       if (result.success) {
         triggerHaptic('success');
         setLoading(true);
-        
+
         // --- REAL BIOMETRIC AUTH FLOW ---
         // Biometrics don't provide a password, so we check if there's a valid session 
         // or a stored flag that allows us to trust the device.
         const hasAcct = await AsyncStorage.getItem('hasAccount');
-        
+
         if (hasAcct === 'true' && auth.currentUser) {
           // If already logged in but just verifying, we can proceed
           router.replace('/(tabs)');
@@ -842,7 +842,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
         });
 
         setLoading(true);
-        
+
         // Firebase Apple Auth
         const provider = new OAuthProvider('apple.com');
         const credential = provider.credential({
@@ -922,26 +922,26 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
   const getNamesError = (name: string) => {
     if (name.length === 0) return "Please enter your full names";
-    
+
     const parts = name.trim().split(/\s+/);
     const firstName = parts[0] || "";
     const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
-    
+
     if (firstName.length < 2) return "First name must be at least 2 characters and above";
     if (!name.includes(' ')) return "Please add a space and your last name";
     if (lastName.trim().length === 0) return "Please enter your last names";
     if (lastName.trim().length < 2) return "Last name must be at least 2 characters and above";
-    
+
     return null;
   };
 
   const getPasswordStrength = (pass: string) => {
     if (pass.length === 0) return { message: "Please enter your password", color: '#ff4b4b' };
     if (pass.length < 6) return { message: "put 6 and above for strong pasword", color: '#ff4b4b' };
-    
+
     const isIdenticalDigits = /^\d+$/.test(pass) && new Set(pass).size === 1;
     if (isIdenticalDigits) return { message: "weak pasword", color: '#ff4b4b' };
-    
+
     if (pass.length >= 8) return { message: "strong password", color: '#4ade80' };
     return null;
   };
@@ -952,13 +952,13 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     return false;
   };
 
-  const isFormValid = isLogin 
+  const isFormValid = isLogin
     ? (isValidInput && password.length >= 6)
-    : (getNamesError(fullName) === null && 
-       isValidInput && 
-       password.length >= 6 && 
-       !(/^\d+$/.test(password) && new Set(password).size === 1) &&
-       password === confirmPassword);
+    : (getNamesError(fullName) === null &&
+      isValidInput &&
+      password.length >= 6 &&
+      !(/^\d+$/.test(password) && new Set(password).size === 1) &&
+      password === confirmPassword);
 
   return (
     <View style={styles.container}>
@@ -970,10 +970,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       </View>
 
       <StatusBar style="light" />
-      
+
       {/* Cinematic Background */}
       <Image source={{ uri: BG_URL }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      
+
       {/* Dark Fade Overlay for Readability */}
       <LinearGradient
         colors={['rgba(10,10,15,0.2)', 'rgba(10,10,15,0.85)', '#0a0a0f']}
@@ -983,29 +983,29 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
         locations={[0, 0.4, 1]}
       />
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={[
-            styles.content, 
-            isKeyboardVisible && { 
-              justifyContent: 'flex-start', 
-              paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 0) + 20 : 50 
+            styles.content,
+            isKeyboardVisible && {
+              justifyContent: 'flex-start',
+              paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 0) + 20 : 50
             }
           ]}>
-            
+
             {/* Header Area - Instant disappear to keep UI fast */}
             {!isKeyboardVisible && (
-              <Animated.View 
+              <Animated.View
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(100)}
                 style={styles.headerContainer}
               >
                 <FlippingLogoHeader flipCount={flipCount} onFlip={() => { triggerHaptic('impact'); setFlipCount(c => c + 1); }} />
                 <Text style={styles.subtitle}>
-                  {isLogin 
+                  {isLogin
                     ? "Stream your favorite movies & series anywhere, anytime."
                     : "Join THE MOVIE ZONE 24/7 community today!"}
                 </Text>
@@ -1013,20 +1013,20 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
             )}
 
             {/* Glassmorphic Auth Card */}
-            <Animated.View 
+            <Animated.View
               layout={Layout.duration(400)}
               style={styles.glassCardWrapper}
             >
               <BlurView intensity={40} tint="dark" style={styles.glassCard}>
-                
-                <Animated.Text 
+
+                <Animated.Text
                   key={authMode + "_title"}
                   entering={FadeIn.duration(400)}
                   style={styles.cardTitle}
                 >
                   {isLogin ? "Welcome Back" : "Create Account"}
                 </Animated.Text>
-                
+
                 {/* Step-based Content Area */}
                 <Animated.View layout={Layout.duration(300)}>
                   {isLogin ? (
@@ -1089,13 +1089,13 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                       {/* Progress Indicator */}
                       <View style={styles.stepIndicatorRow}>
                         {[1, 2, 3].map((s) => (
-                          <View 
-                            key={s} 
+                          <View
+                            key={s}
                             style={[
-                              styles.stepDot, 
+                              styles.stepDot,
                               s === signupStep && styles.stepDotActive,
                               s < signupStep && styles.stepDotDone
-                            ]} 
+                            ]}
                           />
                         ))}
                       </View>
@@ -1184,8 +1184,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                       {/* Step Navigation Buttons */}
                       <View style={styles.stepActions}>
                         {signupStep > 1 && (
-                          <TouchableOpacity 
-                            style={styles.backStepBtn} 
+                          <TouchableOpacity
+                            style={styles.backStepBtn}
                             onPress={() => {
                               triggerHaptic('impact');
                               setSignupStep(signupStep - 1);
@@ -1195,8 +1195,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                           </TouchableOpacity>
                         )}
                         {signupStep < 3 ? (
-                          <TouchableOpacity 
-                            style={[styles.nextStepBtnContainer, !isNextStepEnabled() && styles.nextStepBtnDisabled]} 
+                          <TouchableOpacity
+                            style={[styles.nextStepBtnContainer, !isNextStepEnabled() && styles.nextStepBtnDisabled]}
                             onPress={() => {
                               if (!isNextStepEnabled()) {
                                 if (signupStep === 1) setFullNameTouched(true);
@@ -1219,8 +1219,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                             </LinearGradient>
                           </TouchableOpacity>
                         ) : (
-                          <TouchableOpacity 
-                            style={[styles.loginBtnContainer, { flex: 2 }, (loading || !isFormValid) && { opacity: 0.5 }]} 
+                          <TouchableOpacity
+                            style={[styles.loginBtnContainer, { flex: 2 }, (loading || !isFormValid) && { opacity: 0.5 }]}
                             activeOpacity={0.8}
                             onPress={handleAuthAction}
                             disabled={loading || !isFormValid}
@@ -1232,7 +1232,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                               style={styles.loginBtnGradient}
                             >
                               <View style={[styles.pillSheen, !isFormValid && { opacity: 0.1 }]} />
-                              
+
                               {loading ? (
                                 <ActivityIndicator color="#fff" size="small" />
                               ) : (
@@ -1248,27 +1248,27 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
                 {/* Utilities Row - Forgot Password & Quick Sign In */}
                 {isLogin && (
-                  <Animated.View 
+                  <Animated.View
                     entering={FadeIn.duration(300)}
                     exiting={FadeOut.duration(200)}
                     style={styles.utilitiesRow}
                   >
                     {isBiometricAvailable && hasAccount ? (
-                      <TouchableOpacity 
-                        style={styles.biometricBtnSmall} 
+                      <TouchableOpacity
+                        style={styles.biometricBtnSmall}
                         onPress={handleBiometricLogin}
                       >
-                        <Ionicons 
-                          name={biometricType.includes(1) ? "scan-outline" : "finger-print-outline"} 
-                          size={18} 
-                          color="#818cf8" 
+                        <Ionicons
+                          name={biometricType.includes(1) ? "scan-outline" : "finger-print-outline"}
+                          size={18}
+                          color="#818cf8"
                         />
                         <Text style={styles.biometricTextSmall}>Quick Sign In</Text>
                       </TouchableOpacity>
                     ) : (
                       <View style={{ flex: 1 }} />
                     )}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.forgotPassBtn}
                       onPress={handleForgotPassword}
                       disabled={loading}
@@ -1280,8 +1280,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
                 <Animated.View style={[animatedBtnStyle, { marginTop: (isLogin || signupStep === 3) ? 10 : 0 }]}>
                   {isLogin && (
-                    <TouchableOpacity 
-                      style={styles.loginBtnContainer} 
+                    <TouchableOpacity
+                      style={styles.loginBtnContainer}
                       activeOpacity={0.8}
                       onPress={handleAuthAction}
                       disabled={loading || !isFormValid}
@@ -1293,7 +1293,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         style={styles.loginBtnGradient}
                       >
                         <View style={[styles.pillSheen, !isFormValid && { opacity: 0.1 }]} />
-                        
+
                         {loading ? (
                           <ActivityIndicator color="#fff" size="small" />
                         ) : (
@@ -1314,13 +1314,13 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
                 {/* Social Buttons */}
                 <View style={styles.socialRow}>
-                  <TouchableOpacity 
-                    style={styles.socialBtn} 
+                  <TouchableOpacity
+                    style={styles.socialBtn}
                     onPress={() => handleSocialLogin('Google')}
                     disabled={loading}
                   >
                     <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-                    <ExpoImage 
+                    <ExpoImage
                       source="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"
                       style={{ width: 22, height: 22 }}
                       contentFit="contain"
@@ -1328,8 +1328,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                     <Text style={styles.socialBtnText}>Google</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
-                    style={styles.socialBtn} 
+                  <TouchableOpacity
+                    style={styles.socialBtn}
                     onPress={() => handleSocialLogin('Apple')}
                     disabled={loading}
                   >
@@ -1345,7 +1345,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
             {/* Guest Access Button (Outside Container) */}
             {isLogin && (
               <Animated.View entering={FadeIn.delay(400).duration(400)}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.guestBtnOutside}
                   onPress={handleGuestLogin}
                   disabled={loading}
@@ -1553,7 +1553,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginBtnContainer: {
-    borderRadius: 25, 
+    borderRadius: 25,
     overflow: 'hidden',
     shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 4 },

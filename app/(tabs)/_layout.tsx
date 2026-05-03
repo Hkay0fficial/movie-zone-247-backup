@@ -326,6 +326,20 @@ function NotificationOverlay({
       unreadVjsCount: unreadVjs.length
     };
   };
+
+  const displayNotifications = useMemo(() => {
+    const unread = notifications.filter((n) => {
+      if (n.id === "n2") return !isUpdateApplied;
+      if (n.type === "rating") return !isRatingPermanentlyRemoved;
+      return !readIds.has(n.id);
+    });
+    const read = notifications.filter((n) => {
+      if (n.id === "n2" || n.type === "rating") return false;
+      return readIds.has(n.id);
+    });
+    return [...unread, ...read];
+  }, [notifications, isUpdateApplied, isRatingPermanentlyRemoved, readIds]);
+
   return (
     <Modal
       visible={visible}
@@ -401,17 +415,8 @@ function NotificationOverlay({
                   </View>
                 ) : (
                   <>
-                    {[
-                      ...notifications.filter((n) => {
-                    if (n.id === "n2") return !isUpdateApplied;
-                    if (n.type === "rating") return !isRatingPermanentlyRemoved;
-                    return !readIds.has(n.id);
-                  }),
-                  ...notifications.filter((n) => {
-                    if (n.id === "n2" || n.type === "rating") return false;
-                    return readIds.has(n.id);
-                  }),
-                ].map((item) => {
+                    {displayNotifications.length > 0 ? (
+                      displayNotifications.map((item) => {
                   const isRead = readIds.has(item.id);
                   const isUnread = !isRead;
                   const isLockedUpdate = item.id === "n2" && isUpdateLocked;
@@ -614,14 +619,23 @@ function NotificationOverlay({
                               <View style={styles.vjPillsRow}>
                                 {getFilteredItems(item).vjs.map((vj, idx) => {
                                   return (
-                                    <View
+                                    <TouchableOpacity
                                       key={idx}
                                       style={styles.vjPill}
+                                      onPress={() => {
+                                        const vjName = vj.name.toLowerCase();
+                                        const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => m.vj?.toLowerCase() === vjName || m.vj?.toLowerCase().includes(vjName));
+                                        if (gridData.length > 0) {
+                                          setGlobalGridTitle(`${vj.name} - Collection`);
+                                          setGlobalGridData(gridData);
+                                          setGlobalGridVisible(true);
+                                        }
+                                      }}
                                     >
                                       <Text style={styles.vjPillText}>
                                         {vj.name}
                                       </Text>
-                                    </View>
+                                    </TouchableOpacity>
                                   );
                                 })}
                               </View>
@@ -642,7 +656,15 @@ function NotificationOverlay({
                       )}
                     </TouchableOpacity>
                   );
-                })}
+                })) : (
+                  <View style={{ flex: 1, paddingVertical: 100 }}>
+                    <EmptyState
+                      title="Quiet in here"
+                      description="We'll notify you when new movies or updates are available. Stay tuned!"
+                      icon="notifications-off-outline"
+                    />
+                  </View>
+                )}
                   </>
                 )}
               </ScrollView>
@@ -813,6 +835,17 @@ function SearchOverlay({
   );
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (query.length > 0) {
+      setSearching(true);
+      const timer = setTimeout(() => setSearching(false), 400);
+      return () => clearTimeout(timer);
+    } else {
+      setSearching(false);
+    }
+  }, [query]);
   const { isPaid } = useSubscription();
   const { liveMovies, liveSeries, allRows, loading, youMayAlsoLike, bukoleya, trendingSeries } = useMovies();
 
@@ -1005,81 +1038,7 @@ function SearchOverlay({
     : [];
 
   const renderFilters = () => (
-    <View style={styles.resultsHeader}>
-      {isFiltering ||
-        selectedType ||
-        selectedGenre ||
-        selectedYear ||
-        sortBy ? (
-        <View style={styles.resultsHeaderTop}>
-          {isPerformingFiltering ? (
-            <>
-              <TouchableOpacity
-                style={styles.clearFiltersBtn}
-                onPress={() => clearFilters(true)}
-              >
-                <BlurView
-                  intensity={40}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text style={styles.clearFiltersText}>Clear Filters</Text>
-                <Ionicons
-                  name="close-circle"
-                  size={14}
-                  color="#fff"
-                  style={{ marginLeft: 6 }}
-                />
-              </TouchableOpacity>
-
-              {/* By Search Pill - Green, returns focus to search */}
-              <TouchableOpacity
-                style={[
-                  styles.clearFiltersBtn,
-                  {
-                    backgroundColor: "rgba(34, 197, 94, 0.12)",
-                    borderColor: "rgba(34, 197, 94, 0.3)",
-                    marginLeft: 8,
-                  },
-                ]}
-                onPress={() => {
-                  clearFilters(); // Clear all
-                  setDiscoveryMode("trending"); // Auto-switch back to Quick Search
-                  setTimeout(() => inputRef.current?.focus(), 100);
-                }}
-              >
-                <BlurView
-                  intensity={40}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text style={[styles.clearFiltersText, { color: "#4ade80" }]}>
-                  By Search
-                </Text>
-                <Ionicons
-                  name="search"
-                  size={13}
-                  color="#4ade80"
-                  style={{ marginLeft: 6 }}
-                />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <View style={{ flex: 1 }} />
-          )}
-
-
-        </View>
-      ) : null}
-
-      {query.trim().length === 0 && (
-        <>
-
-
-
-        </>
-      )}
-    </View>
+    <View style={styles.resultsHeader} />
   );
 
   return (
@@ -1098,139 +1057,157 @@ function SearchOverlay({
     >
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
         <View style={{ flex: 1 }}>
-          {/* Status Bar Background */}
-          <View style={{ 
-            height: insets.top, 
-            backgroundColor: "#0a0a0f",
-            zIndex: 2000
-          }} />
-
-          {/* Thin Separator Line from Status Bar */}
-          <View style={{ 
-            height: StyleSheet.hairlineWidth, 
-            backgroundColor: "rgba(255,255,255,0.25)",
-            zIndex: 2000 
-          }} />
-
           {/* ── Fixed Top Search Bar Container ── */}
           <View 
             style={{ 
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: insets.top + StyleSheet.hairlineWidth,
-              zIndex: 1000,
-              backgroundColor: "#0a0a0f",
-              height: 60,
-              flexDirection: "row",
-              alignItems: "center",
+              flexDirection: 'row',
+              alignItems: 'center',
               paddingHorizontal: 12,
-              elevation: 4, // Shadow for Android
+              paddingBottom: 12,
+              paddingTop: Math.max(insets.top, StatusBar.currentHeight || 24) + (Platform.OS === 'ios' ? 0 : 12),
+              backgroundColor: '#0a0a0f',
+              zIndex: 1000,
             }}
           >
-                <KeyboardAvoidingView
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  pointerEvents="box-none"
-                  style={{
-                    flex: 1,
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              pointerEvents="box-none"
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  if (expandedFilter) {
+                    setExpandedFilter(null);
+                  } else if (hasActiveFilters) {
+                    clearFilters(true); // Step by step
+                  } else {
+                    onClose();
+                  }
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(255, 255, 255, 0.22)',
+                  marginRight: 10,
+                }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
+
+              <View
+                style={{
+                  flex: 1,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(255, 255, 255, 0.22)',
+                  overflow: 'hidden',
+                }}
+                onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+              >
+                {Platform.OS === 'ios' ? (
+                  <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+                ) : (
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]} />
+                )}
+                {searching ? (
+                  <ActivityIndicator 
+                    size="small" 
+                    color="#5B5FEF" 
+                    style={{ marginLeft: 12, marginRight: 6, transform: [{ scale: 0.8 }] }} 
+                  />
+                ) : (
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color="rgba(255,255,255,0.4)"
+                    style={{ marginLeft: 12, marginRight: 6 }}
+                  />
+                )}
+                {selectedVJ ? (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(91,95,239,0.30)',
+                    borderRadius: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    marginRight: 6,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{selectedVJ}</Text>
+                    <TouchableOpacity onPress={() => setSelectedVJ(null)} style={{ marginLeft: 4 }}>
+                      <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.universalSearchInput, { paddingHorizontal: 0, flex: 1 }]}
+                  placeholder={selectedVJ ? `Search in ${selectedVJ}…` : getPlaceholderText()}
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={query}
+                  onChangeText={(text) => setQuery(text)}
+                  returnKeyType="search"
+                  multiline={false}
+                  numberOfLines={1}
+                  autoFocus={false}
+                />
+                {(isFiltering || selectedVJ) && (
+                  <View style={{
                     flexDirection: "row",
                     alignItems: "center",
-                  }}
-                >
-                {Platform.OS !== 'android' && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (expandedFilter) {
-                        setExpandedFilter(null);
-                      } else if (hasActiveFilters) {
-                        clearFilters(true); // Step by step
-                      } else {
-                        onClose();
-                      }
-                    }}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 6,
-                    }}
-                  >
-                    <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
-                  </TouchableOpacity>
-                )}
-
-                {(!isPerformingFiltering || query.length > 0) && (
-                  <View
-                    style={[styles.searchInnerCapsule, { flex: 1, height: 38, marginRight: 0, borderRadius: 19 }]}
-                    onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-                  >
-                    <Ionicons
-                      name="search"
-                      size={15}
-                      color="rgba(255,255,255,0.4)"
-                      style={{ marginLeft: 10, marginRight: 6 }}
-                    />
-                    <TextInput
-                      ref={inputRef}
-                      style={[styles.universalSearchInput, { paddingHorizontal: 0 }]}
-                      placeholder={getPlaceholderText()}
-                      placeholderTextColor="rgba(255,255,255,0.45)"
-                      value={query}
-                      onChangeText={(text) => {
-                        if (
-                          text.length > 0 &&
-                          query.length === 0 &&
-                          results.length === 0 &&
-                          (selectedType || selectedGenre || selectedYear || selectedVJ || selectedSeason || sortBy)
-                        ) {
-                          clearFilters();
-                        }
-                        setQuery(text);
-                      }}
-                      returnKeyType="search"
-                      multiline={false}
-                      numberOfLines={1}
-                      autoFocus={false}
-                    />
-                    {isFiltering && query.length > 0 && (
-                      <View style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: "rgba(91,95,239,0.25)",
-                        borderRadius: 10,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        marginRight: 4,
-                      }}>
-                        <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "700" }}>
-                          {results.length}
-                        </Text>
-                      </View>
-                    )}
-                    {query.length > 0 && (
-                      <TouchableOpacity onPress={() => setQuery("")} style={{ padding: 6 }}>
-                        <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.45)" />
-                      </TouchableOpacity>
-                    )}
+                    backgroundColor: "rgba(91,95,239,0.25)",
+                    borderRadius: 10,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    marginRight: 4,
+                  }}>
+                    <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "700" }}>
+                      {results.length}
+                    </Text>
                   </View>
                 )}
-                </KeyboardAvoidingView>
+                {query.length > 0 && (
+                  <TouchableOpacity onPress={() => setQuery("")} style={{ padding: 6 }}>
+                    <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.45)" />
+                  </TouchableOpacity>
+                )}
               </View>
+            </KeyboardAvoidingView>
+          </View>
 
-              <View style={{ flex: 1, marginTop: (isPerformingFiltering && query.length === 0) ? 4 : 64 }}>
+          {/* ── Thin separator line below search bar ── */}
+          <View style={{
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: 'rgba(255, 255, 255, 0.22)',
+            marginHorizontal: 0,
+          }} />
+
+          <View style={{ flex: 1 }}>
 
                 {isFiltering ? (
                   <View style={{ flex: 1 }}>
-                    {renderFilters()}
                     <FlatList
                       ref={resultsRef}
                       keyboardShouldPersistTaps="always"
-                      data={loading && results.length === 0 ? Array(12).fill({ id: "skeleton" }) : results}
+                      data={(loading || searching) && results.length === 0 ? Array(12).fill({ id: "skeleton" }) : results}
                       keyExtractor={(m, i) => `${m.id}-${i}`}
                       numColumns={3}
                       contentContainerStyle={{
                         paddingHorizontal: 16,
+                        paddingTop: 8,
                         paddingBottom: 160,
                       }}
                       columnWrapperStyle={{
@@ -1805,17 +1782,48 @@ function CustomTabBar() {
     let baseData = [...MOCK_NOTIFICATIONS];
 
     // Inject real Announcements from Firestore
-    const realNotifications: Notification[] = (announcements || []).map((ann: any) => ({
-      id: ann.id,
-      type: ann.type === 'hero_promotion' ? 'trending' : (ann.type === 'movie_release' ? 'movie' : 'update'),
-      icon: ann.type === 'hero_promotion' ? 'flame' : (ann.type === 'movie_release' ? 'film' : 'notifications'),
-      title: ann.subject || 'Announcement',
-      message: ann.message || '',
-      time: ann.createdAt ? new Date(ann.createdAt).toLocaleDateString() : 'Just Now',
-      image: ann.imageUrl || undefined,
-      isNew: !readIds.has(ann.id),
-      movieId: ann.movieId || undefined,
-    }));
+    const realNotifications: Notification[] = (announcements || []).map((ann: any) => {
+      // Map admin categories to mobile types
+      const adminType = ann.type || ann.category;
+      let type: 'movie' | 'trending' | 'update' | 'rating' = 'update';
+      let icon: any = 'notifications';
+
+      if (adminType === 'hero_promotion' || adminType === 'Trending' || adminType === 'Promotion') {
+        type = 'trending';
+        icon = 'flame';
+      } else if (adminType === 'movie_release' || adminType === 'New Release') {
+        type = 'movie';
+        icon = 'film';
+      } else if (adminType === 'System') {
+        type = 'update';
+        icon = 'shield-checkmark';
+      }
+
+      // Helper for clean time display
+      const formatTime = (ts: any) => {
+        if (!ts) return 'Just Now';
+        const date = new Date(ts);
+        const now = new Date();
+        const diffInHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
+        
+        if (diffInHours < 1) return 'Just Now';
+        if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
+        if (diffInHours < 48) return 'Yesterday';
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      };
+
+      return {
+        id: ann.id,
+        type,
+        icon,
+        title: ann.subject || 'Announcement',
+        message: ann.message || ann.body || '',
+        time: formatTime(ann.createdAt),
+        image: ann.imageUrl || undefined,
+        isNew: !readIds.has(ann.id),
+        movieId: ann.movieId || ann.targetMovieId || undefined,
+      };
+    });
 
     // Prepend real announcements to base data
     baseData = [...realNotifications, ...baseData];
@@ -2468,12 +2476,28 @@ function CustomTabBar() {
                       <Ionicons name="arrow-back" size={22} color="#fff" />
                     </TouchableOpacity>
 
-                    <View style={[styles.searchInnerCapsule, { flex: 1, marginRight: 0, height: 35, borderRadius: 17.5 }]}>
+                    <View style={{
+                      flex: 1,
+                      height: 35,
+                      borderRadius: 17.5,
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: 'rgba(255, 255, 255, 0.22)',
+                      overflow: 'hidden',
+                      marginRight: 0,
+                    }}>
+                      {Platform.OS === 'ios' ? (
+                        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+                      ) : (
+                        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]} />
+                      )}
                       <Ionicons
                         name="search"
-                        size={18}
-                        color="rgba(255,255,255,0.5)"
-                        style={{ marginLeft: 12, marginRight: 8 }}
+                        size={15}
+                        color="rgba(255,255,255,0.4)"
+                        style={{ marginLeft: 12, marginRight: 6 }}
                       />
                       <TextInput
                         ref={inPlaceSearchRef}

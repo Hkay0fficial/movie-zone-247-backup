@@ -229,16 +229,20 @@ export function GridContent({
         <View style={StyleSheet.absoluteFill} />
       </TouchableWithoutFeedback>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         
         {/* Header */}
-        <View style={[styles.headerContainer, { paddingTop: insets.top + (Platform.OS === 'ios' ? 0 : 4) }]}>
+        <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, StatusBar.currentHeight || 24) + (Platform.OS === 'ios' ? 0 : 12) }]}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.searchPill}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]} />
+            )}
             <Ionicons name="search" size={18} color="rgba(255,255,255,0.4)" style={{ marginLeft: 12 }} />
             <TextInput
               ref={gridInputRef}
@@ -285,7 +289,7 @@ export function GridContent({
             </View>
           }
         />
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -446,7 +450,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingBottom: 12,
-    gap: 10,
   },
   backBtn: {
     width: 40,
@@ -457,6 +460,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.22)',
+    marginRight: 10,
   },
   searchPill: {
     flex: 1,
