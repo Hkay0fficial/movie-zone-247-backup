@@ -2372,8 +2372,8 @@ function CustomTabBar() {
             zIndex: 999,
             backgroundColor: "#0f0f19", // Solid background matching header exactly
             opacity: active("/") ? homeHeaderOpacity : (active("/menu") ? menuHeaderOpacity : 1),
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderColor: "rgba(255,255,255,0.15)",
+            borderBottomWidth: (active("/") || active("/menu") || segment === "/" || segment === "/index" || segment === "/menu") ? 0 : StyleSheet.hairlineWidth,
+            borderColor: (active("/") || active("/menu") || segment === "/" || segment === "/index" || segment === "/menu") ? "transparent" : "rgba(255,255,255,0.15)",
           }}
           pointerEvents="none"
         />

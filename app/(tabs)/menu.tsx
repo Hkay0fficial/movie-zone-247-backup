@@ -406,6 +406,7 @@ export default function MenuScreen() {
     activeDeviceIds,
     activeDevicesMeta,
     removeDevice,
+    availablePlans,
   } = useSubscription();
 
   const {
@@ -1444,6 +1445,7 @@ export default function MenuScreen() {
                     upcomingMembership={upcomingMembership}
                     setSelectedPlanForPayment={setSelectedPlanForPayment}
                     handleShowPaymentModal={handleShowPaymentModal}
+                    availablePlans={availablePlans}
                   />
                 )}
 

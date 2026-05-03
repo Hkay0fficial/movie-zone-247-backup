@@ -1,18 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Plan, PLANS } from '../../constants/planData';
 import { styles } from './menu.styles';
-
-interface Plan {
-  name: string;
-  price: string;
-  currency: string;
-  tag: string | null;
-  color: string;
-  glowColor: string;
-  ctaSuffix: string;
-  specs: string[];
-}
 
 interface ChoosePlanSectionProps {
   isSubscribed: boolean;
@@ -22,6 +12,7 @@ interface ChoosePlanSectionProps {
   handleShowPaymentModal: (show: boolean) => void;
   isGuest?: boolean;
   onGuestPlanSelect?: () => void;
+  availablePlans?: Plan[];
 }
 
 export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
@@ -32,61 +23,21 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
   handleShowPaymentModal,
   isGuest,
   onGuestPlanSelect,
+  availablePlans = [],
 }) => {
-  const plans: Plan[] = [
-    {
-      name: '1 week [+1 day bonus]',
-      price: '2,500',
-      currency: 'Ugx',
-      tag: null,
-      color: '#6366f1',
-      glowColor: 'rgba(99, 102, 241, 0.4)',
-      ctaSuffix: 'AS LOW AS 357 Ugx A DAY',
-      specs: ['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '1 external download', '1 device']
-    },
-    {
-      name: '2 weeks [+2 days bonus]',
-      price: '5,000',
-      currency: 'Ugx',
-      tag: 'MOST POPULAR',
-      color: '#8338ec',
-      glowColor: 'rgba(131, 56, 236, 0.5)',
-      ctaSuffix: 'AS LOW AS 357 Ugx A DAY',
-      specs: ['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '2 external downloads', '1 device']
-    },
-    {
-      name: '1 Month [+4 day bonus]',
-      price: '10,000',
-      currency: 'Ugx',
-      tag: 'BEST VALUE',
-      color: '#ff006e',
-      glowColor: 'rgba(255, 0, 110, 0.5)',
-      ctaSuffix: 'AS LOW AS 333 Ugx A DAY',
-      specs: ['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '3 external downloads', '2 devices']
-    },
-    {
-      name: '2 months [+1 week bonus]',
-      price: '20,000',
-      currency: 'Ugx',
-      tag: 'EXCLUSIVE',
-      color: '#fb5607',
-      glowColor: 'rgba(251, 86, 7, 0.5)',
-      ctaSuffix: 'AS LOW AS 333 A DAY',
-      specs: ['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '5 external downloads', '3 devices']
-    }
-  ];
+  const displayPlans = availablePlans && availablePlans.length > 0 ? availablePlans : PLANS;
 
   return (
     <View style={styles.settingsContentSection}>
       <Text style={styles.settingsText}>Select the best plan for you and your family to enjoy unlimited movies.</Text>
       <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-        {plans.map((p) => {
-          const planLabel = p.name.split(' [')[0];
+        {displayPlans.map((p) => {
+          const planLabel = p.name; // Use the exact name for matching
           const isActivePlan = isSubscribed && subscriptionBundle === planLabel;
           const isQueuedPlan = upcomingMembership && upcomingMembership.bundle === planLabel;
 
           return (
-            <View key={p.name} style={{ width: '100%', marginBottom: 20 }}>
+            <View key={p.id || p.name} style={{ width: '100%', marginBottom: 20 }}>
               {/* Premium Background Glow */}
               <View style={{
                 position: 'absolute',
