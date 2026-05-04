@@ -67,6 +67,8 @@ interface DownloadContextType {
   getExternalDownloadLimit: () => number;
   downloadsUsedToday: number;
   removeDownload: (id: string) => void;
+  verifyLocalFile: (id: string) => Promise<string | null>;
+  cancelSeriesDownloads: (seriesId: string) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | undefined>(undefined);
@@ -136,6 +138,59 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     AsyncStorage.setItem('down_used_today_v2', String(downloadsUsedToday));
   }, [downloadsUsedToday]);
+
+  // ── Asset Verification ────────────────────────────────────────────────────────
+  const verifyLocalFile = async (id: string): Promise<string | null> => {
+    const movie = downloadedMovies.find(m => m.id === id);
+    const epUri = episodeDownloads[id];
+    const uri = movie?.localUri || epUri;
+    
+    if (!uri) return null;
+    
+    try {
+      const info = await FileSystem.getInfoAsync(uri);
+      if (info.exists) return uri;
+      
+      // If not exists, clean up state
+      console.warn(`[DownloadContext] File missing at ${uri}, cleaning up.`);
+      removeDownload(id);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Periodically verify all downloads
+  useEffect(() => {
+    const verifyAll = async () => {
+      if (downloadedMovies.length === 0 && Object.keys(episodeDownloads).length === 0) return;
+      
+      const missingIds: string[] = [];
+      
+      for (const m of downloadedMovies) {
+        if (m.localUri) {
+          try {
+            const info = await FileSystem.getInfoAsync(m.localUri);
+            if (!info.exists) missingIds.push(m.id);
+          } catch (e) {}
+        }
+      }
+      
+      for (const [id, uri] of Object.entries(episodeDownloads)) {
+        try {
+          const info = await FileSystem.getInfoAsync(uri);
+          if (!info.exists) missingIds.push(id);
+        } catch (e) {}
+      }
+      
+      if (missingIds.length > 0) {
+        missingIds.forEach(id => removeDownload(id));
+      }
+    };
+    
+    const timer = setTimeout(verifyAll, 5000); // Verify once after 5s
+    return () => clearTimeout(timer);
+  }, [downloadedMovies.length, Object.keys(episodeDownloads).length]);
 
   // ── Notification Action Listener ─────────────────────────────────────────────
   useEffect(() => {
@@ -324,6 +379,15 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isProcessing.current = false; 
     setDownloadQueue(prev => prev.filter(qid => qid !== id));
     setActiveDownloads(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
+
+  const cancelSeriesDownloads = (seriesId: string) => {
+    console.log('[Download] Cancelling all episodes for series:', seriesId);
+    const toCancel = Object.values(entriesRef.current)
+      .filter(entry => entry.movieId === seriesId)
+      .map(entry => entry.id);
+    
+    toCancel.forEach(id => cancelDownload(id));
   };
 
   const removeDownload = (id: string) => {
@@ -529,7 +593,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       downloadEpisode, downloadMovie, pauseDownload, resumeDownload,
       cancelDownload, deleteDownload, isEpisodeDownloaded, isMovieDownloaded,
       getRemainingDownloads, getExternalDownloadLimit, downloadsUsedToday,
-      removeDownload,
+      removeDownload, verifyLocalFile, cancelSeriesDownloads,
     }}>
       {children}
     </DownloadContext.Provider>

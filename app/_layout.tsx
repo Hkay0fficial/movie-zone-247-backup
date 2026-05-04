@@ -25,6 +25,8 @@ import ModernVideoPlayer from '../components/ModernVideoPlayer';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { resolveCDNUrl } from '@/constants/bunnyConfig';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Network from 'expo-network';
+import { useDownloads } from '@/app/context/DownloadContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -34,27 +36,80 @@ export const unstable_settings = {
 initNotifications();
 
 function ModernVideoPlayerWrapper() {
-  const { 
-    playerMode, setPlayerMode, 
-    playerTitle, selectedVideoUrl,
-    setPlayingNow, playingNow,
-    playerPos, playerSize, isPreview,
-    setIsPreview, playingEpisodeId,
-    setPlayingEpisodeId,
-    playingEpisodes,
-    setPlayingEpisodes,
-    setSelectedVideoUrl,
-  } = useSubscription();
+  const subscription = useSubscription();
   const router = useRouter();
+
+  // Hermes-safe property extraction
+  let _safeSetPlayerMode = (m: any) => {};
+  let _safeSetPlayingNow = (m: any) => {};
+  let _safeSetPlayingEpisodeId = (m: any) => {};
+  let _safeSetPlayingEpisodes = (m: any) => {};
+  let _safeSetIsPreview = (m: any) => {};
+  let _safeSetSelectedVideoUrl = (m: any) => {};
+
+  try {
+    if (subscription.setPlayerMode) _safeSetPlayerMode = subscription.setPlayerMode;
+    if (subscription.setPlayingNow) _safeSetPlayingNow = subscription.setPlayingNow;
+    if (subscription.setPlayingEpisodeId) _safeSetPlayingEpisodeId = subscription.setPlayingEpisodeId;
+    if (subscription.setPlayingEpisodes) _safeSetPlayingEpisodes = subscription.setPlayingEpisodes;
+    if (subscription.setIsPreview) _safeSetIsPreview = subscription.setIsPreview;
+    if (subscription.setSelectedVideoUrl) _safeSetSelectedVideoUrl = subscription.setSelectedVideoUrl;
+  } catch (e) {
+    console.warn("[ModernVideoPlayerWrapper] Context extraction error:", e);
+  }
+
+  const { downloadedMovies, episodeDownloads } = useDownloads();
+
+  const { 
+    playerMode, playerTitle, selectedVideoUrl,
+    playingNow, playingEpisodeId, playingEpisodes,
+    playerPos, playerSize, isPreview,
+  } = subscription;
+
+  const currentIdx = playingEpisodes ? playingEpisodes.findIndex(e => e.id === playingEpisodeId) : -1;
+  const hasNext = !!playingEpisodes && currentIdx !== -1 && currentIdx < playingEpisodes.length - 1;
+  const hasPrev = !!playingEpisodes && currentIdx > 0;
+
+  const [activeUrl, setActiveUrl] = useState(selectedVideoUrl);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const checkNet = async () => {
+      const state = await Network.getNetworkStateAsync();
+      setIsOffline(!state.isConnected);
+    };
+    checkNet();
+    const interval = setInterval(checkNet, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync activeUrl with local source if offline
+  useEffect(() => {
+    if (isOffline && playingNow) {
+      // Check for local version
+      if (playingEpisodeId && episodeDownloads[playingEpisodeId]) {
+        setActiveUrl(episodeDownloads[playingEpisodeId]);
+      } else {
+        const movie = downloadedMovies.find(m => m.id === playingNow.id);
+        if (movie && movie.localUri) {
+          setActiveUrl(movie.localUri);
+        } else {
+          setActiveUrl(selectedVideoUrl);
+        }
+      }
+    } else {
+      setActiveUrl(selectedVideoUrl);
+    }
+  }, [isOffline, selectedVideoUrl, playingNow, playingEpisodeId, downloadedMovies, episodeDownloads]);
 
   return (
     <ModernVideoPlayer
       playerMode={playerMode}
-      setPlayerMode={setPlayerMode}
-      videoUrl={resolveCDNUrl(selectedVideoUrl)}
+      setPlayerMode={_safeSetPlayerMode}
+      videoUrl={resolveCDNUrl(activeUrl)}
       title={playerTitle}
       playingNow={playingNow}
-      setPlayingNow={setPlayingNow}
+      setPlayingNow={_safeSetPlayingNow}
       playerPos={playerPos}
       playerSize={playerSize}
       isPreview={isPreview}
@@ -62,41 +117,55 @@ function ModernVideoPlayerWrapper() {
       episodes={playingEpisodes}
       activeEpisodeId={playingEpisodeId || undefined}
       onSelectEpisode={(ep) => {
-        setPlayingEpisodeId(ep.id);
-        setSelectedVideoUrl(ep.videoUrl);
+        try {
+          _safeSetPlayingEpisodeId(ep.id);
+          _safeSetSelectedVideoUrl(ep.videoUrl);
+        } catch (e) {}
       }}
-      hasNext={!!playingEpisodes && !!playingEpisodeId && playingEpisodes.findIndex(e => e.id === playingEpisodeId) < playingEpisodes.length - 1}
+      hasNext={hasNext}
+      hasPrev={hasPrev}
       nextPartName={(() => {
-        const idx = playingEpisodes.findIndex(e => e.id === playingEpisodeId);
-        if (idx !== -1 && idx < playingEpisodes.length - 1) {
-          return playingEpisodes[idx + 1].title;
+        if (hasNext) {
+          return playingEpisodes[currentIdx + 1].title;
         }
         return undefined;
       })()}
       onNext={() => {
-        const idx = playingEpisodes.findIndex(e => e.id === playingEpisodeId);
-        if (idx !== -1 && idx < playingEpisodes.length - 1) {
-          const nextEp = playingEpisodes[idx + 1];
-          setPlayingEpisodeId(nextEp.id);
-          setSelectedVideoUrl(nextEp.videoUrl);
+        if (hasNext) {
+          try {
+            const nextEp = playingEpisodes[currentIdx + 1];
+            _safeSetPlayingEpisodeId(nextEp.id);
+            _safeSetSelectedVideoUrl(nextEp.videoUrl);
+          } catch (e) {}
+        }
+      }}
+      onPrev={() => {
+        if (hasPrev) {
+          try {
+            const prevEp = playingEpisodes[currentIdx - 1];
+            _safeSetPlayingEpisodeId(prevEp.id);
+            _safeSetSelectedVideoUrl(prevEp.videoUrl);
+          } catch (e) {}
         }
       }}
       onClose={() => {
-        // Detect if we are playing a local download
-        const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
-        setPlayerMode('closed');
-        setPlayingNow(null);
-        setPlayingEpisodeId(null);
-        setPlayingEpisodes([]);
-        setIsPreview(false);
+        try {
+          // Detect if we are playing a local download
+          const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
+          _safeSetPlayerMode('closed');
+          _safeSetPlayingNow(null);
+          _safeSetPlayingEpisodeId(null);
+          _safeSetPlayingEpisodes([]);
+          _safeSetIsPreview(false);
 
-        if (isLocal && playerMode === 'full') {
-          // Auto-restore logic: Navigate to menu tab with section param for instant open
-          router.push({
-            pathname: '/(tabs)/menu',
-            params: { section: '5' }
-          });
-        }
+          if (isLocal && playerMode === 'full') {
+            // Auto-restore logic: Navigate to menu tab with section param for instant open
+            router.push({
+              pathname: '/(tabs)/menu',
+              params: { section: '5' }
+            });
+          }
+        } catch (e) {}
       }}
     />
   );

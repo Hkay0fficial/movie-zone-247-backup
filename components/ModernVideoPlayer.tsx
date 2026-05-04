@@ -22,7 +22,9 @@ import {
   AppState,
   ActivityIndicator,
 } from "react-native";
+import ReAnimated, { SlideInRight, SlideOutRight } from "react-native-reanimated";
 import * as SystemUI from "expo-system-ui";
+import * as Network from "expo-network";
 import { useIsFocused } from "@react-navigation/native";
 import { Modal as RNModal } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
@@ -38,7 +40,8 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Movie, Series } from "@/constants/movieData";
 import { useUser } from "@/app/context/UserContext";
-// react-native-google-cast uses requireNativeComponent which crashes on web export
+import { useRouter } from "expo-router";
+import { useDownloads } from "@/app/context/DownloadContext";
 // and causes a Hermes "Platform already declared" error when required at module scope.
 // Use a lazy getter so the require only executes at runtime, not at parse time.
 let _castModule: any = undefined;
@@ -134,6 +137,8 @@ export default function ModernVideoPlayer({
 }: ModernVideoPlayerProps) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
+  const router = useRouter();
+  const { downloadedMovies, episodeDownloads } = useDownloads();
   const insets = useSafeAreaInsets();
   useKeepAwake();
   
@@ -195,6 +200,8 @@ export default function ModernVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [showNextSuggestion, setShowNextSuggestion] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const playbackSpeedRef = useRef(1.0);
@@ -209,7 +216,7 @@ export default function ModernVideoPlayer({
   
   // Overlays
   const [isBufferingDelayed, setIsBufferingDelayed] = useState(false);
-  const bufferTimeoutRef = useRef<any>(null);
+  const bufferTimeoutRef = useRef(null);
   const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false);
   const [showSpeedOverlay, setShowSpeedOverlay] = useState(false);
   const [showSubtitleOverlay, setShowSubtitleOverlay] = useState(false);
@@ -226,7 +233,8 @@ export default function ModernVideoPlayer({
   // Animations
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const lockPulseAnim = useRef(new Animated.Value(1)).current;
-  const progressBarGlow = useRef(new Animated.Value(0)).current;
+  const progressBarGlow = useRef(new Animated.Value(1)).current;
+  const bufferedAnimPct = useRef(new Animated.Value(0)).current;
   const skipIntroOpacity = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef<number>(0);
   // Animated values for smooth knob/fill (no React re-render during drag)
@@ -336,6 +344,44 @@ export default function ModernVideoPlayer({
     }
   }, [playerMode, onClose]);
 
+  // Load Video Effect - Enhanced with progress saving on switch
+  useEffect(() => {
+    if (!videoUrl || playerMode === 'closed' || !videoRef.current) return;
+
+    const loadNewSource = async () => {
+      try {
+        // Save progress of current video before switching
+        if (statusRef.current.isLoaded && movieId) {
+          savePlaybackProgress(movieId, statusRef.current.positionMillis, episodeId);
+        }
+
+        setIsBuffering(true);
+        const source = { uri: videoUrl };
+        
+        await videoRef.current?.unloadAsync();
+        const result = await videoRef.current?.loadAsync(
+          source,
+          { 
+            shouldPlay: true, 
+            progressUpdateIntervalMillis: 500,
+          },
+          false
+        );
+        
+        if (result && (result as any).isLoaded) {
+          setStatus(result as any);
+          statusRef.current = result as any;
+        }
+      } catch (e) {
+        console.warn("[ModernVideoPlayer] Load error:", e);
+      } finally {
+        setIsBuffering(false);
+      }
+    };
+
+    loadNewSource();
+  }, [videoUrl, playerMode === 'closed']);
+
   // Lock Animation
   useEffect(() => {
     if (isLocked) {
@@ -383,6 +429,38 @@ export default function ModernVideoPlayer({
   }, [status.isLoaded, status.isPlaying, movieId, episodeId]);
 
   // ─── Cast Sync Logic ───
+  // Monitor Network for Offline Mode
+  useEffect(() => {
+    const checkNetwork = async () => {
+      try {
+        const state = await Network.getNetworkStateAsync();
+        setIsOffline(!state.isConnected);
+      } catch (err) {
+        console.log("Network check failed:", err);
+      }
+    };
+    
+    checkNetwork();
+    const interval = setInterval(checkNetwork, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check for local version when offline
+  const localMatch = useMemo(() => {
+    if (!playingNow || !isOffline) return null;
+    // Check if it's an episode first
+    if (episodeId && episodeDownloads[episodeId]) {
+      return { localUri: episodeDownloads[episodeId], isEpisode: true };
+    }
+    // Check if it's a movie
+    const movie = downloadedMovies.find(m => m.id === movieId);
+    if (movie && movie.localUri) {
+      return { localUri: movie.localUri, isEpisode: false };
+    }
+    return null;
+  }, [downloadedMovies, episodeDownloads, movieId, episodeId, isOffline, playingNow]);
+
+  // Setup Cast Session and Listeners
   const castSession = useCastSession();
   useEffect(() => {
     if (CAN_CAST && castSession && videoUrl && playingNow) {
@@ -727,6 +805,11 @@ export default function ModernVideoPlayer({
   // Formatting helpers
   const onPlaybackStatusUpdate = React.useCallback((s: AVPlaybackStatus) => {
     setStatus(s);
+    if (s.isLoaded && s.durationMillis) {
+      const bPct = (s.playableDurationMillis || 0) / s.durationMillis;
+      bufferedAnimPct.setValue(bPct);
+    }
+
     statusRef.current = s;
 
     // --- Buffering Delay Logic ---
@@ -852,12 +935,34 @@ export default function ModernVideoPlayer({
           </View>
         )}
         
-        {/* Premium Loading Indicator */}
-        {((!status.isLoaded && playerMode !== 'closed') || (status.isLoaded && isBufferingDelayed)) && (
-          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100 }]}>
-            <ActivityIndicator size="large" color="#5B5FEF" />
+        {/* Offline Indicator Pill */}
+        {isOffline && (
+          <TouchableOpacity 
+            style={styles.offlinePill}
+            activeOpacity={0.8}
+            onPress={() => {
+              // If we have a local match and it's not what's currently playing, we could offer to switch
+              // but for now, navigating to downloads is the requested behavior.
+              onClose();
+              router.push({
+                pathname: '/(tabs)/menu',
+                params: { section: '5' }
+              });
+            }}
+          >
+             <Ionicons name="cloud-offline" size={14} color="#fff" />
+             <Text style={styles.offlineText}>
+               {localMatch ? "WATCH OFFLINE" : "OFFLINE MODE • BROWSE"}
+             </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Premium Loading Indicator - now only for initial load */}
+        {!status.isLoaded && playerMode !== 'closed' && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', zIndex: 100 }]}>
+            <ActivityIndicator size="large" color="#818cf8" />
             <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 12, fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
-              {status.isLoaded ? "BUFFERING..." : "FETCHING STREAM..."}
+              FETCHING STREAM...
             </Text>
           </View>
         )}
@@ -921,10 +1026,11 @@ export default function ModernVideoPlayer({
               <View style={styles.centerControls}>
                 {!isLocked ? (
                   <View style={styles.controlCapsule}>
-                    <BlurView intensity={40} tint="dark" style={styles.glassCapsuleBg} />
+                    
                     <TouchableOpacity onPress={() => handleSeek(-10000)} style={styles.seekAction}>
                       <MaterialIcons name="replay-10" size={32} color="#fff" />
                     </TouchableOpacity>
+                    
                     <TouchableOpacity onPress={handleTogglePlay} style={styles.playAction}>
                       <View style={styles.playBtnInner}>
                         <Ionicons 
@@ -934,6 +1040,7 @@ export default function ModernVideoPlayer({
                         />
                       </View>
                     </TouchableOpacity>
+                    
                     <TouchableOpacity onPress={() => handleSeek(10000)} style={styles.seekAction}>
                       <MaterialIcons name="forward-10" size={32} color="#fff" />
                     </TouchableOpacity>
@@ -963,6 +1070,23 @@ export default function ModernVideoPlayer({
               {/* Modern Footer */}
               <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                 
+                {/* New Text-based Navigation Buttons */}
+                {!isLocked && (
+                  <View style={styles.navButtonsRow}>
+                    {hasPrev ? (
+                      <TouchableOpacity onPress={onPrev} style={styles.navTextBtn}>
+                        <Text style={styles.navBtnText}>Prev Episode</Text>
+                      </TouchableOpacity>
+                    ) : <View style={styles.navTextBtnPlaceholder} />}
+
+                    {hasNext ? (
+                      <TouchableOpacity onPress={onNext} style={styles.navTextBtn}>
+                        <Text style={styles.navBtnText}>Next Episode</Text>
+                      </TouchableOpacity>
+                    ) : <View style={styles.navTextBtnPlaceholder} />}
+                  </View>
+                )}
+
                 {/* Glowing Progress Bar */}
                 {!isLocked && (
                   <View style={styles.progressArea}>
@@ -977,6 +1101,20 @@ export default function ModernVideoPlayer({
                     <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 15 }}>
                       <View pointerEvents="none" style={{ justifyContent: 'center' }}>
                         <View style={styles.progressTrack}>
+                          {/* Buffered Progress (YouTube Style) */}
+                          <Animated.View 
+                            style={[
+                              styles.bufferedFill, 
+                              { 
+                                width: bufferedAnimPct.interpolate({ 
+                                  inputRange: [0, 1], 
+                                  outputRange: ['0%', '100%'],
+                                  extrapolate: 'clamp'
+                                }) 
+                              }
+                            ]} 
+                          />
+                          
                           <Animated.View style={[styles.progressBase, {
                             width: (isScrubbing
                               ? scrubAnimPct
@@ -1245,39 +1383,90 @@ export default function ModernVideoPlayer({
             </View>
           )}
 
-          {/* Overlays */}
+          {/* Premium Episode Sidebar Overlay */}
           {showEpisodesOverlay && episodes.length > 0 && (
-            <TouchableOpacity 
-              style={[styles.overlayBackdrop]}
-              activeOpacity={1}
-              onPress={() => setShowEpisodesOverlay(false)}
-            >
-              <BlurView intensity={80} tint="dark" style={styles.absFill} />
-              <View style={styles.overlayContent}>
-                <View style={styles.overlayHeader}>
-                  <Text style={styles.overlayTitle}>Episodes</Text>
-                  <TouchableOpacity onPress={() => setShowEpisodesOverlay(false)} style={styles.overlayClose}>
+            <View style={styles.sidebarOverlay}>
+              <TouchableOpacity 
+                style={styles.sidebarBackdrop}
+                activeOpacity={1}
+                onPress={() => setShowEpisodesOverlay(false)}
+              >
+                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+              </TouchableOpacity>
+
+              <ReAnimated.View 
+                entering={SlideInRight.springify().damping(20)}
+                exiting={SlideOutRight}
+                style={styles.sidebarContent}
+              >
+                <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
+                
+                {/* Header */}
+                <View style={styles.sidebarHeader}>
+                  <View>
+                    <Text style={styles.sidebarBrand}>UP NEXT</Text>
+                    <Text style={styles.sidebarTitle} numberOfLines={1}>{title}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowEpisodesOverlay(false)} style={styles.sidebarClose}>
                     <Ionicons name="close" size={24} color="#fff" />
                   </TouchableOpacity>
                 </View>
-                <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-                  {episodes.map((ep, idx) => (
-                    <TouchableOpacity 
-                      key={ep.id} 
-                      style={[styles.epItem, activeEpisodeId === ep.id && styles.epItemActive]}
-                      onPress={() => { onSelectEpisode?.(ep); setShowEpisodesOverlay(false); }}
-                    >
-                      <Image source={{ uri: ep.poster || "" }} style={styles.epThumb} />
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.epTitle, activeEpisodeId === ep.id && { color: '#818cf8' }]} numberOfLines={1}>{ep.title}</Text>
-                        <Text style={styles.epSub}>{ep.duration || "..."}</Text>
-                      </View>
-                      {activeEpisodeId === ep.id && <Ionicons name="play-circle" size={20} color="#818cf8" />}
-                    </TouchableOpacity>
-                  ))}
+
+                <ScrollView 
+                  contentContainerStyle={styles.sidebarList} 
+                  showsVerticalScrollIndicator={false}
+                >
+                  {episodes.map((ep, idx) => {
+                    const isActive = activeEpisodeId === ep.id;
+                    return (
+                      <TouchableOpacity 
+                        key={ep.id} 
+                        style={[
+                          styles.epRow, 
+                          isActive && styles.epRowActive
+                        ]}
+                        onPress={() => { 
+                          onSelectEpisode?.(ep); 
+                          setShowEpisodesOverlay(false); 
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.epRowThumbContainer}>
+                          <Image 
+                            source={{ uri: ep.poster || (playingNow?.poster) || "" }} 
+                            style={styles.epRowThumb} 
+                          />
+                          {isActive ? (
+                            <View style={styles.epRowPlayingOverlay}>
+                              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+                              <View style={styles.playingIndicator}>
+                                <View style={[styles.playingBar, { height: '60%' }]} />
+                                <View style={[styles.playingBar, { height: '100%' }]} />
+                                <View style={[styles.playingBar, { height: '40%' }]} />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.epRowPlayIcon}>
+                              <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.8)" />
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={styles.epRowInfo}>
+                          <Text style={[styles.epRowTitle, isActive && { color: '#818cf8' }]} numberOfLines={2}>
+                            {ep.title}
+                          </Text>
+                          <View style={styles.epRowMeta}>
+                            <Text style={styles.epRowDuration}>{ep.duration || "Episode " + (idx + 1)}</Text>
+                            {isActive && <View style={styles.activeDot} />}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
-              </View>
-            </TouchableOpacity>
+              </ReAnimated.View>
+            </View>
           )}
 
 
@@ -1568,17 +1757,24 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   playBtnInner: {
     marginLeft: 4,
   },
   seekAction: {
     opacity: 0.8,
+  },
+  navAction: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   lockBtnLarge: {
     width: 80,
@@ -1783,6 +1979,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  navButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginBottom: 8,
+  },
+  navTextBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  navBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  navTextBtnPlaceholder: {
+    width: 120,
+  },
   overlayBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -1837,48 +2055,129 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
-  overlayTitle: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
+  // ─── Premium Sidebar Styles ──────────────────────────────────────
+  sidebarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    zIndex: 200,
   },
-  overlayClose: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  sidebarBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sidebarContent: {
+    width: '38%',
+    height: '100%',
+    backgroundColor: 'rgba(10, 10, 15, 0.85)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.1)',
+    paddingTop: 30,
+  },
+  sidebarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  sidebarBrand: {
+    color: '#818cf8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  sidebarTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    width: 200,
+  },
+  sidebarClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  epItem: {
+  sidebarList: {
+    paddingHorizontal: 16,
+    paddingBottom: 60,
+  },
+  epRow: {
     flexDirection: 'row',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  epItemActive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginVertical: 4,
-    borderBottomWidth: 0,
+  epRowActive: {
+    backgroundColor: 'rgba(129, 140, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(129, 140, 248, 0.3)',
   },
-  epThumb: {
-    width: 100,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: '#111',
+  epRowThumbContainer: {
+    width: 120,
+    height: 68,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#1a1a24',
   },
-  epTitle: {
+  epRowThumb: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  epRowPlayingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    height: 16,
+  },
+  playingBar: {
+    width: 3,
+    backgroundColor: '#818cf8',
+    borderRadius: 1,
+  },
+  epRowPlayIcon: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0, // Shown on hover/press in real app, hidden here for clean look
+  },
+  epRowInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  epRowTitle: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
+    lineHeight: 18,
+    marginBottom: 4,
   },
-  epSub: {
-    color: 'rgba(255,255,255,0.4)',
+  epRowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  epRowDuration: {
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 12,
-    marginTop: 2,
+    fontWeight: '600',
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#818cf8',
   },
   relatedCard: {
     width: 120,
@@ -2128,6 +2427,40 @@ const styles = StyleSheet.create({
     fontSize: 7,
     fontWeight: '700',
     marginTop: -1,
+  },
+  bufferedFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+  },
+  offlinePill: {
+    position: 'absolute',
+    top: 100,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 1000,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  offlineText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
 });
 

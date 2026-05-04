@@ -226,13 +226,26 @@ export default function CategoryScreen() {
     clearFilters
   } = useMovies();
 
+  const sub = useSubscription();
   const { 
     favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
     playerMode, setPlayerMode, playerTitle, setPlayerTitle,
     selectedVideoUrl, setSelectedVideoUrl, playerPos, playerSize,
     isPaid, allMoviesFree, setPlayingNow,
-    setPlayingEpisodes, setPlayingEpisodeId
-  } = useSubscription();
+  } = sub;
+  // Hermes-safe property extraction
+  let _safeSetEps: any;
+  let _safeSetEpId: any;
+  try {
+    _safeSetEps = sub.setPlayingEpisodes;
+  } catch (e) {
+    _safeSetEps = undefined;
+  }
+  try {
+    _safeSetEpId = sub.setPlayingEpisodeId;
+  } catch (e) {
+    _safeSetEpId = undefined;
+  }
 
   const DiscoverSkeleton = React.memo(() => {
     return (
@@ -333,19 +346,23 @@ export default function CategoryScreen() {
       
       // If movie has multiple parts, sync them to global playback state
       if ((item as Movie).parts && (item as Movie).parts!.length > 0) {
-        if (setPlayingEpisodes) {
-          setPlayingEpisodes((item as Movie).parts!.map(p => ({
-            title: p.title,
-            url: p.videoUrl || "",
-            id: p.id
-          })));
-        }
-        if (setPlayingEpisodeId) {
-          setPlayingEpisodeId((item as Movie).parts![0].id);
-        }
+        try {
+          if (_safeSetEps) {
+            _safeSetEps((item as Movie).parts!.map(p => ({
+              title: p.title,
+              url: p.videoUrl || "",
+              id: p.id
+            })));
+          }
+        } catch(e) {}
+        try {
+          if (_safeSetEpId) {
+            _safeSetEpId((item as Movie).parts![0].id);
+          }
+        } catch(e) {}
       } else {
-        if (setPlayingEpisodes) setPlayingEpisodes([]);
-        if (setPlayingEpisodeId) setPlayingEpisodeId("");
+        try { if (_safeSetEps) _safeSetEps([]); } catch(e) {}
+        try { if (_safeSetEpId) _safeSetEpId(""); } catch(e) {}
       }
       
       setPlayerMode('full');

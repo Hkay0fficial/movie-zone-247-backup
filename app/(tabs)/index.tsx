@@ -2253,6 +2253,7 @@ export function SeriesPreviewContent({
     movies: MOVIES
   } = useMovies();
   const { profile, user } = useUser();
+  const sub = useSubscription();
   const {
     allMoviesFree,
     subscriptionBundle,
@@ -2266,9 +2267,21 @@ export function SeriesPreviewContent({
     removeDevice,
     deviceLimit,
     setIsPreview,
-    setPlayingEpisodes,
-    setPlayingEpisodeId,
-  } = useSubscription();
+  } = sub;
+
+  // Hermes-safe property extraction
+  let _safeSetEps: any;
+  let _safeSetEpId: any;
+  try {
+    _safeSetEps = sub.setPlayingEpisodes;
+  } catch (e) {
+    _safeSetEps = undefined;
+  }
+  try {
+    _safeSetEpId = sub.setPlayingEpisodeId;
+  } catch (e) {
+    _safeSetEpId = undefined;
+  }
 
   const {
     activeDownloads: ctxActiveDownloads,
@@ -2279,7 +2292,12 @@ export function SeriesPreviewContent({
     resumeDownload,
     deleteDownload,
     getRemainingDownloads,
+    cancelSeriesDownloads,
   } = useDownloads();
+
+  const isSeriesDownloading = useMemo(() => {
+    return episodes.some((ep: any) => ctxActiveDownloads[ep.id]);
+  }, [episodes, ctxActiveDownloads]);
 
   const isPaid = subscriptionBundle !== 'None';
   const scrollRef = useRef<ScrollView>(null);
@@ -2586,8 +2604,8 @@ export function SeriesPreviewContent({
               return;
             }
             if (setIsPreview) setIsPreview(true);
-            if (setPlayingEpisodes && series.episodeList) setPlayingEpisodes(series.episodeList);
-            if (setPlayingEpisodeId) setPlayingEpisodeId(activeEpisode.id);
+            try { if (_safeSetEps && series.episodeList) _safeSetEps(series.episodeList); } catch(e) {}
+            try { if (_safeSetEpId) _safeSetEpId(activeEpisode.id); } catch(e) {}
             if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
@@ -2780,20 +2798,26 @@ export function SeriesPreviewContent({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.relatedTitle}>Episodes</Text>
               <TouchableOpacity 
-                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isSeriesDownloading ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderColor: isSeriesDownloading ? 'rgba(239, 68, 68, 0.4)' : 'transparent', borderWidth: isSeriesDownloading ? StyleSheet.hairlineWidth : 0 }}
                 onPress={() => {
-                  episodes.forEach((ep: any) => {
-                    const isDl = ctxActiveDownloads[ep.id];
-                    const isDownloaded = ctxEpisodeDownloads[ep.id];
-                    if (!isDl && !isDownloaded) {
-                      if (!isPaid) onShowPremium();
-                      else downloadEpisode(series, ep, 'internal');
-                    }
-                  });
+                  if (isSeriesDownloading) {
+                    cancelSeriesDownloads(series.id);
+                  } else {
+                    episodes.forEach((ep: any) => {
+                      const isDl = ctxActiveDownloads[ep.id];
+                      const isDownloaded = ctxEpisodeDownloads[ep.id];
+                      if (!isDl && !isDownloaded) {
+                        if (!isPaid) onShowPremium();
+                        else downloadEpisode(series, ep, 'internal');
+                      }
+                    });
+                  }
                 }}
               >
-                <Ionicons name="download-outline" size={16} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Download All</Text>
+                <Ionicons name={isSeriesDownloading ? "close-circle-outline" : "download-outline"} size={16} color={isSeriesDownloading ? "#ef4444" : "#fff"} />
+                <Text style={{ color: isSeriesDownloading ? "#ef4444" : "#fff", fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                  {isSeriesDownloading ? "CANCEL ALL" : "DL ALL"}
+                </Text>
               </TouchableOpacity>
             </View>
             {episodes.map((ep: any, idx: number) => {
@@ -2807,8 +2831,8 @@ export function SeriesPreviewContent({
                   style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
                     setActiveEpisodeId(ep.id);
-                    if (setPlayingEpisodes && series.episodeList) setPlayingEpisodes(series.episodeList);
-                    if (setPlayingEpisodeId) setPlayingEpisodeId(ep.id);
+                    try { if (_safeSetEps && series.episodeList) _safeSetEps(series.episodeList); } catch(e) {}
+                    try { if (_safeSetEpId) _safeSetEpId(ep.id); } catch(e) {}
                     // Prioritize local downloaded file for offline playback
                     const localUri = ctxEpisodeDownloads[ep.id];
                     if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || ep.videoUrl);
@@ -3886,8 +3910,8 @@ export const MoviePreviewContent = memo(({
         return;
       }
       setActivePartId(nextPartItem.id);
-      if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts);
-      if (setPlayingEpisodeId) setPlayingEpisodeId(nextPartItem.id);
+      try { if (_safeSetEps && movieParts.length > 0) _safeSetEps(movieParts); } catch(e) {}
+      try { if (_safeSetEpId) _safeSetEpId(nextPartItem.id); } catch(e) {}
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads?.[nextPartItem.id];
       setSelectedVideoUrl?.(localUri || nextPartItem.videoUrl);
@@ -4302,8 +4326,8 @@ export const MoviePreviewContent = memo(({
 
                              if (videoUri) {
                                if (setIsPreview) setIsPreview(true);
-                               if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts);
-                               if (setPlayingEpisodeId && activePart) setPlayingEpisodeId(activePart.id);
+                               try { if (_safeSetEps && movieParts.length > 0) _safeSetEps(movieParts); } catch(e) {}
+                               try { if (_safeSetEpId && activePart) _safeSetEpId(activePart.id); } catch(e) {}
                                if (setSelectedVideoUrl) setSelectedVideoUrl(videoUri);
                                if (setPlayerTitle) setPlayerTitle(titleToPlay);
                                if (setPlayingNow) setPlayingNow(movie as Movie);
@@ -6563,6 +6587,7 @@ export default function HomeScreen() {
     });
     return pool;
   }, [liveRows, liveSeries]);
+  const sub = useSubscription();
   const { 
     allMoviesFree, 
     eventMessage, 
@@ -6584,7 +6609,7 @@ export default function HomeScreen() {
     selectedVideoUrl,
     setSelectedVideoUrl,
     setIsPreview
-  } = useSubscription();
+  } = sub;
 
   const { downloadedMovies = [] } = useDownloads() || {};
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
@@ -6772,7 +6797,7 @@ export default function HomeScreen() {
           setPlayerTitle(found.title);
           setSelectedVideoUrl(playItem.videoUrl);
           setPlayingNow(playItem as Movie);
-          if (setPlayingEpisodeId) setPlayingEpisodeId(null);
+          try { if (_safeSetEpId) _safeSetEpId(null); } catch(e) {}
           setPlayerMode('full');
         } else {
           // Open the movie detail alone in the stack to prevent layering

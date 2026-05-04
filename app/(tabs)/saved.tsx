@@ -348,6 +348,7 @@ export default function SeriesScreen() {
   const [appLayout, setAppLayout] = useState<{ quickAccess: any[], sections: any[] }>({ quickAccess: [], sections: [] });
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const sub = useSubscription();
   const { 
     isGuest, 
     allMoviesFree, 
@@ -360,9 +361,21 @@ export default function SeriesScreen() {
     setPlayerTitle,
     selectedVideoUrl,
     setSelectedVideoUrl,
-    setPlayingEpisodes,
-    setPlayingEpisodeId,
-  } = useSubscription();
+  } = sub;
+
+  // Hermes-safe property extraction
+  let _safeSetEps: any;
+  let _safeSetEpId: any;
+  try {
+    _safeSetEps = sub.setPlayingEpisodes;
+  } catch (e) {
+    _safeSetEps = undefined;
+  }
+  try {
+    _safeSetEpId = sub.setPlayingEpisodeId;
+  } catch (e) {
+    _safeSetEpId = undefined;
+  }
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
   const [isOffline, setIsOffline] = useState(false);
@@ -826,10 +839,10 @@ export default function SeriesScreen() {
           playerTitle={playerTitle}
           setActivePartId={(id) => {
             setActivePartId(id);
-            if (setPlayingEpisodeId) setPlayingEpisodeId(id);
+            try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
           }}
           setActiveEpisodes={(eps) => {
-            if (setPlayingEpisodes) setPlayingEpisodes(eps);
+            try { if (_safeSetEps) _safeSetEps(eps); } catch(e) {}
           }}
           isFocused={isFocused}
           appState={appState}
@@ -1572,8 +1585,8 @@ function SeriesPreviewModal({
                 setSelectedVideoUrl(finalUrl);
                 setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
                 setActivePartId(firstEp?.id || '');
-                if (setPlayingEpisodeId) setPlayingEpisodeId(firstEp?.id || '');
-                if (setPlayingEpisodes) setPlayingEpisodes(series.episodeList || []);
+                try { if (_safeSetEpId) _safeSetEpId(firstEp?.id || ''); } catch(e) {}
+                try { if (_safeSetEps) _safeSetEps(series.episodeList || []); } catch(e) {}
                 setPlayerMode('full');
               }}
             >
