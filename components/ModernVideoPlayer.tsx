@@ -1222,6 +1222,7 @@ export default function ModernVideoPlayer({
               </Animated.View>
             )}
           </Animated.View>
+          )}
 
             {/* Interaction Indicators */}
           {isAdjustingBrightness && (
