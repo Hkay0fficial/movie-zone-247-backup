@@ -2302,7 +2302,7 @@ export function SeriesPreviewContent({
     if (!series) return;
     
     // Use the currently selected episode if none passed
-    const targetEp = episode || episodes.find((e: any) => e.id === activeEpisodeId) || episodes[0];
+    const targetEp = episode || episodes.find((e: any) => e.id === activeEpisodeId) || (episodes && episodes.length > 0 ? episodes[0] : null);
     if (!targetEp) return;
 
     // If actively downloading this episode, toggle pause/resume
@@ -2389,7 +2389,7 @@ export function SeriesPreviewContent({
   // Sync activeEpisodeId with the first episode if not set
   useEffect(() => {
     if (episodes.length > 0 && !activeEpisodeId) {
-      setActiveEpisodeId(episodes[0].id);
+      if (episodes && episodes.length > 0) setActiveEpisodeId(episodes[0].id);
     }
   }, [episodes, activeEpisodeId]);
 
@@ -2458,7 +2458,7 @@ export function SeriesPreviewContent({
     });
   }, [series, previewVideoUrl, selectedSeason]);
 
-  const activeEpisode = useMemo(() => episodes.find((e) => e.id === activeEpisodeId) || episodes[0], [episodes, activeEpisodeId]);
+  const activeEpisode = useMemo(() => episodes.find((e) => e.id === activeEpisodeId) || (episodes && episodes.length > 0 ? episodes[0] : null), [episodes, activeEpisodeId]);
 
   const activeDl = ctxActiveDownloads[activeEpisode?.id] || 
                    ctxActiveDownloads[series.id] || 

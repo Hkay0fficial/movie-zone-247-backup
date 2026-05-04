@@ -92,7 +92,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
             <Text style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>No transactions yet</Text>
           </View>
         ) : (
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }} contentContainerStyle={{ paddingBottom: 40 }}>
             {billingHistory.map((item) => (
               <View key={item.id} style={[styles.historyCard, { borderColor: 'rgba(255,255,255,0.08)', borderWidth: StyleSheet.hairlineWidth }]}>
                 <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
@@ -423,6 +423,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
               </TouchableOpacity>
             ))}
           </View>
+          <View style={{ height: 40 }} />
         </>
       )}
     </>

@@ -1560,7 +1560,7 @@ function SeriesPreviewModal({
             <TouchableOpacity 
               activeOpacity={0.9}
               onPress={() => {
-                const firstEp = episodes[0];
+                const firstEp = episodes && episodes.length > 0 ? episodes[0] : null;
                 // Prioritize actual content (downloaded or stream) over preview teaser
                 const contentUrl = firstEp ? (episodeDownloads[firstEp.id] || firstEp.videoUrl) : undefined;
                 const finalUrl = contentUrl || previewVideoUrl;

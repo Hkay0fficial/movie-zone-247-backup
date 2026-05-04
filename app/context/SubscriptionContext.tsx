@@ -69,7 +69,50 @@ interface SubscriptionContextType {
   availablePlans: Plan[];
 }
 
-const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
+const SubscriptionContext = createContext<SubscriptionContextType>({
+  subscriptionBundle: 'None',
+  subscriptionExpiresAt: null,
+  setSubscriptionBundle: () => {},
+  isGuest: true,
+  isPaid: false,
+  paymentMethod: '',
+  allMoviesFree: false,
+  eventMessage: '',
+  favorites: [],
+  toggleFavorite: () => {},
+  recordTrialUsage: async () => {},
+  isDeviceBlocked: false,
+  activeDeviceIds: [],
+  deviceId: null,
+  removeDevice: async () => {},
+  deviceLimit: 1,
+  customExternalLimit: 0,
+  minAppVersion: '',
+  latestVersion: '',
+  latestBuild: '',
+  forceUpdate: false,
+  updateMessage: '',
+  playingNow: null,
+  setPlayingNow: () => {},
+  playerMode: 'closed',
+  setPlayerMode: () => {},
+  playerTitle: '',
+  setPlayerTitle: () => {},
+  selectedVideoUrl: '',
+  setSelectedVideoUrl: () => {},
+  playerPos: new Animated.ValueXY({ x: 0, y: 0 }),
+  playerSize: new Animated.Value(SCREEN_W),
+  isPreview: false,
+  setIsPreview: () => {},
+  playingEpisodeId: null,
+  setPlayingEpisodeId: () => {},
+  playingEpisodes: [],
+  setPlayingEpisodes: () => {},
+  activeDevicesMeta: {},
+  isSubscribed: false,
+  remainingDays: 0,
+  availablePlans: [],
+});
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [subscriptionBundle, setSubscriptionBundle] = useState('None');
@@ -596,8 +639,4 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
-export const useSubscription = () => {
-  const context = useContext(SubscriptionContext);
-  if (context === undefined) throw new Error('useSubscription must be used within a SubscriptionProvider');
-  return context;
-};
+export const useSubscription = () => useContext(SubscriptionContext);
