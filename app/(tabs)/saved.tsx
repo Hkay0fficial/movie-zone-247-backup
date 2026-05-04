@@ -359,7 +359,9 @@ export default function SeriesScreen() {
     playerTitle,
     setPlayerTitle,
     selectedVideoUrl,
-    setSelectedVideoUrl
+    setSelectedVideoUrl,
+    setPlayingEpisodes,
+    setPlayingEpisodeId,
   } = useSubscription();
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
@@ -417,7 +419,6 @@ export default function SeriesScreen() {
   } | null>(null);
 
   const [activePartId, setActivePartId] = useState("");
-  const [activeEpisodes, setActiveEpisodes] = useState<any[]>([]);
   const [selectedSeason, setSelectedSeason] = useState(1);
 
 
@@ -823,8 +824,13 @@ export default function SeriesScreen() {
           setPlayerTitle={setPlayerTitle}
           selectedVideoUrl={selectedVideoUrl}
           playerTitle={playerTitle}
-          setActivePartId={setActivePartId}
-          setActiveEpisodes={setActiveEpisodes}
+          setActivePartId={(id) => {
+            setActivePartId(id);
+            if (setPlayingEpisodeId) setPlayingEpisodeId(id);
+          }}
+          setActiveEpisodes={(eps) => {
+            if (setPlayingEpisodes) setPlayingEpisodes(eps);
+          }}
           isFocused={isFocused}
           appState={appState}
         />
@@ -1566,7 +1572,8 @@ function SeriesPreviewModal({
                 setSelectedVideoUrl(finalUrl);
                 setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
                 setActivePartId(firstEp?.id || '');
-                setActiveEpisodes(series.episodeList || []);
+                if (setPlayingEpisodeId) setPlayingEpisodeId(firstEp?.id || '');
+                if (setPlayingEpisodes) setPlayingEpisodes(series.episodeList || []);
                 setPlayerMode('full');
               }}
             >

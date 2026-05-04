@@ -195,6 +195,7 @@ export default function ModernVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showNextSuggestion, setShowNextSuggestion] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const playbackSpeedRef = useRef(1.0);
   const volumeSliderWidthRef = useRef(90);
@@ -733,7 +734,7 @@ export default function ModernVideoPlayer({
       if (!bufferTimeoutRef.current) {
         bufferTimeoutRef.current = setTimeout(() => {
           setIsBufferingDelayed(true);
-        }, 1500); // 1.5s delay before showing overlay
+        }, 3000); // 3.0s delay before showing overlay (optimized to prevent flickering)
       }
     } else {
       if (bufferTimeoutRef.current) {
@@ -757,6 +758,19 @@ export default function ModernVideoPlayer({
 
     if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
       onNext();
+    }
+
+    // --- Suggest Next Part Logic ---
+    if (s.isLoaded && s.durationMillis && hasNext) {
+      const remaining = s.durationMillis - s.positionMillis;
+      const isNearEnd = remaining < 30000 && remaining > 0; // Last 30 seconds
+      if (isNearEnd && !showNextSuggestion) {
+        setShowNextSuggestion(true);
+      } else if (!isNearEnd && showNextSuggestion) {
+        setShowNextSuggestion(false);
+      }
+    } else if (showNextSuggestion) {
+      setShowNextSuggestion(false);
     }
 
     // Error handling
@@ -865,24 +879,40 @@ export default function ModernVideoPlayer({
                     {seriesVj && <Text style={styles.playerSubTitle}>{seriesVj}</Text>}
                   </View>
                   <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={() => setShowTimerOptions(true)} style={[styles.iconAction, { alignItems: 'center' }]}>
-                      <Ionicons 
-                        name="alarm-outline" 
-                        size={22} 
-                        color={sleepTimerMs > 0 ? '#818cf8' : '#fff'} 
-                      />
-                      {sleepTimerMs > 0 && (
-                        <View style={styles.timerBadge}>
-                          <Text style={styles.timerBadgeText}>
-                            {Math.floor(sleepTimerMs / 60000) > 0
-                              ? `${Math.floor(sleepTimerMs / 60000)}m`
-                              : `${Math.floor(sleepTimerMs / 1000)}s`
-                            }
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                    {/* Timer & Branding Group */}
+                    <View style={styles.headerActionsGroup}>
+                      <TouchableOpacity onPress={() => setShowTimerOptions(true)} style={styles.timerAction}>
+                        <Ionicons 
+                          name="alarm-outline" 
+                          size={22} 
+                          color={sleepTimerMs > 0 ? '#818cf8' : '#fff'} 
+                        />
+                        {sleepTimerMs > 0 && (
+                          <View style={styles.timerBadge}>
+                            <Text style={styles.timerBadgeText}>
+                              {Math.floor(sleepTimerMs / 60000) > 0
+                                ? `${Math.floor(sleepTimerMs / 60000)}m`
+                                : `${Math.floor(sleepTimerMs / 1000)}s`
+                              }
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      
+                      <View style={styles.headerDivider} />
 
+                      <View style={styles.brandingGroup}>
+                         <Image 
+                           source={require("@/assets/images/movie_zone_logo_new.png")} 
+                           style={styles.headerLogo} 
+                           resizeMode="contain"
+                         />
+                         <View style={styles.brandingTextCol}>
+                           <Text style={styles.brandingBrand}>TMZ</Text>
+                           <Text style={styles.brandingTag}>24/7</Text>
+                         </View>
+                      </View>
+                    </View>
                   </View>
                 </View>
               )}
@@ -906,6 +936,8 @@ export default function ModernVideoPlayer({
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleSeek(10000)} style={styles.seekAction}>
                       <MaterialIcons name="forward-10" size={32} color="#fff" />
+                    </TouchableOpacity>
+
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -935,6 +967,13 @@ export default function ModernVideoPlayer({
                 {/* Glowing Progress Bar */}
                 {!isLocked && (
                   <View style={styles.progressArea}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+                       <Image 
+                         source={require("@/assets/images/movie_zone_logo_new.png")} 
+                         style={{ width: 18, height: 18, borderRadius: 4, opacity: 0.8 }} 
+                         resizeMode="contain"
+                       />
+                    </View>
                     <Text style={styles.timeText}>{formatTime(isScrubbing ? scrubPosition : (status.isLoaded ? status.positionMillis : 0))}</Text>
                     <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 15 }}>
                       <View pointerEvents="none" style={{ justifyContent: 'center' }}>
@@ -1073,7 +1112,7 @@ export default function ModernVideoPlayer({
                           style={styles.circleBtn}
                         >
                           <MaterialCommunityIcons 
-                            name="google-cast" 
+                            name="cast" 
                             size={24} 
                             color={castSession ? '#818cf8' : '#fff'} 
                           />
@@ -1127,10 +1166,65 @@ export default function ModernVideoPlayer({
                 )}
               </View>
 
-            </Animated.View>
-          )}
+            {/* Next Episode Suggestion Overlay */}
+            {showNextSuggestion && !isLocked && (
+              <Animated.View style={styles.nextSuggestionOverlay}>
+                <BlurView intensity={90} tint="dark" style={styles.nextSuggestionBlur}>
+                  <View style={styles.nextSuggestionHeader}>
+                    <View style={styles.nextSuggestionBranding}>
+                      <Image 
+                        source={require("@/assets/images/movie_zone_logo_new.png")} 
+                        style={styles.nextSuggestionLogo} 
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.nextSuggestionTitle}>UP NEXT</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setShowNextSuggestion(false)} style={styles.nextSuggestionClose}>
+                      <Ionicons name="close" size={18} color="rgba(255,255,255,0.4)" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.nextSuggestionContent}>
+                    <View style={styles.nextSuggestionInfo}>
+                       <Text style={styles.nextEpisodeName} numberOfLines={1}>
+                         {nextPartName || "Next Part"}
+                       </Text>
+                       <View style={styles.nextEpisodeCountdownRow}>
+                         <View style={styles.countdownPulseDot} />
+                         <Text style={styles.nextEpisodeCountdown}>
+                           Starting in {status.isLoaded && status.durationMillis ? Math.ceil((status.durationMillis - status.positionMillis) / 1000) : 0}s
+                         </Text>
+                       </View>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={styles.nextPlayBtn} 
+                      activeOpacity={0.8}
+                      onPress={() => { 
+                        setShowNextSuggestion(false); 
+                        if (onNext) onNext(); 
+                      }}
+                    >
+                      <LinearGradient
+                        colors={["#ef4444", "#dc2626"]}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
+                    </TouchableOpacity>
+                  </View>
 
-          {/* Interaction Indicators */}
+                  <TouchableOpacity 
+                    style={styles.nextCancelBtn}
+                    onPress={() => setShowNextSuggestion(false)}
+                  >
+                    <Text style={styles.nextCancelText}>CANCEL</Text>
+                  </TouchableOpacity>
+                </BlurView>
+              </Animated.View>
+            )}
+          </Animated.View>
+
+            {/* Interaction Indicators */}
           {isAdjustingBrightness && (
             <View style={styles.verticalIndicatorLeft}>
                <BlurView intensity={60} tint="dark" style={styles.indicatorBg} />
@@ -1889,6 +1983,151 @@ const styles = StyleSheet.create({
   airPlayNativeBtn: {
     width: 24,
     height: 24,
+  },
+  nextSuggestionOverlay: {
+    position: 'absolute',
+    bottom: 140,
+    right: 24,
+    width: 290,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.6,
+    shadowRadius: 25,
+  },
+  nextSuggestionBlur: {
+    padding: 18,
+  },
+  nextSuggestionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  nextSuggestionBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nextSuggestionLogo: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+  },
+  nextSuggestionTitle: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  nextSuggestionClose: {
+    padding: 4,
+  },
+  nextSuggestionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  nextSuggestionInfo: {
+    flex: 1,
+  },
+  nextEpisodeName: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  nextEpisodeCountdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  countdownPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#6366f1',
+  },
+  nextEpisodeCountdown: {
+    color: '#818cf8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  nextPlayBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+    elevation: 8,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+  },
+  nextCancelBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+  },
+  nextCancelText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  // ── Header Actions ──────────────────────────────────────────────
+  headerActionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    gap: 12,
+  },
+  timerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  brandingGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+  },
+  brandingTextCol: {
+    flexDirection: 'column',
+  },
+  brandingBrand: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    lineHeight: 10,
+  },
+  brandingTag: {
+    color: '#818cf8',
+    fontSize: 7,
+    fontWeight: '700',
+    marginTop: -1,
   },
 });
 

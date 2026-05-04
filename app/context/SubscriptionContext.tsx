@@ -61,6 +61,8 @@ interface SubscriptionContextType {
   setIsPreview: (v: boolean) => void;
   playingEpisodeId: string | null;
   setPlayingEpisodeId: (id: string | null) => void;
+  playingEpisodes: any[];
+  setPlayingEpisodes: (eps: any[]) => void;
   activeDevicesMeta: Record<string, any>;
   isSubscribed: boolean;
   remainingDays: number;
@@ -91,6 +93,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [paymentMethod, setPaymentMethod] = useState('');
   const [favorites, setFavorites] = useState<(Movie | Series)[]>([]);
   const [playingEpisodeId, setPlayingEpisodeId] = useState<string | null>(null);
+  const [playingEpisodes, setPlayingEpisodes] = useState<any[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
@@ -582,6 +585,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsPreview,
       playingEpisodeId,
       setPlayingEpisodeId,
+      playingEpisodes,
+      setPlayingEpisodes,
       isSubscribed,
       remainingDays,
       availablePlans,

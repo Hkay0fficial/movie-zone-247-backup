@@ -41,6 +41,9 @@ function ModernVideoPlayerWrapper() {
     playerPos, playerSize, isPreview,
     setIsPreview, playingEpisodeId,
     setPlayingEpisodeId,
+    playingEpisodes,
+    setPlayingEpisodes,
+    setSelectedVideoUrl,
   } = useSubscription();
   const router = useRouter();
 
@@ -56,13 +59,35 @@ function ModernVideoPlayerWrapper() {
       playerSize={playerSize}
       isPreview={isPreview}
       movieId={playingNow?.id}
-      episodeId={playingEpisodeId || undefined}
+      episodes={playingEpisodes}
+      activeEpisodeId={playingEpisodeId || undefined}
+      onSelectEpisode={(ep) => {
+        setPlayingEpisodeId(ep.id);
+        setSelectedVideoUrl(ep.videoUrl);
+      }}
+      hasNext={!!playingEpisodes && !!playingEpisodeId && playingEpisodes.findIndex(e => e.id === playingEpisodeId) < playingEpisodes.length - 1}
+      nextPartName={(() => {
+        const idx = playingEpisodes.findIndex(e => e.id === playingEpisodeId);
+        if (idx !== -1 && idx < playingEpisodes.length - 1) {
+          return playingEpisodes[idx + 1].title;
+        }
+        return undefined;
+      })()}
+      onNext={() => {
+        const idx = playingEpisodes.findIndex(e => e.id === playingEpisodeId);
+        if (idx !== -1 && idx < playingEpisodes.length - 1) {
+          const nextEp = playingEpisodes[idx + 1];
+          setPlayingEpisodeId(nextEp.id);
+          setSelectedVideoUrl(nextEp.videoUrl);
+        }
+      }}
       onClose={() => {
         // Detect if we are playing a local download
         const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
         setPlayerMode('closed');
         setPlayingNow(null);
         setPlayingEpisodeId(null);
+        setPlayingEpisodes([]);
         setIsPreview(false);
 
         if (isLocal && playerMode === 'full') {

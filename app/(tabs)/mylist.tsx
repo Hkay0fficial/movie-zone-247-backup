@@ -1,16 +1,26 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated, Dimensions, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated, Dimensions, Platform, Alert, DeviceEventEmitter } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function MyListScreen() {
   const insets = useSafeAreaInsets();
-  const { favorites, toggleFavorite, setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
+  const router = useRouter();
+  const { 
+    favorites, 
+    toggleFavorite, 
+    setPlayingNow, 
+    setPlayerMode, 
+    setPlayerTitle, 
+    setSelectedVideoUrl,
+    setPlayingEpisodes,
+    setPlayingEpisodeId
+  } = useSubscription();
 
   const shortenGenre = (g: string) => {
     if (!g) return '';
@@ -44,10 +54,35 @@ export default function MyListScreen() {
                 style={styles.card}
                 activeOpacity={0.85}
                 onPress={() => {
-                  setPlayerTitle(m.title);
-                  setSelectedVideoUrl(m.videoUrl);
-                  setPlayingNow(m as any);
-                  setPlayerMode('full');
+                  const isSeries = "seasons" in m || (m as any).type === 'Series' || (m as any).isMiniSeries;
+                  
+                  if (isSeries) {
+                    router.push(`/(tabs)/saved?seriesId=${m.id}`);
+                  } else {
+                    setPlayerTitle(m.title);
+                    setSelectedVideoUrl(m.videoUrl);
+                    setPlayingNow(m as any);
+                    
+                    // Handle multi-part movies
+                    const movie = m as any;
+                    if (movie.parts && movie.parts.length > 0) {
+                      if (setPlayingEpisodes) {
+                        setPlayingEpisodes(movie.parts.map((p: any) => ({
+                          title: p.title,
+                          url: p.videoUrl || "",
+                          id: p.id
+                        })));
+                      }
+                      if (setPlayingEpisodeId) {
+                        setPlayingEpisodeId(movie.parts[0].id);
+                      }
+                    } else {
+                      if (setPlayingEpisodes) setPlayingEpisodes([]);
+                      if (setPlayingEpisodeId) setPlayingEpisodeId("");
+                    }
+                    
+                    setPlayerMode('full');
+                  }
                 }}
               >
                 <Image source={{ uri: m.poster }} style={styles.poster} />

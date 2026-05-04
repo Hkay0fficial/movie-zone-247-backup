@@ -2266,6 +2266,8 @@ export function SeriesPreviewContent({
     removeDevice,
     deviceLimit,
     setIsPreview,
+    setPlayingEpisodes,
+    setPlayingEpisodeId,
   } = useSubscription();
 
   const {
@@ -2584,6 +2586,8 @@ export function SeriesPreviewContent({
               return;
             }
             if (setIsPreview) setIsPreview(true);
+            if (setPlayingEpisodes && series.episodeList) setPlayingEpisodes(series.episodeList);
+            if (setPlayingEpisodeId) setPlayingEpisodeId(activeEpisode.id);
             if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
             if (setPlayerMode) setPlayerMode('full');
@@ -2803,6 +2807,7 @@ export function SeriesPreviewContent({
                   style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
                     setActiveEpisodeId(ep.id);
+                    if (setPlayingEpisodes && series.episodeList) setPlayingEpisodes(series.episodeList);
                     if (setPlayingEpisodeId) setPlayingEpisodeId(ep.id);
                     // Prioritize local downloaded file for offline playback
                     const localUri = ctxEpisodeDownloads[ep.id];
@@ -3172,7 +3177,10 @@ export const MoviePreviewContent = memo(({
   isFocused,
   appState,
   hideSearchBy,
-  isTop
+  isTop,
+  setIsPreview,
+  setPlayingEpisodes,
+  setPlayingEpisodeId
 }: { 
   movie: Movie | Series | null;
   onClose: () => void;
@@ -3193,6 +3201,9 @@ export const MoviePreviewContent = memo(({
   appState: string;
   hideSearchBy?: boolean;
   isTop?: boolean;
+  setIsPreview?: (v: boolean) => void;
+  setPlayingEpisodes?: (e: any[]) => void;
+  setPlayingEpisodeId?: (id: string) => void;
 }) => {
   const [isRenderReady, setIsRenderReady] = useState(false);
   useEffect(() => {
@@ -3236,7 +3247,6 @@ export const MoviePreviewContent = memo(({
     activeDeviceIds,
     removeDevice,
     deviceLimit,
-    setIsPreview,
   } = useSubscription();
 
   const {
@@ -3876,6 +3886,8 @@ export const MoviePreviewContent = memo(({
         return;
       }
       setActivePartId(nextPartItem.id);
+      if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts);
+      if (setPlayingEpisodeId) setPlayingEpisodeId(nextPartItem.id);
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads?.[nextPartItem.id];
       setSelectedVideoUrl?.(localUri || nextPartItem.videoUrl);
@@ -4288,13 +4300,15 @@ export const MoviePreviewContent = memo(({
                           const videoUri = currentPlayerUrl;
                           const titleToPlay = currentPlayerTitle;
 
-                          if (videoUri) {
-                            setIsPreview?.(true);
-                            setSelectedVideoUrl?.(videoUri);
-                            setPlayerTitle?.(titleToPlay);
-                            setPlayingNow?.(movie as Movie);
-                            setPlayerMode?.('full');
-                          }
+                             if (videoUri) {
+                               if (setIsPreview) setIsPreview(true);
+                               if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts);
+                               if (setPlayingEpisodeId && activePart) setPlayingEpisodeId(activePart.id);
+                               if (setSelectedVideoUrl) setSelectedVideoUrl(videoUri);
+                               if (setPlayerTitle) setPlayerTitle(titleToPlay);
+                               if (setPlayingNow) setPlayingNow(movie as Movie);
+                               if (setPlayerMode) setPlayerMode('full');
+                             }
                         }}
                       >
                         <BlurView

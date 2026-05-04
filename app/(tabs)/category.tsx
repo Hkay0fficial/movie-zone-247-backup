@@ -230,7 +230,8 @@ export default function CategoryScreen() {
     favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
     playerMode, setPlayerMode, playerTitle, setPlayerTitle,
     selectedVideoUrl, setSelectedVideoUrl, playerPos, playerSize,
-    isPaid, allMoviesFree, setPlayingNow
+    isPaid, allMoviesFree, setPlayingNow,
+    setPlayingEpisodes, setPlayingEpisodeId
   } = useSubscription();
 
   const DiscoverSkeleton = React.memo(() => {
@@ -329,6 +330,24 @@ export default function CategoryScreen() {
       setPlayerTitle(item.title);
       setSelectedVideoUrl((item as Movie).videoUrl);
       setPlayingNow(item as Movie);
+      
+      // If movie has multiple parts, sync them to global playback state
+      if ((item as Movie).parts && (item as Movie).parts!.length > 0) {
+        if (setPlayingEpisodes) {
+          setPlayingEpisodes((item as Movie).parts!.map(p => ({
+            title: p.title,
+            url: p.videoUrl || "",
+            id: p.id
+          })));
+        }
+        if (setPlayingEpisodeId) {
+          setPlayingEpisodeId((item as Movie).parts![0].id);
+        }
+      } else {
+        if (setPlayingEpisodes) setPlayingEpisodes([]);
+        if (setPlayingEpisodeId) setPlayingEpisodeId("");
+      }
+      
       setPlayerMode('full');
     } else {
       // Show preview modal for series
