@@ -938,7 +938,6 @@ export default function ModernVideoPlayer({
                       <MaterialIcons name="forward-10" size={32} color="#fff" />
                     </TouchableOpacity>
 
-                    </TouchableOpacity>
                   </View>
                 ) : (
                   <Animated.View style={{ transform: [{ scale: lockPulseAnim }] }}>
