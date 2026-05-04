@@ -140,14 +140,20 @@ export default function ModernVideoPlayer({
   const scrubbingTimeout = useRef<any>(null);
   const hidingTimeoutsRef = useRef<any[]>([]);
 
+  const formatTime = (ms: number) => {
+    if (!ms || ms < 0) return "0:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
   const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
     if (Platform.OS !== 'android') return;
 
-    // Clear any pending hiding attempts immediately if we want to show it
-    if (visibility === 'visible') {
-      hidingTimeoutsRef.current.forEach(t => clearTimeout(t));
-      hidingTimeoutsRef.current = [];
-    }
+    // Clear any pending hiding attempts immediately
+    hidingTimeoutsRef.current.forEach(t => clearTimeout(t));
+    hidingTimeoutsRef.current = [];
 
     try {
       if (visibility === 'hidden') {
@@ -156,37 +162,15 @@ export default function ModernVideoPlayer({
         
         const t1 = setTimeout(async () => {
           await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
         }, 300);
 
-        const t2 = setTimeout(async () => {
-          await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-        }, 1000);
-
-        hidingTimeoutsRef.current.push(t1, t2);
+        hidingTimeoutsRef.current.push(t1);
       } else {
-        // Atomic Transition: Shift behavior first
         await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
         await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-        
-        // Transparency Lock Burst: Ensuring the OS doesn't force a solid background
-        const restorationInterval = setInterval(async () => {
-          await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-          await NavigationBar.setButtonStyleAsync('light').catch(() => {});
-          StatusBar.setHidden(false);
-        }, 300);
-
-        // Kill the lock after 2 seconds
-        setTimeout(() => {
-          clearInterval(restorationInterval);
-        }, 2100);
-
-        setTimeout(async () => {
-          await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-          await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
-          await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-        }, 100);
+        await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+        await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+        StatusBar.setHidden(false);
       }
     } catch (e) {
       console.warn("Navigation Bar Error:", e);
@@ -330,7 +314,7 @@ export default function ModernVideoPlayer({
       };
       
       forceHide();
-      hideInterval = setInterval(forceHide, 2500); // Optimized from 500ms to 2500ms to reduce CPU load
+      hideInterval = setInterval(forceHide, 5000); // Increased interval to 5s to reduce CPU load while still ensuring immersive mode
     }
 
     return () => { 
@@ -740,13 +724,48 @@ export default function ModernVideoPlayer({
   ).current;
 
   // Formatting helpers
-  const formatTime = (ms: number) => {
-    if (!ms || ms < 0) return "0:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
+  const onPlaybackStatusUpdate = React.useCallback((s: AVPlaybackStatus) => {
+    setStatus(s);
+    statusRef.current = s;
+
+    // --- Buffering Delay Logic ---
+    if (s.isLoaded && s.isBuffering) {
+      if (!bufferTimeoutRef.current) {
+        bufferTimeoutRef.current = setTimeout(() => {
+          setIsBufferingDelayed(true);
+        }, 1500); // 1.5s delay before showing overlay
+      }
+    } else {
+      if (bufferTimeoutRef.current) {
+        clearTimeout(bufferTimeoutRef.current);
+        bufferTimeoutRef.current = null;
+      }
+      setIsBufferingDelayed(false);
+    }
+
+    // Track AirPlay/external playback state
+    if (s.isLoaded && Platform.OS === 'ios') {
+      const isExternal = !!(s as any).isExternalPlaybackActive;
+      setIsAirPlaying(isExternal);
+    }
+
+    // 40-second cutoff for previews (all users as requested)
+    if (isPreview && s.isLoaded && s.positionMillis >= 40000) {
+      videoRef.current?.pauseAsync();
+      return;
+    }
+
+    if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
+      onNext();
+    }
+
+    // Error handling
+    if (!s.isLoaded && (s as any).error) {
+      setError((s as any).error || "An error occurred while loading the video.");
+    } else if (s.isLoaded) {
+      setError(null);
+    }
+  }, [isPreview, hasNext, onNext]);
 
   if (playerMode === 'closed') return null;
   const isMini = false; // Forced full-screen in-app as per user request
@@ -785,48 +804,16 @@ export default function ModernVideoPlayer({
           isMuted={isMuted}
           volume={isMuted ? 0 : currentVolume}
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
-          onPlaybackStatusUpdate={s => {
-            setStatus(s);
-            statusRef.current = s;
-
-            // --- Buffering Delay Logic ---
-            if (s.isLoaded && s.isBuffering) {
-              if (!bufferTimeoutRef.current) {
-                bufferTimeoutRef.current = setTimeout(() => {
-                  setIsBufferingDelayed(true);
-                }, 1500); // 1.5s delay before showing overlay
-              }
-            } else {
-              if (bufferTimeoutRef.current) {
-                clearTimeout(bufferTimeoutRef.current);
-                bufferTimeoutRef.current = null;
-              }
-              setIsBufferingDelayed(false);
+          progressUpdateIntervalMillis={1000} // Reduce re-render frequency for better performance
+          {...(Platform.OS === 'android' ? {
+            bufferConfig: {
+              minBufferMs: 15000,
+              maxBufferMs: 50000,
+              bufferForPlaybackMs: 2500,
+              bufferForPlaybackAfterRebufferMs: 5000,
             }
-
-            // Track AirPlay/external playback state
-            if (s.isLoaded && Platform.OS === 'ios') {
-              const isExternal = !!(s as any).isExternalPlaybackActive;
-              setIsAirPlaying(isExternal);
-            }
-
-            // 40-second cutoff for previews (all users as requested)
-            if (isPreview && s.isLoaded && s.positionMillis >= 40000) {
-              videoRef.current?.pauseAsync();
-              return;
-            }
-
-            if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
-              onNext();
-            }
-
-            // Error handling
-            if (!s.isLoaded && (s as any).error) {
-              setError((s as any).error || "An error occurred while loading the video.");
-            } else if (s.isLoaded) {
-              setError(null);
-            }
-          }}
+          } : {})}
+          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
         />
         
         {/* Error UI */}
@@ -1363,8 +1350,7 @@ export default function ModernVideoPlayer({
             elevation: 1000,
             opacity: fullPlayerAnim,
             transform: [
-              { scale: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
-              { rotate: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: ['-1deg', '0deg'] }) }
+              { scale: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
             ]
           }
         ]}

@@ -6576,6 +6576,40 @@ export default function HomeScreen() {
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
+  const navigationStackRef = useRef(navigationStack);
+  const playerModeRef = useRef(playerMode);
+
+  useEffect(() => {
+    navigationStackRef.current = navigationStack;
+  }, [navigationStack]);
+
+  useEffect(() => {
+    playerModeRef.current = playerMode;
+  }, [playerMode]);
+
+  useEffect(() => {
+    // Stable Back Handler: Registered once to avoid race conditions with state updates
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // 1. If player is active in full screen, close it first
+      if (playerModeRef.current === 'full') {
+        setPlayerMode('closed');
+        setPlayingNow(null);
+        setIsPreview(false);
+        return true;
+      }
+      
+      // 2. If we have a navigation stack (details, search results, etc), go back one level
+      if (navigationStackRef.current.length > 0) {
+        setNavigationStack(prev => prev.slice(0, -1));
+        return true;
+      }
+      
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, []);
+
   const prevStackLength = useRef(0);
   useEffect(() => {
     if (prevStackLength.current > 0 && navigationStack.length === 0) {
@@ -6877,18 +6911,6 @@ export default function HomeScreen() {
       },
     );
 
-    // Enhanced Back Handler: Prioritize closing the player
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (playerMode === 'full') {
-        setPlayerMode('closed');
-        return true;
-      }
-      if (navigationStack.length > 0) {
-        setNavigationStack(prev => prev.slice(0, -1));
-        return true;
-      }
-      return false;
-    });
 
     const sectionSub = DeviceEventEmitter.addListener(
       "sectionSelected",
@@ -6909,9 +6931,8 @@ export default function HomeScreen() {
       sub.remove();
       movieSub.remove();
       sectionSub.remove();
-      backHandler.remove();
     };
-  }, [playerMode, navigationStack.length]);
+  }, [navigationStack.length]); // Removed playerMode and backHandler from here
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

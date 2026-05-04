@@ -216,13 +216,22 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const downloadEpisode = (series: Series, episode: any, mode: 'internal' | 'external') => {
     if (!episode || !episode.id || isEpisodeDownloaded(episode.id)) return;
     const url = getStreamUrl(episode) || episode.videoUrl || '';
+    
+    console.log('[DownloadContext] downloadEpisode:', {
+      series: series.title,
+      episode: episode.title,
+      url,
+      seriesPreviewUrl: series.previewUrl
+    });
+
     if (!url) {
       Alert.alert('Coming Soon', 'This episode is not available for download yet. Stay tuned!');
       return;
     }
 
-    // Strict Validation: Prevent downloading the preview as an episode
-    if (series.previewUrl && url === series.previewUrl) {
+    // Strict Validation: Prevent downloading if it's explicitly a preview link
+    const isExplicitPreview = url.toLowerCase().includes('/preview/') || url.toLowerCase().includes('preview.mp4');
+    if (series.previewUrl && url === series.previewUrl && isExplicitPreview) {
       Alert.alert('Content Unavailable', 'This episode is currently only available as a preview and cannot be downloaded yet.');
       return;
     }
@@ -245,10 +254,19 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external') => {
     if (!movie.id) return;
     const url = getStreamUrl(movie) || (movie as any).videoUrl || '';
+    
+    console.log('[DownloadContext] downloadMovie:', {
+      title: movie.title,
+      url,
+      previewUrl: (movie as any).previewUrl
+    });
+
     if (!url) { Alert.alert('Coming Soon', 'This movie is not available for download yet. Stay tuned!'); return; }
     
-    // Strict Validation: Prevent downloading the preview as full content
-    if ((movie as any).previewUrl && url === (movie as any).previewUrl) {
+    // Validation: Only block if it's explicitly a preview URL (contains "preview")
+    // If the URLs just happen to be equal (e.g. both resolve to same HLS playlist), we allow it
+    const isExplicitPreview = url.toLowerCase().includes('/preview/') || url.toLowerCase().includes('preview.mp4');
+    if ((movie as any).previewUrl && url === (movie as any).previewUrl && isExplicitPreview) {
       Alert.alert('Content Unavailable', 'This content is currently only available as a preview and cannot be downloaded yet.');
       return;
     }

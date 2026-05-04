@@ -199,7 +199,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Payment & Authentication</Text>
-                
+
                 {paymentMethod.toLowerCase().includes('admin') || paymentMethod.toLowerCase().includes('gift') ? (
                   <View style={{ marginTop: 10, alignSelf: 'flex-start' }}>
                     <View style={{
@@ -259,22 +259,22 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                           }}>
                             ADMINISTRATIVE GRANT
                           </Text>
-                          <View style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
+                          <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
                             marginTop: -1,
-                            opacity: 0.8 
+                            opacity: 0.8
                           }}>
-                            <View style={{ 
-                              width: 3, 
-                              height: 3, 
-                              borderRadius: 1.5, 
+                            <View style={{
+                              width: 3,
+                              height: 3,
+                              borderRadius: 1.5,
                               backgroundColor: 'rgba(245, 158, 11, 0.6)',
-                              marginRight: 4 
+                              marginRight: 4
                             }} />
-                            <Text style={{ 
-                              color: 'rgba(245, 158, 11, 0.9)', 
-                              fontSize: 9, 
+                            <Text style={{
+                              color: 'rgba(245, 158, 11, 0.9)',
+                              fontSize: 9,
                               fontWeight: '800',
                               letterSpacing: 0.5,
                               textTransform: 'uppercase'
@@ -288,10 +288,10 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                   </View>
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <Ionicons 
-                      name={paymentMethod.includes('Card') ? "card-outline" : "phone-portrait-outline"} 
-                      size={16} 
-                      color="rgba(255,255,255,0.4)" 
+                    <Ionicons
+                      name={paymentMethod.includes('Card') ? "card-outline" : "phone-portrait-outline"}
+                      size={16}
+                      color="rgba(255,255,255,0.4)"
                     />
                     <Text style={[styles.detailValue, { fontSize: 16, color: "#f1f5f9" }]}>
                       {paymentMethod}
@@ -328,7 +328,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
               <View style={styles.cardDivider} />
 
               <View style={{ marginTop: 12 }}>
-                  <Text style={styles.detailLabel}>Active Devices ({activeDevices.length}/{getDeviceLimit()})</Text>
+                <Text style={styles.detailLabel}>Active Devices ({activeDevices.length}/{getDeviceLimit()})</Text>
                 <View style={{ gap: 8 }}>
                   {activeDevices.map((device) => (
                     <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
