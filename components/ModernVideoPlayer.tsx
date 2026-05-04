@@ -1595,11 +1595,7 @@ export default function ModernVideoPlayer({
 
   const renderPlayer = () => {
     const containerStyle: any = {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: SCREEN_W,
-      height: SCREEN_H,
+      ...StyleSheet.absoluteFillObject,
       zIndex: 10000,
       backgroundColor: '#000',
     };
@@ -1637,11 +1633,13 @@ export default function ModernVideoPlayer({
             ]
           }
         ]}
-        onLayout={() => {
+        onLayout={async () => {
           if (Platform.OS === 'android') {
-            NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-            NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
-            StatusBar.setHidden(true);
+            try {
+              await NavigationBar.setVisibilityAsync('hidden');
+              await NavigationBar.setBehaviorAsync('sticky-immersive');
+              StatusBar.setHidden(true, 'fade');
+            } catch (e) {}
           }
         }}
       >
