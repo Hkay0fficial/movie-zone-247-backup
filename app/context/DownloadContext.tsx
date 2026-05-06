@@ -250,16 +250,39 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   const enqueue = (entry: DownloadEntry) => {
-    const remaining = getRemainingDownloads();
-    if (remaining <= 0) {
-      Alert.alert('Limit Reached', 'You have reached your daily download limit. Upgrade or wait until tomorrow.');
+    // 1. Check existing queue/active state
+    if (entriesRef.current[entry.id]) {
+      Alert.alert('In Progress', 'This item is already downloading or in your queue.');
       return false;
     }
 
-    if (entriesRef.current[entry.id]) {
-      Alert.alert('In Queue', 'This item is already in your download queue.');
-      return false;
+    // 2. Enforce Plan Limits
+    if (entry.mode === 'external') {
+      const remainingExternal = getRemainingDownloads();
+      if (remainingExternal <= 0) {
+        if (isGuest) {
+          Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
+        } else {
+          Alert.alert('Limit Reached', 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.');
+        }
+        return false;
+      }
+    } else {
+      // Internal Mode
+      if (isGuest) {
+        const remaining = getRemainingDownloads(); // Use same trial pool for simplicity
+        if (remaining <= 0) {
+          Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
+          return false;
+        }
+      } else if (!isPaid) {
+        Alert.alert('Subscription Required', 'Offline viewing inside the app is a premium feature. Please upgrade to start downloading.');
+        return false;
+      }
+      // Paid users get unlimited internal downloads as per planData.ts specs
     }
+
+    // 3. Add to Queue
     entriesRef.current[entry.id] = entry;
     completedIdsRef.current.delete(entry.id);
     cancelledIdsRef.current.delete(entry.id);
@@ -569,7 +592,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           } else {
             setDownloadedMovies(prev => prev.some(m => m.id === id) ? prev : [{ ...item, localUri: lastResultUri } as any, ...prev]);
           }
-          setDownloadsUsedToday(prev => prev + 1);
+
+          // ONLY increment the daily limit counter for EXTERNAL downloads or GUEST trials
+          // Paid users enjoy unlimited internal downloads
+          if (mode === 'external' || isGuest) {
+            setDownloadsUsedToday(prev => prev + 1);
+          }
+          
           completedIdsRef.current.add(id);
           updateNotification(id, title, 100, 'Complete', true);
         } else if (!success && fatalError && !cancelledIdsRef.current.has(id)) {

@@ -2629,6 +2629,25 @@ function SeriesPreviewModal({
                     <Text style={styles.downloadPrimaryBtnText}>
                       DOWNLOAD
                     </Text>
+                    <View
+                      style={{
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        marginLeft: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          color: "#fff",
+                          fontWeight: "700",
+                        }}
+                      >
+                        {isGuest ? (getRemainingDownloads() > 0 ? "TRIAL" : "0 left") : "UNLIMITED"}
+                      </Text>
+                    </View>
                     <View style={styles.pillSheen} />
                   </TouchableOpacity>
 
