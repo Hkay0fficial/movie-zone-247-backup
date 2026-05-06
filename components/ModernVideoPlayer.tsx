@@ -1243,7 +1243,12 @@ export default function ModernVideoPlayer({
                         <TouchableOpacity 
                           onPress={() => {
                             const gc = getCastModule();
-                            if (gc?.CastContext) gc.CastContext.showCastPicker();
+                            const CastModule = gc?.default || gc;
+                            if (CastModule?.CastContext?.showCastPicker) {
+                              CastModule.CastContext.showCastPicker();
+                            } else if (CastModule?.showCastPicker) {
+                              CastModule.showCastPicker();
+                            }
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           }} 
                           style={styles.circleBtn}
