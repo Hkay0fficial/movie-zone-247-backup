@@ -22,6 +22,7 @@ interface ProfileCardProps {
   onEditProfile: () => void;
   onUpgrade: () => void;
   paymentMethod: string;
+  isHolidayMode?: boolean;
 }
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({
@@ -35,6 +36,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   onEditProfile,
   onUpgrade,
   paymentMethod,
+  isHolidayMode,
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -49,35 +51,41 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   const isVIP = subscriptionBundle === 'VIP';
   
-  const sCol = isGuest 
-    ? '#818cf8' 
-    : isVIP 
-      ? '#a855f7' 
-      : !isSubscribed || remainingDays <= 2 
-        ? '#ef4444' 
-        : remainingDays <= 5 
-          ? '#f59e0b' 
-          : '#10b981';
-          
-  const sBg = isGuest 
-    ? 'rgba(129,140,248,0.1)' 
-    : isVIP 
-      ? 'rgba(168,85,247,0.1)' 
-      : !isSubscribed || remainingDays <= 2 
-        ? 'rgba(239,68,68,0.1)' 
-        : remainingDays <= 5 
-          ? 'rgba(245,158,11,0.08)' 
-          : 'rgba(16,185,129,0.08)';
-          
-  const sBor = isGuest 
-    ? 'rgba(129,140,248,0.2)' 
-    : isVIP 
-      ? 'rgba(168,85,247,0.2)' 
-      : !isSubscribed || remainingDays <= 2 
-        ? 'rgba(239,68,68,0.2)' 
-        : remainingDays <= 5 
-          ? 'rgba(245,158,11,0.2)' 
-          : 'rgba(16,185,129,0.2)';
+  const sCol = isHolidayMode
+    ? '#fbbf24'
+    : isGuest 
+      ? '#818cf8' 
+      : isVIP 
+        ? '#a855f7' 
+        : !isSubscribed || remainingDays <= 2 
+          ? '#ef4444' 
+          : remainingDays <= 5 
+            ? '#f59e0b' 
+            : '#10b981';
+            
+  const sBg = isHolidayMode
+    ? 'rgba(251,191,36,0.12)'
+    : isGuest 
+      ? 'rgba(129,140,248,0.1)' 
+      : isVIP 
+        ? 'rgba(168,85,247,0.1)' 
+        : !isSubscribed || remainingDays <= 2 
+          ? 'rgba(239,68,68,0.1)' 
+          : remainingDays <= 5 
+            ? 'rgba(245,158,11,0.08)' 
+            : 'rgba(16,185,129,0.08)';
+            
+  const sBor = isHolidayMode
+    ? 'rgba(251,191,36,0.3)'
+    : isGuest 
+      ? 'rgba(129,140,248,0.2)' 
+      : isVIP 
+        ? 'rgba(168,85,247,0.2)' 
+        : !isSubscribed || remainingDays <= 2 
+          ? 'rgba(239,68,68,0.2)' 
+          : remainingDays <= 5 
+            ? 'rgba(245,158,11,0.2)' 
+            : 'rgba(16,185,129,0.2)';
 
   const formatBundleName = (name: string) => {
     return name + (name.toLowerCase().includes('week') && !name.toLowerCase().includes('weeks') ? 's' : '');
@@ -144,12 +152,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 onPress={onUpgrade}
               >
                 <Ionicons
-                  name={isSubscribed ? "diamond" : "star-outline"}
+                  name={(isHolidayMode && !isGuest) ? "gift" : isSubscribed ? "diamond" : "star-outline"}
                   size={11}
                   color={sCol}
                 />
                 <Text style={[styles.profileBadgeText, { color: sCol, fontSize: 10 }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {isGuest
+                  {isHolidayMode && !isSubscribed && !isGuest
+                    ? "HOLIDAY MODE ACTIVE • ENJOY FREE UNLIMITED STREAMING"
+                    : isGuest
                       ? "GUEST ACCOUNT • REGISTER TO SAVE DATA"
                       : !isSubscribed 
                         ? "NO ACTIVE SUBSCRIPTION • UPGRADE TO PREMIUM"

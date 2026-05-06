@@ -431,14 +431,14 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const { favorites: myFavorites } = useSubscription();
+  const { favorites: myFavorites, isGuest } = useSubscription();
 
   // Merge live data with mock data so the beautiful UI stays populated
   const contextValue = useMemo(() => {
-    const actualLiveMovies = globalSettings.allMoviesFree 
+    const actualLiveMovies = (globalSettings.allMoviesFree && !isGuest)
       ? liveMovies.map(m => ({ ...m, isFree: true }))
       : liveMovies;
-    const actualLiveSeries = globalSettings.allMoviesFree
+    const actualLiveSeries = (globalSettings.allMoviesFree && !isGuest)
       ? liveSeries.map(s => ({ ...s, isFree: true }))
       : liveSeries;
 

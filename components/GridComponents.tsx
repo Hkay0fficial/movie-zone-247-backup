@@ -41,8 +41,8 @@ export function GridCard({
   const hPad = 16;
   const paddingSpace = hPad * 2 + (columns - 1) * gap;
   const cardWidth = (SCREEN_W - paddingSpace) / columns;
-  const { isPaid } = useSubscription();
-  const isLocked = !isPaid && !movie.isFree;
+  const { isPaid, allMoviesFree } = useSubscription();
+  const isLocked = !isPaid && !movie.isFree && !allMoviesFree;
 
   const [showPreview, setShowPreview] = useState(false);
   const previewOpacity = useRef(new Animated.Value(0)).current;

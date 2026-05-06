@@ -81,7 +81,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [downloadsUsedToday, setDownloadsUsedToday] = useState(0);
 
   const subscriptionData = useSubscription();
-  const { isPaid, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
+  const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
 
   // Refs for download engine state
   const entriesRef = useRef<Record<string, DownloadEntry>>({});
@@ -258,6 +258,12 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 2. Enforce Plan Limits
     if (entry.mode === 'external') {
+      // Strict: Only actual subscribers or guest trialers can save to gallery
+      if (!isSubscribed && !isGuest) {
+        Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable external downloads.');
+        return false;
+      }
+      
       const remainingExternal = getRemainingDownloads();
       if (remainingExternal <= 0) {
         if (isGuest) {
@@ -269,17 +275,17 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     } else {
       // Internal Mode
-      if (isGuest) {
+      if (isGuest && !allMoviesFree) {
         const remaining = getRemainingDownloads(); // Use same trial pool for simplicity
         if (remaining <= 0) {
           Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
           return false;
         }
-      } else if (!isPaid) {
+      } else if (!isPaid && !allMoviesFree) {
         Alert.alert('Subscription Required', 'Offline viewing inside the app is a premium feature. Please upgrade to start downloading.');
         return false;
       }
-      // Paid users get unlimited internal downloads as per planData.ts specs
+      // Paid users OR holiday mode users get internal downloads
     }
 
     // 3. Add to Queue

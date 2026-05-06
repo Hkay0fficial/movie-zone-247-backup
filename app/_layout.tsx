@@ -18,7 +18,7 @@ import { MovieProvider } from '@/app/context/MovieContext';
 import { UserProvider } from '@/app/context/UserContext';
 import { DownloadProvider } from '@/app/context/DownloadContext';
 import { initNotifications, registerForPushNotificationsAsync, addNotificationListener, addNotificationResponseListener, useLastNotificationResponse } from '../lib/notifications';
-import InAppNotification, { LocalNotification } from '../components/InAppNotification';
+import NotificationManager from '../components/NotificationManager';
 import VersionLockGuard from '../components/VersionLockGuard';
 import OTAUpdateGuard from '../components/OTAUpdateGuard';
 import ModernVideoPlayer from '../components/ModernVideoPlayer';
@@ -204,25 +204,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const [activeNotification, setActiveNotification] = useState<LocalNotification | null>(null);
-  const lastNotificationResponse = useLastNotificationResponse();
 
-  useEffect(() => {
-    if (lastNotificationResponse) {
-      const data = lastNotificationResponse.notification.request.content.data;
-      const actionId = lastNotificationResponse.actionIdentifier;
-      
-      if (data?.movieId) {
-        // Wait a brief moment to ensure navigation stack is ready before pushing
-        setTimeout(() => {
-          router.push({
-            pathname: '/(tabs)',
-            params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
-          });
-        }, 500);
-      }
-    }
-  }, [lastNotificationResponse]);
 
   const [fontsLoaded, fontError] = useFonts({
     ...MaterialIcons.font,
@@ -243,52 +225,6 @@ export default function RootLayout() {
       SystemUI.setBackgroundColorAsync('#0a0a0f').catch(() => {});
     }
     registerForPushNotificationsAsync();
-
-    // Listen for notifications while app is foregrounded
-    const subscription = addNotificationListener(notification => {
-      console.log('Notification received:', notification);
-      
-      const content = notification.request.content;
-
-      // Ignore download progress notifications for the in-app banner
-      // as they update frequently and cause the banner to stay stuck.
-      if (content.data?.type === 'download') return;
-
-      setActiveNotification({
-        title: content.title || 'Notification',
-        body: content.body || '',
-        imageUrl: content.data?.imageUrl || content.data?.image || (content.attachments?.[0]?.url),
-        data: content.data
-      });
-    });
-
-    // Listen for notification clicks (background/killed state)
-    const responseSubscription = addNotificationResponseListener(response => {
-      const data = response.notification.request.content.data;
-      const actionId = response.actionIdentifier;
-
-      if (data?.movieId) {
-        // If it's a 'New Release' or 'Alert', open the details page
-        // Standard tapping (DefaultIdentifier) or specific buttons (watch_now, view_details)
-        setTimeout(() => {
-          router.push({
-            pathname: '/(tabs)',
-            params: { movieId: String(data.movieId), autoplay: actionId === 'watch_now' ? 'true' : 'false' }
-          });
-        }, 500);
-      }
-    });
-
-    // Manual trigger for in-app notification banner
-    const localNotifSub = DeviceEventEmitter.addListener("showLocalNotification", (notif: LocalNotification) => {
-      setActiveNotification(notif);
-    });
-
-    return () => {
-      subscription.remove();
-      responseSubscription.remove();
-      localNotifSub.remove();
-    };
   }, []);
 
   if (!fontsLoaded && !fontError) {
@@ -309,10 +245,7 @@ export default function RootLayout() {
                   <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
                   <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
                 </Stack>
-                <InAppNotification 
-                  notification={activeNotification} 
-                  onClose={() => setActiveNotification(null)} 
-                />
+                <NotificationManager />
 
                 <ModernVideoPlayerWrapper />
                 <SystemUIGuard />

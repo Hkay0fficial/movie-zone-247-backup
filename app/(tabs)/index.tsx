@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   // ── Event Banner ──
   eventBannerContainer: {
     marginHorizontal: 20,
-    marginTop: Platform.OS === 'ios' ? 64 : 74,
+    marginTop: Platform.OS === 'ios' ? 64 : (StatusBar.currentHeight || 24) + 60,
     marginBottom: 10, 
     height: 40,
     borderRadius: 20,
@@ -434,11 +434,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "700",
-    flex: 1,
     letterSpacing: 0.1,
   },
   animatedMessage: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -2337,7 +2335,7 @@ export function SeriesPreviewContent({
       return;
     }
 
-    if (getRemainingDownloads() === 0 && !isPaid) {
+    if (getRemainingDownloads() === 0 && !isPaid && (!allMoviesFree || isGuest)) {
       onShowPremium();
       return;
     }
@@ -2603,6 +2601,13 @@ export function SeriesPreviewContent({
               Alert.alert("Coming Soon", "The video for this content is currently being prepared by our servers. Please check back later!");
               return;
             }
+
+            const canWatch = (allMoviesFree && !isGuest) || series.isFree || isPaid;
+            if (!canWatch) {
+              onShowPremium();
+              return;
+            }
+
             if (setIsPreview) setIsPreview(true);
             try { if (_safeSetEps && series.episodeList) _safeSetEps(series.episodeList); } catch(e) {}
             try { if (_safeSetEpId) _safeSetEpId(activeEpisode.id); } catch(e) {}
@@ -2807,7 +2812,7 @@ export function SeriesPreviewContent({
                       const isDl = ctxActiveDownloads[ep.id];
                       const isDownloaded = ctxEpisodeDownloads[ep.id];
                       if (!isDl && !isDownloaded) {
-                        if (!isPaid) onShowPremium();
+                        if (!isPaid && (!allMoviesFree || isGuest)) onShowPremium();
                         else downloadEpisode(series, ep, 'internal');
                       }
                     });
@@ -2830,6 +2835,12 @@ export function SeriesPreviewContent({
                   key={ep.id}
                   style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
+                    const canWatch = (allMoviesFree && !isGuest) || series.isFree || isPaid;
+                    if (!canWatch) {
+                      onShowPremium();
+                      return;
+                    }
+
                     setActiveEpisodeId(ep.id);
                     try { if (_safeSetEps && series.episodeList) _safeSetEps(series.episodeList); } catch(e) {}
                     try { if (_safeSetEpId) _safeSetEpId(ep.id); } catch(e) {}
@@ -2859,7 +2870,7 @@ export function SeriesPreviewContent({
                         } else if (isDownloaded) {
                           setAlreadyDownloadedState({ visible: true, episode: ep, localItem: { localUri: ctxEpisodeDownloads[ep.id] } });
                         } else {
-                           if (!isPaid) onShowPremium();
+                           if (!isPaid && (!allMoviesFree || isGuest)) onShowPremium();
                            else downloadEpisode(series, ep, 'internal');
                         }
                       }}
@@ -3069,7 +3080,7 @@ export function SeriesPreviewContent({
                 <Ionicons name="phone-portrait-outline" size={22} color="#fff" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.downloadPrimaryBtnText}>Save in App</Text>
-                  <Text style={styles.downloadPrimarySubText}>Watch offline anytime</Text>
+                  <Text style={styles.downloadPrimarySubText}>{(!isPaid && allMoviesFree && !isGuest) ? "HOLIDAY SPECIAL: FREE" : "Watch offline anytime"}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -3081,7 +3092,7 @@ export function SeriesPreviewContent({
                 onPress={() => {
                   if (!isPaid) {
                     setShowDownloadModal(false);
-                    onShowPremium();
+                    Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
                     return;
                   }
                   if (getRemainingDownloads() === 0) {
@@ -3526,11 +3537,11 @@ export const MoviePreviewContent = memo(({
       return;
     }
 
-    if (!isPaid && !(movie.isFree || allMoviesFree)) {
+    if (!isPaid && !(movie.isFree || (allMoviesFree && !isGuest))) {
       onShowPremium();
       return;
     }
-    if (getRemainingDownloads() === 0 && !isPaid) {
+    if (getRemainingDownloads() === 0 && !isPaid && (!allMoviesFree || isGuest)) {
       onShowPremium();
       return;
     }
@@ -3563,7 +3574,7 @@ export const MoviePreviewContent = memo(({
 
 
   const handleCast = () => {
-    if (!isPaid) {
+    if (!isPaid && (!allMoviesFree || isGuest)) {
       if (onShowPremium) onShowPremium();
       return;
     }
@@ -3902,7 +3913,7 @@ export const MoviePreviewContent = memo(({
   const handleNextPart = () => {
     if (hasNext) {
       const nextPartItem = movieParts[currentIndex + 1];
-      const canWatchNext = allMoviesFree || (nextPartItem as any).isFree || isPaid;
+      const canWatchNext = (allMoviesFree && !isGuest) || (nextPartItem as any).isFree || isPaid;
       if (!canWatchNext) {
         onSwitch?.(nextPartItem);
         setPlayerMode?.('closed');
@@ -3922,7 +3933,7 @@ export const MoviePreviewContent = memo(({
   const handlePrevPart = () => {
     if (hasPrev) {
       const prevPartItem = movieParts[currentIndex - 1];
-      const canWatchPrev = allMoviesFree || (prevPartItem as any).isFree || isPaid;
+      const canWatchPrev = (allMoviesFree && !isGuest) || (prevPartItem as any).isFree || isPaid;
       if (!canWatchPrev) {
         onSwitch?.(prevPartItem);
         setPlayerMode?.('closed');
@@ -4187,7 +4198,7 @@ export const MoviePreviewContent = memo(({
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={() => {
-                    const canWatch = allMoviesFree || (movie as any).isFree || isPaid;
+                    const canWatch = (allMoviesFree && !isGuest) || (movie as any).isFree || isPaid;
                     if (!canWatch) {
                       onShowPremium();
                       return;
@@ -4314,7 +4325,7 @@ export const MoviePreviewContent = memo(({
                         style={styles.posterPlayBtn}
                         activeOpacity={0.8}
                         onPress={() => {
-                          const canWatch = allMoviesFree || (movie as any).isFree || isPaid;
+                          const canWatch = (allMoviesFree && !isGuest) || (movie as any).isFree || isPaid;
                           if (!canWatch) {
                             onShowPremium();
                             return;
@@ -4888,7 +4899,7 @@ export const MoviePreviewContent = memo(({
                           key={mp.id}
                           style={styles.episodeItemPremium}
                           onPress={() => {
-                            const mpCanWatch = allMoviesFree || mp.isFree || isPaid;
+                            const mpCanWatch = (allMoviesFree && !isGuest) || mp.isFree || isPaid;
                             if (!mpCanWatch) {
                               onShowPremium();
                               return;
@@ -4945,7 +4956,7 @@ export const MoviePreviewContent = memo(({
                             </View>
 
                             <View style={styles.epThumbPlayIconOverlay}>
-                              <Ionicons name={(!allMoviesFree && !mp.isFree && (subscriptionBundle === 'None' || isGuest)) ? "lock-closed" : "play"} size={16} color="#fff" style={{ marginLeft: 2 }} />
+                              <Ionicons name={((!allMoviesFree || isGuest) && !mp.isFree && (subscriptionBundle === 'None' || isGuest)) ? "lock-closed" : "play"} size={16} color="#fff" style={{ marginLeft: 2 }} />
                             </View>
                           </View>
                           
@@ -5152,7 +5163,7 @@ export const MoviePreviewContent = memo(({
                             fontWeight: "700",
                           }}
                         >
-                          {isGuest ? (getRemainingDownloads() > 0 ? "TRIAL" : "0 left") : "UNLIMITED"}
+                          {(!isPaid && allMoviesFree && !isGuest) ? "FREE" : (isGuest ? (getRemainingDownloads() > 0 ? "TRIAL" : "0 left") : "UNLIMITED")}
                         </Text>
                       </View>
                       <View style={styles.pillSheen} />
@@ -5953,8 +5964,8 @@ export const MovieCard = memo(({
   movie: Movie | Series;
   onPress: () => void;
 }) => {
-  const { isPaid } = useSubscription();
-  const isLocked = !isPaid && !movie.isFree;
+  const { isPaid, allMoviesFree, isGuest } = useSubscription();
+  const isLocked = !isPaid && !movie.isFree && (!allMoviesFree || isGuest);
 
   return (
     <TouchableOpacity
@@ -6888,12 +6899,13 @@ export default function HomeScreen() {
   }, [navigationStack.length, loadingDeepLink, playerMode]);
 
   useEffect(() => {
-    if (allMoviesFree || eventMessage) {
+    const shouldShowBanner = allMoviesFree ? !isGuest : !!eventMessage;
+    if (shouldShowBanner) {
       const startAnimation = () => {
-        bannerAnim.setValue(SCREEN_W - 80); // Start from right side of the banner
+        bannerAnim.setValue(SCREEN_W); // Start from off-screen right
         Animated.timing(bannerAnim, {
-          toValue: -SCREEN_W / 1.5, // Move left but don't "come out to the end" far
-          duration: 12000, 
+          toValue: -1200, // Reduced from -2500 to minimize "dead air" delay
+          duration: 40000, // Significantly slowed down (from 25000) for readability
           easing: Easing.linear,
           useNativeDriver: true,
         }).start(() => startAnimation());
@@ -7136,7 +7148,7 @@ export default function HomeScreen() {
           />
         }
       >
-        {(allMoviesFree || eventMessage) && (
+        {(allMoviesFree ? !isGuest : !!eventMessage) && (
           <TouchableOpacity 
             style={[
               styles.eventBannerContainer,
@@ -7150,24 +7162,24 @@ export default function HomeScreen() {
             onPress={() => DeviceEventEmitter.emit("openNotifications", { highlightId: "event_n1" })}
           >
             <LinearGradient
-              colors={allMoviesFree ? ["rgba(225, 29, 72, 0.4)", "rgba(10, 10, 15, 0.8)"] : ["rgba(91, 95, 239, 0.4)", "rgba(10, 10, 15, 0.8)"]}
+              colors={(allMoviesFree && !isGuest) ? ["rgba(225, 29, 72, 0.4)", "rgba(10, 10, 15, 0.8)"] : ["rgba(91, 95, 239, 0.4)", "rgba(10, 10, 15, 0.8)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.eventBannerContent}>
               <View style={{ flex: 1, marginLeft: 105, overflow: 'hidden' }}>
-                <Animated.View style={[styles.animatedMessage, { transform: [{ translateX: bannerAnim }] }]}>
-                  <Text style={styles.eventMessageText} numberOfLines={1}>
-                    {eventMessage || (allMoviesFree ? "Enjoy all movies for FREE today!" : "")}
+                <Animated.View style={[styles.animatedMessage, { transform: [{ translateX: bannerAnim }], width: 2000, paddingLeft: 0 }]}>
+                  <Text style={[styles.eventMessageText, { width: 'auto' }]} numberOfLines={1}>
+                    {eventMessage || (allMoviesFree && !isGuest ? "Enjoy all movies for FREE today!" : "")}
                   </Text>
                   <View style={styles.eventBadgePulse} />
                 </Animated.View>
               </View>
 
-              <View style={[styles.eventBadge, !allMoviesFree && { backgroundColor: '#5B5FEF' }]}>
+              <View style={[styles.eventBadge, !(allMoviesFree && !isGuest) && { backgroundColor: '#5B5FEF' }]}>
                 <Ionicons name={allMoviesFree ? "gift-outline" : "megaphone-outline"} size={12} color="#fff" />
-                <Text style={styles.eventBadgeText}>{allMoviesFree ? "HOLIDAY MODE" : "ANNOUNCEMENT"}</Text>
+                <Text style={styles.eventBadgeText}>{(allMoviesFree && !isGuest) ? "HOLIDAY MODE" : "ANNOUNCEMENT"}</Text>
               </View>
             </View>
           </TouchableOpacity>

@@ -53,6 +53,7 @@ interface SubscriptionSectionProps {
   handleShowPaymentModal: (show: boolean) => void;
   toggleSettingsModal: (item: any) => void;
   menuItems: any[];
+  isHolidayMode?: boolean;
 }
 
 export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
@@ -80,6 +81,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
   handleShowPaymentModal,
   toggleSettingsModal,
   menuItems,
+  isHolidayMode = false,
 }) => {
   if (showBillingHistory) {
     return (
@@ -125,15 +127,27 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
 
       {!isSubscribed ? (
         <View style={{ alignItems: 'center', paddingVertical: 40, gap: 16 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
-            <Ionicons name="diamond-outline" size={40} color="#475569" />
-          </View>
-          <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>No Active Subscription</Text>
+          {isHolidayMode ? (
+            <>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(251, 191, 36, 0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+                <Ionicons name="gift-outline" size={40} color="#fbbf24" />
+              </View>
+              <Text style={{ color: '#fbbf24', fontSize: 16, fontWeight: '900', textAlign: 'center', letterSpacing: 1 }}>HOLIDAY MODE ACTIVE</Text>
+              <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', paddingHorizontal: 20, lineHeight: 18 }}>Enjoy all premium content for free during this holiday period!</Text>
+            </>
+          ) : (
+            <>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <Ionicons name="diamond-outline" size={40} color="#475569" />
+              </View>
+              <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>No Active Subscription</Text>
+            </>
+          )}
           <TouchableOpacity
             style={{ backgroundColor: '#f59e0b', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             onPress={() => toggleSettingsModal(menuItems.find(m => m.id === '3') || null)}
           >
-            <Text style={{ color: '#fff', fontWeight: '900' }}>CHOOSE A PLAN</Text>
+            <Text style={{ color: '#fff', fontWeight: '900' }}>UPGRADE TO PREMIUM</Text>
           </TouchableOpacity>
         </View>
       ) : (

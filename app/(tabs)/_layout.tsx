@@ -882,7 +882,7 @@ function SearchOverlay({
       setSearching(false);
     }
   }, [query]);
-  const { isPaid } = useSubscription();
+  const { isPaid, allMoviesFree, isGuest } = useSubscription();
   const { liveMovies, liveSeries, allRows, loading, youMayAlsoLike, bukoleya, trendingSeries } = useMovies();
 
   // Combine all live content for absolute coverage
@@ -1303,7 +1303,7 @@ function SearchOverlay({
                                 <Text style={styles.vjBadgeText}>{item.vj}</Text>
                               </View>
 
-                              {(!isPaid && !item.isFree) && (
+                              {(!isPaid && !item.isFree && (!allMoviesFree || isGuest)) && (
                                 <View style={styles.lockBadge}>
                                   <Ionicons name="lock-closed" size={9} color="#fff" />
                                 </View>
@@ -1640,6 +1640,7 @@ function CustomTabBar() {
   const {
     allMoviesFree,
     eventMessage,
+    isGuest: tabBarIsGuest,
     playingNow,
     setPlayingNow,
     playerMode,
@@ -1890,7 +1891,7 @@ function CustomTabBar() {
     // Prepend real announcements to base data
     baseData = [...realNotifications, ...baseData];
 
-    if (allMoviesFree) {
+    if (allMoviesFree && !tabBarIsGuest) {
       const eventNotif: Notification = {
         id: "event_n1",
         type: "update",

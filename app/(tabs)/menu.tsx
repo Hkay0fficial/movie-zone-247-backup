@@ -249,7 +249,7 @@ export default function MenuScreen() {
   const [fromNotification, setFromNotification] = React.useState(false);
   const router = useRouter();
   const { user, profile, loading: userLoading, removeFromWatchHistory, clearWatchHistory } = useUser();
-  const { appUpdateConfig, continueWatching } = useMovies();
+  const { appUpdateConfig, continueWatching, globalSettings } = useMovies();
 
   // Profile data from context
   const userName = profile.fullName;
@@ -1434,6 +1434,7 @@ export default function MenuScreen() {
                     handleShowPaymentModal={handleShowPaymentModal}
                     toggleSettingsModal={toggleSettingsModal}
                     menuItems={menuItems}
+                    isHolidayMode={globalSettings.allMoviesFree && !isGuest}
                   />
                 )}
                 {selectedItem?.id === '3' && ( // Choose Your Plan
@@ -1446,6 +1447,7 @@ export default function MenuScreen() {
                     setSelectedPlanForPayment={setSelectedPlanForPayment}
                     handleShowPaymentModal={handleShowPaymentModal}
                     availablePlans={availablePlans}
+                    isHolidayMode={globalSettings.allMoviesFree && !isGuest}
                   />
                 )}
 
@@ -1724,6 +1726,7 @@ export default function MenuScreen() {
           isGuest={isGuest}
           onEditProfile={handleEditProfile}
           paymentMethod={paymentMethod}
+          isHolidayMode={globalSettings.allMoviesFree && !isGuest}
           onUpgrade={() => {
             if (isGuest) {
               setShowGuestPlanModal(true);

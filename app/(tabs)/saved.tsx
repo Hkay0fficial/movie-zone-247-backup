@@ -196,8 +196,8 @@ const GENRES = ["All", ...ALL_GENRES];
 
 // ─── Series Card ─────────────────────────────────────────────────────────────
 function SeriesCard({ item, onPress }: { item: Series; onPress: () => void }) {
-  const { isPaid } = useSubscription();
-  const isLocked = !isPaid && !item.isFree;
+  const { isPaid, allMoviesFree, isGuest } = useSubscription();
+  const isLocked = !isPaid && !item.isFree && (!allMoviesFree || isGuest);
 
   return (
     <TouchableOpacity
@@ -964,7 +964,7 @@ function SeriesPreviewModal({
   } = useMovies();
 
   const handlePlayEpisode = () => {
-    const canWatch = allMoviesFree || (series as any).isFree || isPaid;
+    const canWatch = (allMoviesFree && !isGuest) || (series as any).isFree || isPaid;
     if (!canWatch) {
       onShowPremium?.();
       return;
@@ -1341,7 +1341,7 @@ function SeriesPreviewModal({
     }
 
     // If guest, they can ONLY download if the current item is free
-    const isFreeContent = allMoviesFree || targetEp.isFree || targetEp.isPremium === false || series.isFree;
+    const isFreeContent = (allMoviesFree && !isGuest) || targetEp.isFree || targetEp.isPremium === false || series.isFree;
     if (isGuest && !isFreeContent) {
       onShowPremium?.();
       return;
@@ -1388,7 +1388,7 @@ function SeriesPreviewModal({
     const currentIndex = episodes.findIndex(e => e.id === activeEpisodeId);
     if (currentIndex < episodes.length - 1) {
       const nextEp = episodes[currentIndex + 1];
-      const canWatchNext = allMoviesFree || (nextEp as any).isFree || (nextEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchNext = (allMoviesFree && !isGuest) || (nextEp as any).isFree || (nextEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
       if (!canWatchNext) {
         onShowPremium?.();
         return;
@@ -1406,7 +1406,7 @@ function SeriesPreviewModal({
     const currentIndex = episodes.findIndex(e => e.id === activeEpisodeId);
     if (currentIndex > 0) {
       const prevEp = episodes[currentIndex - 1];
-      const canWatchPrev = allMoviesFree || (prevEp as any).isFree || (prevEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchPrev = (allMoviesFree && !isGuest) || (prevEp as any).isFree || (prevEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
       if (!canWatchPrev) {
         onShowPremium?.();
         return;
@@ -2062,13 +2062,13 @@ function SeriesPreviewModal({
                       description: string;
                       videoUrl: string | undefined;
                     }) => {
-                      const epIsLocked = ep.isPremium && subscriptionBundle === 'None';
+                      const epIsLocked = ep.isPremium && (subscriptionBundle === 'None' || isGuest) && (!allMoviesFree || isGuest);
                       return (
                         <TouchableOpacity
                           key={ep.id}
                           style={styles.episodeItemPremium}
                           onPress={() => {
-                            const mpCanWatch = allMoviesFree || !ep.isPremium || isPaid;
+                            const mpCanWatch = (allMoviesFree && !isGuest) || !ep.isPremium || isPaid;
                             if (!mpCanWatch) {
                               onShowPremium?.();
                               return;

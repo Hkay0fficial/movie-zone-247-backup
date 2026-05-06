@@ -94,6 +94,7 @@ const DiscoverCard = React.memo(({
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const { isPaid, isGuest, allMoviesFree } = useSubscription();
 
   useEffect(() => {
     if (isActive) {
@@ -182,7 +183,7 @@ const DiscoverCard = React.memo(({
               colors={['#5B5FEF', '#484BD3']}
               style={StyleSheet.absoluteFill}
             />
-            <Ionicons name="play" size={24} color="#fff" />
+            <Ionicons name={(!isPaid && !item.isFree && (!allMoviesFree || isGuest)) ? "lock-closed" : "play"} size={24} color="#fff" />
             <Text style={styles.mainPlayText}>Watch Now</Text>
           </TouchableOpacity>
 
@@ -333,7 +334,7 @@ export default function CategoryScreen() {
     
     if (!isSeries) {
       // Check for subscription/access
-      const canWatch = allMoviesFree || (item as any).isFree || isPaid;
+      const canWatch = (allMoviesFree && !isGuest) || (item as any).isFree || isPaid;
       if (!canWatch) {
         setShowPremiumModal(true);
         return;

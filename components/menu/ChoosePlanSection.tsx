@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Plan, PLANS } from '../../constants/planData';
 import { styles } from './menu.styles';
 
@@ -13,6 +15,7 @@ interface ChoosePlanSectionProps {
   isGuest?: boolean;
   onGuestPlanSelect?: () => void;
   availablePlans?: Plan[];
+  isHolidayMode?: boolean;
 }
 
 export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
@@ -24,11 +27,35 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
   isGuest,
   onGuestPlanSelect,
   availablePlans = [],
+  isHolidayMode = false,
 }) => {
   const displayPlans = availablePlans && availablePlans.length > 0 ? availablePlans : PLANS;
 
   return (
     <View style={styles.settingsContentSection}>
+      {isHolidayMode && (
+        <View style={{ marginHorizontal: 20, marginBottom: 24, borderRadius: 24, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={['rgba(251, 191, 36, 0.12)', 'rgba(251, 191, 36, 0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(251, 191, 36, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="gift" size={24} color="#fbbf24" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#fbbf24', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>HOLIDAY PROMOTION ACTIVE</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '500', marginTop: 2, lineHeight: 15 }}>
+                Unlimited streaming is currently free for all users!
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <Text style={styles.settingsText}>Select the best plan for you and your family to enjoy unlimited movies.</Text>
       <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
         {displayPlans.map((p) => {
