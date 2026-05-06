@@ -51,6 +51,17 @@ import EmptyState from "../../components/EmptyState";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
+// ─── Back Handler Listener Component ─────────────────────────────────────────────
+function BackHandlerListener({ visible, onBack }: { visible: boolean; onBack: () => boolean }) {
+  useEffect(() => {
+    if (visible) {
+      const backHandler = BackHandler.addEventListener("hardwareBackPress", onBack);
+      return () => backHandler.remove();
+    }
+  }, [visible, onBack]);
+  return null;
+}
+
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const HERO_H = SCREEN_H * 0.55;
 const ALL_MOVIES = Array.from(
