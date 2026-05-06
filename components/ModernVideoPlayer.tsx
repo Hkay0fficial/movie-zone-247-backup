@@ -364,6 +364,8 @@ export default function ModernVideoPlayer({
           { 
             shouldPlay: true, 
             progressUpdateIntervalMillis: 500,
+            rate: playbackSpeedRef.current,
+            shouldCorrectPitch: true,
           },
           false
         );
@@ -672,6 +674,7 @@ export default function ModernVideoPlayer({
         } else if (gestureTypeRef.current === 'close') {
           playerPos.setValue({ x: 0, y: Math.max(0, g.dy) });
         }
+        resetControlsTimer();
       },
       onPanResponderRelease: (_, g) => {
         if (gestureTypeRef.current === 'scrub') {
@@ -692,111 +695,129 @@ export default function ModernVideoPlayer({
         gestureTypeRef.current = null;
         isScrubbingRef.current = false;
         isInteractingRef.current = false;
+        resetControlsTimer();
       }
     })
   ).current;
 
-  // Timeline specific PanResponder for direct dragging and tapping
+
+  // Measure-based offsets for absolute precision
+  const timelineRef = useRef<View>(null);
+  const volumeSliderRef = useRef<View>(null);
   const timelineWidthRef = useRef(1);
+  const timelineOffsetXRef = useRef(0);
+  const volumeOffsetXRef = useRef(0);
+
+  // Apply playback speed persistence
+  useEffect(() => {
+    if (status.isLoaded && !isScrubbing) {
+       videoRef.current?.setRateAsync(playbackSpeed, true).catch(() => {});
+    }
+  }, [status.isLoaded, playbackSpeed, videoUrl]);
+
   const timelinePanResponder = useRef(
     PanResponder.create({
-      // CAPTURE handlers = highest priority, beats any parent responder
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => {
+      onPanResponderGrant: (e, g) => {
         isInteractingRef.current = true;
         isScrubbingRef.current = true;
         setIsScrubbing(true);
-        const touchX = e.nativeEvent.locationX;
+        
+        // Use absolute screen X for the timeline's start point
+        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
         const w = Math.max(1, timelineWidthRef.current);
         const dur = statusRef.current?.durationMillis || 1;
         const pct = Math.max(0, Math.min(1, touchX / w));
         const newPos = pct * dur;
-        // Update animated value instantly — no setState, no re-render
+        
         scrubAnimPct.setValue(pct);
         scrubPositionRef.current = newPos;
-        setScrubPosition(newPos); // only for time text
+        setScrubPosition(newPos);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        resetControlsTimer();
       },
-      onPanResponderMove: (e) => {
-        const touchX = e.nativeEvent.locationX;
+      onPanResponderMove: (e, g) => {
+        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
         const w = Math.max(1, timelineWidthRef.current);
         const dur = statusRef.current?.durationMillis || 1;
         const pct = Math.max(0, Math.min(1, touchX / w));
-        // Only animated value update — zero React renders
+        
         scrubAnimPct.setValue(pct);
         scrubPositionRef.current = pct * dur;
-        // Throttle the time-display state update to every ~4 frames
+        
         if (Math.abs(scrubPositionRef.current - (scrubPositionRef as any)._lastDisplayed || 0) > (dur / 200)) {
           (scrubPositionRef as any)._lastDisplayed = scrubPositionRef.current;
           setScrubPosition(scrubPositionRef.current);
         }
+        resetControlsTimer();
       },
-      onPanResponderRelease: (e) => {
-        const touchX = e.nativeEvent.locationX;
+      onPanResponderRelease: (e, g) => {
+        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
         const w = Math.max(1, timelineWidthRef.current);
         const dur = statusRef.current?.durationMillis || 1;
         const pct = Math.max(0, Math.min(1, touchX / w));
         const finalPos = pct * dur;
+        
         scrubAnimPct.setValue(pct);
         setScrubPosition(finalPos);
         videoRef.current?.setPositionAsync(finalPos);
         setIsScrubbing(false);
         isScrubbingRef.current = false;
         isInteractingRef.current = false;
+        resetControlsTimer();
       },
       onPanResponderTerminate: () => {
         setIsScrubbing(false);
         isScrubbingRef.current = false;
         isInteractingRef.current = false;
+        resetControlsTimer();
       },
       onPanResponderTerminationRequest: () => false,
     })
   ).current;
 
-  // Volume PanResponder — capture priority, zero setState during drag
   const volumePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => {
+      onPanResponderGrant: (e, g) => {
         isInteractingRef.current = true;
-        const touchX = e.nativeEvent.locationX;
+        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
         const w = volumeSliderWidthRef.current || 90;
         const vol = Math.max(0, Math.min(1, touchX / w));
-        // Only update animated values — NO setState, NO re-render
         volumeDisplayAnim.setValue(vol);
         volumeAnimPct.setValue(vol);
         currentVolumeRef.current = vol;
-        // Unmute visually if dragging above 0
         if (vol > 0 && isMuted) setIsMuted(false);
       },
-      onPanResponderMove: (e) => {
-        const touchX = e.nativeEvent.locationX;
+      onPanResponderMove: (e, g) => {
+        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
         const w = volumeSliderWidthRef.current || 90;
         const vol = Math.max(0, Math.min(1, touchX / w));
-        // Pure Animated update — completely skips React render cycle
         volumeDisplayAnim.setValue(vol);
         currentVolumeRef.current = vol;
+        resetControlsTimer();
       },
-      onPanResponderRelease: (e) => {
-        const touchX = e.nativeEvent.locationX;
+      onPanResponderRelease: (e, g) => {
+        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
         const w = volumeSliderWidthRef.current || 90;
         const vol = Math.max(0, Math.min(1, touchX / w));
         volumeDisplayAnim.setValue(vol);
         currentVolumeRef.current = vol;
-        // Only NOW commit to React state and actual audio
         setCurrentVolume(vol);
         if (vol > 0) setIsMuted(false);
         videoRef.current?.setVolumeAsync(vol).catch(() => {});
         isInteractingRef.current = false;
+        resetControlsTimer();
       },
       onPanResponderTerminate: () => {
         isInteractingRef.current = false;
+        resetControlsTimer();
       },
       onPanResponderTerminationRequest: () => false,
     })
@@ -808,6 +829,14 @@ export default function ModernVideoPlayer({
     if (s.isLoaded && s.durationMillis) {
       const bPct = (s.playableDurationMillis || 0) / s.durationMillis;
       bufferedAnimPct.setValue(bPct);
+      
+      // Update progress bar knob if not scrubbing
+      if (!isScrubbingRef.current && s.durationMillis && s.durationMillis > 0) {
+        const pct = s.positionMillis / s.durationMillis;
+        if (!isNaN(pct)) {
+          scrubAnimPct.setValue(pct);
+        }
+      }
     }
 
     statusRef.current = s;
@@ -879,9 +908,9 @@ export default function ModernVideoPlayer({
         }
       }}
       onPressOut={() => {
-        if (playbackSpeed === 2.0) {
-          setPlaybackSpeed(1.0);
-          videoRef.current?.setRateAsync(1.0, true);
+        if (playbackSpeed === 2.0 && playbackSpeedRef.current !== 2.0) {
+          setPlaybackSpeed(playbackSpeedRef.current);
+          videoRef.current?.setRateAsync(playbackSpeedRef.current, true);
         }
       }}
       onPressIn={!isMini ? handleDoubleTap : undefined}
@@ -901,7 +930,7 @@ export default function ModernVideoPlayer({
           isMuted={isMuted}
           volume={isMuted ? 0 : currentVolume}
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
-          progressUpdateIntervalMillis={1000} // Reduce re-render frequency for better performance
+          progressUpdateIntervalMillis={200} // Smoother knob movement
           {...(Platform.OS === 'android' ? {
             bufferConfig: {
               minBufferMs: 15000,
@@ -911,6 +940,8 @@ export default function ModernVideoPlayer({
             }
           } : {})}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+          rate={playbackSpeed}
+          shouldCorrectPitch={true}
         />
         
         {/* Error UI */}
@@ -984,12 +1015,53 @@ export default function ModernVideoPlayer({
                     {seriesVj && <Text style={styles.playerSubTitle}>{seriesVj}</Text>}
                   </View>
                   <View style={styles.headerActions}>
-                    {/* Timer & Branding Group */}
+                    {/* Cast/AirPlay & Timer Group */}
                     <View style={styles.headerActionsGroup}>
+
+                      {/* Google Cast Button (Android) */}
+                      {CAN_CAST && Platform.OS === 'android' && (
+                        <TouchableOpacity 
+                          onPress={() => {
+                            const gc = getCastModule();
+                            const CastModule = gc?.default || gc;
+                            if (CastModule?.CastContext?.showCastPicker) CastModule.CastContext.showCastPicker();
+                            else if (CastModule?.showCastPicker) CastModule.showCastPicker();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }} 
+                          style={styles.headerActionIcon}
+                        >
+                          <MaterialCommunityIcons 
+                            name="cast" 
+                            size={26} 
+                            color={castSession ? '#818cf8' : '#fff'} 
+                          />
+                        </TouchableOpacity>
+                      )}
+
+                      {/* AirPlay Button (iOS) */}
+                      {Platform.OS === 'ios' && (
+                        <View style={styles.headerActionIcon}>
+                          {AirPlayNative ? (
+                            <AirPlayNative style={styles.airPlayHeaderBtn} />
+                          ) : (
+                            <TouchableOpacity
+                              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                              style={styles.absFillCenter}
+                            >
+                              <MaterialCommunityIcons
+                                name="cast-audio-variant"
+                                size={26}
+                                color={isAirPlaying ? '#818cf8' : '#fff'}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+
                       <TouchableOpacity onPress={() => setShowTimerOptions(true)} style={styles.timerAction}>
                         <Ionicons 
                           name="alarm-outline" 
-                          size={22} 
+                          size={26} 
                           color={sleepTimerMs > 0 ? '#818cf8' : '#fff'} 
                         />
                         {sleepTimerMs > 0 && (
@@ -1116,14 +1188,10 @@ export default function ModernVideoPlayer({
                           />
                           
                           <Animated.View style={[styles.progressBase, {
-                            width: (isScrubbing
-                              ? scrubAnimPct
-                              : new Animated.Value(
-                                  status.isLoaded && status.durationMillis
-                                    ? status.positionMillis / status.durationMillis
-                                    : 0
-                                )
-                            ).interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
+                            width: scrubAnimPct.interpolate({ 
+                              inputRange: [0, 1], 
+                              outputRange: ['0%', '100%'] 
+                            })
                           }]}>
                             <LinearGradient
                               colors={["#6366f1", "#818cf8"]}
@@ -1138,22 +1206,25 @@ export default function ModernVideoPlayer({
                         <Animated.View 
                           style={[
                             styles.progressKnob,
-                            { left: (isScrubbing ? scrubAnimPct : 
-                                new Animated.Value(
-                                  status.isLoaded && status.durationMillis 
-                                    ? (status.positionMillis / status.durationMillis) 
-                                    : 0
-                                )
-                              ).interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
+                            { left: scrubAnimPct.interpolate({ 
+                                inputRange: [0, 1], 
+                                outputRange: ['0%', '100%'] 
+                              })
                             }
                           ]} 
                         />
                       </View>
                       {/* INVISIBLE TOUCH TARGET WITH NO CHILDREN */}
                       <View 
-                         style={StyleSheet.absoluteFillObject}
-                         {...timelinePanResponder.panHandlers}
-                         onLayout={(e) => timelineWidthRef.current = e.nativeEvent.layout.width}
+                        ref={timelineRef}
+                        style={styles.timelineContainer} 
+                        {...timelinePanResponder.panHandlers}
+                        onLayout={() => {
+                          timelineRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                            timelineOffsetXRef.current = pageX;
+                            timelineWidthRef.current = width;
+                          });
+                        }}
                       />
                     </View>
                     <Text style={styles.timeText}>{formatTime(status.isLoaded ? status.durationMillis : 0)}</Text>
@@ -1173,9 +1244,15 @@ export default function ModernVideoPlayer({
                       
                       {/* Horizontal Volume Slider — smooth Animated, no re-renders during drag */}
                       <View 
-                        style={styles.miniVolumeSlider}
-                        onLayout={(e) => { volumeSliderWidthRef.current = e.nativeEvent.layout.width; }}
+                        ref={volumeSliderRef}
+                        style={styles.miniVolumeSlider} 
                         {...volumePanResponder.panHandlers}
+                        onLayout={() => {
+                          volumeSliderRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                            volumeOffsetXRef.current = pageX;
+                            volumeSliderWidthRef.current = width;
+                          });
+                        }}
                       >
                         <View style={styles.miniVolumeTrack}>
                           <Animated.View style={[styles.miniVolumeFill, {
@@ -1214,7 +1291,19 @@ export default function ModernVideoPlayer({
 
                     {/* Circular Action Buttons Group */}
                     <View style={styles.actionsGroup}>
-                      
+                      {/* PiP Button */}
+                      {Platform.OS === 'android' && (
+                        <TouchableOpacity 
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            NativeModules.PipModule?.enterPipMode?.();
+                          }} 
+                          style={styles.circleBtn}
+                        >
+                          <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={22} color="#fff" />
+                        </TouchableOpacity>
+                      )}
+
                       {/* RATIO Button */}
                       <TouchableOpacity 
                         onPress={() => {
@@ -1231,76 +1320,6 @@ export default function ModernVideoPlayer({
                       {/* SPEED Button */}
                       <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.circleBtn}>
                         <MaterialIcons name="speed" size={24} color="#fff" />
-                      </TouchableOpacity>
-
-                      {/* SUBTITLES Button */}
-                      <TouchableOpacity onPress={() => setShowSubtitleOverlay(true)} style={styles.circleBtn}>
-                        <MaterialCommunityIcons name="closed-caption" size={24} color="#fff" />
-                      </TouchableOpacity>
-
-                      {/* Google Cast Button — Android only, renders custom button that opens picker */}
-                      {CAN_CAST && Platform.OS === 'android' && (
-                        <TouchableOpacity 
-                          onPress={() => {
-                            const gc = getCastModule();
-                            const CastModule = gc?.default || gc;
-                            if (CastModule?.CastContext?.showCastPicker) {
-                              CastModule.CastContext.showCastPicker();
-                            } else if (CastModule?.showCastPicker) {
-                              CastModule.showCastPicker();
-                            }
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }} 
-                          style={styles.circleBtn}
-                        >
-                          <MaterialCommunityIcons 
-                            name="cast" 
-                            size={24} 
-                            color={castSession ? '#818cf8' : '#fff'} 
-                          />
-                        </TouchableOpacity>
-                      )}
-
-                      {/* AirPlay Button — iOS only, renders native MPVolumeView route picker */}
-                      {Platform.OS === 'ios' && (
-                        <View style={[
-                          styles.circleBtn,
-                          isAirPlaying && { backgroundColor: 'rgba(99,102,241,0.35)', borderColor: '#818cf8' }
-                        ]}>
-                          {AirPlayNative ? (
-                            <AirPlayNative
-                              style={styles.airPlayNativeBtn}
-                            />
-                          ) : (
-                            // Graceful fallback: tapping the icon opens AV routes via
-                            // the system's built-in picker (works on Expo Go too)
-                            <TouchableOpacity
-                              onPress={() => {
-                                // On iOS, showing AirPlay picker is handled by
-                                // allowsExternalPlaybackIOS on the Video component;
-                                // long-pressing the system volume brings up routes.
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              }}
-                              style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}
-                            >
-                              <MaterialCommunityIcons
-                                name="cast-audio-variant"
-                                size={22}
-                                color={isAirPlaying ? '#818cf8' : '#fff'}
-                              />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      )}
-
-                      {/* Expand Button */}
-                      <TouchableOpacity 
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }} 
-                        style={styles.circleBtn}
-                      >
-                        <MaterialCommunityIcons name="fullscreen" size={24} color="#fff" />
                       </TouchableOpacity>
 
                     </View>
@@ -1830,6 +1849,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#818cf8',
     opacity: 0.3,
+  },
+  timelineContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 20,
   },
   progressKnob: {
     position: 'absolute',
@@ -2394,12 +2418,26 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
-    gap: 12,
+    gap: 6,
   },
   timerAction: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  headerActionIcon: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  airPlayHeaderBtn: {
+    width: 26,
+    height: 26,
+  },
+  absFillCenter: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerDivider: {
     width: 1,

@@ -3,7 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Platform, View, DeviceEventEmitter } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts } from 'expo-font';
@@ -102,6 +102,24 @@ function ModernVideoPlayerWrapper() {
     }
   }, [isOffline, selectedVideoUrl, playingNow, playingEpisodeId, downloadedMovies, episodeDownloads]);
 
+  const handleClose = useCallback(() => {
+    try {
+      const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
+      _safeSetPlayerMode('closed');
+      _safeSetPlayingNow(null);
+      _safeSetPlayingEpisodeId(null);
+      _safeSetPlayingEpisodes([]);
+      _safeSetIsPreview(false);
+
+      if (isLocal && playerMode === 'full') {
+        router.push({
+          pathname: '/(tabs)/menu',
+          params: { section: '5' }
+        });
+      }
+    } catch (e) {}
+  }, [selectedVideoUrl, playerMode, router, _safeSetPlayerMode, _safeSetPlayingNow, _safeSetPlayingEpisodeId, _safeSetPlayingEpisodes, _safeSetIsPreview]);
+
   return (
     <ModernVideoPlayer
       playerMode={playerMode}
@@ -148,25 +166,7 @@ function ModernVideoPlayerWrapper() {
           } catch (e) {}
         }
       }}
-      onClose={() => {
-        try {
-          // Detect if we are playing a local download
-          const isLocal = selectedVideoUrl && (selectedVideoUrl.startsWith('file://') || !selectedVideoUrl.startsWith('http'));
-          _safeSetPlayerMode('closed');
-          _safeSetPlayingNow(null);
-          _safeSetPlayingEpisodeId(null);
-          _safeSetPlayingEpisodes([]);
-          _safeSetIsPreview(false);
-
-          if (isLocal && playerMode === 'full') {
-            // Auto-restore logic: Navigate to menu tab with section param for instant open
-            router.push({
-              pathname: '/(tabs)/menu',
-              params: { section: '5' }
-            });
-          }
-        } catch (e) {}
-      }}
+      onClose={handleClose}
     />
   );
 }
@@ -179,10 +179,17 @@ function SystemUIGuard() {
       const resetUI = async () => {
         if (Platform.OS === 'android') {
           try {
+            // Android 15+ (API 35+) enforces edge-to-edge, so some APIs are no-ops or deprecated.
+            const apiLevel = Platform.Version;
+            
             await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
             await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-            await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-            await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+            
+            // Avoid setting background colors explicitly on Android 15+ to stay compliant with edge-to-edge enforcement
+            if (typeof apiLevel === 'number' && apiLevel < 35) {
+              await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+              await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+            }
           } catch (e) {}
         }
       };
@@ -253,7 +260,7 @@ export default function RootLayout() {
                 <VersionLockGuard />
                 <OTAUpdateGuard />
               </View>
-              <StatusBar style="light" translucent backgroundColor="transparent" />
+              <StatusBar style="light" translucent />
             </DownloadProvider>
           </MovieProvider>
         </SubscriptionProvider>

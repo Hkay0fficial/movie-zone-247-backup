@@ -379,7 +379,7 @@ export default function CategoryScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent />
 
       {/* Top Line Separator (Synchronized with global theme) */}
       <View 

@@ -131,10 +131,11 @@ export function GridCard({
         <Text style={styles.vjBadgeText}>{movie.vj}</Text>
       </View>
 
-      {/* Lock — top-left (offset if viewed) */}
-      {isLocked && (
-        <View style={styles.lockBadge}>
-          <Ionicons name="lock-closed" size={9} color="#fff" />
+      {/* Rating Badge - top-left (below lock if present) */}
+      {movie.rating && parseFloat(movie.rating) > 0 && (
+        <View style={[styles.ratingBadge, isLocked && { top: 28 }]}>
+           <Ionicons name="star" size={8} color="#FFD700" />
+           <Text style={styles.ratingBadgeText}>{movie.rating}</Text>
         </View>
       )}
 
@@ -204,21 +205,32 @@ export function GridContent({
   onSelect: (m: Movie | Series) => void;
 }) {
   const [gridQuery, setGridQuery] = useState("");
+  const [localSortBy, setLocalSortBy] = useState<"newest" | "oldest" | "rating">("newest");
   const gridInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
 
-  const filtered = data.filter((m) => {
-    const q = gridQuery.toLowerCase().trim();
-    if (!q) return true;
-    const vjName = q.startsWith("vj ") ? q : "vj " + q;
-    return (
-      m.title.toLowerCase().includes(q) ||
-      m.genre.toLowerCase().includes(q) ||
-      String(m.year).includes(q) ||
-      m.vj.toLowerCase() === vjName ||
-      m.vj.toLowerCase() === q
-    );
-  });
+  const filtered = useMemo(() => {
+    let res = data.filter((m) => {
+      const q = gridQuery.toLowerCase().trim();
+      if (!q) return true;
+      const vjName = q.startsWith("vj ") ? q : "vj " + q;
+      const country = (m as any).country?.toLowerCase() || '';
+      return (
+        m.title.toLowerCase().includes(q) ||
+        m.genre.toLowerCase().includes(q) ||
+        String(m.year).includes(q) ||
+        m.vj.toLowerCase() === vjName ||
+        m.vj.toLowerCase() === q ||
+        country.includes(q)
+      );
+    });
+
+    if (localSortBy === "newest") res.sort((a, b) => (b.year || 0) - (a.year || 0));
+    else if (localSortBy === "oldest") res.sort((a, b) => (a.year || 0) - (b.year || 0));
+    else if (localSortBy === "rating") res.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
+
+    return res;
+  }, [data, gridQuery, localSortBy]);
 
   useEffect(() => {
     setGridQuery("");
@@ -243,7 +255,7 @@ export function GridContent({
         }} 
       />
 
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent />
       <View style={{ flex: 1 }}>
         
         {/* Header */}
@@ -278,6 +290,24 @@ export function GridContent({
               <Text style={styles.countBadgeText}>{filtered.length}</Text>
             </View>
           </View>
+
+          <TouchableOpacity 
+            style={styles.sortBtn}
+            onPress={() => {
+              if (localSortBy === "newest") setLocalSortBy("rating");
+              else if (localSortBy === "rating") setLocalSortBy("oldest");
+              else setLocalSortBy("newest");
+            }}
+          >
+            <Ionicons 
+              name={localSortBy === "rating" ? "star" : (localSortBy === "newest" ? "calendar" : "calendar-outline")} 
+              size={18} 
+              color={localSortBy === "rating" ? "#FFD700" : "#fff"} 
+            />
+            <Text style={[styles.sortText, localSortBy === "rating" && { color: "#FFD700" }]}>
+              {localSortBy === "newest" ? "New" : (localSortBy === "oldest" ? "Old" : "Rank")}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -385,6 +415,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.22)',
+    zIndex: 20,
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.70)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    zIndex: 19,
+  },
+  ratingBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    marginLeft: 2,
   },
   qualityRow: {
     position: 'absolute',
@@ -516,6 +567,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '900',
+  },
+  sortBtn: {
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    marginLeft: 8,
+  },
+  sortText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    marginLeft: 6,
+    textTransform: 'uppercase',
   },
 
   // List Styles

@@ -2,7 +2,7 @@
   "expo": {
     "name": "THE MOVIE ZONE 24/7",
     "slug": "movie-zone-24-7",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "movieapp",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.moviezone247.app",
-      "versionCode": 17,
+      "versionCode": 2,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
@@ -47,7 +47,8 @@
       ],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "supportsPictureInPicture": true
     },
     "web": {
       "output": "static",

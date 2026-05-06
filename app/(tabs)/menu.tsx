@@ -1703,7 +1703,7 @@ export default function MenuScreen() {
 
 
 
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent />
 
 
       <Animated.ScrollView

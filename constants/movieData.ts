@@ -45,7 +45,7 @@ export interface Series {
   status: 'Ongoing' | 'Ended' | 'New';
   poster: string;
   episodes: number; // New field for number of parts/episodes
-  episodeList?: { title: string; url: string; duration?: string; subtitleUrl?: string; qualityOptions?: { label: string; url: string }[] }[]; // New field for real episodes
+  episodeList?: { title: string; url: string; bunnyVideoId?: string; duration?: string; subtitleUrl?: string; qualityOptions?: { label: string; url: string }[] }[]; // New field for real episodes
   freeEpisodesCount?: number; // New field for how many episodes are free
   description?: string;
   videoUrl?: string;
@@ -146,15 +146,16 @@ export const getStreamUrl = (item: Movie | Series | any): string => {
   if (!item) return '';
 
   // 1. Bunny.net HLS Stream if ID is present
-  if (item.bunnyVideoId) {
-    const libraryId = item.bunnyLibraryId || BUNNY_CONFIG.LIBRARY_ID;
+  const bunnyId = item.bunnyVideoId || item.videoId; // Support both naming conventions
+  if (bunnyId) {
     const pullZone = BUNNY_CONFIG.PULL_ZONE;
-    return `https://${pullZone}/${item.bunnyVideoId}/playlist.m3u8`;
+    return `https://${pullZone}/${bunnyId}/playlist.m3u8`;
   }
 
-  // 2. Direct Video URL (resolved via CDN if origin)
-  if (item.videoUrl) {
-    return resolveCDNUrl(item.videoUrl);
+  // 2. Direct Video URL or 'url' field from episode objects
+  const directUrl = item.videoUrl || item.url;
+  if (directUrl) {
+    return resolveCDNUrl(directUrl);
   }
 
   return '';
