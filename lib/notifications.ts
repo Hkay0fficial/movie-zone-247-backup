@@ -45,12 +45,15 @@ export async function registerForPushNotificationsAsync() {
 
     await Notifications.setNotificationChannelAsync('movie_updates_v3', {
       name: 'New Movie Alerts',
+      description: 'Rich notifications for new movies, series and announcements',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#5B5FEF',
       showBadge: true,
+      enableLights: true,
       enableVibrate: true,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: false,
     });
   }
 
