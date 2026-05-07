@@ -66,7 +66,7 @@ interface MovieContextType {
   readIds: Set<string>;
   markRead: (id: string) => void;
   markAllRead: (ids: string[]) => void;
-  appLayout: any[];
+
   allRows: { title: string; data: (Movie | Series)[] }[];
   allSeries: Series[];
   newSeries: Series[];
@@ -508,10 +508,9 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     // New Releases = admin-pinned items first, then newest by upload date
     const newReleases = [...allContent]
       .sort((a: any, b: any) => {
-        // Pinned items come first
-        // We check isNewRelease for all, but for series we also check isNewReleaseSeries
-        const aPin = a.isNewRelease || (a.type === 'series' && a.isNewReleaseSeries) ? 1 : 0;
-        const bPin = b.isNewRelease || (b.type === 'series' && b.isNewReleaseSeries) ? 1 : 0;
+        // Pinned new releases come first
+        const aPin = a.isNewRelease ? 1 : 0;
+        const bPin = b.isNewRelease ? 1 : 0;
         if (bPin !== aPin) return bPin - aPin;
         // Then sort by newest upload date
         return (b.createdAt || 0) - (a.createdAt || 0);
@@ -760,16 +759,6 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           sectionData = latest;
         } else if (type === 'lastWatched') {
           sectionData = lastWatched;
-        } else if (type === 'newSeries') {
-          sectionData = newSeries;
-        } else if (type === 'trendingSeries') {
-          sectionData = trendingSeries;
-        } else if (type === 'mostViewedSeries') {
-          sectionData = mostViewedSeries;
-        } else if (type === 'mostDownloadedSeries') {
-          sectionData = mostDownloadedSeries;
-        } else if (type === 'miniSeries') {
-          sectionData = filteredSeries.filter(s => s.isMiniSeries === true);
         } else if (type === 'genre') {
           const val = (section.filterValue || '').toLowerCase();
           sectionData = [...filteredMovies, ...filteredSeries]
@@ -890,8 +879,6 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       readIds,
       markRead,
       markAllRead,
-      appLayout,
-      allRows,
       appUpdateConfig,
       selectedVJ, setSelectedVJ,
       selectedGenre, setSelectedGenre,

@@ -125,15 +125,6 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
           colors={['transparent', 'rgba(10,10,15,0.95)']}
           style={styles.cardGradient}
         />
-
-        {/* Rating Badge - top-left */}
-        {item.rating && parseFloat(item.rating) > 0 && (
-          <View style={styles.ratingBadge}>
-             <Ionicons name="star" size={8} color="#FFD700" />
-             <Text style={styles.ratingBadgeText}>{item.rating}</Text>
-          </View>
-        )}
-
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.cardMeta}>
@@ -190,13 +181,11 @@ export default function SearchScreen() {
       const genre = item.genre?.toLowerCase() || '';
       const vj = item.vj?.toLowerCase() || '';
       const year = String(item.year || '');
-      const country = (item as any).country?.toLowerCase() || '';
       
       return title.includes(q) ||
              genre.includes(q) ||
              vj.includes(q) ||
-             year.includes(q) ||
-             country.includes(q);
+             year.includes(q);
     });
     setResults(filtered);
   }, [allContent]);
@@ -519,25 +508,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
-  },
-  ratingBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  ratingBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '900',
-    marginLeft: 3,
   },
   loadingText: {
     color: 'rgba(255,255,255,0.5)',

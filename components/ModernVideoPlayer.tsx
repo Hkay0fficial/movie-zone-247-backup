@@ -156,25 +156,33 @@ export default function ModernVideoPlayer({
   const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
     if (Platform.OS !== 'android') return;
 
-    // Clear any pending hiding attempts immediately
     hidingTimeoutsRef.current.forEach(t => clearTimeout(t));
     hidingTimeoutsRef.current = [];
 
     try {
+      const apiLevel = Platform.Version;
+      
       if (visibility === 'hidden') {
+        // Modern sticky-immersive is the standard for video apps
         await NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
         await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
         
-        const t1 = setTimeout(async () => {
-          await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-        }, 300);
-
-        hidingTimeoutsRef.current.push(t1);
+        // Android 15+ (API 35) handles this via system, but we reinforce once for older devices
+        if (typeof apiLevel === 'number' && apiLevel < 35) {
+          const t1 = setTimeout(async () => {
+            await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+          }, 300);
+          hidingTimeoutsRef.current.push(t1);
+        }
       } else {
         await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
         await NavigationBar.setVisibilityAsync('visible').catch(() => {});
-        await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
-        await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+        
+        // Use semi-transparent instead of pure transparent to satisfy some legacy edge-to-edge edge cases
+        if (typeof apiLevel === 'number' && apiLevel < 35) {
+          await NavigationBar.setBackgroundColorAsync('#00000001').catch(() => {});
+          await NavigationBar.setButtonStyleAsync('light').catch(() => {});
+        }
         StatusBar.setHidden(false);
       }
     } catch (e) {

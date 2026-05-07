@@ -1036,40 +1036,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.2,
   },
-  lockBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    zIndex: 5,
-  },
-  ratingBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.70)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    zIndex: 4,
-  },
-  ratingBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '900',
-    marginLeft: 3,
-  },
   genreBadge: {
     position: "absolute",
     bottom: 6,
@@ -1082,6 +1048,19 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   genreBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
+  lockBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
   cardProgressBarContainer: {
     position: 'absolute',
     bottom: 0,
@@ -6006,15 +5985,6 @@ export const MovieCard = memo(({
              <Ionicons name="lock-closed" size={9} color="#fff" />
           </View>
         )}
-
-        {/* Rating Badge - top-left (below lock if present) */}
-        {movie.rating && parseFloat(movie.rating) > 0 && (
-          <View style={[styles.ratingBadge, isLocked && { top: 28 }]}>
-             <Ionicons name="star" size={8} color="#FFD700" />
-             <Text style={styles.ratingBadgeText}>{movie.rating}</Text>
-          </View>
-        )}
-
         <View style={styles.genreBadge}>
           <Text style={[styles.genreBadgeText, "seasons" in movie && { color: "#fff" }]}>
             {"seasons" in movie ? (movie.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(movie.genre)}
@@ -6022,13 +5992,13 @@ export const MovieCard = memo(({
         </View>
         {"seasons" in movie ? (
           <View style={styles.epBadgePremium}>
-            <Ionicons name="film-outline" size={10} color="#fff" style={{ marginRight: 2 }} />
+            <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
             <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
           </View>
         ) : (
           ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
             <View style={styles.epBadgePremium}>
-               <Ionicons name="layers-outline" size={10} color="#fff" style={{ marginRight: 2 }} />
+               <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
                <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
             </View>
           )

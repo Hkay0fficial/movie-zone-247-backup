@@ -28,8 +28,8 @@ function compareVersions(v1: string, v2: string): number {
 }
 
 export default function VersionLockGuard() {
-  const { latestVersion, latestBuild, forceUpdate, updateMessage } = useSubscription();
-  const [modalType, setModalType] = useState<'locked' | 'prompt' | null>(null);
+  const { latestVersion, latestBuild, forceUpdate, updateMessage, maintenanceMode } = useSubscription();
+  const [modalType, setModalType] = useState<'locked' | 'prompt' | 'maintenance' | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
   
   const currentVersion = Application.nativeApplicationVersion || "1.2.3";
@@ -37,6 +37,10 @@ export default function VersionLockGuard() {
 
   useEffect(() => {
     const checkVersion = async () => {
+      if (maintenanceMode) {
+        setModalType('maintenance');
+        return;
+      }
       if (!latestVersion || latestVersion.trim() === '') return;
 
       // Check if we already dismissed this specific version today
@@ -66,7 +70,7 @@ export default function VersionLockGuard() {
     };
 
     checkVersion();
-  }, [latestVersion, latestBuild, forceUpdate, currentVersion, currentBuild, isDismissed]);
+  }, [latestVersion, latestBuild, forceUpdate, currentVersion, currentBuild, isDismissed, maintenanceMode]);
 
   const handleDismiss = async () => {
     setIsDismissed(true);
@@ -101,9 +105,9 @@ export default function VersionLockGuard() {
         <View style={styles.container}>
           <View style={[styles.iconContainer, !isLocked && styles.promptIconContainer]}>
             <Ionicons 
-              name={isLocked ? "shield-checkmark" : "rocket-outline"} 
+              name={modalType === 'maintenance' ? "construct-outline" : (isLocked ? "shield-checkmark" : "rocket-outline")} 
               size={44} 
-              color={isLocked ? "#ef4444" : "#3b82f6"} 
+              color={modalType === 'maintenance' ? "#f59e0b" : (isLocked ? "#ef4444" : "#3b82f6")} 
             />
           </View>
           
@@ -112,31 +116,39 @@ export default function VersionLockGuard() {
           </View>
 
           <Text style={styles.title}>
-            {isLocked ? "Action Required" : "Update Available"}
+            {modalType === 'maintenance' ? "System Maintenance" : (isLocked ? "Action Required" : "Update Available")}
           </Text>
           
           <Text style={styles.subtitle}>
-            {updateMessage || (isLocked 
-              ? "Your version is no longer supported. Please update to continue." 
-              : "A new version with exciting features is waiting for you!")}
+            {modalType === 'maintenance' 
+              ? "We're currently performing some improvements. We'll be back shortly!" 
+              : (updateMessage || (isLocked 
+                ? "Your version is no longer supported. Please update to continue." 
+                : "A new version with exciting features is waiting for you!"))}
           </Text>
           
           <View style={styles.buttonStack}>
-            <TouchableOpacity 
-              style={styles.updateButton}
-              activeOpacity={0.8}
-              onPress={handleUpdate}
-            >
-              <LinearGradient 
-                colors={isLocked ? ['#ef4444', '#b91c1c'] : ['#3b82f6', '#2563eb']} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 0 }} 
-                style={StyleSheet.absoluteFillObject} 
-              />
-              <Text style={styles.updateButtonText}>Update Now</Text>
-            </TouchableOpacity>
+            {modalType === 'maintenance' ? (
+              <View style={styles.maintenanceBadge}>
+                <Text style={styles.maintenanceBadgeText}>Check back soon</Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.updateButton}
+                activeOpacity={0.8}
+                onPress={handleUpdate}
+              >
+                <LinearGradient 
+                  colors={isLocked ? ['#ef4444', '#b91c1c'] : ['#3b82f6', '#2563eb']} 
+                  start={{ x: 0, y: 0 }} 
+                  end={{ x: 1, y: 0 }} 
+                  style={StyleSheet.absoluteFillObject} 
+                />
+                <Text style={styles.updateButtonText}>Update Now</Text>
+              </TouchableOpacity>
+            )}
 
-            {!isLocked && (
+            {!isLocked && modalType !== 'maintenance' && (
               <TouchableOpacity 
                 style={styles.laterButton}
                 activeOpacity={0.7}
@@ -269,11 +281,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   versionInfo: {
-    fontSize: 10,
-    color: 'rgba(148, 163, 184, 0.4)',
-    fontWeight: '600',
-    textTransform: 'uppercase',
     letterSpacing: 1.2,
+  },
+  maintenanceBadge: {
+    width: '100%',
+    height: 58,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  maintenanceBadgeText: {
+    color: '#f59e0b',
+    fontWeight: '800',
+    fontSize: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   }
 });
 

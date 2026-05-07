@@ -47,6 +47,7 @@ interface SubscriptionContextType {
   latestBuild: string;
   forceUpdate: boolean;
   updateMessage: string;
+  maintenanceMode: boolean;
   playingNow: Movie | Series | null;
   setPlayingNow: (m: Movie | Series | null) => void;
   playerMode: 'closed' | 'full' | 'mini';
@@ -92,6 +93,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   latestBuild: '',
   forceUpdate: false,
   updateMessage: '',
+  maintenanceMode: false,
   playingNow: null,
   setPlayingNow: () => {},
   playerMode: 'closed',
@@ -124,6 +126,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [latestBuild, setLatestBuild] = useState('');
   const [forceUpdate, setForceUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [customExternalLimit, setCustomExternalLimit] = useState(0);
   const [customDeviceLimit, setCustomDeviceLimit] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
@@ -470,10 +473,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const unsub = onSnapshot(doc(db, 'settings', 'appVersion'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setLatestVersion(data.latestVersion || '');
-        setLatestBuild(data.latestBuild || '0');
-        setForceUpdate(data.forceUpdate || false);
-        setUpdateMessage(data.updateMessage || '');
+        const platform = Platform.OS === 'android' ? 'android' : 'ios';
+        const platformData = data[platform] || {};
+
+        // Use platform specific data if available, otherwise fallback to global keys
+        setLatestVersion(platformData.latestVersion || data.latestVersion || '');
+        setLatestBuild(platformData.latestBuild?.toString() || data.latestBuild?.toString() || '0');
+        setForceUpdate(platformData.forceUpdate ?? data.forceUpdate ?? false);
+        setUpdateMessage(platformData.updateMessage || data.updateMessage || '');
+        setMaintenanceMode(data.maintenanceMode || false);
       }
     }, (error: any) => {
       if (error.code === 'permission-denied') return;
@@ -613,6 +621,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     latestBuild,
     forceUpdate,
     updateMessage,
+    maintenanceMode,
     playingNow,
     setPlayingNow,
     playerMode,
@@ -652,6 +661,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     latestBuild,
     forceUpdate,
     updateMessage,
+    maintenanceMode,
     playingNow,
     playerMode,
     playerTitle,

@@ -179,23 +179,25 @@ function SystemUIGuard() {
       const resetUI = async () => {
         if (Platform.OS === 'android') {
           try {
-            // Android 15+ (API 35+) enforces edge-to-edge, so some APIs are no-ops or deprecated.
             const apiLevel = Platform.Version;
             
+            // In modern Android (API 35+ / Android 15), edge-to-edge is mandatory.
+            // We focus on semantic visibility rather than forcing deprecated background colors.
             await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
             await NavigationBar.setVisibilityAsync('visible').catch(() => {});
             
-            // Avoid setting background colors explicitly on Android 15+ to stay compliant with edge-to-edge enforcement
+            // On older versions, we still ensure transparency for consistent "thin-line" aesthetic.
             if (typeof apiLevel === 'number' && apiLevel < 35) {
-              await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+              await NavigationBar.setBackgroundColorAsync('#00000001').catch(() => {});
               await NavigationBar.setButtonStyleAsync('light').catch(() => {});
             }
           } catch (e) {}
         }
       };
       resetUI();
-      const interval = setInterval(resetUI, 500);
-      const timeout = setTimeout(() => clearInterval(interval), 2500);
+      // Reduced frequency of reinforcement to respect modern system constraints
+      const interval = setInterval(resetUI, 1000);
+      const timeout = setTimeout(() => clearInterval(interval), 3000);
       return () => {
         clearInterval(interval);
         clearTimeout(timeout);
@@ -225,9 +227,24 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    }
+    const initOrientation = async () => {
+      if (Platform.OS !== 'web') {
+        // Unlock orientation for large screen devices (tablets/foldables) to satisfy Play Store requirements.
+        // Only lock to portrait for standard handsets.
+        const { isDevice } = await import('expo-device');
+        const deviceType = await import('expo-device').then(d => d.getDeviceTypeAsync());
+        
+        // DeviceType.PHONE = 1, DeviceType.TABLET = 2
+        if (deviceType === 1) {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        } else {
+          await ScreenOrientation.unlockAsync();
+        }
+      }
+    };
+
+    initOrientation();
+    
     if (Platform.OS === 'android') {
       SystemUI.setBackgroundColorAsync('#0a0a0f').catch(() => {});
     }

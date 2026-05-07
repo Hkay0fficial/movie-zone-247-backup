@@ -228,12 +228,6 @@ function SeriesCard({ item, onPress }: { item: Series; onPress: () => void }) {
           <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
           <Text style={styles.epBadgeTextPremium}>{item.episodes} EP</Text>
         </View>
-
-        {item.isNewReleaseSeries && (
-          <View style={[styles.newSeriesBadge]}>
-            <Text style={styles.newSeriesBadgeText}>NEW</Text>
-          </View>
-        )}
       </View>
       <View style={styles.cardInfo}>
         <Text
@@ -729,13 +723,9 @@ export default function SeriesScreen() {
                 
                 switch(section.filterType) {
                   case 'newReleases': sectionData = NEW_SERIES; break;
-                  case 'newSeries': sectionData = NEW_SERIES; break;
                   case 'trending': sectionData = TRENDING_SERIES; break;
-                  case 'trendingSeries': sectionData = TRENDING_SERIES; break;
                   case 'mostViewed': sectionData = MOST_VIEWED_SERIES; break;
-                  case 'mostViewedSeries': sectionData = MOST_VIEWED_SERIES; break;
                   case 'mostDownloaded': sectionData = MOST_DOWNLOADED_SERIES; break;
-                  case 'mostDownloadedSeries': sectionData = MOST_DOWNLOADED_SERIES; break;
                   case 'miniSeries': sectionData = ALL_SERIES.filter(s => s.isMiniSeries === true); break;
                   case 'genre': 
                     sectionData = ALL_SERIES.filter(s => 
