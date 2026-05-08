@@ -21,6 +21,7 @@ import {
   ScrollView,
   AppState,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import ReAnimated, { SlideInRight, SlideOutRight } from "react-native-reanimated";
 import * as SystemUI from "expo-system-ui";
@@ -192,12 +193,32 @@ export default function ModernVideoPlayer({
   
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
+  const [isPiPActive, setIsPiPActive] = useState(false);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       setAppState(nextAppState);
     });
-    return () => subscription.remove();
+
+    // PiP Event Listener
+    let pipListener: any = null;
+    if (Platform.OS === 'android') {
+      const { NativeEventEmitter } = require('react-native');
+      const eventEmitter = new NativeEventEmitter(NativeModules.PipModule);
+      pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', (event: { isInPictureInPictureMode: boolean }) => {
+        setIsPiPActive(!!event.isInPictureInPictureMode);
+        if (event.isInPictureInPictureMode) {
+          setShowControls(false);
+          showControlsRef.current = false;
+          controlsOpacity.setValue(0);
+        }
+      });
+    }
+
+    return () => {
+      subscription.remove();
+      if (pipListener) pipListener.remove();
+    };
   }, []);
 
   const videoRef = useRef<Video>(null);
@@ -355,6 +376,11 @@ export default function ModernVideoPlayer({
   // Load Video Effect - Enhanced with progress saving on switch
   useEffect(() => {
     if (!videoUrl || playerMode === 'closed' || !videoRef.current) return;
+
+    // Reset PiP params when starting a new video
+    if (Platform.OS === 'android' && NativeModules.PipModule) {
+      NativeModules.PipModule.updatePipParams(16, 9, true);
+    }
 
     const loadNewSource = async () => {
       try {
@@ -930,7 +956,7 @@ export default function ModernVideoPlayer({
           source={{ uri: videoUrl || "" }}
           style={styles.absFill}
           resizeMode={videoResizeMode}
-          shouldPlay={playerMode !== 'closed' && isFocused}
+          shouldPlay={playerMode !== 'closed' && (isFocused || isPiPActive)}
           useNativeControls={false}
           allowsPictureInPicture={true}
           allowsExternalPlaybackIOS={true}
@@ -1008,7 +1034,7 @@ export default function ModernVideoPlayer({
 
 
           {/* Immersive Overlay Components */}
-          {!isMini && (
+          {!isMini && !isPiPActive && (
             <Animated.View style={[styles.absFill, { opacity: controlsOpacity }]} pointerEvents={showControls ? "auto" : "none"}>
               
               {/* Glassmorphic Header */}
@@ -1304,7 +1330,16 @@ export default function ModernVideoPlayer({
                         <TouchableOpacity 
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            NativeModules.PipModule?.enterPipMode?.();
+                            if (NativeModules.PipModule) {
+                              NativeModules.PipModule.enterPipMode();
+                            } else {
+                              Alert.alert(
+                                "PiP Error",
+                                "Native PiP module not found. Please ensure you are using the latest version of the app and have rebuilt the native code.",
+                                [{ text: "OK" }]
+                              );
+                              console.warn("PipModule not found in NativeModules");
+                            }
                           }} 
                           style={styles.circleBtn}
                         >
@@ -1395,7 +1430,7 @@ export default function ModernVideoPlayer({
           )}
 
             {/* Interaction Indicators */}
-          {isAdjustingBrightness && (
+          {!isPiPActive && isAdjustingBrightness && (
             <View style={styles.verticalIndicatorLeft}>
                <BlurView intensity={60} tint="dark" style={styles.indicatorBg} />
                <Ionicons name="sunny" size={20} color="#fff" />
@@ -1405,7 +1440,7 @@ export default function ModernVideoPlayer({
             </View>
           )}
           
-          {isAdjustingVolume && (
+          {!isPiPActive && isAdjustingVolume && (
             <View style={styles.verticalIndicatorRight}>
                <BlurView intensity={60} tint="dark" style={styles.indicatorBg} />
                <Ionicons name="volume-high" size={20} color="#fff" />

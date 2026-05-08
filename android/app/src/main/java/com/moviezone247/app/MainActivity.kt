@@ -4,6 +4,8 @@ import com.reactnative.googlecast.api.RNGCCastContext
 
 import android.os.Build
 import android.os.Bundle
+import android.app.PictureInPictureParams
+import android.util.Rational
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -71,13 +73,12 @@ class MainActivity : ReactActivity() {
   override fun onUserLeaveHint() {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
           try {
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+              // Only enter PiP if we are not already in it
+              if (!isInPictureInPictureMode) {
                   val params = android.app.PictureInPictureParams.Builder()
                       .setAspectRatio(android.util.Rational(16, 9))
                       .build()
                   enterPictureInPictureMode(params)
-              } else {
-                  enterPictureInPictureMode()
               }
           } catch (e: Exception) {}
       }
@@ -86,6 +87,12 @@ class MainActivity : ReactActivity() {
 
   override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
       super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-      // This can be used to send an event to React Native to hide/show UI elements
+      
+      // Emit event to JS
+      val params = com.facebook.react.bridge.Arguments.createMap()
+      params.putBoolean("isInPictureInPictureMode", isInPictureInPictureMode)
+      
+      (application as com.facebook.react.ReactApplication).reactNativeHost.reactContext?.getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+          ?.emit("onPictureInPictureModeChanged", params)
   }
 }

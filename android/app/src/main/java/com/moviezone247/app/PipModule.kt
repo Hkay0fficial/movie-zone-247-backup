@@ -6,28 +6,48 @@ import com.facebook.react.bridge.ReactMethod
 import android.os.Build
 import android.app.PictureInPictureParams
 import android.util.Rational
+import android.util.Log
 
-class PipModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+class PipModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     override fun getName(): String {
         return "PipModule"
     }
 
     @ReactMethod
+    fun updatePipParams(aspectRatioNumerator: Int, aspectRatioDenominator: Int, autoEnter: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val activity = reactContext.currentActivity ?: return
+            val builder = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(aspectRatioNumerator, aspectRatioDenominator))
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                builder.setAutoEnterEnabled(autoEnter)
+                builder.setSeamlessResizeEnabled(true)
+            }
+            
+            activity.setPictureInPictureParams(builder.build())
+            Log.d("PipModule", "Updated PiP params: autoEnter=$autoEnter")
+        }
+    }
+
+    @ReactMethod
     fun enterPipMode() {
-        val activity = currentActivity
+        val activity = reactContext.currentActivity
         if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val params = PictureInPictureParams.Builder()
-                        .setAspectRatio(Rational(16, 9))
-                        .build()
-                    activity.enterPictureInPictureMode(params)
-                } else {
-                    activity.enterPictureInPictureMode()
-                }
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+                activity.enterPictureInPictureMode(params)
+                Log.d("PipModule", "Successfully entered PiP mode")
+                android.widget.Toast.makeText(reactContext, "Entering Picture-in-Picture...", android.widget.Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                // Log or handle error
+                Log.e("PipModule", "Failed to enter PiP mode: ${e.message}")
+                android.widget.Toast.makeText(reactContext, "PiP Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
             }
+        } else {
+            Log.w("PipModule", "PiP not supported or activity is null")
+            android.widget.Toast.makeText(reactContext, "PiP not supported on this device", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 }
