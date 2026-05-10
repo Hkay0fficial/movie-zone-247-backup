@@ -425,8 +425,8 @@ export default function SeriesScreen() {
         return false;
       };
 
-      BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => backHandler.remove();
     }, [handleCloseSection])
   );
   // ─────────────────────────────────────────────────────────────────────────
