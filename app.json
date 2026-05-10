@@ -47,7 +47,7 @@
       ],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
-      "predictiveBackGestureEnabled": true,
+      "predictiveBackGestureEnabled": false,
       "supportsPictureInPicture": true,
       "resizable": true
     },

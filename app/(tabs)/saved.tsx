@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -385,6 +385,51 @@ export default function SeriesScreen() {
     _safeSetEpId = undefined;
   }
   const isFocused = useIsFocused();
+
+  // ─── STABLE BACK HANDLER LOGIC ──────────────────────────────────────────
+  // Use refs for stable BackHandler access to state without re-registering
+  const seriesStackRef = useRef(seriesStack);
+  const activeSectionRef = useRef(activeSection);
+  const playerModeRef = useRef(playerMode);
+  
+  useEffect(() => { seriesStackRef.current = seriesStack; }, [seriesStack]);
+  useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
+  useEffect(() => { playerModeRef.current = playerMode; }, [playerMode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // If in full screen, allow the video player component to handle the back press
+        if (playerModeRef.current === 'full') return false;
+        
+        // If we have a stack of series detail views, pop the top one
+        if (seriesStackRef.current.length > 0) {
+          setSeriesStack(prev => {
+            const newStack = [...prev];
+            newStack.pop();
+            if (newStack.length === 0) {
+              DeviceEventEmitter.emit("setDetailStackVisible", false);
+            }
+            return newStack;
+          });
+          return true;
+        }
+        
+        // If an expanded grid section is open, close it
+        if (activeSectionRef.current) {
+          handleCloseSection();
+          return true;
+        }
+        
+        // Otherwise, let the system handle the back press (e.g., exiting the app)
+        return false;
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [handleCloseSection])
+  );
+  // ─────────────────────────────────────────────────────────────────────────
   const [appState, setAppState] = useState(AppState.currentState);
   const [isOffline, setIsOffline] = useState(false);
   const { downloadedMovies = [] } = useDownloads() || {};
@@ -641,35 +686,7 @@ export default function SeriesScreen() {
     return <SeriesSkeleton />;
   }
 
-  const handleBackPress = useCallback(() => {
-    if (playerMode === 'full') return false; // Let player handle it
-    
-    if (seriesStack.length > 0) {
-      setSeriesStack(prev => {
-        const newStack = [...prev];
-        newStack.pop();
-        if (newStack.length === 0) {
-          DeviceEventEmitter.emit("setDetailStackVisible", false);
-        }
-        return newStack;
-      });
-      return true;
-    }
-    
-    if (activeSection) {
-      handleCloseSection();
-      return true;
-    }
-    
-    return false;
-  }, [playerMode, seriesStack.length, activeSection, handleCloseSection]);
-
-  useEffect(() => {
-    if (isFocused) {
-      const sub = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-      return () => sub.remove();
-    }
-  }, [isFocused, handleBackPress]);
+  // BackHandler logic moved above loading state for stability
 
   return (
     <View 
