@@ -327,16 +327,7 @@ export function GridModal({
   onClose: () => void;
   onSelect: (m: Movie | Series) => void;
 }) {
-  useEffect(() => {
-    if (visible) {
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        onClose();
-        return true;
-      });
-      return () => backHandler.remove();
-    }
-  }, [visible, onClose]);
-
+  // BackHandler handled by parent SeriesScreen
   if (!visible) return null;
 
   return (

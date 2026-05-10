@@ -641,6 +641,36 @@ export default function SeriesScreen() {
     return <SeriesSkeleton />;
   }
 
+  const handleBackPress = useCallback(() => {
+    if (playerMode === 'full') return false; // Let player handle it
+    
+    if (seriesStack.length > 0) {
+      setSeriesStack(prev => {
+        const newStack = [...prev];
+        newStack.pop();
+        if (newStack.length === 0) {
+          DeviceEventEmitter.emit("setDetailStackVisible", false);
+        }
+        return newStack;
+      });
+      return true;
+    }
+    
+    if (activeSection) {
+      handleCloseSection();
+      return true;
+    }
+    
+    return false;
+  }, [playerMode, seriesStack.length, activeSection, handleCloseSection]);
+
+  useEffect(() => {
+    if (isFocused) {
+      const sub = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+      return () => sub.remove();
+    }
+  }, [isFocused, handleBackPress]);
+
   return (
     <View 
       style={styles.container}
@@ -1101,16 +1131,7 @@ function SeriesPreviewModal({
     setSelectedSeason(1);
   }, [series?.id]);
 
-  // Handle Android hardware back button (replaces Modal's onRequestClose)
-  useEffect(() => {
-    const onBackPress = () => {
-      if (playerMode === 'full') return false; // Let player handle it
-      onClose();
-      return true;
-    };
-    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => sub.remove();
-  }, [onClose, playerMode]);
+  // Removed internal BackHandler - handled by parent SeriesScreen
   const insets = useSafeAreaInsets();
   const playPulse = useRef(new Animated.Value(1)).current;
   const downloadPulse = useRef(new Animated.Value(1)).current;
