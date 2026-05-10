@@ -331,14 +331,22 @@ export function GridModal({
   if (!visible) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 40000 }]}>
-      <GridContent 
-        title={title}
-        data={data}
-        onClose={onClose}
-        onSelect={onSelect}
-      />
-    </View>
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={[StyleSheet.absoluteFill, { zIndex: 40000 }]}>
+        <GridContent 
+          title={title}
+          data={data}
+          onClose={onClose}
+          onSelect={onSelect}
+        />
+      </View>
+    </Modal>
   );
 }
 

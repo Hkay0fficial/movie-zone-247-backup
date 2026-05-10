@@ -1556,12 +1556,19 @@ function SeriesPreviewModal({
   }, []);
 
   return (
-    <View
-      style={[
-        StyleSheet.absoluteFill,
-        { zIndex: 1000, elevation: 1000 },
-      ]}
+    <Modal
+      visible={true}
+      transparent={true}
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
     >
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { zIndex: 1000, elevation: 1000 },
+        ]}
+      >
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
         <StatusBar
           barStyle="light-content"
@@ -3171,7 +3178,8 @@ function SeriesPreviewModal({
       </View>
 
       {/* FloatingPlayer moved to parent level for persistence */}
-    </View>
+      </View>
+    </Modal>
   );
 }
 
