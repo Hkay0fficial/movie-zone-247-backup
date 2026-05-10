@@ -60,8 +60,9 @@ const GoogleCast = null; // Cast is resolved at runtime via getCastModule()
 const CastButton: React.ComponentType<any> = () => null;
 const useCastSession: () => any = () => null;
 
-// Static dimensions for fallback, but we primarily use useWindowDimensions hook inside component
-const { width: STATIC_W, height: STATIC_H } = Dimensions.get("window");
+const BlurViewOptimized = Platform.OS === 'android' ? ({ style, ...props }: any) => <View style={[{ backgroundColor: 'rgba(15,15,20,0.85)' }, style]} /> : BlurView;
+
+// ─── Native Media Controls ───────────────────────────────────────
 
 // ─── Google Cast Safety Guard ───
 const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
@@ -284,6 +285,7 @@ export default function ModernVideoPlayer({
           if (event.isInPictureInPictureMode) {
             setShowControls(false);
             showControlsRef.current = false;
+            setIsControlsMounted(false);
             controlsOpacity.setValue(0);
           }
         });
@@ -304,6 +306,7 @@ export default function ModernVideoPlayer({
   
   // UI States
   const [showControls, setShowControls] = useState(true);
+  const [isControlsMounted, setIsControlsMounted] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -314,9 +317,9 @@ export default function ModernVideoPlayer({
   const volumeSliderWidthRef = useRef(90);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
-  const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN); // CONTAIN (Fit), COVER (Fill), STRETCH (Stretch)
+  const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN);
   const [isAirPlaying, setIsAirPlaying] = useState(false);
-  const [isAmbientMode, setIsAmbientMode] = useState(true);
+  // Ambient Mode removed to optimize playback performance
   
   const [currentVolume, setCurrentVolume] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -361,6 +364,8 @@ export default function ModernVideoPlayer({
   const statusUpdateRef = useRef<any>(null);
   const isInteractingRef = useRef(false); // Global lock to prevent main swipe from stealing control touches
   const fullPlayerAnim = useRef(new Animated.Value(0)).current; // For smooth entry
+  const lastStateUpdateRef = useRef(0);
+  const lastPushedStateRef = useRef<AVPlaybackStatus>({} as AVPlaybackStatus);
 
   const [isClosing, setIsClosing] = useState(false);
   const playerModeRef = useRef(playerMode);
@@ -401,12 +406,13 @@ export default function ModernVideoPlayer({
         friction: 14,
         useNativeDriver: true,
       })
-    ]).start(async () => {
-      // 4. Restore orientation ONLY after the player is fully off-screen
-      if (Platform.OS !== "web") {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-      }
+    ]).start(() => {
+      // Call onClose immediately so the UI is freed
       onClose();
+      // Restore orientation ONLY after the player is fully off-screen in the background
+      if (Platform.OS !== "web") {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      }
       // Keep isClosing true for an extra moment to ensure unmount finishes without flicker
       setTimeout(() => setIsClosing(false), 100);
     });
@@ -414,28 +420,22 @@ export default function ModernVideoPlayer({
 
   // Orientation & Status Bar
   useEffect(() => {
-    const manageLayout = async () => {
+    const manageLayout = () => {
       if (playerMode === 'full') {
         StatusBar.setHidden(true, 'fade');
-        await safeSetNavigationBar('hidden');
+        safeSetNavigationBar('hidden').catch(() => {});
 
-        // Check if we need to reset position (only if fully closed or off-screen)
-        const currentX = (playerPos.x as any)._value || 0;
-        const PORTRAIT_W = Math.min(SCREEN_W, SCREEN_H);
+        // Snap immediately to position to cover underlying UI elements instantly
+        playerPos.setValue({ x: 0, y: 0 });
+        fullPlayerAnim.setValue(1);
 
-        if (Math.abs(currentX) > 50 || (fullPlayerAnim as any)._value < 0.1) {
-          // Snap immediately to position to cover underlying UI elements instantly
-          playerPos.setValue({ x: 0, y: 0 });
-          fullPlayerAnim.setValue(1);
-
-          // Still run a subtle spring for feel, but the background will be covered
-          Animated.spring(playerPos, {
-            toValue: { x: 0, y: 0 },
-            tension: 80,
-            friction: 14,
-            useNativeDriver: true,
-          }).start();
-        }
+        // Still run a subtle spring for feel, but the background will be covered
+        Animated.spring(playerPos, {
+          toValue: { x: 0, y: 0 },
+          tension: 80,
+          friction: 14,
+          useNativeDriver: true,
+        }).start();
 
         // Force Portrait for previews, Landscape for full movies
         if (Platform.OS !== "web") {
@@ -453,9 +453,9 @@ export default function ModernVideoPlayer({
       } else {
         StatusBar.setHidden(false, 'fade');
         if (Platform.OS !== "web") {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+           ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
         }
-        await safeSetNavigationBar('visible');
+        safeSetNavigationBar('visible').catch(() => {});
         fullPlayerAnim.setValue(0);
       }
     };
@@ -613,7 +613,7 @@ export default function ModernVideoPlayer({
   useEffect(() => {
     if (playerMode !== 'closed' && status.isLoaded && status.isPlaying && movieId) {
       const interval = setInterval(() => {
-        savePlaybackProgress(movieId, status.positionMillis, episodeId);
+        savePlaybackProgress(movieId, (statusRef.current as any).positionMillis || 0, episodeId);
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -711,13 +711,16 @@ export default function ModernVideoPlayer({
     }
     setShowControls(true);
     showControlsRef.current = true;
+    setIsControlsMounted(true);
     Animated.timing(controlsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     controlsTimeout.current = setTimeout(() => {
       if (!isScrubbing) {
         setShowControls(false);
         showControlsRef.current = false;
-        Animated.timing(controlsOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start();
+        Animated.timing(controlsOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start(({ finished }) => {
+            if (finished && !showControlsRef.current) setIsControlsMounted(false);
+        });
         if (playerMode === 'full') {
           safeSetNavigationBar('hidden');
         }
@@ -729,7 +732,9 @@ export default function ModernVideoPlayer({
     if (showControlsRef.current) {
       setShowControls(false);
       showControlsRef.current = false;
-      Animated.timing(controlsOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(controlsOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(({ finished }) => {
+          if (finished && !showControlsRef.current) setIsControlsMounted(false);
+      });
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
       
       // If we are hiding controls, force-hide the nav bar again (reinforcement)
@@ -1018,7 +1023,7 @@ export default function ModernVideoPlayer({
 
   // Formatting helpers
   const onPlaybackStatusUpdate = React.useCallback((s: AVPlaybackStatus) => {
-    setStatus(s);
+    statusRef.current = s;
     if (s.isLoaded && s.durationMillis) {
       const bPct = (s.playableDurationMillis || 0) / s.durationMillis;
       bufferedAnimPct.setValue(bPct);
@@ -1032,22 +1037,8 @@ export default function ModernVideoPlayer({
       }
     }
 
-    statusRef.current = s;
-
-    // --- Buffering Delay Logic ---
-    if (s.isLoaded && s.isBuffering) {
-      if (!bufferTimeoutRef.current) {
-        bufferTimeoutRef.current = setTimeout(() => {
-          setIsBufferingDelayed(true);
-        }, 3000); // 3.0s delay before showing overlay (optimized to prevent flickering)
-      }
-    } else {
-      if (bufferTimeoutRef.current) {
-        clearTimeout(bufferTimeoutRef.current);
-        bufferTimeoutRef.current = null;
-      }
+      // Buffering overlay removed as requested to prevent intrusive UI pops
       setIsBufferingDelayed(false);
-    }
 
     // Track AirPlay/external playback state
     if (s.isLoaded && Platform.OS === 'ios') {
@@ -1065,14 +1056,12 @@ export default function ModernVideoPlayer({
       onNext();
     }
 
-    // --- Suggest Next Part Logic ---
+    // Memoized showNextSuggestion state update
     if (s.isLoaded && s.durationMillis && hasNext) {
       const remaining = s.durationMillis - s.positionMillis;
-      const isNearEnd = remaining < 30000 && remaining > 0; // Last 30 seconds
-      if (isNearEnd && !showNextSuggestion) {
-        setShowNextSuggestion(true);
-      } else if (!isNearEnd && showNextSuggestion) {
-        setShowNextSuggestion(false);
+      const isNearEnd = remaining < 30000 && remaining > 0;
+      if (isNearEnd !== showNextSuggestion) {
+        setShowNextSuggestion(isNearEnd);
       }
     } else if (showNextSuggestion) {
       setShowNextSuggestion(false);
@@ -1081,10 +1070,29 @@ export default function ModernVideoPlayer({
     // Error handling
     if (!s.isLoaded && (s as any).error) {
       setError((s as any).error || "An error occurred while loading the video.");
-    } else if (s.isLoaded) {
+    } else if (s.isLoaded && error) {
       setError(null);
     }
-  }, [isPreview, hasNext, onNext, showNextSuggestion]);
+
+    // Performance Throttle: Only update React state every 1000ms unless critical state changed
+    const now = Date.now();
+    const prev = lastPushedStateRef.current;
+
+    let forceUpdate = false;
+    if (!prev.isLoaded && s.isLoaded) forceUpdate = true;
+    else if (prev.isLoaded && s.isLoaded) {
+       if (prev.isPlaying !== s.isPlaying) forceUpdate = true;
+       if (prev.isBuffering !== s.isBuffering) forceUpdate = true;
+       if (prev.durationMillis !== s.durationMillis) forceUpdate = true;
+       if (s.didJustFinish) forceUpdate = true;
+    } else if (prev.isLoaded !== s.isLoaded) forceUpdate = true;
+
+    if (forceUpdate || now - lastStateUpdateRef.current >= 1000) {
+       setStatus(s);
+       lastPushedStateRef.current = s;
+       lastStateUpdateRef.current = now;
+    }
+  }, [isPreview, hasNext, onNext, showNextSuggestion, error]);
 
   // Handle pulse animation for Next Suggestion
   useEffect(() => {
@@ -1130,40 +1138,10 @@ export default function ModernVideoPlayer({
       }}
       onPressIn={!isMini ? handleDoubleTap : undefined}
     >
-      <View style={styles.contentContainer} {...(!isMini ? panResponder.panHandlers : {})} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
-        
-        {/* ── CINEMATIC AMBIENT GLOW LAYER ── */}
-        {isAmbientMode && status.isPlaying && !isPiPActive && !isMini && (
-          <View 
-            style={[
-              StyleSheet.absoluteFill, 
-              { opacity: 0.6, zIndex: 0, overflow: 'hidden' }
-            ]}
-            pointerEvents="none"
-          >
-            <Video
-              source={{ uri: videoUrl || "" }}
-              style={{ 
-                width: SCREEN_W * 1.5, 
-                height: SCREEN_H * 1.5,
-                position: 'absolute',
-                top: -(SCREEN_H * 0.25),
-                left: -(SCREEN_W * 0.25),
-              }}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={status.isPlaying}
-              isMuted={true}
-              positionMillis={status.positionMillis}
-              progressUpdateIntervalMillis={1000}
-            />
-            <BlurView intensity={Platform.OS === 'ios' ? 100 : 80} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-               colors={['rgba(5,5,8,0.9)', 'transparent', 'rgba(5,5,8,0.9)'] as any}
-               style={StyleSheet.absoluteFill}
-            />
-          </View>
-        )}
-        <Video
+        {/* Content Container */}
+        <View style={styles.contentContainer} {...(!isMini ? panResponder.panHandlers : {})} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
+          
+          <Video
           ref={videoRef}
           source={{ uri: videoUrl || "" }}
           style={styles.absFill}
@@ -1176,13 +1154,13 @@ export default function ModernVideoPlayer({
           isMuted={isMuted}
           volume={isMuted ? 0 : currentVolume}
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
-          progressUpdateIntervalMillis={200} // Smoother knob movement
+          progressUpdateIntervalMillis={1000}
           {...(Platform.OS === 'android' ? {
             bufferConfig: {
               minBufferMs: 15000,
               maxBufferMs: 50000,
-              bufferForPlaybackMs: 2500,
-              bufferForPlaybackAfterRebufferMs: 5000,
+              bufferForPlaybackMs: 1000,
+              bufferForPlaybackAfterRebufferMs: 2500,
             }
           } : {})}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
@@ -1193,7 +1171,7 @@ export default function ModernVideoPlayer({
         {/* Error UI */}
         {error && (
           <View style={[styles.absFill, styles.overlayBackdrop, { zIndex: 200 }]}>
-            <BlurView intensity={90} tint="dark" style={styles.absFill} />
+            <BlurViewOptimized intensity={90} tint="dark" style={styles.absFill} />
             <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
             <Text style={styles.errorTitle}>Playback Error</Text>
             <Text style={styles.errorText}>{error}</Text>
@@ -1242,23 +1220,17 @@ export default function ModernVideoPlayer({
           </View>
         )}
 
-        {isBufferingDelayed && status.isLoaded && (
-          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 90 }]}>
-            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-            <ActivityIndicator size="large" color="#818cf8" />
-            <Text style={{ color: '#fff', marginTop: 10, fontSize: 12, fontWeight: 'bold' }}>BUFFERING...</Text>
-          </View>
-        )}
+        {/* Buffering Overlay Removed per user request */}
 
 
           {/* Immersive Overlay Components */}
-          {!isMini && !isPiPActive && (
+          {!isMini && !isPiPActive && isControlsMounted && (
             <Animated.View style={[styles.absFill, { opacity: controlsOpacity }]} pointerEvents={showControls ? "auto" : "none"}>
               
               {/* Glassmorphic Header */}
               {!isLocked && (
                 <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-                  <BlurView intensity={25} tint="dark" style={styles.glassHeaderBg} />
+                  <BlurViewOptimized intensity={25} tint="dark" style={styles.glassHeaderBg} />
                   <TouchableOpacity onPress={handleDismiss} style={styles.backBtn}>
                     <Ionicons name="chevron-down" size={28} color="#fff" />
                   </TouchableOpacity>
@@ -1354,7 +1326,7 @@ export default function ModernVideoPlayer({
                     <View style={styles.sidePillsContainer}>
                       {hasPrev && onPrev && (
                         <TouchableOpacity onPress={onPrev} style={styles.sidePill}>
-                          <BlurView intensity={50} tint="dark" style={styles.absFill} />
+                          <BlurViewOptimized intensity={50} tint="dark" style={styles.absFill} />
                           <Ionicons name="play-skip-back" size={14} color="#fff" style={{ marginRight: 6 }} />
                           <Text style={styles.sidePillText}>Prev Episode</Text>
                         </TouchableOpacity>
@@ -1362,7 +1334,7 @@ export default function ModernVideoPlayer({
                       <View style={{ flex: 1 }} />
                       {hasNext && onNext && (!status.isLoaded || !status.isPlaying || (status.durationMillis || 0) - status.positionMillis > 45000) && (
                         <TouchableOpacity onPress={onNext} style={styles.sidePill}>
-                          <BlurView intensity={50} tint="dark" style={styles.absFill} />
+                          <BlurViewOptimized intensity={50} tint="dark" style={styles.absFill} />
                           <Text style={styles.sidePillText}>Next Episode</Text>
                           <Ionicons name="play-skip-forward" size={14} color="#fff" style={{ marginLeft: 6 }} />
                         </TouchableOpacity>
@@ -1394,7 +1366,7 @@ export default function ModernVideoPlayer({
                 ) : (
                   <Animated.View style={{ transform: [{ scale: lockPulseAnim }] }}>
                      <TouchableOpacity onPress={() => setIsLocked(false)} style={styles.lockBtnLarge}>
-                        <BlurView intensity={60} tint="dark" style={styles.glassCircleBg} />
+                        <BlurViewOptimized intensity={60} tint="dark" style={styles.glassCircleBg} />
                         <Ionicons name="lock-closed" size={36} color="#fff" />
                      </TouchableOpacity>
                   </Animated.View>
@@ -1405,7 +1377,7 @@ export default function ModernVideoPlayer({
               {status.isLoaded && status.isPlaying && hasNext && onNext && !showNextSuggestion && (status.durationMillis || 0) - status.positionMillis <= 45000 && (
                 <View style={styles.nextPillArea}>
                   <TouchableOpacity onPress={onNext} style={styles.nextPill}>
-                    <BlurView intensity={50} tint="dark" style={styles.absFill} />
+                    <BlurViewOptimized intensity={50} tint="dark" style={styles.absFill} />
                     <Text style={styles.nextPillText}>Next: {processedNextPartName || "Next Episode"}</Text>
                     <Ionicons name="play-skip-forward" size={16} color="#fff" style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
@@ -1601,7 +1573,7 @@ export default function ModernVideoPlayer({
             {/* Next Episode Suggestion Overlay */}
             {showNextSuggestion && !isLocked && (
               <Animated.View style={styles.nextSuggestionOverlay}>
-                <BlurView intensity={90} tint="dark" style={styles.nextSuggestionBlur}>
+                <BlurViewOptimized intensity={90} tint="dark" style={styles.nextSuggestionBlur}>
                   <View style={styles.nextSuggestionHeader}>
                     <View style={styles.nextSuggestionBranding}>
                       <Image 
@@ -1660,7 +1632,7 @@ export default function ModernVideoPlayer({
                   >
                     <Text style={styles.nextCancelText}>CANCEL</Text>
                   </TouchableOpacity>
-                </BlurView>
+                </BlurViewOptimized>
               </Animated.View>
             )}
           </Animated.View>
@@ -1669,7 +1641,7 @@ export default function ModernVideoPlayer({
             {/* Interaction Indicators */}
           {!isPiPActive && isAdjustingBrightness && (
             <View style={styles.verticalIndicatorLeft}>
-               <BlurView intensity={60} tint="dark" style={styles.indicatorBg} />
+               <BlurViewOptimized intensity={60} tint="dark" style={styles.indicatorBg} />
                <Ionicons name="sunny" size={20} color="#fff" />
                <View style={styles.indicatorTrack}>
                  <View style={[styles.indicatorFill, { height: `${currentBrightness * 100}%` }]} />
@@ -1679,7 +1651,7 @@ export default function ModernVideoPlayer({
           
           {!isPiPActive && isAdjustingVolume && (
             <View style={styles.verticalIndicatorRight}>
-               <BlurView intensity={60} tint="dark" style={styles.indicatorBg} />
+               <BlurViewOptimized intensity={60} tint="dark" style={styles.indicatorBg} />
                <Ionicons name="volume-high" size={20} color="#fff" />
                <View style={styles.indicatorTrack}>
                  <View style={[styles.indicatorFill, { height: `${currentVolume * 100}%` }]} />
@@ -1695,7 +1667,7 @@ export default function ModernVideoPlayer({
                 activeOpacity={1}
                 onPress={() => setShowEpisodesOverlay(false)}
               >
-                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                <BlurViewOptimized intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
               </TouchableOpacity>
 
               <ReAnimated.View 
@@ -1703,7 +1675,7 @@ export default function ModernVideoPlayer({
                 exiting={SlideOutRight}
                 style={styles.sidebarContent}
               >
-                <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
+                <BlurViewOptimized intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
                 
                 {/* Header */}
                 <View style={styles.sidebarHeader}>
@@ -1742,7 +1714,7 @@ export default function ModernVideoPlayer({
                           />
                           {isActive ? (
                             <View style={styles.epRowPlayingOverlay}>
-                              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+                              <BlurViewOptimized intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
                               <View style={styles.playingIndicator}>
                                 <View style={[styles.playingBar, { height: '60%' }]} />
                                 <View style={[styles.playingBar, { height: '100%' }]} />
@@ -1781,7 +1753,7 @@ export default function ModernVideoPlayer({
               activeOpacity={1}
               onPress={() => setShowSpeedOverlay(false)}
             >
-              <BlurView intensity={80} tint="dark" style={styles.absFill} />
+              <BlurViewOptimized intensity={80} tint="dark" style={styles.absFill} />
               <View style={[styles.overlayContent, { width: '40%' }]}>
                 <View style={styles.overlayHeader}>
                   <Text style={styles.overlayTitle}>Playback Speed</Text>
@@ -1813,7 +1785,7 @@ export default function ModernVideoPlayer({
               activeOpacity={1}
               onPress={() => setShowTimerOptions(false)}
             >
-              <BlurView intensity={80} tint="dark" style={styles.absFill} />
+              <BlurViewOptimized intensity={80} tint="dark" style={styles.absFill} />
               <View style={[styles.overlayContent, { width: '40%' }]}>
                 <View style={[styles.overlayHeader, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
                   <Text style={styles.overlayTitle}>Sleep Timer</Text>
@@ -1860,7 +1832,7 @@ export default function ModernVideoPlayer({
               activeOpacity={1}
               onPress={() => setShowSubtitleOverlay(false)}
             >
-              <BlurView intensity={80} tint="dark" style={styles.absFill} />
+              <BlurViewOptimized intensity={80} tint="dark" style={styles.absFill} />
               <View style={[styles.overlayContent, { width: '40%' }]}>
                 <View style={styles.overlayHeader}>
                   <Text style={styles.overlayTitle}>Subtitles</Text>
