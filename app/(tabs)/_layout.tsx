@@ -486,7 +486,7 @@ function NotificationOverlay({
                       )}
                       {isUnread && (
                         <LinearGradient
-                          colors={["rgba(16, 185, 129, 0.2)", "transparent"]}
+                          colors={["rgba(16, 185, 129, 0.2)", "transparent"] as any}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={StyleSheet.absoluteFill}
@@ -573,7 +573,7 @@ function NotificationOverlay({
 
                                           // "Command" the app to navigate
                                           if (expandedType === 'movies') {
-                                            router.setParams({ movieId: subItem.id } as any);
+                                            (router as any).setParams({ movieId: subItem.id } as any);
                                           } else {
                                             DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
                                           }
@@ -745,8 +745,8 @@ function NotificationOverlay({
 
               <TouchableOpacity
                 onPress={() => {
-                  Linking.openURL("market://details?id=com.themoviezone247.official").catch(() => {
-                    Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
+                  Linking.openURL("market://details?id=com.moviezone247.app").catch(() => {
+                    Linking.openURL("https://play.google.com/store/apps/details?id=com.moviezone247.app");
                   });
                   markRead('n5');
                   setShowRatingModal(false);
@@ -2332,8 +2332,8 @@ function CustomTabBar() {
     // 2. Clear local states and redirect
     setTimeout(() => {
       markRead('n5'); // Mark as read ONLY on submission
-      Linking.openURL("market://details?id=com.themoviezone247.official").catch(() => {
-        Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
+      Linking.openURL("market://details?id=com.moviezone247.app").catch(() => {
+        Linking.openURL("https://play.google.com/store/apps/details?id=com.moviezone247.app");
       });
       setShowRatingModal(false);
       setSelectedRating(0);
@@ -2442,7 +2442,7 @@ function CustomTabBar() {
                 ]}
               />
               <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
+                colors={["rgba(15, 15, 25, 0.95)", "transparent"] as any}
                 style={{
                   position: "absolute",
                   bottom: -12,
@@ -2456,7 +2456,7 @@ function CustomTabBar() {
           )}
           <View style={[
             styles.topBarContainer,
-            (active("/(tabs)/saved") || active("/(tabs)/category")) && { paddingLeft: 4, paddingRight: 0 }
+            (active("/(tabs)/saved") || active("/(tabs)/category")) && { paddingLeft: 0, paddingRight: 0 }
           ]}>
             {/* Logo replacement conditionally removed to allow pill expansion */}
             {!active("/(tabs)/saved") && !active("/(tabs)/category") && (
@@ -2528,7 +2528,7 @@ function CustomTabBar() {
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
                         <LinearGradient 
-                          colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent']} 
+                          colors={['#818cf8', 'rgba(129, 140, 248, 0.2)', 'transparent'] as any} 
                           start={{ x: 0, y: 0 }} 
                           end={{ x: 1, y: 0 }} 
                           style={{ flex: 1, height: 1, marginRight: 6 }} 
@@ -2728,7 +2728,7 @@ function CustomTabBar() {
               {!(active("/(tabs)/saved") && showInPlaceSearch) && !active("/(tabs)/category") && (
                 <View style={styles.searchBlurCapsule}>
                   <LinearGradient
-                    colors={["rgba(255,255,255,0.15)", "transparent"]}
+                    colors={["rgba(255,255,255,0.15)", "transparent"] as any}
                     style={styles.pillSheen}
                   />
                   <TouchableOpacity
@@ -2758,7 +2758,7 @@ function CustomTabBar() {
               {!active("/(tabs)/category") && !isOverlayVisible && (
                 <View style={styles.notificationBlurCapsule}>
                   <LinearGradient
-                    colors={["rgba(255,255,255,0.15)", "transparent"]}
+                    colors={["rgba(255,255,255,0.15)", "transparent"] as any}
                     style={styles.pillSheen}
                   />
                   <TouchableOpacity
@@ -4182,7 +4182,7 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 4,
+    marginLeft: 0,
   },
   searchInnerCapsule: {
     flex: 1,

@@ -226,13 +226,13 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
                     }}>
                       <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
                       <LinearGradient
-                        colors={['rgba(245, 158, 11, 0.25)', 'rgba(217, 119, 6, 0.15)']}
+                        colors={['rgba(245, 158, 11, 0.25)', 'rgba(217, 119, 6, 0.15)'] as any}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFill}
                       />
                       <LinearGradient
-                        colors={['rgba(255, 255, 255, 0.12)', 'transparent', 'rgba(255, 255, 255, 0.05)']}
+                        colors={['rgba(255, 255, 255, 0.12)', 'transparent', 'rgba(255, 255, 255, 0.05)'] as any}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0.5, y: 1 }}
                         style={StyleSheet.absoluteFill}

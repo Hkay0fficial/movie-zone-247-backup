@@ -89,7 +89,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             style={[styles.iconCircle, { borderColor: item.colors[0] }]}
           >
             <LinearGradient
-              colors={[item.colors[0] + '33', 'transparent']}
+              colors={[item.colors[0] + '33', 'transparent'] as any as any}
               style={StyleSheet.absoluteFill}
             />
             <Ionicons name={item.icon as any} size={80} color={item.colors[0]} />
@@ -123,7 +123,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0a0a0f', '#1a1a2e', '#0a0a0f']}
+        colors={['#0a0a0f', '#1a1a2e', '#0a0a0f'] as any as any}
         style={StyleSheet.absoluteFill}
       />
 
@@ -180,7 +180,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
             <LinearGradient
-              colors={ONBOARDING_DATA[currentIndex].colors}
+              colors={ONBOARDING_DATA[currentIndex].colors as any}
               style={styles.nextGradient}
             >
               <Text style={styles.nextText}>

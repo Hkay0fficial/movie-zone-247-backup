@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -138,9 +138,76 @@ export default function ModernVideoPlayer({
 }: ModernVideoPlayerProps) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const { savePlaybackProgress, getPlaybackProgress } = useUser();
+  const insets = useSafeAreaInsets();
+
+  // Smart Title Logic: Handles "Title - Title By Vj HD EP 1" redundancy
+  const { processedTitle, processedSubTitle, processedNextPartName } = useMemo(() => {
+    // If we have episodes and an active ID, derive title from the actual episode data
+    // This prevents stale titles when switching episodes
+    let rawTitle = title;
+    if (episodes && episodes.length > 0 && activeEpisodeId) {
+      const activeEp = episodes.find(e => e.id === activeEpisodeId);
+      if (activeEp) {
+        rawTitle = activeEp.title;
+      }
+    }
+
+    if (!rawTitle) return { processedTitle: "", processedSubTitle: seriesVj || "" };
+
+    let displayTitle = rawTitle;
+    let displaySubTitle = seriesVj || "";
+
+    // 1. Handle "Movie Name - Movie Name Part 1" redundancy
+    // Regex matches "Something - Something" and checks if the parts are identical
+    const dashMatch = title.match(/^(.+?)\s*-\s*(.+)$/);
+    if (dashMatch) {
+      const mainName = dashMatch[1].trim();
+      const partName = dashMatch[2].trim();
+      
+      // If the second part starts with the first part, strip the redundant first part
+      if (partName.toLowerCase().startsWith(mainName.toLowerCase())) {
+        displayTitle = partName;
+      }
+    }
+
+    // 2. Extract "By Vj ..." from title if it exists
+    // We want to extract the VJ part but keep any EP info in the title if possible
+    // Example: "The King's Face By Vj HD EP 1" -> Title: "The King's Face EP 1", Sub: "By Vj HD"
+    const vjRegex = /\s+(By\s+Vj\s+.*?(?:\s+HD)?)(?:\s+|$)/i;
+    const vjMatch = displayTitle.match(vjRegex);
+    
+    if (vjMatch) {
+      const vjPart = vjMatch[1].trim();
+      displaySubTitle = vjPart;
+      // Remove the VJ part from the main title
+      displayTitle = displayTitle.replace(vjRegex, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // 3. Clean up trailing dashes or extra spaces
+    displayTitle = displayTitle.replace(/\s*-\s*$/, '').trim();
+
+    // 4. Process Next Part Name similarly
+    let nextTitle = nextPartName || "";
+    if (nextTitle) {
+       // Strip redundant main title if present
+       const mainTitlePrefix = (playingNow?.title || "").toLowerCase() + " - ";
+       if (nextTitle.toLowerCase().startsWith(mainTitlePrefix)) {
+          nextTitle = nextTitle.substring(mainTitlePrefix.length);
+       }
+       // Strip VJ info
+       nextTitle = nextTitle.replace(vjRegex, ' ').replace(/\s+/g, ' ').trim();
+       // Clean trailing dashes
+       nextTitle = nextTitle.replace(/\s*-\s*$/, '').trim();
+    }
+
+    return { 
+      processedTitle: displayTitle, 
+      processedSubTitle: displaySubTitle,
+      processedNextPartName: nextTitle
+    };
+  }, [title, seriesVj, episodes, activeEpisodeId, nextPartName, playingNow]);
   const router = useRouter();
   const { downloadedMovies, episodeDownloads } = useDownloads();
-  const insets = useSafeAreaInsets();
   useKeepAwake();
   
   const scrubbingTimeout = useRef<any>(null);
@@ -196,27 +263,37 @@ export default function ModernVideoPlayer({
   const [isPiPActive, setIsPiPActive] = useState(false);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
+    const appSubscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.match(/active/) && nextAppState.match(/inactive|background/)) {
+        // App backgrounded: Pause if not in PiP
+        if (!isPiPActive && videoRef.current) {
+          videoRef.current.pauseAsync().catch(() => {});
+        }
+      }
       setAppState(nextAppState);
     });
 
     // PiP Event Listener
     let pipListener: any = null;
-    if (Platform.OS === 'android') {
-      const { NativeEventEmitter } = require('react-native');
-      const eventEmitter = new NativeEventEmitter(NativeModules.PipModule);
-      pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', (event: { isInPictureInPictureMode: boolean }) => {
-        setIsPiPActive(!!event.isInPictureInPictureMode);
-        if (event.isInPictureInPictureMode) {
-          setShowControls(false);
-          showControlsRef.current = false;
-          controlsOpacity.setValue(0);
-        }
-      });
+    if (Platform.OS === 'android' && NativeModules.PipModule) {
+      try {
+        const { NativeEventEmitter } = require('react-native');
+        const eventEmitter = new NativeEventEmitter(NativeModules.PipModule);
+        pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', (event: { isInPictureInPictureMode: boolean }) => {
+          setIsPiPActive(!!event.isInPictureInPictureMode);
+          if (event.isInPictureInPictureMode) {
+            setShowControls(false);
+            showControlsRef.current = false;
+            controlsOpacity.setValue(0);
+          }
+        });
+      } catch (e) {
+        console.warn("Failed to initialize PipModule listener:", e);
+      }
     }
 
     return () => {
-      subscription.remove();
+      appSubscription.remove();
       if (pipListener) pipListener.remove();
     };
   }, []);
@@ -239,9 +316,11 @@ export default function ModernVideoPlayer({
   const [scrubPosition, setScrubPosition] = useState(0);
   const [videoResizeMode, setVideoResizeMode] = useState<ResizeMode>(ResizeMode.CONTAIN); // CONTAIN (Fit), COVER (Fill), STRETCH (Stretch)
   const [isAirPlaying, setIsAirPlaying] = useState(false);
+  const [isAmbientMode, setIsAmbientMode] = useState(true);
   
   const [currentVolume, setCurrentVolume] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Overlays
   const [isBufferingDelayed, setIsBufferingDelayed] = useState(false);
@@ -269,6 +348,7 @@ export default function ModernVideoPlayer({
   // Animated values for smooth knob/fill (no React re-render during drag)
   const scrubAnimPct = useRef(new Animated.Value(0)).current;   // 0..1
   const volumeAnimPct = useRef(new Animated.Value(1)).current;  // 0..1
+  const nextPulseAnim = useRef(new Animated.Value(1)).current;
   // Single stable display anim — controls what the slider actually shows
   const volumeDisplayAnim = useRef(new Animated.Value(1)).current;
   const currentVolumeRef = useRef(1);
@@ -282,64 +362,108 @@ export default function ModernVideoPlayer({
   const isInteractingRef = useRef(false); // Global lock to prevent main swipe from stealing control touches
   const fullPlayerAnim = useRef(new Animated.Value(0)).current; // For smooth entry
 
+  const [isClosing, setIsClosing] = useState(false);
+  const playerModeRef = useRef(playerMode);
+  const rotationTimeoutRef = useRef<any>(null);
+
+  useEffect(() => {
+    playerModeRef.current = playerMode;
+  }, [playerMode]);
+
+  // Handle dismissal with animation
+  const handleDismiss = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+
+    // 1. Determine direction based on current screen state
+    // If we are in landscape, "Right" (physical) is actually "Top" or "Bottom" (logical)
+    const isCurrentlyLandscape = SCREEN_W > SCREEN_H;
+
+    // 2. Stop audio immediately and save progress
+    if (videoRef.current && statusRef.current.isLoaded) {
+      videoRef.current.pauseAsync().catch(() => {});
+      if (movieId) {
+        savePlaybackProgress(movieId, statusRef.current.positionMillis, episodeId);
+      }
+    }
+
+    // 3. Animate out - Intelligently choose axis to match "Physical Right"
+    Animated.parallel([
+      Animated.timing(fullPlayerAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(playerPos, {
+        // If landscape, sliding to -SCREEN_H (Top) looks like sliding Right to the user's hand
+        toValue: isCurrentlyLandscape ? { x: 0, y: -SCREEN_H * 1.5 } : { x: SCREEN_W * 1.5, y: 0 },
+        tension: 50,
+        friction: 14,
+        useNativeDriver: true,
+      })
+    ]).start(async () => {
+      // 4. Restore orientation ONLY after the player is fully off-screen
+      if (Platform.OS !== "web") {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      }
+      onClose();
+      // Keep isClosing true for an extra moment to ensure unmount finishes without flicker
+      setTimeout(() => setIsClosing(false), 100);
+    });
+  }, [onClose, SCREEN_H, isClosing, isPreview]);
+
   // Orientation & Status Bar
   useEffect(() => {
     const manageLayout = async () => {
       if (playerMode === 'full') {
         StatusBar.setHidden(true, 'fade');
-        if (Platform.OS !== "web") {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-        }
         await safeSetNavigationBar('hidden');
+
+        // Check if we need to reset position (only if fully closed or off-screen)
+        const currentX = (playerPos.x as any)._value || 0;
+        const PORTRAIT_W = Math.min(SCREEN_W, SCREEN_H);
+
+        if (Math.abs(currentX) > 50 || (fullPlayerAnim as any)._value < 0.1) {
+          // Snap immediately to position to cover underlying UI elements instantly
+          playerPos.setValue({ x: 0, y: 0 });
+          fullPlayerAnim.setValue(1);
+
+          // Still run a subtle spring for feel, but the background will be covered
+          Animated.spring(playerPos, {
+            toValue: { x: 0, y: 0 },
+            tension: 80,
+            friction: 14,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        // Force Portrait for previews, Landscape for full movies
+        if (Platform.OS !== "web") {
+          if (isPreview) {
+            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+          } else {
+             // Delay rotation slightly to ensure the player covers the screen first
+             setTimeout(() => {
+               if (playerModeRef.current === 'full') {
+                 ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+               }
+             }, 400);
+          }
+        }
       } else {
         StatusBar.setHidden(false, 'fade');
         if (Platform.OS !== "web") {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         }
         await safeSetNavigationBar('visible');
+        fullPlayerAnim.setValue(0);
       }
     };
+
     manageLayout();
     if (playerMode !== 'closed') resetControlsTimer();
 
-    if (playerMode === 'full') {
-      Animated.parallel([
-        Animated.timing(fullPlayerAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      fullPlayerAnim.setValue(0);
-    }
-
-    // Auto-animate PIP size/position
-    if (playerMode === 'mini') {
-      Animated.parallel([
-        Animated.spring(playerSize, {
-          toValue: 160,
-          useNativeDriver: false,
-        }),
-        Animated.spring(playerPos, {
-          toValue: { x: SCREEN_W - 180, y: SCREEN_H - 140 },
-          useNativeDriver: false,
-        })
-      ]).start();
-    } else if (playerMode === 'full') {
-      Animated.parallel([
-        Animated.spring(playerSize, {
-          toValue: SCREEN_W,
-          useNativeDriver: false,
-        }),
-        Animated.spring(playerPos, {
-          toValue: { x: 0, y: 0 },
-          useNativeDriver: false,
-        })
-      ]).start();
-    }
-
-    // Hiding Lockdown Burst: Specifically for the full-screen isolated window
+    // Hiding Lockdown Burst
     let hideInterval: any;
     if (playerMode === 'full') {
       const forceHide = async () => {
@@ -357,7 +481,15 @@ export default function ModernVideoPlayer({
 
     return () => { 
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current); 
+      if (rotationTimeoutRef.current) clearTimeout(rotationTimeoutRef.current);
       if (hideInterval) clearInterval(hideInterval);
+      
+      // Failsafe: Ensure orientation and UI are restored when player unmounts
+      if (Platform.OS !== 'web') {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+        StatusBar.setHidden(false, 'fade');
+        safeSetNavigationBar('visible').catch(() => {});
+      }
     };
   }, [playerMode]);
 
@@ -365,13 +497,13 @@ export default function ModernVideoPlayer({
   useEffect(() => {
     if (playerMode === 'full') {
       const handleBackPress = () => {
-        onClose();
+        handleDismiss();
         return true;
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
       return () => subscription.remove();
     }
-  }, [playerMode, onClose]);
+  }, [playerMode, handleDismiss]);
 
   // Load Video Effect - Enhanced with progress saving on switch
   useEffect(() => {
@@ -407,16 +539,39 @@ export default function ModernVideoPlayer({
         if (result && (result as any).isLoaded) {
           setStatus(result as any);
           statusRef.current = result as any;
+          setError(null); // Clear any previous error
+          console.log("[ModernVideoPlayer] Video loaded successfully:", videoUrl);
+        } else {
+           console.warn("[ModernVideoPlayer] Result not loaded:", result);
+           setError("Failed to initialize video player. Please try again.");
         }
-      } catch (e) {
-        console.warn("[ModernVideoPlayer] Load error:", e);
+      } catch (e: any) {
+        console.error("[ModernVideoPlayer] CRITICAL Load error:", {
+          url: videoUrl,
+          error: e?.message || e,
+          stack: e?.stack
+        });
+        
+        let userMessage = "Failed to load video.";
+        if (e?.message?.includes("404")) {
+          userMessage = "Video not found (404). The link may be broken or expired.";
+        } else if (e?.message?.includes("network") || e?.message?.includes("connection")) {
+          userMessage = "Network error. Please check your internet connection.";
+        } else {
+          userMessage = `Playback Error: ${e?.message || "Unknown error"}`;
+        }
+        
+        setError(userMessage);
       } finally {
-        setIsBuffering(false);
+        // Slight delay before hiding loading indicator to ensure first frame is ready
+        setTimeout(() => {
+          setIsBuffering(false);
+        }, 500);
       }
     };
 
     loadNewSource();
-  }, [videoUrl, playerMode === 'closed']);
+  }, [videoUrl, playerMode === 'closed', retryCount]);
 
   // Lock Animation
   useEffect(() => {
@@ -760,13 +915,15 @@ export default function ModernVideoPlayer({
         isScrubbingRef.current = true;
         setIsScrubbing(true);
         
-        // Use absolute screen X for the timeline's start point
-        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
+        // Use localX for the exact touch position within the timeline
+        const touchX = e.nativeEvent.locationX;
         const w = Math.max(1, timelineWidthRef.current);
         const dur = statusRef.current?.durationMillis || 1;
         const pct = Math.max(0, Math.min(1, touchX / w));
-        const newPos = pct * dur;
         
+        (scrubAnimPct as any)._startPct = pct;
+        
+        const newPos = pct * dur;
         scrubAnimPct.setValue(pct);
         scrubPositionRef.current = newPos;
         setScrubPosition(newPos);
@@ -774,25 +931,27 @@ export default function ModernVideoPlayer({
         resetControlsTimer();
       },
       onPanResponderMove: (e, g) => {
-        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
+        const startPct = (scrubAnimPct as any)._startPct || 0;
         const w = Math.max(1, timelineWidthRef.current);
+        const pctDelta = g.dx / w;
         const dur = statusRef.current?.durationMillis || 1;
-        const pct = Math.max(0, Math.min(1, touchX / w));
+        const pct = Math.max(0, Math.min(1, startPct + pctDelta));
         
         scrubAnimPct.setValue(pct);
         scrubPositionRef.current = pct * dur;
         
-        if (Math.abs(scrubPositionRef.current - (scrubPositionRef as any)._lastDisplayed || 0) > (dur / 200)) {
+        if (Math.abs(scrubPositionRef.current - ((scrubPositionRef as any)._lastDisplayed || 0)) > (dur / 200)) {
           (scrubPositionRef as any)._lastDisplayed = scrubPositionRef.current;
           setScrubPosition(scrubPositionRef.current);
         }
         resetControlsTimer();
       },
       onPanResponderRelease: (e, g) => {
-        const touchX = e.nativeEvent.pageX - timelineOffsetXRef.current;
+        const startPct = (scrubAnimPct as any)._startPct || 0;
         const w = Math.max(1, timelineWidthRef.current);
+        const pctDelta = g.dx / w;
         const dur = statusRef.current?.durationMillis || 1;
-        const pct = Math.max(0, Math.min(1, touchX / w));
+        const pct = Math.max(0, Math.min(1, startPct + pctDelta));
         const finalPos = pct * dur;
         
         scrubAnimPct.setValue(pct);
@@ -902,7 +1061,7 @@ export default function ModernVideoPlayer({
       return;
     }
 
-    if (s.isLoaded && s.isPlaying && s.didJustFinish && hasNext && onNext) {
+    if (s.isLoaded && s.didJustFinish && hasNext && onNext) {
       onNext();
     }
 
@@ -925,7 +1084,29 @@ export default function ModernVideoPlayer({
     } else if (s.isLoaded) {
       setError(null);
     }
-  }, [isPreview, hasNext, onNext]);
+  }, [isPreview, hasNext, onNext, showNextSuggestion]);
+
+  // Handle pulse animation for Next Suggestion
+  useEffect(() => {
+    if (showNextSuggestion) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(nextPulseAnim, {
+            toValue: 1.5,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(nextPulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      nextPulseAnim.setValue(1);
+    }
+  }, [showNextSuggestion]);
 
   if (playerMode === 'closed') return null;
   const isMini = false; // Forced full-screen in-app as per user request
@@ -951,6 +1132,37 @@ export default function ModernVideoPlayer({
     >
       <View style={styles.contentContainer} {...(!isMini ? panResponder.panHandlers : {})} onLayout={(e) => progressBarWidth.current = e.nativeEvent.layout.width}>
         
+        {/* ── CINEMATIC AMBIENT GLOW LAYER ── */}
+        {isAmbientMode && status.isPlaying && !isPiPActive && !isMini && (
+          <View 
+            style={[
+              StyleSheet.absoluteFill, 
+              { opacity: 0.6, zIndex: 0, overflow: 'hidden' }
+            ]}
+            pointerEvents="none"
+          >
+            <Video
+              source={{ uri: videoUrl || "" }}
+              style={{ 
+                width: SCREEN_W * 1.5, 
+                height: SCREEN_H * 1.5,
+                position: 'absolute',
+                top: -(SCREEN_H * 0.25),
+                left: -(SCREEN_W * 0.25),
+              }}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={status.isPlaying}
+              isMuted={true}
+              positionMillis={status.positionMillis}
+              progressUpdateIntervalMillis={1000}
+            />
+            <BlurView intensity={Platform.OS === 'ios' ? 100 : 80} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+               colors={['rgba(5,5,8,0.9)', 'transparent', 'rgba(5,5,8,0.9)'] as any}
+               style={StyleSheet.absoluteFill}
+            />
+          </View>
+        )}
         <Video
           ref={videoRef}
           source={{ uri: videoUrl || "" }}
@@ -985,11 +1197,11 @@ export default function ModernVideoPlayer({
             <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
             <Text style={styles.errorTitle}>Playback Error</Text>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
+             <TouchableOpacity 
               style={styles.retryBtn} 
               onPress={() => {
                 setError(null);
-                videoRef.current?.unloadAsync().then(() => videoRef.current?.loadAsync({ uri: videoUrl || "" }));
+                setRetryCount(prev => prev + 1);
               }}
             >
               <Text style={styles.retryBtnText}>TRY AGAIN</Text>
@@ -1008,7 +1220,7 @@ export default function ModernVideoPlayer({
             onPress={() => {
               // If we have a local match and it's not what's currently playing, we could offer to switch
               // but for now, navigating to downloads is the requested behavior.
-              onClose();
+              handleDismiss();
               router.push({
                 pathname: '/(tabs)/menu',
                 params: { section: '5' }
@@ -1022,13 +1234,19 @@ export default function ModernVideoPlayer({
           </TouchableOpacity>
         )}
 
-        {/* Premium Loading Indicator - now only for initial load */}
-        {!status.isLoaded && playerMode !== 'closed' && (
+        {/* Simple Black Loading Indicator */}
+        {(!status.isLoaded || isBuffering) && playerMode !== 'closed' && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', zIndex: 100 }]}>
             <ActivityIndicator size="large" color="#818cf8" />
-            <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 12, fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
-              FETCHING STREAM...
-            </Text>
+            <Text style={{ color: '#fff', marginTop: 10, fontSize: 12, fontWeight: 'bold' }}>LOADING MEDIA...</Text>
+          </View>
+        )}
+
+        {isBufferingDelayed && status.isLoaded && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 90 }]}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            <ActivityIndicator size="large" color="#818cf8" />
+            <Text style={{ color: '#fff', marginTop: 10, fontSize: 12, fontWeight: 'bold' }}>BUFFERING...</Text>
           </View>
         )}
 
@@ -1041,12 +1259,12 @@ export default function ModernVideoPlayer({
               {!isLocked && (
                 <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
                   <BlurView intensity={25} tint="dark" style={styles.glassHeaderBg} />
-                  <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+                  <TouchableOpacity onPress={handleDismiss} style={styles.backBtn}>
                     <Ionicons name="chevron-down" size={28} color="#fff" />
                   </TouchableOpacity>
-                  <View style={styles.titleArea}>
-                    <Text style={styles.playerTitle} numberOfLines={1}>{title}</Text>
-                    {seriesVj && <Text style={styles.playerSubTitle}>{seriesVj}</Text>}
+                   <View style={styles.titleArea}>
+                    <Text style={styles.playerTitle} numberOfLines={1}>{processedTitle}</Text>
+                    {processedSubTitle ? <Text style={styles.playerSubTitle}>{processedSubTitle}</Text> : null}
                   </View>
                   <View style={styles.headerActions}>
                     {/* Cast/AirPlay & Timer Group */}
@@ -1131,7 +1349,27 @@ export default function ModernVideoPlayer({
               {/* Central Premium Controls */}
               <View style={styles.centerControls}>
                 {!isLocked ? (
-                  <View style={styles.controlCapsule}>
+                  <>
+                    {/* Side Navigation Pills */}
+                    <View style={styles.sidePillsContainer}>
+                      {hasPrev && onPrev && (
+                        <TouchableOpacity onPress={onPrev} style={styles.sidePill}>
+                          <BlurView intensity={50} tint="dark" style={styles.absFill} />
+                          <Ionicons name="play-skip-back" size={14} color="#fff" style={{ marginRight: 6 }} />
+                          <Text style={styles.sidePillText}>Prev Episode</Text>
+                        </TouchableOpacity>
+                      )}
+                      <View style={{ flex: 1 }} />
+                      {hasNext && onNext && (!status.isLoaded || !status.isPlaying || (status.durationMillis || 0) - status.positionMillis > 45000) && (
+                        <TouchableOpacity onPress={onNext} style={styles.sidePill}>
+                          <BlurView intensity={50} tint="dark" style={styles.absFill} />
+                          <Text style={styles.sidePillText}>Next Episode</Text>
+                          <Ionicons name="play-skip-forward" size={14} color="#fff" style={{ marginLeft: 6 }} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <View style={styles.controlCapsule}>
                     
                     <TouchableOpacity onPress={() => handleSeek(-10000)} style={styles.seekAction}>
                       <MaterialIcons name="replay-10" size={32} color="#fff" />
@@ -1152,6 +1390,7 @@ export default function ModernVideoPlayer({
                     </TouchableOpacity>
 
                   </View>
+                  </>
                 ) : (
                   <Animated.View style={{ transform: [{ scale: lockPulseAnim }] }}>
                      <TouchableOpacity onPress={() => setIsLocked(false)} style={styles.lockBtnLarge}>
@@ -1162,12 +1401,12 @@ export default function ModernVideoPlayer({
                 )}
               </View>
 
-              {/* Skip Intro / Play Next Floating Pill */}
-              {status.isLoaded && status.isPlaying && hasNext && onNext && (status.durationMillis || 0) - status.positionMillis <= 45000 && (
+              {/* Skip Intro / Play Next Floating Pill - Only show if suggestion box IS NOT showing to avoid clutter */}
+              {status.isLoaded && status.isPlaying && hasNext && onNext && !showNextSuggestion && (status.durationMillis || 0) - status.positionMillis <= 45000 && (
                 <View style={styles.nextPillArea}>
                   <TouchableOpacity onPress={onNext} style={styles.nextPill}>
                     <BlurView intensity={50} tint="dark" style={styles.absFill} />
-                    <Text style={styles.nextPillText}>Next: {nextPartName || "Next Episode"}</Text>
+                    <Text style={styles.nextPillText}>Next: {processedNextPartName || "Next Episode"}</Text>
                     <Ionicons name="play-skip-forward" size={16} color="#fff" style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
                 </View>
@@ -1176,23 +1415,6 @@ export default function ModernVideoPlayer({
               {/* Modern Footer */}
               <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                 
-                {/* New Text-based Navigation Buttons */}
-                {!isLocked && (
-                  <View style={styles.navButtonsRow}>
-                    {hasPrev ? (
-                      <TouchableOpacity onPress={onPrev} style={styles.navTextBtn}>
-                        <Text style={styles.navBtnText}>Prev Episode</Text>
-                      </TouchableOpacity>
-                    ) : <View style={styles.navTextBtnPlaceholder} />}
-
-                    {hasNext ? (
-                      <TouchableOpacity onPress={onNext} style={styles.navTextBtn}>
-                        <Text style={styles.navBtnText}>Next Episode</Text>
-                      </TouchableOpacity>
-                    ) : <View style={styles.navTextBtnPlaceholder} />}
-                  </View>
-                )}
-
                 {/* Glowing Progress Bar */}
                 {!isLocked && (
                   <View style={styles.progressArea}>
@@ -1228,7 +1450,7 @@ export default function ModernVideoPlayer({
                             })
                           }]}>
                             <LinearGradient
-                              colors={["#6366f1", "#818cf8"]}
+                              colors={["#6366f1", "#818cf8"] as any}
                               start={{ x: 0, y: 0.5 }}
                               end={{ x: 1, y: 0.5 }}
                               style={styles.progressFill}
@@ -1331,6 +1553,8 @@ export default function ModernVideoPlayer({
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             if (NativeModules.PipModule) {
+                              // Send final params before entering
+                              NativeModules.PipModule.updatePipParams(16, 9, true);
                               NativeModules.PipModule.enterPipMode();
                             } else {
                               Alert.alert(
@@ -1341,9 +1565,13 @@ export default function ModernVideoPlayer({
                               console.warn("PipModule not found in NativeModules");
                             }
                           }} 
-                          style={styles.circleBtn}
+                          style={[styles.circleBtn, isPiPActive && styles.activeCircleBtn]}
                         >
-                          <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={22} color="#fff" />
+                          <MaterialCommunityIcons 
+                            name={isPiPActive ? "picture-in-picture-top-right" : "picture-in-picture-bottom-right"} 
+                            size={22} 
+                            color={isPiPActive ? "#818cf8" : "#fff"} 
+                          />
                         </TouchableOpacity>
                       )}
 
@@ -1391,10 +1619,19 @@ export default function ModernVideoPlayer({
                   <View style={styles.nextSuggestionContent}>
                     <View style={styles.nextSuggestionInfo}>
                        <Text style={styles.nextEpisodeName} numberOfLines={1}>
-                         {nextPartName || "Next Part"}
+                         {processedNextPartName || "Next Part"}
                        </Text>
                        <View style={styles.nextEpisodeCountdownRow}>
-                         <View style={styles.countdownPulseDot} />
+                         <Animated.View style={[
+                           styles.countdownPulseDot,
+                           { 
+                             transform: [{ scale: nextPulseAnim }],
+                             opacity: nextPulseAnim.interpolate({
+                               inputRange: [1, 1.5],
+                               outputRange: [1, 0.6]
+                             })
+                           }
+                         ]} />
                          <Text style={styles.nextEpisodeCountdown}>
                            Starting in {status.isLoaded && status.durationMillis ? Math.ceil((status.durationMillis - status.positionMillis) / 1000) : 0}s
                          </Text>
@@ -1410,7 +1647,7 @@ export default function ModernVideoPlayer({
                       }}
                     >
                       <LinearGradient
-                        colors={["#ef4444", "#dc2626"]}
+                        colors={["#ef4444", "#dc2626"] as any}
                         style={StyleSheet.absoluteFill}
                       />
                       <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
@@ -1685,34 +1922,33 @@ export default function ModernVideoPlayer({
     );
   }
 
-  if (playerMode === 'full') {
+  if (playerMode === 'full' || isClosing) {
     return (
-      <Animated.View 
-        style={[
-          StyleSheet.absoluteFill, 
-          { 
-            backgroundColor: '#000', 
-            zIndex: 2147483647, 
-            elevation: 1000,
-            opacity: fullPlayerAnim,
-            transform: [
-              { scale: fullPlayerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
-            ]
-          }
-        ]}
-        onLayout={async () => {
-          if (Platform.OS === 'android') {
-            try {
-              await NavigationBar.setVisibilityAsync('hidden');
-              await NavigationBar.setBehaviorAsync('sticky-immersive');
-              StatusBar.setHidden(true, 'fade');
-            } catch (e) {}
-          }
-        }}
-      >
-        <ExpoStatusBar hidden={true} translucent />
-        {renderPlayer()}
-      </Animated.View>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', zIndex: 2147483647, elevation: 1000 }]}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              opacity: fullPlayerAnim,
+              transform: [
+                { translateX: playerPos.x },
+                { translateY: playerPos.y },
+                { 
+                  scale: fullPlayerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.95, 1]
+                  }) 
+                }
+              ]
+            }
+          ]}
+        >
+          <ExpoStatusBar hidden={true} translucent />
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+             {renderPlayer()}
+          </View>
+        </Animated.View>
+      </View>
     );
   }
 
@@ -2027,6 +2263,34 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 2,
+  },
+  sidePillsContainer: {
+    position: 'absolute',
+    left: 40,
+    right: 40,
+    marginTop: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    pointerEvents: 'box-none',
+    zIndex: 5,
+  },
+  sidePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 30,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  sidePillText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   nextPillArea: {
     position: 'absolute',
@@ -2357,8 +2621,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 140,
     right: 24,
-    width: 290,
-    borderRadius: 24,
+    width: 230,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
@@ -2369,87 +2633,87 @@ const styles = StyleSheet.create({
     shadowRadius: 25,
   },
   nextSuggestionBlur: {
-    padding: 18,
+    padding: 14,
   },
   nextSuggestionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   nextSuggestionBranding: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   nextSuggestionLogo: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 3,
   },
   nextSuggestionTitle: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   nextSuggestionClose: {
-    padding: 4,
+    padding: 2,
   },
   nextSuggestionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   nextSuggestionInfo: {
     flex: 1,
   },
   nextEpisodeName: {
     color: '#fff',
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '800',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   nextEpisodeCountdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   countdownPulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: '#6366f1',
   },
   nextEpisodeCountdown: {
     color: '#818cf8',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
   },
   nextPlayBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 16,
+    marginLeft: 12,
     elevation: 8,
     shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowRadius: 8,
   },
   nextCancelBtn: {
     alignSelf: 'flex-start',
-    paddingVertical: 8,
+    paddingVertical: 4,
     paddingHorizontal: 2,
   },
   nextCancelText: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   // ── Header Actions ──────────────────────────────────────────────
   headerActionsGroup: {

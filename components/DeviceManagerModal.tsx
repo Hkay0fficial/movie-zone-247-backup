@@ -35,7 +35,7 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
         
         <View style={styles.container}>
           <LinearGradient
-            colors={['rgba(30, 30, 45, 0.95)', 'rgba(10, 10, 15, 0.98)']}
+            colors={['rgba(30, 30, 45, 0.95)', 'rgba(10, 10, 15, 0.98)'] as any}
             style={styles.content}
           >
             <View style={styles.header}>
@@ -99,7 +99,7 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
               
               <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.8}>
                 <LinearGradient
-                  colors={['#6366f1', '#4f46e5']}
+                  colors={['#6366f1', '#4f46e5'] as any}
                   style={styles.upgradeGradient}
                 >
                   <Text style={styles.upgradeText}>UPGRADE PLAN</Text>

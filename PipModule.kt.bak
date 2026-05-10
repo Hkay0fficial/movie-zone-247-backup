@@ -44,28 +44,14 @@ class PipModule(private val reactContext: ReactApplicationContext) : ReactContex
                     .build()
                 activity.enterPictureInPictureMode(params)
                 Log.d("PipModule", "Successfully entered PiP mode")
-                // android.widget.Toast.makeText(reactContext, "Entering Picture-in-Picture...", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(reactContext, "Entering Picture-in-Picture...", android.widget.Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Log.e("PipModule", "Failed to enter PiP mode: ${e.message}")
+                android.widget.Toast.makeText(reactContext, "PiP Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
             }
         } else {
             Log.w("PipModule", "PiP not supported or activity is null")
+            android.widget.Toast.makeText(reactContext, "PiP not supported on this device", android.widget.Toast.LENGTH_SHORT).show()
         }
-    }
-
-    fun sendEvent(eventName: String, params: com.facebook.react.bridge.WritableMap) {
-        reactContext
-            .getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit(eventName, params)
-    }
-
-    @ReactMethod
-    fun addListener(eventName: String) {
-        // Keep for NativeEventEmitter compatibility
-    }
-
-    @ReactMethod
-    fun removeListeners(count: Int) {
-        // Keep for NativeEventEmitter compatibility
     }
 }

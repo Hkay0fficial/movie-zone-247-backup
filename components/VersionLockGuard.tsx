@@ -98,7 +98,7 @@ export default function VersionLockGuard() {
       <View style={styles.overlay}>
         <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
         <LinearGradient 
-          colors={['rgba(15,15,26,0.8)', 'rgba(10,10,15,0.95)']} 
+          colors={['rgba(15,15,26,0.8)', 'rgba(10,10,15,0.95)'] as any as any} 
           style={StyleSheet.absoluteFillObject} 
         />
         
@@ -139,7 +139,7 @@ export default function VersionLockGuard() {
                 onPress={handleUpdate}
               >
                 <LinearGradient 
-                  colors={isLocked ? ['#ef4444', '#b91c1c'] : ['#3b82f6', '#2563eb']} 
+                  colors={isLocked ? ['#ef4444', '#b91c1c'] : ['#3b82f6', '#2563eb'] as any} 
                   start={{ x: 0, y: 0 }} 
                   end={{ x: 1, y: 0 }} 
                   style={StyleSheet.absoluteFillObject} 

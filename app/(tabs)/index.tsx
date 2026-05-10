@@ -2608,7 +2608,8 @@ export function SeriesPreviewContent({
               return;
             }
 
-            if (setIsPreview) setIsPreview(true);
+            const contentUrl = localUri || activeEpisode.videoUrl;
+            if (setIsPreview) setIsPreview(!contentUrl);
             try { if (_safeSetEps && series.episodeList) _safeSetEps(series.episodeList); } catch(e) {}
             try { if (_safeSetEpId) _safeSetEpId(activeEpisode.id); } catch(e) {}
             if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
@@ -2848,6 +2849,7 @@ export function SeriesPreviewContent({
                     const localUri = ctxEpisodeDownloads[ep.id];
                     if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || ep.videoUrl);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
+                    if (setIsPreview) setIsPreview(false);
                     if (setPlayingNow) setPlayingNow(series);
                     if (setPlayerMode) setPlayerMode('full');
                   }}
@@ -2953,6 +2955,7 @@ export function SeriesPreviewContent({
                   if ((alreadyDownloadedState.localItem as any)?.localUri) {
                     if (setSelectedVideoUrl) setSelectedVideoUrl((alreadyDownloadedState.localItem as any).localUri);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + alreadyDownloadedState.episode?.title);
+                    if (setIsPreview) setIsPreview(false);
                     if (setPlayerMode) setPlayerMode('full');
                   }
                 }}
@@ -3889,12 +3892,14 @@ export const MoviePreviewContent = memo(({
     if (activePart) {
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads?.[activePart.id];
-      return localUri || (activePart as any).videoUrl || selectedVideoUrl;
+      return localUri || (activePart as any).videoUrl || (activePart as any).url || selectedVideoUrl;
     }
     // For single movies (no parts), check if the movie itself is downloaded
     if (movie && !('seasons' in movie)) {
       const dl = downloadedMovies.find(m => m.id === movie.id);
       if ((dl as any)?.localUri) return (dl as any).localUri;
+      // CRITICAL: Fallback to the movie's own videoUrl if selectedVideoUrl is not yet set
+      return selectedVideoUrl || (movie as Movie).videoUrl || "";
     }
     return selectedVideoUrl;
   }, [activePart, selectedVideoUrl, episodeDownloads, downloadedMovies, movie]);
@@ -4313,6 +4318,7 @@ export const MoviePreviewContent = memo(({
                             }),
                           },
                         ]}
+                        pointerEvents="none"
                       />
                     ))}
 
@@ -4323,6 +4329,8 @@ export const MoviePreviewContent = memo(({
                       <TouchableOpacity
                         style={styles.posterPlayBtn}
                         activeOpacity={0.8}
+                        hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
+                        delayPressIn={0}
                         onPress={() => {
                           const canWatch = (allMoviesFree && !isGuest) || (movie as any).isFree || isPaid;
                           if (!canWatch) {
@@ -4335,7 +4343,10 @@ export const MoviePreviewContent = memo(({
                           const titleToPlay = currentPlayerTitle;
 
                              if (videoUri) {
-                               if (setIsPreview) setIsPreview(true);
+                               if (setIsPreview) {
+                                 const itemPreviewUrl = (movie as any).previewUrl;
+                                 setIsPreview(videoUri === itemPreviewUrl && !currentPlayerTitle.includes("Episode"));
+                               }
                                try { if (_safeSetEps && movieParts.length > 0) _safeSetEps(movieParts); } catch(e) {}
                                try { if (_safeSetEpId && activePart) _safeSetEpId(activePart.id); } catch(e) {}
                                if (setSelectedVideoUrl) setSelectedVideoUrl(videoUri);
@@ -5698,11 +5709,15 @@ export const MoviePreviewContent = memo(({
                     </View>
                     <FlatList
                       data={related}
-                      keyExtractor={(m) => "rel-" + m.id}
+                      keyExtractor={(m, index) => `rel-${m.id}-${index}`}
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       keyboardShouldPersistTaps="handled"
                       contentContainerStyle={styles.relatedList}
+                      initialNumToRender={4}
+                      maxToRenderPerBatch={4}
+                      windowSize={3}
+                      removeClippedSubviews={Platform.OS === 'android'}
                       renderItem={({ item }) => (
                         <MovieCard
                           movie={item}
@@ -5747,10 +5762,14 @@ export const MoviePreviewContent = memo(({
                 </View>
                 <FlatList
                   data={YOU_MAY_ALSO_LIKE}
-                  keyExtractor={(m) => "yml-" + m.id}
+                  keyExtractor={(m, index) => `yml-${m.id}-${index}`}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.rowList}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
                   renderItem={({ item }) => (
                     <MovieCard movie={item} onPress={() => onSwitch(item)} />
                   )}
@@ -5782,10 +5801,14 @@ export const MoviePreviewContent = memo(({
                 </View>
                 <FlatList
                   data={TRENDING}
-                  keyExtractor={(m) => "trn-" + m.id}
+                  keyExtractor={(m, index) => `trn-${m.id}-${index}`}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.rowList}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
                   renderItem={({ item }) => (
                     <MovieCard movie={item} onPress={() => onSwitch(item)} />
                   )}
@@ -5817,10 +5840,14 @@ export const MoviePreviewContent = memo(({
                 </View>
                 <FlatList
                   data={MOST_VIEWED}
-                  keyExtractor={(m) => "mvw-" + m.id}
+                  keyExtractor={(m, index) => `mvw-${m.id}-${index}`}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.rowList}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
                   renderItem={({ item }) => (
                     <MovieCard movie={item} onPress={() => onSwitch(item)} />
                   )}
@@ -5854,10 +5881,14 @@ export const MoviePreviewContent = memo(({
                 </View>
                 <FlatList
                   data={MOST_DOWNLOADED}
-                  keyExtractor={(m) => "mdo-" + m.id}
+                  keyExtractor={(m, index) => `mdo-${m.id}-${index}`}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.rowList}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
                   renderItem={({ item }) => (
                     <MovieCard movie={item} onPress={() => onSwitch(item)} />
                   )}
@@ -5889,10 +5920,14 @@ export const MoviePreviewContent = memo(({
                 </View>
                 <FlatList
                   data={NEW_RELEASES}
-                  keyExtractor={(m) => "nre-" + m.id}
+                  keyExtractor={(m, index) => `nre-${m.id}-${index}`}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.rowList}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
                   renderItem={({ item }) => (
                     <MovieCard movie={item} onPress={() => onSwitch(item)} />
                   )}
@@ -6131,10 +6166,14 @@ const MovieRow = memo(({
       </View>
       <FlatList
         data={data.slice(0, 12)}
-        keyExtractor={(m, index) => (m.id || `fallback-id-${index}`)}
+        keyExtractor={(m, index) => `${m.id}-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowList}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={3}
+        removeClippedSubviews={Platform.OS === 'android'}
         renderItem={({ item }) => (
           <MovieCard movie={item} onPress={() => onSelect(item)} />
         )}
@@ -6825,6 +6864,7 @@ export default function HomeScreen() {
           const playItem = { ...found, videoUrl: dl?.localUri || (found as Movie).videoUrl };
           setPlayerTitle(found.title);
           setSelectedVideoUrl(playItem.videoUrl);
+          if (setIsPreview) setIsPreview(false);
           setPlayingNow(playItem as Movie);
           try { if (_safeSetEpId) _safeSetEpId(null); } catch(e) {}
           setPlayerMode('full');

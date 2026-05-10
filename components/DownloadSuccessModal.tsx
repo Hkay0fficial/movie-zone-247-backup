@@ -132,14 +132,14 @@ export default function DownloadSuccessModal({
         >
           {/* Subtle top gradient accent */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.05)', 'transparent']}
+            colors={['rgba(255,255,255,0.05)', 'transparent'] as any as any}
             style={styles.topSheen}
           />
 
           {/* Glowing icon circle */}
           <Animated.View style={[styles.iconGlow, { backgroundColor: cfg.glow, opacity: glowOpacity }]} />
           <Animated.View style={[styles.iconWrapper, { borderColor: cfg.color + '33', transform: [{ scale: iconScaleAnim }] }]}>
-            <LinearGradient colors={cfg.gradient} style={styles.iconGradientBg}>
+            <LinearGradient colors={cfg.gradient} style={styles.iconGradientBg as any}>
               <Ionicons name={cfg.icon} size={36} color="#fff" />
             </LinearGradient>
           </Animated.View>
@@ -154,7 +154,7 @@ export default function DownloadSuccessModal({
           {/* Button */}
           <TouchableOpacity onPress={onClose} activeOpacity={0.8}>
             <LinearGradient
-              colors={cfg.gradient}
+              colors={cfg.gradient as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.button}

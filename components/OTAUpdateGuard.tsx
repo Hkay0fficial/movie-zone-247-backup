@@ -90,12 +90,12 @@ export default function OTAUpdateGuard() {
         <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.container}>
           <LinearGradient
-            colors={['#1e293b', '#0f172a']}
+            colors={['#1e293b', '#0f172a'] as any}
             style={styles.card}
           >
              <View style={styles.iconContainer}>
                <LinearGradient
-                 colors={['#3b82f6', '#2563eb']}
+                 colors={['#3b82f6', '#2563eb'] as any}
                  style={styles.iconBg}
                >
                  <Ionicons name="rocket-outline" size={32} color="#fff" />
@@ -113,7 +113,7 @@ export default function OTAUpdateGuard() {
                onPress={handleReload}
              >
                <LinearGradient
-                 colors={['#3b82f6', '#1d4ed8']}
+                 colors={['#3b82f6', '#1d4ed8'] as any}
                  start={{ x: 0, y: 0 }}
                  end={{ x: 1, y: 0 }}
                  style={styles.buttonGradient}

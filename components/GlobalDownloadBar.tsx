@@ -179,7 +179,7 @@ export default function GlobalDownloadBar() {
       <Animated.View style={{ width: containerWidth, height: containerHeight }}>
         <BlurView intensity={120} tint="dark" style={[styles.blurWrapper, { borderRadius: 28 }]}>
           <LinearGradient
-            colors={['rgba(91, 95, 239, 0.85)', 'rgba(15, 15, 25, 0.98)']}
+            colors={['rgba(91, 95, 239, 0.85)', 'rgba(15, 15, 25, 0.98)'] as any}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
@@ -267,7 +267,7 @@ export default function GlobalDownloadBar() {
           <Animated.View pointerEvents="none" style={[styles.shimmer, {
               transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [-1, 2], outputRange: [-200, SCREEN_WIDTH] }) }],
             }]}>
-            <LinearGradient colors={['transparent', 'rgba(255,255,255,0.1)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['transparent', 'rgba(255,255,255,0.1)', 'transparent'] as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
           </Animated.View>
           <View pointerEvents="none" style={[styles.glowBorder, { borderColor: clampedProgress === 100 ? '#10b981' : '#5B5FEF' } ]} />
         </BlurView>

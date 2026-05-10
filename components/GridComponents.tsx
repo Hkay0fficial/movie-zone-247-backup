@@ -112,7 +112,7 @@ export function GridCard({
             )}
             {/* Soft gradient to blend with the card bottom info if needed */}
             <LinearGradient
-              colors={["transparent", "rgba(10,10,15,0.8)"]}
+              colors={["transparent", "rgba(10,10,15,0.8)"] as any}
               style={{
                 position: "absolute",
                 bottom: 0,
@@ -282,12 +282,16 @@ export function GridContent({
 
         <FlatList
           data={filtered}
-          keyExtractor={(m) => m.id}
+          keyExtractor={(m, index) => `${m.id}-${index}`}
           numColumns={3}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="always"
+          initialNumToRender={9}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           renderItem={({ item }) => (
             <GridCard
               movie={item}

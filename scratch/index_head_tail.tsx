@@ -2497,7 +2497,7 @@ export function MoviePreviewContent({
                   style={StyleSheet.absoluteFill}
                 />
                 <LinearGradient
-                  colors={["rgba(255,255,255,0.12)", "transparent"]}
+                  colors={["rgba(255,255,255,0.12)", "transparent"] as any}
                   style={styles.pillSheen}
                 />
                 <Ionicons
@@ -2514,7 +2514,7 @@ export function MoviePreviewContent({
 
               {/* Seamless Fade Gradient where cards scroll underneath */}
               <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
+                colors={["rgba(15, 15, 25, 0.95)", "transparent"] as any}
                 style={{
                   position: "absolute",
                   bottom: -12,
@@ -2560,7 +2560,7 @@ export function MoviePreviewContent({
               <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
               <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15, 15, 25, 0.95)" }]} />
               <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
+                colors={["rgba(15, 15, 25, 0.95)", "transparent"] as any}
                 style={{
                   position: "absolute",
                   bottom: -12,
@@ -2695,7 +2695,7 @@ export function MoviePreviewContent({
                   )}
 
                   <LinearGradient
-                    colors={["transparent", "#0a0a0f"]}
+                    colors={["transparent", "#0a0a0f"] as any}
                     style={styles.previewPosterFade}
                   />
                   {/* Play Overlay */}
@@ -3136,7 +3136,7 @@ export function MoviePreviewContent({
                       >
                         <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
                         <LinearGradient
-                          colors={["rgba(30, 30, 40, 0.7)", "rgba(10, 10, 15, 0.5)"]}
+                          colors={["rgba(30, 30, 40, 0.7)", "rgba(10, 10, 15, 0.5)"] as any}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={StyleSheet.absoluteFill}
@@ -3161,7 +3161,7 @@ export function MoviePreviewContent({
                           ]}
                         >
                           <LinearGradient
-                            colors={["transparent", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.1)", "rgba(255,255,255,0.02)", "transparent"]}
+                            colors={["transparent", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.1)", "rgba(255,255,255,0.02)", "transparent"] as any}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={{ flex: 1, width: 80 }}
@@ -3210,7 +3210,7 @@ export function MoviePreviewContent({
                         >
                           <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
                           <LinearGradient
-                            colors={["rgba(30, 30, 45, 0.4)", "rgba(10, 10, 15, 0.2)"]}
+                            colors={["rgba(30, 30, 45, 0.4)", "rgba(10, 10, 15, 0.2)"] as any}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={StyleSheet.absoluteFill}
@@ -3222,7 +3222,7 @@ export function MoviePreviewContent({
                               style={styles.epThumb}
                             />
                             <LinearGradient
-                              colors={["transparent", "rgba(0,0,0,0.4)"]}
+                              colors={["transparent", "rgba(0,0,0,0.4)"] as any}
                               style={StyleSheet.absoluteFill}
                             />
                             <View style={styles.epDurationBadgePremiumSmall}>
@@ -3362,7 +3362,7 @@ export function MoviePreviewContent({
                     style={StyleSheet.absoluteFill}
                   />
                   <LinearGradient
-                    colors={["rgba(255,255,255,0.08)", "transparent"]}
+                    colors={["rgba(255,255,255,0.08)", "transparent"] as any}
                     style={StyleSheet.absoluteFill}
                   />
 
@@ -3389,7 +3389,7 @@ export function MoviePreviewContent({
                       activeOpacity={0.8}
                     >
                       <LinearGradient
-                        colors={["#5B5FEF", "#4A4EDD"]}
+                        colors={["#5B5FEF", "#4A4EDD"] as any}
                         style={StyleSheet.absoluteFill}
                       />
                       <Ionicons
@@ -4657,7 +4657,7 @@ function HeroBanner({
           )}
           {/* Subtle Top Overlay for Header Branding Legibility */}
           <LinearGradient
-            colors={["rgba(0,0,0,0.65)", "transparent"]}
+            colors={["rgba(0,0,0,0.65)", "transparent"] as any}
             style={{
               position: "absolute",
               top: 0,
@@ -4748,7 +4748,7 @@ function HeroBanner({
                     "rgba(255,255,255,0.2)",
                     "rgba(255,255,255,0.05)",
                     "transparent",
-                  ]}
+                  ] as any}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{ flex: 1, width: 60 }}
@@ -5147,7 +5147,7 @@ export default function HomeScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#fff"
-            colors={["#fff"]}
+            colors={["#fff"] as any}
             progressBackgroundColor="#1a1a24"
           />
         }

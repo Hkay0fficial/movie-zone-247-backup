@@ -257,7 +257,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
                   disabled={isProcessing}
                 >
                   <LinearGradient
-                    colors={['#5B5FEF', '#818cf8']}
+                    colors={['#5B5FEF', '#818cf8'] as any}
                     style={styles.payGradient}
                   >
                     {isProcessing ? (

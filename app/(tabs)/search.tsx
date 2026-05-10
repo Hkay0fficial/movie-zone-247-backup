@@ -83,7 +83,7 @@ const SkeletonLoader = React.memo(({ width, height, borderRadius = 12, style, sh
               'rgba(255,255,255,0.12)',
               'rgba(255,255,255,0.05)',
               'transparent',
-            ]}
+            ] as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}
@@ -122,7 +122,7 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
       <View style={styles.cardInner}>
         <Image source={{ uri: item.poster }} style={styles.cardPoster} />
         <LinearGradient
-          colors={['transparent', 'rgba(10,10,15,0.95)']}
+          colors={['transparent', 'rgba(10,10,15,0.95)'] as any}
           style={styles.cardGradient}
         />
         <View style={styles.cardContent}>
@@ -206,7 +206,7 @@ export default function SearchScreen() {
       <View style={StyleSheet.absoluteFill}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: '#050508' }]} />
         <LinearGradient
-          colors={['rgba(91,95,239,0.15)', 'transparent', 'rgba(139,92,246,0.1)']}
+          colors={['rgba(91,95,239,0.15)', 'transparent', 'rgba(139,92,246,0.1)'] as any}
           style={StyleSheet.absoluteFill}
         />
       </View>
@@ -230,7 +230,7 @@ export default function SearchScreen() {
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <LinearGradient
-                colors={['#5B5FEF', '#8B5CF6']}
+                colors={['#5B5FEF', '#8B5CF6'] as any}
                 style={StyleSheet.absoluteFill}
               />
               <Ionicons name="search" size={40} color="#fff" />
@@ -263,14 +263,9 @@ export default function SearchScreen() {
               <ResultCard 
                 item={item} 
                 onPress={() => {
-                  const isSeries = 'seasons' in item;
-                  if (isSeries) {
-                    router.push(`/(tabs)/saved?seriesId=${item.id}`);
-                  } else {
-                    // Emit selection event to be caught by the Home detail stack
-                    DeviceEventEmitter.emit("movieSelected", item);
-                    router.back();
-                  }
+                  // Emit selection event to be caught by the Home detail stack
+                  DeviceEventEmitter.emit("movieSelected", item);
+                  router.back();
                 }} 
               />
             )}
@@ -292,7 +287,7 @@ export default function SearchScreen() {
         >
           <BlurView intensity={80} tint="dark" style={styles.searchPill}>
             <LinearGradient
-              colors={['rgba(91,95,239,0.3)', 'rgba(139,92,246,0.1)']}
+              colors={['rgba(91,95,239,0.3)', 'rgba(139,92,246,0.1)'] as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}

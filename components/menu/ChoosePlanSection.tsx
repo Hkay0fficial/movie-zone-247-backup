@@ -37,7 +37,7 @@ export const ChoosePlanSection: React.FC<ChoosePlanSectionProps> = ({
         <View style={{ marginHorizontal: 20, marginBottom: 24, borderRadius: 24, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={['rgba(251, 191, 36, 0.12)', 'rgba(251, 191, 36, 0.05)']}
+            colors={['rgba(251, 191, 36, 0.12)', 'rgba(251, 191, 36, 0.05)'] as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}

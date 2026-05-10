@@ -353,7 +353,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               style={[styles.piSaveBtn, { width: '100%', paddingVertical: 14 }]}
               onPress={() => router.replace('/login')}
             >
-              <LinearGradient colors={['#5B5FEF', '#4A4ED1']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+              <LinearGradient colors={['#5B5FEF', '#4A4ED1'] as any} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
               <Text style={styles.piSaveBtnText}>Sign In / Create Account</Text>
             </TouchableOpacity>
           </View>
@@ -407,7 +407,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     </Text>
                   </View>
                 )}
-                <LinearGradient colors={['#5B5FEF', '#3d44ff']} style={styles.avatarMiniBadge}>
+                <LinearGradient colors={['#5B5FEF', '#3d44ff'] as any} style={styles.avatarMiniBadge}>
                   <Ionicons name="camera" size={10} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
@@ -559,7 +559,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     <Text style={styles.piCancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.piSaveBtnWrapper} onPress={saveProfile}>
-                    <LinearGradient colors={['#5B5FEF', '#4A4ED1']} style={styles.piSaveBtn}>
+                    <LinearGradient colors={['#5B5FEF', '#4A4ED1'] as any} style={styles.piSaveBtn}>
                       <Text style={styles.piSaveBtnText}>Save Changes</Text>
                     </LinearGradient>
                   </TouchableOpacity>

@@ -57,7 +57,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     >
       <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
         <LinearGradient
-          colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)']}
+          colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)'] as any}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.settingsModalContainer}>
@@ -256,7 +256,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
             <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'android' ? (insets.bottom > 0 ? insets.bottom + 12 : 24) : Math.max(insets.bottom + 10, 44) }]}>
               {scrollContentHeight > scrollViewHeight && currentScrollY < scrollContentHeight - scrollViewHeight - 20 && (
                 <LinearGradient
-                  colors={['transparent', '#0f0f14', '#0f0f14']}
+                  colors={['transparent', '#0f0f14', '#0f0f14'] as any}
                   style={[styles.footerGradient, { height: (Platform.OS === 'ios' ? 110 : 80) + insets.bottom }]}
                   pointerEvents="none"
                 />

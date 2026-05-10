@@ -22,7 +22,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, butto
       <View style={styles.iconContainer}>
         <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
         <LinearGradient
-          colors={['rgba(91, 95, 239, 0.2)', 'rgba(91, 95, 239, 0.05)']}
+          colors={['rgba(91, 95, 239, 0.2)', 'rgba(91, 95, 239, 0.05)'] as any}
           style={StyleSheet.absoluteFill}
         />
         <Ionicons name={icon} size={48} color="#818cf8" />
@@ -34,7 +34,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, butto
       {buttonText && onPress && (
         <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.8}>
           <LinearGradient
-            colors={['#5B5FEF', '#4A4ED9']}
+            colors={['#5B5FEF', '#4A4ED9'] as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradient}

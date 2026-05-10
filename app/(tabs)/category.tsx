@@ -140,7 +140,7 @@ const DiscoverCard = React.memo(({
       
       {/* Immersive Overlays */}
       <LinearGradient
-        colors={['rgba(10,10,15,0.2)', 'rgba(10,10,15,0.5)', 'rgba(10,10,15,1)']}
+        colors={['rgba(10,10,15,0.2)', 'rgba(10,10,15,0.5)', 'rgba(10,10,15,1)'] as any}
         style={StyleSheet.absoluteFill}
       />
 
@@ -178,9 +178,11 @@ const DiscoverCard = React.memo(({
             style={styles.mainPlayBtn}
             onPress={onPress}
             activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            delayPressIn={0}
           >
             <LinearGradient
-              colors={['#5B5FEF', '#484BD3']}
+              colors={['#5B5FEF', '#484BD3'] as any}
               style={StyleSheet.absoluteFill}
             />
             <Ionicons name={(!isPaid && !item.isFree && (!allMoviesFree || isGuest)) ? "lock-closed" : "play"} size={24} color="#fff" />
@@ -342,7 +344,8 @@ export default function CategoryScreen() {
 
       // Direct to full screen player for movies
       setPlayerTitle(item.title);
-      setSelectedVideoUrl((item as Movie).videoUrl);
+      setSelectedVideoUrl((item as Movie).videoUrl || "");
+      setIsPreview(false);
       setPlayingNow(item as Movie);
       
       // If movie has multiple parts, sync them to global playback state
@@ -510,6 +513,7 @@ export default function CategoryScreen() {
             setTimeout(() => {
               setPlayerTitle(m.title);
               setSelectedVideoUrl(m.videoUrl || m.episodeList?.[0]?.url || "");
+              setIsPreview(false);
               setPlayerMode('full');
             }, 200);
           }}
@@ -712,7 +716,7 @@ export default function CategoryScreen() {
                 style={styles.applyBtn}
                 onPress={() => setShowFilterModal(false)}
               >
-                <LinearGradient colors={['#5B5FEF', '#484BD3']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['#5B5FEF', '#484BD3'] as any} style={StyleSheet.absoluteFill} />
                 <Text style={styles.applyBtnText}>Apply Filters</Text>
               </TouchableOpacity>
             </View>

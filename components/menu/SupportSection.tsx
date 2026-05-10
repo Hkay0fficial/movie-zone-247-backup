@@ -70,7 +70,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
     return (
       <View style={{ backgroundColor: 'rgba(30,30,45,0.7)', borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(245,158,11,0.3)', padding: 24, alignItems: 'center', overflow: 'hidden' }}>
         <LinearGradient
-          colors={["rgba(245, 158, 11, 0.05)", "transparent"]}
+          colors={["rgba(245, 158, 11, 0.05)", "transparent"] as any}
           style={StyleSheet.absoluteFill}
         />
         <View style={{ width: 50, height: 50, borderRadius: 20, backgroundColor: 'rgba(245, 158, 11, 0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
@@ -126,8 +126,8 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
                 // 3. Redirection logic
                 DeviceEventEmitter.emit("ratingDonePermanent");
                 setTimeout(() => {
-                  Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official").catch(() => {
-                    Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
+                  Linking.openURL("https://play.google.com/store/apps/details?id=com.moviezone247.app").catch(() => {
+                    Linking.openURL("https://play.google.com/store/apps/details?id=com.moviezone247.app");
                   });
                 }, 1200);
               } catch (e) {
@@ -166,7 +166,7 @@ export const SupportSection: React.FC<SupportSectionProps> = ({
                   <TouchableOpacity 
                     style={{ flex: 1, backgroundColor: '#5B5FEF', borderRadius: 12, paddingVertical: 10, alignItems: 'center' }}
                     onPress={() => {
-                      Linking.openURL("https://play.google.com/store/apps/details?id=com.themoviezone247.official");
+                      Linking.openURL("https://play.google.com/store/apps/details?id=com.moviezone247.app");
                     }}
                   >
                     <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Write Review</Text>

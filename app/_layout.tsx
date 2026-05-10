@@ -46,6 +46,7 @@ function ModernVideoPlayerWrapper() {
   let _safeSetPlayingEpisodes = (m: any) => {};
   let _safeSetIsPreview = (m: any) => {};
   let _safeSetSelectedVideoUrl = (m: any) => {};
+  let _safeSetPlayerTitle = (t: string) => {};
 
   try {
     if (subscription.setPlayerMode) _safeSetPlayerMode = subscription.setPlayerMode;
@@ -54,6 +55,7 @@ function ModernVideoPlayerWrapper() {
     if (subscription.setPlayingEpisodes) _safeSetPlayingEpisodes = subscription.setPlayingEpisodes;
     if (subscription.setIsPreview) _safeSetIsPreview = subscription.setIsPreview;
     if (subscription.setSelectedVideoUrl) _safeSetSelectedVideoUrl = subscription.setSelectedVideoUrl;
+    if (subscription.setPlayerTitle) _safeSetPlayerTitle = subscription.setPlayerTitle;
   } catch (e) {
     console.warn("[ModernVideoPlayerWrapper] Context extraction error:", e);
   }
@@ -72,6 +74,16 @@ function ModernVideoPlayerWrapper() {
 
   const [activeUrl, setActiveUrl] = useState(selectedVideoUrl);
   const [isOffline, setIsOffline] = useState(false);
+
+  // Synchronize Player Title when Episode Changes
+  useEffect(() => {
+    if (playingEpisodes && playingEpisodes.length > 0 && playingEpisodeId) {
+      const activeEp = playingEpisodes.find(e => e.id === playingEpisodeId);
+      if (activeEp && activeEp.title && activeEp.title !== playerTitle) {
+        _safeSetPlayerTitle(activeEp.title);
+      }
+    }
+  }, [playingEpisodeId, playingEpisodes, playerTitle]);
 
   useEffect(() => {
     const checkNet = async () => {

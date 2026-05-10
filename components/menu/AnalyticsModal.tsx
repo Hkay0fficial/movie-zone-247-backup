@@ -34,7 +34,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
     >
       <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
         <LinearGradient
-          colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)']}
+          colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)'] as any}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.settingsModalContainer}>
@@ -90,7 +90,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
                       <View key={d.day} style={styles.chartCol}>
                         <View style={styles.barBg}>
                           <LinearGradient
-                            colors={['#818cf8', '#5B5FEF']}
+                            colors={['#818cf8', '#5B5FEF'] as any}
                             style={[styles.barFill, { height: `${d.val * 100}%` }]}
                           >
                             <View style={styles.barSheen} />

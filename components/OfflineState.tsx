@@ -18,7 +18,7 @@ export default function OfflineState({ hasDownloads, onRetry }: OfflineStateProp
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0a0a0f', '#12121a', '#0a0a0f']}
+        colors={['#0a0a0f', '#12121a', '#0a0a0f'] as any}
         style={StyleSheet.absoluteFill}
       />
       
@@ -52,7 +52,7 @@ export default function OfflineState({ hasDownloads, onRetry }: OfflineStateProp
               onPress={() => router.push('/(tabs)/downloads')}
             >
               <LinearGradient
-                colors={['#5B5FEF', '#3b3fb3']}
+                colors={['#5B5FEF', '#3b3fb3'] as any}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}

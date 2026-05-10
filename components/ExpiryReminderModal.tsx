@@ -50,7 +50,7 @@ export const ExpiryReminderModal: React.FC<ExpiryReminderModalProps> = ({
         
         <View style={styles.modalContent}>
           <LinearGradient
-            colors={['rgba(30, 30, 45, 0.98)', 'rgba(20, 20, 35, 1)']}
+            colors={['rgba(30, 30, 45, 0.98)', 'rgba(20, 20, 35, 1)'] as any}
             style={styles.gradientBg}
           />
           

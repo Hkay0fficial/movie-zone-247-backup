@@ -51,7 +51,7 @@ export default function ReflectiveText({
             'rgba(10, 10, 15, 0.4)', 
             'rgba(10, 10, 15, 0.8)', 
             '#0a0a0f'
-          ]}
+          ] as any}
           style={styles.mask}
         />
       </View>

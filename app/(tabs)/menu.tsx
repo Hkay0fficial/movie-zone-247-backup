@@ -1511,7 +1511,7 @@ export default function MenuScreen() {
                 <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'android' ? (insets.bottom > 0 ? insets.bottom + 12 : 24) : Math.max(insets.bottom + 10, 44) }]}>
                   {scrollContentHeight > scrollViewHeight && currentScrollY < scrollContentHeight - scrollViewHeight - 20 && (
                     <LinearGradient
-                      colors={['transparent', '#0f0f14', '#0f0f14']}
+                      colors={['transparent', '#0f0f14', '#0f0f14'] as any}
                       style={[styles.footerGradient, { height: (Platform.OS === 'ios' ? 110 : 80) + insets.bottom }]}
                       pointerEvents="none"
                     />
@@ -1786,7 +1786,7 @@ export default function MenuScreen() {
 
       {/* Bottom Fade Effect */}
       <LinearGradient
-        colors={['transparent', '#13131f']}
+        colors={['transparent', '#13131f'] as any}
         style={{
           position: 'absolute',
           bottom: 0,

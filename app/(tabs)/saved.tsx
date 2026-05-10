@@ -342,6 +342,13 @@ export default function SeriesScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
+
+  const handleTabPress = useCallback((title: string) => {
+    if (featuredTab === title) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFeaturedTab(title);
+  }, [featuredTab]);
   const [sSelectedGenre, setSSelectedGenre] = useState<string | null>(null);
   const [sSelectedYear, setSSelectedYear] = useState<string | null>(null);
   const hasActiveFilters = sSelectedGenre !== null || sSelectedYear !== null;
@@ -361,6 +368,7 @@ export default function SeriesScreen() {
     setPlayerTitle,
     selectedVideoUrl,
     setSelectedVideoUrl,
+    setIsPreview,
   } = sub;
 
   // Hermes-safe property extraction
@@ -430,6 +438,19 @@ export default function SeriesScreen() {
     title: string;
     data: Series[];
   } | null>(null);
+
+  const handleOpenSection = useCallback((title: string, data: Series[]) => {
+    DeviceEventEmitter.emit("setDetailStackVisible", true);
+    setActiveSection({ title, data });
+  }, []);
+
+  const handleCloseSection = useCallback(() => {
+    // If we're opening a series stack item, don't emit false yet
+    if (seriesStack.length === 0) {
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+    }
+    setActiveSection(null);
+  }, [seriesStack.length]);
 
   const [activePartId, setActivePartId] = useState("");
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -600,9 +621,9 @@ export default function SeriesScreen() {
   // Only emit when focused to avoid background tabs interfering
   useEffect(() => {
     if (isFocused) {
-      DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0);
+      DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0 || !!activeSection);
     }
-  }, [seriesStack.length, isFocused]);
+  }, [seriesStack.length, !!activeSection, isFocused]);
 
   if (isOffline) {
     return (
@@ -675,44 +696,59 @@ export default function SeriesScreen() {
                   {appLayout.quickAccess.map((section, idx) => (
                     <TouchableOpacity
                       key={section.id}
-                      onPress={() => setFeaturedTab(section.title)}
+                      onPress={() => handleTabPress(section.title)}
                       style={[
                         styles.browseFilterPill,
-                        (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && { backgroundColor: '#5B5FEF', borderColor: 'rgba(255,255,255,0.3)' }
+                        (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && styles.browseFilterPillActive
                       ]}
                     >
-                      <Text style={[styles.browseFilterPillText, (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && { color: '#fff', fontWeight: '800' }]}>
+                      <Text style={[styles.browseFilterPillText, (featuredTab === section.title || (featuredTab === "New Releases" && idx === 0)) && styles.browseFilterPillTextActive]}>
                         {section.title}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
                 
-                <HorizontalSeriesRow 
-                  data={(() => {
-                    const activeSec = appLayout.quickAccess.find(s => s.title === featuredTab) || appLayout.quickAccess[0];
-                    if (!activeSec) return NEW_SERIES.slice(0, 12);
-                    
-                    const filterVal = (activeSec.filterValue || '').toLowerCase().trim();
-                    switch(activeSec.filterType) {
-                      case 'newReleases': return NEW_SERIES.slice(0, 12);
-                      case 'trending': return TRENDING_SERIES.slice(0, 12);
-                      case 'mostViewed': return MOST_VIEWED_SERIES.slice(0, 12);
-                      case 'mostDownloaded': return MOST_DOWNLOADED_SERIES.slice(0, 12);
-                      case 'miniSeries': return ALL_SERIES.filter(s => s.isMiniSeries === true).slice(0, 12);
-                      case 'genre': return ALL_SERIES.filter(s => 
-                        (s.genre || '').toLowerCase().includes(filterVal) ||
-                        (s.country || '').toLowerCase().includes(filterVal)
-                      ).slice(0, 12);
-                      case 'country': return ALL_SERIES.filter(s => 
-                        (s.country || '').toLowerCase().includes(filterVal) ||
-                        (s.genre || '').toLowerCase().includes(filterVal)
-                      ).slice(0, 12);
-                      default: return NEW_SERIES.slice(0, 12);
-                    }
-                  })()} 
-                  onSelect={(s) => setSeriesStack([s])} 
-                />
+                {(() => {
+                  const activeSec = appLayout.quickAccess.find(s => s.title === featuredTab) || appLayout.quickAccess[0];
+                  if (!activeSec) return null;
+                  
+                  const filterVal = (activeSec.filterValue || '').toLowerCase().trim();
+                  let filteredData: Series[] = [];
+                  switch(activeSec.filterType) {
+                    case 'newReleases': filteredData = NEW_SERIES; break;
+                    case 'trending': filteredData = TRENDING_SERIES; break;
+                    case 'mostViewed': 
+                    case 'popular': filteredData = MOST_VIEWED_SERIES; break;
+                    case 'mostDownloaded': filteredData = MOST_DOWNLOADED_SERIES; break;
+                    case 'miniSeries': filteredData = ALL_SERIES.filter(s => s.isMiniSeries === true); break;
+                    case 'genre': filteredData = ALL_SERIES.filter(s => 
+                      (s.genre || '').toLowerCase().includes(filterVal) ||
+                      (s.country || '').toLowerCase().includes(filterVal)
+                    ); break;
+                    case 'country': filteredData = ALL_SERIES.filter(s => 
+                      (s.country || '').toLowerCase().includes(filterVal) ||
+                      (s.genre || '').toLowerCase().includes(filterVal)
+                    ); break;
+                    default: filteredData = NEW_SERIES; break;
+                  }
+
+                  return (
+                    <>
+                      <SectionHeader 
+                        title={activeSec.title}
+                        onSeeAll={() => handleOpenSection(activeSec.title, filteredData)}
+                      />
+                      <HorizontalSeriesRow 
+                        data={filteredData.slice(0, 12)} 
+                        onSelect={(s) => {
+                          DeviceEventEmitter.emit("setDetailStackVisible", true);
+                          setSeriesStack([s]);
+                        }} 
+                      />
+                    </>
+                  );
+                })()}
               </View>
             )}
 
@@ -748,11 +784,14 @@ export default function SeriesScreen() {
                   <View key={section.id}>
                     <SectionHeader 
                       title={section.title} 
-                      onSeeAll={() => setActiveSection({ title: section.title, data: sectionData })} 
+                      onSeeAll={() => handleOpenSection(section.title, sectionData)} 
                     />
                     <HorizontalSeriesRow 
                       data={sectionData.slice(0, 12)} 
-                      onSelect={(s) => setSeriesStack([s])} 
+                      onSelect={(s) => {
+                        DeviceEventEmitter.emit("setDetailStackVisible", true);
+                        setSeriesStack([s]);
+                      }} 
                     />
                   </View>
                 );
@@ -762,7 +801,7 @@ export default function SeriesScreen() {
             <View>
               <SectionHeader 
                 title="All Series/Mini Series" 
-                onSeeAll={() => setActiveSection({ title: "All Series/Mini Series", data: ALL_SERIES })} 
+                onSeeAll={() => handleOpenSection("All Series/Mini Series", ALL_SERIES)} 
               />
               <FlatList
                 horizontal
@@ -771,7 +810,10 @@ export default function SeriesScreen() {
                 keyExtractor={(s) => s.id}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                 renderItem={({ item }) => (
-                  <SeriesCard item={item} onPress={() => setSeriesStack([item])} />
+                  <SeriesCard item={item} onPress={() => {
+                    DeviceEventEmitter.emit("setDetailStackVisible", true);
+                    setSeriesStack([item]);
+                  }} />
                 )}
               />
             </View>
@@ -787,7 +829,7 @@ export default function SeriesScreen() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor="#5B5FEF"
-              colors={["#5B5FEF", "#818cf8"]}
+              colors={["#5B5FEF", "#818cf8"] as any}
               progressBackgroundColor="#1e293b"
             />
           }
@@ -800,6 +842,7 @@ export default function SeriesScreen() {
           windowSize={5}
           renderItem={({ item }) => (
             <SeriesCard item={item} onPress={() => {
+              DeviceEventEmitter.emit("setDetailStackVisible", true);
               setSeriesStack([item]);
               setIsExternalSearch(false);
               if (isSearchActive || query.length > 0) {
@@ -819,15 +862,18 @@ export default function SeriesScreen() {
             setSeriesStack(prev => {
               const newStack = [...prev];
               newStack.splice(index, 1);
-              if (newStack.length === 0 && isExternalSearch) {
-                setIsExternalSearch(false);
-                router.back();
+              if (newStack.length === 0) {
+                DeviceEventEmitter.emit("setDetailStackVisible", false);
+                if (isExternalSearch) {
+                  setIsExternalSearch(false);
+                  router.back();
+                }
               }
               return newStack;
             });
           }}
           onSwitch={(s) => setSeriesStack(prev => [...prev, s])}
-          onSeeAll={(title, data) => setActiveSection({ title, data })}
+          onSeeAll={(title, data) => handleOpenSection(title, data)}
           isMuted={index !== seriesStack.length - 1}
           onShowPremium={() => setShowPremiumModal(true)}
           playerMode={playerMode}
@@ -853,9 +899,10 @@ export default function SeriesScreen() {
         visible={!!activeSection && playerMode !== 'full'}
         title={activeSection?.title ?? ""}
         data={activeSection?.data ?? []}
-        onClose={() => setActiveSection(null)}
+        onClose={handleCloseSection}
         onSelect={(s) => {
-          setActiveSection(null);
+          DeviceEventEmitter.emit("setDetailStackVisible", true);
+          setActiveSection(null); // Silent close to transition to preview
           setTimeout(() => {
             setSeriesStack(prev => [...prev, s as Series]);
             setIsExternalSearch(false);
@@ -937,6 +984,7 @@ function SeriesPreviewModal({
     toggleFavorite,
     favorites,
     recordTrialUsage,
+    setIsPreview,
   } = useSubscription();
 
   const {
@@ -979,9 +1027,14 @@ function SeriesPreviewModal({
         return;
       }
       setSelectedVideoUrl(finalUrl);
-      // If we are playing the preview, reflect that in the title
-      setPlayerTitle(series.title + (contentUrl ? "" : " - Preview"));
+      // Show series title + episode label so the player header is informative
+      const epLabel = firstEp.title ? `${series.title} - ${firstEp.title}` : series.title;
+      setPlayerTitle(contentUrl ? epLabel : `${epLabel} - Preview`);
+      setIsPreview(!contentUrl);
+      // Register the full episode list with the global context so Next/Prev work
+      setActiveEpisodes(episodes);
       setActivePartId(firstEp.id);
+      setActiveEpisodeId(firstEp.id);
       setPlayerMode('full');
     }
   };
@@ -1508,7 +1561,7 @@ function SeriesPreviewModal({
               <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
               <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15, 15, 25, 0.95)" }]} />
               <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"]}
+                colors={["rgba(15, 15, 25, 0.95)", "transparent"] as any}
                 style={{
                   position: "absolute",
                   bottom: -12,
@@ -1581,10 +1634,14 @@ function SeriesPreviewModal({
                   return;
                 }
                 setSelectedVideoUrl(finalUrl);
-                setPlayerTitle(series.title + (firstEp && (episodeDownloads[firstEp.id] || firstEp.videoUrl) ? "" : " - Preview"));
+                // Show series + episode name in header
+                const epLabel = firstEp?.title ? `${series.title} - ${firstEp.title}` : series.title;
+                setPlayerTitle(contentUrl ? epLabel : `${epLabel} - Preview`);
+                setIsPreview(!contentUrl);
                 setActivePartId(firstEp?.id || '');
+                // Register episodes list so Next/Prev work
                 try { if (_safeSetEpId) _safeSetEpId(firstEp?.id || ''); } catch(e) {}
-                try { if (_safeSetEps) _safeSetEps(series.episodeList || []); } catch(e) {}
+                try { if (_safeSetEps) _safeSetEps(episodes); } catch(e) {}
                 setPlayerMode('full');
               }}
             >
@@ -1607,7 +1664,7 @@ function SeriesPreviewModal({
                 />
               )}
               <LinearGradient
-                colors={["transparent", "#0a0a0f"]}
+                colors={["transparent", "#0a0a0f"] as any}
                 style={styles.previewPosterFade}
               />
               {/* Play Overlay */}
@@ -1985,7 +2042,7 @@ function SeriesPreviewModal({
                   >
                     <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
                     <LinearGradient
-                      colors={["rgba(30, 30, 40, 0.7)", "rgba(10, 10, 15, 0.5)"]}
+                      colors={["rgba(30, 30, 40, 0.7)", "rgba(10, 10, 15, 0.5)"] as any}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={StyleSheet.absoluteFill}
@@ -2008,7 +2065,7 @@ function SeriesPreviewModal({
                       ]}
                     >
                       <LinearGradient
-                        colors={["transparent", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.1)", "rgba(255,255,255,0.02)", "transparent"]}
+                        colors={["transparent", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.1)", "rgba(255,255,255,0.02)", "transparent"] as any}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={{ flex: 1, width: 80 }}
@@ -2075,14 +2132,21 @@ function SeriesPreviewModal({
                             const contentUrl = episodeDownloads[ep.id] || ep.videoUrl;
                             const finalUrl = contentUrl || previewVideoUrl;
                             setSelectedVideoUrl(finalUrl);
-                            setPlayerTitle(ep.title + (contentUrl ? "" : " - Preview"));
+                            // Show series + episode name in player header
+                            const epLabel = ep.title ? `${series.title} - ${ep.title}` : series.title;
+                            setPlayerTitle(contentUrl ? epLabel : `${epLabel} - Preview`);
+                            setIsPreview(!contentUrl);
+                            // Register all episodes so Next/Prev buttons work
+                            setActiveEpisodes(episodes);
+                            setActivePartId(ep.id);
+                            setActiveEpisodeId(ep.id);
                             setPlayerMode('full');
                           }}
                           activeOpacity={0.8}
                         >
                           <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
                           <LinearGradient
-                            colors={["rgba(30, 30, 45, 0.4)", "rgba(10, 10, 15, 0.2)"]}
+                            colors={["rgba(30, 30, 45, 0.4)", "rgba(10, 10, 15, 0.2)"] as any}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={StyleSheet.absoluteFill}
@@ -2094,7 +2158,7 @@ function SeriesPreviewModal({
                               style={styles.epThumb}
                             />
                             <LinearGradient
-                              colors={["transparent", "rgba(0,0,0,0.4)"]}
+                              colors={["transparent", "rgba(0,0,0,0.4)"] as any}
                               style={StyleSheet.absoluteFill}
                             />
                             <View style={styles.epDurationBadgePremiumSmall}>
@@ -2527,7 +2591,7 @@ function SeriesPreviewModal({
 
                 {/* Seamless Fade Gradient where cards scroll underneath */}
                 <LinearGradient
-                  colors={["rgba(10, 10, 15, 0.97)", "transparent"]}
+                  colors={["rgba(10, 10, 15, 0.97)", "transparent"] as any}
                   style={{
                     position: "absolute",
                     bottom: -10,
@@ -2593,7 +2657,7 @@ function SeriesPreviewModal({
                   style={StyleSheet.absoluteFill}
                 />
                 <LinearGradient
-                  colors={["rgba(255,255,255,0.08)", "transparent"]}
+                  colors={["rgba(255,255,255,0.08)", "transparent"] as any}
                   style={StyleSheet.absoluteFill}
                 />
 
@@ -2616,7 +2680,7 @@ function SeriesPreviewModal({
                     activeOpacity={0.8}
                   >
                     <LinearGradient
-                      colors={["#5B5FEF", "#4A4EDD"]}
+                      colors={["#5B5FEF", "#4A4EDD"] as any}
                       style={StyleSheet.absoluteFill}
                     />
                     <Ionicons

@@ -16,7 +16,7 @@ export default function DownloadsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { downloadedMovies, removeDownload, activeDownloads } = useDownloads();
-  const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl } = useSubscription();
+  const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl, setIsPreview } = useSubscription();
   const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series'>('All');
 
   const filteredDownloads = React.useMemo(() => {
@@ -37,7 +37,7 @@ export default function DownloadsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0a0a0f', '#12121a']}
+        colors={['#0a0a0f', '#12121a'] as any}
         style={StyleSheet.absoluteFill}
       />
       
@@ -80,6 +80,7 @@ export default function DownloadsScreen() {
               onPress={() => {
                 setPlayerTitle(m.title);
                 setSelectedVideoUrl(m.localUri || m.videoUrl);
+                setIsPreview(false);
                 setPlayingNow(m as any);
                 setPlayerMode('full');
               }}
@@ -103,6 +104,7 @@ export default function DownloadsScreen() {
                     onPress={() => {
                       setPlayerTitle(m.title);
                       setSelectedVideoUrl(m.localUri || m.videoUrl);
+                      setIsPreview(false);
                       setPlayingNow(m as any);
                       setPlayerMode('full');
                     }}

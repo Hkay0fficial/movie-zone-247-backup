@@ -147,7 +147,7 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
       >
         <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
           <LinearGradient
-            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)']}
+            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)'] as any}
             style={StyleSheet.absoluteFill}
           />
           <TouchableOpacity
@@ -255,7 +255,7 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
       >
         <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
           <LinearGradient
-            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)']}
+            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)'] as any}
             style={StyleSheet.absoluteFill}
           />
           <TouchableOpacity
@@ -579,7 +579,7 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
       >
         <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
            <LinearGradient
-            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)']}
+            colors={['rgba(15,15,20,0.95)', 'rgba(20,20,28,0.95)', 'rgba(15,15,20,0.95)'] as any}
             style={StyleSheet.absoluteFill}
           />
           <TouchableOpacity

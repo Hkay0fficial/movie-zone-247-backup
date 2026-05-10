@@ -111,7 +111,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       }]}>
         <View style={styles.profileCardInner}>
           <LinearGradient
-            colors={['rgba(91,95,239,0.2)', 'rgba(91,95,239,0)']}
+            colors={['rgba(91,95,239,0.2)', 'rgba(91,95,239,0)'] as any}
             style={styles.profileGradient}
           />
           
@@ -124,7 +124,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               />
             ) : (
               <LinearGradient
-                colors={['#2a2a3e', '#1e1e2d']}
+                colors={['#2a2a3e', '#1e1e2d'] as any}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.avatar, { backgroundColor: '#1e1e2d', justifyContent: 'center', alignItems: 'center' }]}

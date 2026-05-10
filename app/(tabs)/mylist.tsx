@@ -30,7 +30,7 @@ export default function MyListScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0a0a0f', '#12121a']}
+        colors={['#0a0a0f', '#12121a'] as any}
         style={StyleSheet.absoluteFill}
       />
       
@@ -54,40 +54,12 @@ export default function MyListScreen() {
                 style={styles.card}
                 activeOpacity={0.85}
                 onPress={() => {
-                  const isSeries = "seasons" in m || (m as any).type === 'Series' || (m as any).isMiniSeries;
-                  
-                  if (isSeries) {
-                    router.push(`/(tabs)/saved?seriesId=${m.id}`);
-                  } else {
-                    setPlayerTitle(m.title);
-                    setSelectedVideoUrl(m.videoUrl);
-                    setPlayingNow(m as any);
-                    
-                    // Handle multi-part movies
-                    const movie = m as any;
-                    if (movie.parts && movie.parts.length > 0) {
-                      if (setPlayingEpisodes) {
-                        setPlayingEpisodes(movie.parts.map((p: any) => ({
-                          title: p.title,
-                          url: p.videoUrl || "",
-                          id: p.id
-                        })));
-                      }
-                      if (setPlayingEpisodeId) {
-                        setPlayingEpisodeId(movie.parts[0].id);
-                      }
-                    } else {
-                      if (setPlayingEpisodes) setPlayingEpisodes([]);
-                      if (setPlayingEpisodeId) setPlayingEpisodeId("");
-                    }
-                    
-                    setPlayerMode('full');
-                  }
+                  DeviceEventEmitter.emit('menuMovieSelected', m);
                 }}
               >
                 <Image source={{ uri: m.poster }} style={styles.poster} />
                 <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  colors={['transparent', 'rgba(0,0,0,0.8)'] as any}
                   style={styles.cardOverlay}
                 />
                 

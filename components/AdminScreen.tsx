@@ -67,7 +67,7 @@ export default function AdminScreen() {
 
       {/* Decorative Gradient at bottom */}
       <LinearGradient
-        colors={['transparent', 'rgba(15, 15, 20, 0.8)']}
+        colors={['transparent', 'rgba(15, 15, 20, 0.8)'] as any}
         style={styles.bottomGradient}
       />
     </SafeAreaView>

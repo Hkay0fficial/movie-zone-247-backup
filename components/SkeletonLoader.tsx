@@ -61,7 +61,7 @@ export const SkeletonLoader = memo(({ width, height, borderRadius = 12, style, s
               'rgba(255,255,255,0.12)',
               'rgba(255,255,255,0.05)',
               'transparent',
-            ]}
+            ] as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[StyleSheet.absoluteFill, { transform: [{ skewX: '-20deg' }] }]}

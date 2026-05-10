@@ -81,7 +81,7 @@ export default function UpgradeSuccessModal({
             style={styles.iconWrapper}
           >
             <LinearGradient
-              colors={['#FFC107', '#f59e0b']}
+              colors={['#FFC107', '#f59e0b'] as any}
               style={styles.iconGradient}
             >
               <Ionicons name="checkmark" size={60} color="#000" />
@@ -120,7 +120,7 @@ export default function UpgradeSuccessModal({
               }}
             >
               <LinearGradient
-                colors={['#FFC107', '#f59e0b']}
+                colors={['#FFC107', '#f59e0b'] as any}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.buttonGradient}

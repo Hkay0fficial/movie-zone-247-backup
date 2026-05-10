@@ -114,7 +114,7 @@ export default function PremiumAccessModal({
                 }}
               >
                 <LinearGradient
-                  colors={['#5B5FEF', '#818cf8']}
+                  colors={['#5B5FEF', '#818cf8'] as any}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientBtn}
@@ -209,7 +209,7 @@ export default function PremiumAccessModal({
                 }}
               >
                 <LinearGradient
-                  colors={['#5B5FEF', '#818cf8']}
+                  colors={['#5B5FEF', '#818cf8'] as any}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientBtn}
