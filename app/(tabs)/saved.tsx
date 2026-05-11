@@ -386,46 +386,6 @@ export default function SeriesScreen() {
   }
   const isFocused = useIsFocused();
 
-  // ─── STABLE BACK HANDLER LOGIC ──────────────────────────────────────────
-  // Use refs for stable BackHandler access to state without re-registering
-  const seriesStackRef = useRef(seriesStack);
-  const activeSectionRef = useRef(activeSection);
-  const playerModeRef = useRef(playerMode);
-  
-  useEffect(() => { seriesStackRef.current = seriesStack; }, [seriesStack]);
-  useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
-  useEffect(() => { playerModeRef.current = playerMode; }, [playerMode]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        // If in full screen, allow the video player component to handle the back press
-        if (playerModeRef.current === 'full') return false;
-        
-        // If we have a stack of series detail views, pop the top one
-        if (seriesStackRef.current.length > 0) {
-          setSeriesStack(prev => {
-            const newStack = [...prev];
-            newStack.pop();
-            return newStack;
-          });
-          return true;
-        }
-        
-        // If an expanded grid section is open, close it
-        if (activeSectionRef.current) {
-          handleCloseSection();
-          return true;
-        }
-        
-        // Otherwise, let the system handle the back press (e.g., exiting the app)
-        return false;
-      };
-
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => backHandler.remove();
-    }, [handleCloseSection])
-  );
   // ─────────────────────────────────────────────────────────────────────────
   const [appState, setAppState] = useState(AppState.currentState);
   const [isOffline, setIsOffline] = useState(false);
@@ -455,9 +415,54 @@ export default function SeriesScreen() {
     });
     return () => subscription.remove();
   }, []);
+
+  // ─── Stack-based Navigation ────────────────────────────────────────────────
+  type NavigationStackItem = 
+    | { type: 'series', series: Series }
+    | { type: 'grid', title: string, data: Series[] };
+
+  const [navigationStack, setNavigationStack] = useState<NavigationStackItem[]>([]);
+  const navigationStackRef = useRef<NavigationStackItem[]>([]);
+  
+  useEffect(() => {
+    navigationStackRef.current = navigationStack;
+    if (navigationStack.length > 0) {
+      DeviceEventEmitter.emit("setDetailStackVisible", true);
+    } else {
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+    }
+  }, [navigationStack]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // 1. If in full screen, allow video player to handle back
+        if (playerMode === 'full') return false;
+
+        // 2. Close search/filter if active
+        if (isSearchActive || query.length > 0) {
+          setQuery("");
+          setIsSearchActive(false);
+          DeviceEventEmitter.emit("seriesSearchClosed");
+          return true;
+        }
+
+        // 3. Pop Navigation Stack (Previews or Grids)
+        if (navigationStackRef.current.length > 0) {
+          setNavigationStack(prev => prev.slice(0, -1));
+          return true;
+        }
+
+        // 4. Otherwise, navigate back to home tab
+        router.navigate('/(tabs)');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [navigationStack.length, isSearchActive, query.length, playerMode])
+  );
   const { seriesId } = useLocalSearchParams();
 
-  const [seriesStack, setSeriesStack] = useState<Series[]>([]);
   const [isExternalSearch, setIsExternalSearch] = useState(false);
 
   useEffect(() => {
@@ -476,23 +481,9 @@ export default function SeriesScreen() {
     });
     return () => unsub();
   }, []);
-  const [activeSection, setActiveSection] = useState<{
-    title: string;
-    data: Series[];
-  } | null>(null);
-
   const handleOpenSection = useCallback((title: string, data: Series[]) => {
-    DeviceEventEmitter.emit("setDetailStackVisible", true);
-    setActiveSection({ title, data });
+    setNavigationStack(prev => [...prev, { type: 'grid', title, data }]);
   }, []);
-
-  const handleCloseSection = useCallback(() => {
-    // If we're opening a series stack item, don't emit false yet
-    if (seriesStack.length === 0) {
-      DeviceEventEmitter.emit("setDetailStackVisible", false);
-    }
-    setActiveSection(null);
-  }, [seriesStack.length]);
 
   const [activePartId, setActivePartId] = useState("");
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -585,12 +576,12 @@ export default function SeriesScreen() {
 
 
     const sub4 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
-      setSeriesStack([]);
+      setNavigationStack([]);
     });
 
     const sub5 = DeviceEventEmitter.addListener("openSeriesPreview", (series: Series) => {
       if (series) {
-        setSeriesStack(prev => [...prev, series]);
+        setNavigationStack(prev => [...prev, { type: 'series', series }]);
       }
     });
 
@@ -631,7 +622,7 @@ export default function SeriesScreen() {
       const found = ALL_SERIES.find(s => s.id === seriesId);
       if (found) {
         // Push the found series to the stack to open its detail view
-        setSeriesStack([found]);
+        setNavigationStack([{ type: 'series', series: found }]);
         // Clear the param and clear search state if any
         setIsExternalSearch(false);
         router.setParams({ seriesId: undefined } as any);
@@ -659,13 +650,6 @@ export default function SeriesScreen() {
     };
   }, []);
 
-  // Global UI Sync: hide header/tab bar when series preview is open
-  // Only emit when focused to avoid background tabs interfering
-  useEffect(() => {
-    if (isFocused) {
-      DeviceEventEmitter.emit("setDetailStackVisible", seriesStack.length > 0 || !!activeSection);
-    }
-  }, [seriesStack.length, !!activeSection, isFocused]);
 
   if (isOffline) {
     return (
@@ -703,11 +687,11 @@ export default function SeriesScreen() {
       />
 
       {/* Spacer for header - hidden when series detail is open */}
-      {seriesStack.length === 0 && (
+      {navigationStack.length === 0 && (
         <View style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight! + 48 : 40, paddingBottom: 0 }} />
       )}
 
-      {seriesStack.length === 0 && (
+      {navigationStack.length === 0 && (
         <>
 
         </>
@@ -786,8 +770,7 @@ export default function SeriesScreen() {
                       <HorizontalSeriesRow 
                         data={filteredData.slice(0, 12)} 
                         onSelect={(s) => {
-                          DeviceEventEmitter.emit("setDetailStackVisible", true);
-                          setSeriesStack([s]);
+                          setNavigationStack(prev => [...prev, { type: 'series', series: s }]);
                         }} 
                       />
                     </>
@@ -833,8 +816,7 @@ export default function SeriesScreen() {
                     <HorizontalSeriesRow 
                       data={sectionData.slice(0, 12)} 
                       onSelect={(s) => {
-                        DeviceEventEmitter.emit("setDetailStackVisible", true);
-                        setSeriesStack([s]);
+                        setNavigationStack(prev => [...prev, { type: 'series', series: s }]);
                       }} 
                     />
                   </View>
@@ -855,8 +837,7 @@ export default function SeriesScreen() {
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                 renderItem={({ item }) => (
                   <SeriesCard item={item} onPress={() => {
-                    DeviceEventEmitter.emit("setDetailStackVisible", true);
-                    setSeriesStack([item]);
+                    setNavigationStack([{ type: 'series', series: item }]);
                   }} />
                 )}
               />
@@ -886,8 +867,7 @@ export default function SeriesScreen() {
           windowSize={5}
           renderItem={({ item }) => (
             <SeriesCard item={item} onPress={() => {
-              DeviceEventEmitter.emit("setDetailStackVisible", true);
-              setSeriesStack([item]);
+              setNavigationStack([{ type: 'series', series: item }]);
               setIsExternalSearch(false);
               if (isSearchActive || query.length > 0) {
                 DeviceEventEmitter.emit("seriesSearchClosed");
@@ -898,58 +878,62 @@ export default function SeriesScreen() {
       )}
 
       {/* Series Preview Modal Stack */}
-      {seriesStack.map((series, index) => (
-        <SeriesPreviewModal
-          key={`${series.id}-${index}`}
-          series={series}
-          onClose={() => {
-            if (seriesStack.length === 1 && isExternalSearch) {
-              setIsExternalSearch(false);
-              router.back();
-            }
-            setSeriesStack(prev => {
-              const newStack = [...prev];
-              newStack.splice(index, 1);
-              return newStack;
-            });
-          }}
-          onSwitch={(s) => setSeriesStack(prev => [...prev, s])}
-          onSeeAll={(title, data) => handleOpenSection(title, data)}
-          isMuted={index !== seriesStack.length - 1}
-          onShowPremium={() => setShowPremiumModal(true)}
-          playerMode={playerMode}
-          setPlayerMode={setPlayerMode}
-          setSelectedVideoUrl={setSelectedVideoUrl}
-          setPlayerTitle={setPlayerTitle}
-          selectedVideoUrl={selectedVideoUrl}
-          playerTitle={playerTitle}
-          setActivePartId={(id) => {
-            setActivePartId(id);
-            try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
-          }}
-          setActiveEpisodes={(eps) => {
-            try { if (_safeSetEps) _safeSetEps(eps); } catch(e) {}
-          }}
-          isFocused={isFocused}
-          appState={appState}
-        />
-      ))}
-
-      {/* Series Grid Modal */}
-      <GridModal
-        visible={!!activeSection && playerMode !== 'full'}
-        title={activeSection?.title ?? ""}
-        data={activeSection?.data ?? []}
-        onClose={handleCloseSection}
-        onSelect={(s) => {
-          DeviceEventEmitter.emit("setDetailStackVisible", true);
-          setActiveSection(null); // Silent close to transition to preview
-          setTimeout(() => {
-            setSeriesStack(prev => [...prev, s as Series]);
+      {navigationStack.map((item, index) => {
+        const onClose = () => {
+          if (navigationStack.length === 1 && isExternalSearch) {
             setIsExternalSearch(false);
-          }, 300);
-        }}
-      />
+            router.back();
+          }
+          setNavigationStack(prev => {
+            const newStack = [...prev];
+            newStack.splice(index, 1);
+            return newStack;
+          });
+        };
+
+        if (item.type === 'grid') {
+          return (
+            <GridModal
+              key={`grid-${index}`}
+              visible={playerMode !== 'full'}
+              title={item.title}
+              data={item.data}
+              onClose={onClose}
+              onSelect={(s) => {
+                setNavigationStack(prev => [...prev, { type: 'series', series: s as Series }]);
+                setIsExternalSearch(false);
+              }}
+            />
+          );
+        }
+
+        return (
+          <SeriesPreviewModal
+            key={`series-${index}`}
+            series={item.series}
+            onClose={onClose}
+            onSwitch={(s) => setNavigationStack(prev => [...prev, { type: 'series', series: s }])}
+            onSeeAll={(title, data) => handleOpenSection(title, data)}
+            isMuted={index !== navigationStack.length - 1}
+            onShowPremium={() => setShowPremiumModal(true)}
+            playerMode={playerMode}
+            setPlayerMode={setPlayerMode}
+            setSelectedVideoUrl={setSelectedVideoUrl}
+            setPlayerTitle={setPlayerTitle}
+            selectedVideoUrl={selectedVideoUrl}
+            playerTitle={playerTitle}
+            setActivePartId={(id) => {
+              setActivePartId(id);
+              try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
+            }}
+            setActiveEpisodes={(eps) => {
+              try { if (_safeSetEps) _safeSetEps(eps); } catch(e) {}
+            }}
+            isFocused={isFocused}
+            appState={appState}
+          />
+        );
+      })}
       
       <PremiumAccessModal
         visible={showPremiumModal}

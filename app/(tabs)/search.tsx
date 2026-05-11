@@ -17,6 +17,7 @@ import {
   Easing,
   DeviceEventEmitter,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +27,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Movie, Series, getStreamUrl } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
 import { useSubscription } from '@/app/context/SubscriptionContext';
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useUser } from '../context/UserContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -190,7 +192,23 @@ export default function SearchScreen() {
     setResults(filtered);
   }, [allContent]);
 
-  useEffect(() => {
+   useFocusEffect(
+     useCallback(() => {
+       const onBackPress = () => {
+         if (query.trim().length > 0) {
+           setQuery('');
+           return true;
+         }
+         // Explicitly navigate back to home tab instead of relying on history
+         router.navigate('/(tabs)');
+         return true;
+       };
+       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+       return () => subscription.remove();
+     }, [query])
+   );
+
+   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,

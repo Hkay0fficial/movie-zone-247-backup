@@ -1,5 +1,5 @@
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -18,6 +18,7 @@ import {
   ViewToken,
   useWindowDimensions,
   TextInput,
+  BackHandler,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,7 +33,7 @@ import { useSubscription } from "@/app/context/SubscriptionContext";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import { useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { Video, ResizeMode } from "expo-av";
 import { 
   ALL_GENRES, 
@@ -234,7 +235,7 @@ export default function CategoryScreen() {
     favorites, toggleFavorite, isGuest, isPreview, setIsPreview,
     playerMode, setPlayerMode, playerTitle, setPlayerTitle,
     selectedVideoUrl, setSelectedVideoUrl, playerPos, playerSize,
-    isPaid, allMoviesFree, setPlayingNow,
+    isPaid, allMoviesFree, setPlayingNow, playingNow,
   } = sub;
   // Hermes-safe property extraction
   let _safeSetEps: any;
@@ -269,7 +270,20 @@ export default function CategoryScreen() {
   });
 
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [previewMovie, setPreviewMovie] = useState<Movie | Series | null>(null);
+  
+  // ─── Stack-based Navigation ────────────────────────────────────────────────
+  const [navigationStack, setNavigationStack] = useState<(Movie | Series)[]>([]);
+  const navigationStackRef = useRef<(Movie | Series)[]>([]);
+  
+  useEffect(() => {
+    navigationStackRef.current = navigationStack;
+    if (navigationStack.length > 0) {
+      DeviceEventEmitter.emit("setDetailStackVisible", true);
+    } else {
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+    }
+  }, [navigationStack]);
+
   const [isMuted, setIsMuted] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -290,8 +304,46 @@ export default function CategoryScreen() {
   }, [allMovies, allSeries]);
 
 
-  // Prepare filtered items for the feed
-  const discoverItems = useMemo(() => {
+   useFocusEffect(
+      useCallback(() => {
+        const onBackPress = () => {
+          // 1. If in full screen, allow video player to handle back
+          if (playerMode === 'full') return false;
+
+          // 2. Pop Navigation Stack (Previews)
+          if (navigationStackRef.current.length > 0) {
+            setNavigationStack(prev => prev.slice(0, -1));
+            return true;
+          }
+
+          // 3. Close Filter Modal if open
+          if (showFilterModal) {
+            setShowFilterModal(false);
+            return true;
+          }
+
+          // 4. Close premium/plan modals if open
+          if (showPremiumModal) {
+            setShowPremiumModal(false);
+            return true;
+          }
+          if (showPlanModal) {
+            setShowPlanModal(false);
+            return true;
+          }
+
+          // 5. Otherwise, navigate back to home tab
+          router.navigate('/(tabs)');
+          return true;
+        };
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => subscription.remove();
+      }, [navigationStack.length, showFilterModal, showPremiumModal, showPlanModal, playerMode])
+    );
+
+   // Prepare filtered items for the feed
+   const discoverItems = useMemo(() => {
     let filtered = [...(allMovies || []), ...(allSeries || [])];
 
     // Note: The global context already filters allMovies/allSeries, 
@@ -322,14 +374,14 @@ export default function CategoryScreen() {
   }).current;
 
   useEffect(() => {
-    const isVisible = !!previewMovie || showFilterModal || playerMode === 'full';
+    const isVisible = navigationStack.length > 0 || showFilterModal || playerMode === 'full';
     DeviceEventEmitter.emit('setOverlayVisible', isVisible);
     
     // Auto-dismiss preview modal if video starts playing
-    if (playerMode === 'full' && previewMovie) {
-      setPreviewMovie(null);
+    if (playerMode === 'full' && navigationStack.length > 0) {
+      setNavigationStack([]);
     }
-  }, [previewMovie, showFilterModal, playerMode]);
+  }, [navigationStack, showFilterModal, playerMode]);
 
   const handleItemPress = (item: Movie | Series) => {
     const isSeries = "seasons" in item || "episodeList" in item;
@@ -372,7 +424,7 @@ export default function CategoryScreen() {
       setPlayerMode('full');
     } else {
       // Show preview modal for series
-      setPreviewMovie(item);
+      setNavigationStack(prev => [...prev, item]);
     }
   };
 
@@ -427,7 +479,7 @@ export default function CategoryScreen() {
             isMuted={isMuted}
             playerMode={playerMode}
             isFocused={isFocused}
-            isModalOpen={!!previewMovie || showFilterModal || showPremiumModal || showPlanModal}
+            isModalOpen={navigationStack.length > 0 || showFilterModal || showPremiumModal || showPlanModal}
             onToggleMute={() => setIsMuted(!isMuted)}
             onPress={() => handleItemPress(item)}
             onSave={() => toggleFavorite(item)}
@@ -485,18 +537,23 @@ export default function CategoryScreen() {
             if (key === 'rating') setMinRating(0);
             if (key === 'search') setSearchQuery("");
           }}
-          onClearAll={clearFilters}
-          containerStyle={{ marginTop: 12 }}
         />
       </View>
 
-      {/* Preview Modal */}
-      {previewMovie && (
+      {/* Preview Modal Stack */}
+      {navigationStack.map((item, index) => (
         <MoviePreviewModal
+          key={`${item.id}-${index}`}
           visible={playerMode !== 'full'}
-          movie={previewMovie}
+          movie={item}
           hideSearchBy={true}
-          onClose={() => setPreviewMovie(null)}
+          onClose={() => {
+            setNavigationStack(prev => {
+              const newStack = [...prev];
+              newStack.splice(index, 1);
+              return newStack;
+            });
+          }}
           onShowPremium={() => setShowPremiumModal(true)}
           playerMode={playerMode}
           setPlayerMode={setPlayerMode}
@@ -509,16 +566,18 @@ export default function CategoryScreen() {
           isPreview={isPreview}
           setIsPreview={setIsPreview}
           onSwitch={(m: any) => {
-            setPreviewMovie(null);
-            setTimeout(() => {
-              setPlayerTitle(m.title);
-              setSelectedVideoUrl(m.videoUrl || m.episodeList?.[0]?.url || "");
-              setIsPreview(false);
-              setPlayerMode('full');
-            }, 200);
+            setNavigationStack(prev => [...prev, m]);
+          }}
+          playingNow={playingNow}
+          setPlayingNow={setPlayingNow}
+          setActivePartId={(id) => {
+            try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
+          }}
+          setActiveEpisodes={(eps) => {
+            try { if (_safeSetEps) _safeSetEps(eps); } catch(e) {}
           }}
         />
-      )}
+      ))}
 
       {/* Filter Modal (VJ/Genre Selection) */}
       <Modal
@@ -540,7 +599,7 @@ export default function CategoryScreen() {
                 {(selectedVJ || selectedGenre || selectedType || selectedYear || sortBy) && (
                   <TouchableOpacity 
                     style={styles.closeModalBtn}
-                    onPress={resetFilters}
+                    onPress={clearFilters}
                   >
                     <Ionicons name="refresh" size={24} color="#fff" />
                   </TouchableOpacity>

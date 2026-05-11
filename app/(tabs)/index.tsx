@@ -82,6 +82,7 @@ import {
   getStreamUrl,
   resolveCDNUrl,
 } from "@/constants/movieData";
+import { useFocusEffect } from "@react-navigation/native";
 import { 
   GridCard, 
   GridModal, 
@@ -6669,6 +6670,7 @@ const HeroBanner = memo(({
   );
 });
 // ─── Home Screen ──────────────────────────────────────────────────────────────
+
 export default function HomeScreen() {
   const router = useRouter();
   const { 
@@ -6746,28 +6748,63 @@ export default function HomeScreen() {
     playerModeRef.current = playerMode;
   }, [playerMode]);
 
-  useEffect(() => {
-    // Stable Back Handler: Registered once to avoid race conditions with state updates
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // 1. If player is active in full screen, close it first
-      if (playerModeRef.current === 'full') {
-        setPlayerMode('closed');
-        setPlayingNow(null);
-        setIsPreview(false);
-        return true;
-      }
-      
-      // 2. If we have a navigation stack (details, search results, etc), go back one level
-      if (navigationStackRef.current.length > 0) {
-        setNavigationStack(prev => prev.slice(0, -1));
-        return true;
-      }
-      
-      return false;
-    });
+   // ─── STABLE BACK HANDLER LOGIC ──────────────────────────────────────────
+   const isSearchVisibleRef = useRef(isSearchVisible);
+   const isNotificationVisibleRef = useRef(isNotificationVisible);
+   const showPremiumModalRef = useRef(showPremiumModal);
+   const showPlanModalRef = useRef(showPlanModal);
 
-    return () => backHandler.remove();
-  }, []);
+   useEffect(() => { isSearchVisibleRef.current = isSearchVisible; }, [isSearchVisible]);
+   useEffect(() => { isNotificationVisibleRef.current = isNotificationVisible; }, [isNotificationVisible]);
+   useEffect(() => { showPremiumModalRef.current = showPremiumModal; }, [showPremiumModal]);
+   useEffect(() => { showPlanModalRef.current = showPlanModal; }, [showPlanModal]);
+
+   useFocusEffect(
+     useCallback(() => {
+       const onBackPress = () => {
+         // 1. If player is active in full screen, close it first
+         if (playerModeRef.current === 'full') {
+           setPlayerMode('closed');
+           setPlayingNow(null);
+           setIsPreview(false);
+           return true;
+         }
+         
+         // 2. Close search/notifications if open
+         if (isSearchVisibleRef.current) {
+           setIsSearchVisible(false);
+           return true;
+         }
+         if (isNotificationVisibleRef.current) {
+           setIsNotificationVisible(false);
+           return true;
+         }
+
+         // 3. Close premium/plan modals if open
+         if (showPremiumModalRef.current) {
+           setShowPremiumModal(false);
+           return true;
+         }
+         if (showPlanModalRef.current) {
+           setShowPlanModal(false);
+           return true;
+         }
+
+         // 4. If we have a navigation stack, pop one level
+         if (navigationStackRef.current.length > 0) {
+           setNavigationStack(prev => prev.slice(0, -1));
+           return true;
+         }
+         
+         // 5. Prevent app exit and force Home navigation
+         router.navigate('/(tabs)');
+         return true;
+       };
+
+       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+       return () => subscription.remove();
+     }, [router])
+   );
 
   const prevStackLength = useRef(0);
   useEffect(() => {
