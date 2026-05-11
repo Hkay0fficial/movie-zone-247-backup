@@ -40,34 +40,24 @@ function ModernVideoPlayerWrapper() {
   const subscription = useSubscription();
   const router = useRouter();
 
-  // Hermes-safe property extraction
-  let _safeSetPlayerMode = (m: any) => {};
-  let _safeSetPlayingNow = (m: any) => {};
-  let _safeSetPlayingEpisodeId = (m: any) => {};
-  let _safeSetPlayingEpisodes = (m: any) => {};
-  let _safeSetIsPreview = (m: any) => {};
-  let _safeSetSelectedVideoUrl = (m: any) => {};
-  let _safeSetPlayerTitle = (t: string) => {};
-
-  try {
-    if (subscription.setPlayerMode) _safeSetPlayerMode = subscription.setPlayerMode;
-    if (subscription.setPlayingNow) _safeSetPlayingNow = subscription.setPlayingNow;
-    if (subscription.setPlayingEpisodeId) _safeSetPlayingEpisodeId = subscription.setPlayingEpisodeId;
-    if (subscription.setPlayingEpisodes) _safeSetPlayingEpisodes = subscription.setPlayingEpisodes;
-    if (subscription.setIsPreview) _safeSetIsPreview = subscription.setIsPreview;
-    if (subscription.setSelectedVideoUrl) _safeSetSelectedVideoUrl = subscription.setSelectedVideoUrl;
-    if (subscription.setPlayerTitle) _safeSetPlayerTitle = subscription.setPlayerTitle;
-  } catch (e) {
-    console.warn("[ModernVideoPlayerWrapper] Context extraction error:", e);
-  }
+  // Robust property extraction
+  const { 
+    setPlayerMode: _safeSetPlayerMode = () => {},
+    setPlayingNow: _safeSetPlayingNow = () => {},
+    setPlayingEpisodeId: _safeSetPlayingEpisodeId = () => {},
+    setPlayingEpisodes: _safeSetPlayingEpisodes = () => {},
+    setIsPreview: _safeSetIsPreview = () => {},
+    setSelectedVideoUrl: _safeSetSelectedVideoUrl = () => {},
+    setPlayerTitle: _safeSetPlayerTitle = () => {},
+  } = subscription || {};
 
   const { downloadedMovies, episodeDownloads } = useDownloads();
 
   const { 
-    playerMode, playerTitle, selectedVideoUrl,
-    playingNow, playingEpisodeId, playingEpisodes,
-    playerPos, playerSize, isPreview,
-  } = subscription;
+    playerMode = 'closed', playerTitle = '', selectedVideoUrl = '',
+    playingNow = null, playingEpisodeId = null, playingEpisodes = [],
+    playerPos, playerSize, isPreview = false,
+  } = subscription || {};
 
   const currentIdx = playingEpisodes ? playingEpisodes.findIndex(e => e.id === playingEpisodeId) : -1;
   const hasNext = !!playingEpisodes && currentIdx !== -1 && currentIdx < playingEpisodes.length - 1;
@@ -194,13 +184,9 @@ function SystemUIGuard() {
         if (Platform.OS === 'android') {
           try {
             const apiLevel = Platform.Version;
-            
-            // In modern Android (API 35+ / Android 15), edge-to-edge is mandatory.
-            // We focus on semantic visibility rather than forcing deprecated background colors.
             await NavigationBar.setBehaviorAsync('inset-touch').catch(() => {});
             await NavigationBar.setVisibilityAsync('visible').catch(() => {});
             
-            // On older versions, we still ensure transparency for consistent "thin-line" aesthetic.
             if (typeof apiLevel === 'number' && apiLevel < 35) {
               await NavigationBar.setBackgroundColorAsync('#00000001').catch(() => {});
               await NavigationBar.setButtonStyleAsync('light').catch(() => {});
@@ -208,14 +194,11 @@ function SystemUIGuard() {
           } catch (e) {}
         }
       };
+      
+      // Reset immediately and then once more after a delay to ensure it sticks
       resetUI();
-      // Reduced frequency of reinforcement to respect modern system constraints
-      const interval = setInterval(resetUI, 1000);
-      const timeout = setTimeout(() => clearInterval(interval), 3000);
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+      const timeout = setTimeout(resetUI, 500);
+      return () => clearTimeout(timeout);
     }
   }, [playerMode]);
 

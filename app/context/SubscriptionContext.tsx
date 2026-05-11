@@ -245,33 +245,34 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setCustomExternalLimit(extLimit);
             setCustomDeviceLimit(devLimit);
 
-                // Device limit check
-                const runDeviceCheck = async () => {
-                  if (user && !user.isAnonymous) {
-                    const { id: currentId, name: currentName } = await getDeviceInfo();
-                    if (currentId === 'unknown_device') return;
+            // Device limit check
+            const runDeviceCheck = async () => {
+              if (!user || user.isAnonymous) {
+                setIsDeviceBlocked(false);
+                return;
+              }
 
-                    // 0. Check if this device has been explicitly kicked
-                    const kickedDevices = userData.kickedDevices || {};
-                    if (kickedDevices[currentId]) {
-                      // Remove the kick flag first to prevent loops
-                      await updateDoc(doc(db, 'users', user.uid), {
-                        [`kickedDevices.${currentId}`]: deleteField()
-                      }).catch(() => {});
-                      
-                      // Perform logout
-                      await signOut(auth).catch(() => {});
-                      return;
-                    }
+              const { id: currentId, name: currentName } = await getDeviceInfo();
+              if (currentId === 'unknown_device') return;
 
-                    const normalizedBundle = bundle.toLowerCase();
-                    const baseLimit = dynamicDeviceLimits[normalizedBundle] || 1;
-                    const limit = devLimit > 0 ? devLimit : baseLimit;
-                    const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+              // 0. Check if this device has been explicitly kicked
+              const kickedDevices = userData.kickedDevices || {};
+              if (kickedDevices[currentId]) {
+                await updateDoc(doc(db, 'users', user.uid), {
+                  [`kickedDevices.${currentId}`]: deleteField()
+                }).catch(() => {});
+                await signOut(auth).catch(() => {});
+                return;
+              }
 
-                    // 1. Ensure current device is registered for activity tracking
-                    if (!isAlreadyRegistered && fetchedActiveDevices.length < 10) {
-                  // Use atomic update to prevent race conditions between devices
+              const normalizedBundle = bundle.toLowerCase();
+              const baseLimit = dynamicDeviceLimits[normalizedBundle] || 1;
+              const limit = devLimit > 0 ? devLimit : baseLimit;
+              const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+
+              // 1. Ensure current device is registered for activity tracking
+              if (!isAlreadyRegistered) {
+                if (fetchedActiveDevices.length < limit) {
                   const updateData: any = {
                     activeDeviceIds: arrayUnion(currentId),
                     [`activeDevicesMeta.${currentId}`]: { 
@@ -280,45 +281,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     }
                   };
                   
-                  updateDoc(doc(db, 'users', user.uid), updateData).catch((err) => {
-                    console.error("Failed to register device:", err);
-                    // Fallback to setDoc if updateDoc fails (e.g. doc doesn't exist yet)
-                    setDoc(doc(db, 'users', user.uid), updateData, { merge: true }).catch(() => {});
+                  await updateDoc(doc(db, 'users', user.uid), updateData).catch(async (err) => {
+                    if (err.code === 'not-found') {
+                      await setDoc(doc(db, 'users', user.uid), updateData, { merge: true }).catch(() => {});
+                    }
                   });
-
-                  // If they have a bundle, check if this new registration is within limits
-                  if (bundle !== 'None') {
-                    setIsDeviceBlocked(fetchedActiveDevices.length >= limit);
-                  } else {
-                    setIsDeviceBlocked(false);
-                  }
-                } else if (isAlreadyRegistered) {
                   setIsDeviceBlocked(false);
-                  
-                  // Only update if metadata is missing, name changed, or lastUsed is more than 30 mins old
-                  const meta = fetchedDeviceMeta[currentId] || {};
-                  const lastUpdate = meta.lastUsed ? new Date(meta.lastUsed).getTime() : 0;
-                  const thirtyMins = 30 * 60 * 1000;
-                  const now = Date.now();
-                  const nameChanged = meta.name !== currentName;
-                  const isOld = (now - lastUpdate) > thirtyMins;
-
-                  if (nameChanged || isOld) {
-                    updateDoc(doc(db, 'users', user.uid), {
-                      [`activeDevicesMeta.${currentId}.lastUsed`]: new Date().toISOString(),
-                      [`activeDevicesMeta.${currentId}.name`]: currentName
-                    }).catch(() => {});
-                  }
                 } else {
-                  // Not registered and list is full (10 devices max for history) or hit plan limit
-                  if (bundle !== 'None') {
-                    setIsDeviceBlocked(true);
-                  } else {
-                    setIsDeviceBlocked(false);
-                  }
+                  setIsDeviceBlocked(true);
                 }
               } else {
                 setIsDeviceBlocked(false);
+                // Throttled metadata update (only every 30 mins)
+                const meta = fetchedDeviceMeta[currentId] || {};
+                const lastUpdate = meta.lastUsed ? new Date(meta.lastUsed).getTime() : 0;
+                const thirtyMins = 30 * 60 * 1000;
+                if ((Date.now() - lastUpdate) > thirtyMins || meta.name !== currentName) {
+                  updateDoc(doc(db, 'users', user.uid), {
+                    [`activeDevicesMeta.${currentId}.lastUsed`]: new Date().toISOString(),
+                    [`activeDevicesMeta.${currentId}.name`]: currentName
+                  }).catch(() => {});
+                }
               }
             };
 

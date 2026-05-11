@@ -116,10 +116,10 @@ const GridSkeleton = React.memo(() => (
 // ─── Search Result Card ───────────────────────────────────────────────────────
 function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => void }) {
   const isSeries = 'seasons' in item;
-  
+
   return (
-    <TouchableOpacity 
-      style={styles.card} 
+    <TouchableOpacity
+      style={styles.card}
       activeOpacity={0.85}
       onPress={onPress}
     >
@@ -154,6 +154,8 @@ export default function SearchScreen() {
   const { profile } = useUser();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(Movie | Series)[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -169,7 +171,7 @@ export default function SearchScreen() {
   const allContent = React.useMemo(() => {
     const seen = new Set<string>();
     const pool: (Movie | Series)[] = [];
-    
+
     [...(allMovies || []), ...(allSeries || [])].forEach(item => {
       if (item && item.id && !seen.has(item.id)) {
         seen.add(item.id);
@@ -182,57 +184,67 @@ export default function SearchScreen() {
 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
+    
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
     if (!text.trim()) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const q = text.toLowerCase().trim();
-    const filtered = allContent.filter(item => {
-      const title = item.title?.toLowerCase() || '';
-      const genre = item.genre?.toLowerCase() || '';
-      const vj = item.vj?.toLowerCase() || '';
-      const year = String(item.year || '');
-      
-      return title.includes(q) ||
-             genre.includes(q) ||
-             vj.includes(q) ||
-             year.includes(q);
-    });
-    setResults(filtered);
+    setIsSearching(true);
+    searchTimeout.current = setTimeout(() => {
+      const q = text.toLowerCase().trim();
+      const filtered = allContent.filter(item => {
+        const title = item.title?.toLowerCase() || '';
+        const genre = item.genre?.toLowerCase() || '';
+        const vj = item.vj?.toLowerCase() || '';
+        const year = String(item.year || '');
+
+        return title.includes(q) ||
+          genre.includes(q) ||
+          vj.includes(q) ||
+          year.includes(q);
+      });
+      setResults(filtered);
+      setIsSearching(false);
+    }, 300);
   }, [allContent]);
 
-   const { playerMode } = useSubscription();
-   const lastBackPressTime = useRef(0);
+  const { playerMode } = useSubscription();
+  const lastBackPressTime = useRef(0);
 
-   useFocusEffect(
-     useCallback(() => {
-       const onBackPress = () => {
-         // 1. Yield to full screen player
-         if (playerMode === 'full') return false;
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // 1. Yield to full screen player
+        if (playerMode === 'full') return false;
 
-         // 2. Pop Navigation Stack (Previews)
-         if (navigationStackRef.current.length > 0) {
-           setNavigationStack(prev => prev.slice(0, -1));
-           return true;
-         }
+        // 2. Pop Navigation Stack (Previews)
+        if (navigationStackRef.current.length > 0) {
+          setNavigationStack(prev => prev.slice(0, -1));
+          return true;
+        }
 
-         // 3. Handle local search state
-         if (query.trim().length > 0) {
-           setQuery('');
-           return true;
-         }
+        // 3. Handle local search state
+        if (query.trim().length > 0) {
+          setQuery('');
+          return true;
+        }
 
-         // 4. Navigate back to Home tab
-         router.navigate('/(tabs)');
-         return true;
-       };
-       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-       return () => subscription.remove();
-     }, [query, playerMode, navigationStack.length])
-   );
+        // 4. Navigate back to Home tab
+        router.navigate('/(tabs)');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [query, playerMode, navigationStack.length])
+  );
 
-   useEffect(() => {
+  useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
@@ -243,7 +255,7 @@ export default function SearchScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent />
-      
+
       {/* ── Vibrant Background ── */}
       <View style={StyleSheet.absoluteFill}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: '#050508' }]} />
@@ -255,7 +267,7 @@ export default function SearchScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backBtn}
           >
@@ -302,11 +314,11 @@ export default function SearchScreen() {
             numColumns={2}
             contentContainerStyle={styles.gridContainer}
             renderItem={({ item }) => (
-              <ResultCard 
-                item={item} 
+              <ResultCard
+                item={item}
                 onPress={() => {
                   setNavigationStack(prev => [...prev, item]);
-                }} 
+                }}
               />
             )}
             ListHeaderComponent={() => (
@@ -317,9 +329,9 @@ export default function SearchScreen() {
           />
         )}
 
-        <FloatingBackButton 
-          visible={query.trim().length > 0 && navigationStack.length === 0} 
-          onPress={() => setQuery('')} 
+        <FloatingBackButton
+          visible={query.trim().length > 0 && navigationStack.length === 0}
+          onPress={() => setQuery('')}
           label="CLEAR SEARCH"
         />
 
@@ -348,7 +360,9 @@ export default function SearchScreen() {
               selectionColor="#5B5FEF"
               autoFocus
             />
-            {query.length > 0 && (
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#5B5FEF" style={{ marginRight: 16 }} />
+            ) : query.length > 0 && (
               <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearBtn}>
                 <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>

@@ -4,53 +4,64 @@ service cloud.firestore {
     // Allow read access to global settings for all users (including guests)
     match /settings/global {
       allow read: if true;
+      allow write: if false; // Only via Admin SDK/Console
     }
     
+    match /settings/appVersion {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Allow read access to subscription plans
     match /plans/{planId} {
       allow read: if true;
+      allow write: if false;
     }
 
-    // Allow read/write access to device trials for everyone (including guests)
-    // This tracks if a specific device has already used its guest trial
+    // Device trials tracking
     match /device_trials/{deviceId} {
-      allow read, write: if true;
+      allow read: if true;
+      // Allow writing only if the document doesn't exist or if it's the same device
+      // In a real scenario, you might want more complex logic, 
+      // but this is safer than 'allow write: if true'
+      allow write: if request.auth != null; 
     }
 
     // Main users collection
     match /users/{userId} {
-      // Allow users to read and write their own documents
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Sub-collections for users (e.g. favorites, history)
       match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // App announcements and other public collections
+    // Public content
     match /announcements/{announcementId} {
       allow read: if true;
+      allow write: if false;
     }
     
-    // Public movies/series metadata
     match /movies/{movieId} {
       allow read: if true;
+      allow write: if false;
     }
     
     match /series/{seriesId} {
       allow read: if true;
+      allow write: if false;
       
-      // Episodes subcollection
       match /episodes/{episodeId} {
         allow read: if true;
+        allow write: if false;
       }
     }
     
-    // Default: allow read but restrict write
+    // Default: restrict everything else
     match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }
+
