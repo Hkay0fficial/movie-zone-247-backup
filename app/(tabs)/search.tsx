@@ -22,13 +22,15 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FloatingBackButton } from "../../components/FloatingBackButton";
 import { Movie, Series, getStreamUrl } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useUser } from '../context/UserContext';
+import { MoviePreviewModal } from "./index";
+import { useRouter } from "expo-router";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -155,6 +157,14 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // ─── Stack-based Navigation ───
+  const [navigationStack, setNavigationStack] = useState<(Movie | Series)[]>([]);
+  const navigationStackRef = useRef<(Movie | Series)[]>([]);
+
+  useEffect(() => {
+    navigationStackRef.current = navigationStack;
+  }, [navigationStack]);
+
   // Flatten all movies and series for searching
   const allContent = React.useMemo(() => {
     const seen = new Set<string>();
@@ -192,20 +202,34 @@ export default function SearchScreen() {
     setResults(filtered);
   }, [allContent]);
 
+   const { playerMode } = useSubscription();
+   const lastBackPressTime = useRef(0);
+
    useFocusEffect(
      useCallback(() => {
        const onBackPress = () => {
+         // 1. Yield to full screen player
+         if (playerMode === 'full') return false;
+
+         // 2. Pop Navigation Stack (Previews)
+         if (navigationStackRef.current.length > 0) {
+           setNavigationStack(prev => prev.slice(0, -1));
+           return true;
+         }
+
+         // 3. Handle local search state
          if (query.trim().length > 0) {
            setQuery('');
            return true;
          }
-         // Explicitly navigate back to home tab instead of relying on history
+
+         // 4. Navigate back to Home tab
          router.navigate('/(tabs)');
          return true;
        };
        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
        return () => subscription.remove();
-     }, [query])
+     }, [query, playerMode, navigationStack.length])
    );
 
    useEffect(() => {
@@ -281,9 +305,7 @@ export default function SearchScreen() {
               <ResultCard 
                 item={item} 
                 onPress={() => {
-                  // Emit selection event to be caught by the Home detail stack
-                  DeviceEventEmitter.emit("movieSelected", item);
-                  router.back();
+                  setNavigationStack(prev => [...prev, item]);
                 }} 
               />
             )}
@@ -294,6 +316,12 @@ export default function SearchScreen() {
             )}
           />
         )}
+
+        <FloatingBackButton 
+          visible={query.trim().length > 0 && navigationStack.length === 0} 
+          onPress={() => setQuery('')} 
+          label="CLEAR SEARCH"
+        />
 
         {/* ── Floating Search Pill (Indigo Glass) ── */}
         <KeyboardAvoidingView
@@ -327,6 +355,32 @@ export default function SearchScreen() {
             )}
           </BlurView>
         </KeyboardAvoidingView>
+
+        {/* ── Preview Modal Stack ── */}
+        {navigationStack.map((item, index) => (
+          <MoviePreviewModal
+            key={`${item.id}-${index}`}
+            visible={playerMode !== 'full'}
+            movie={item}
+            hideSearchBy={true}
+            onClose={() => {
+              setNavigationStack(prev => {
+                const newStack = [...prev];
+                newStack.splice(index, 1);
+                return newStack;
+              });
+            }}
+            playerMode={playerMode}
+            setPlayerMode={setPlayerMode}
+            setSelectedVideoUrl={setSelectedVideoUrl}
+            setPlayerTitle={setPlayerTitle}
+            onSwitch={(m: any) => {
+              setNavigationStack(prev => [...prev, m]);
+            }}
+            playingNow={null} // Managed by global context
+            setPlayingNow={setPlayingNow}
+          />
+        ))}
       </SafeAreaView>
     </View>
   );

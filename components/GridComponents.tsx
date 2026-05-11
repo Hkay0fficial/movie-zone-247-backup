@@ -27,6 +27,8 @@ import { useUser } from "@/app/context/UserContext";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
+import { FloatingBackButton } from "./FloatingBackButton";
+
 // ─── Grid Card Component (matches home screen MovieCard exactly) ───────────────
 export function GridCard({
   movie,
@@ -308,6 +310,7 @@ export function GridContent({
             </View>
           }
         />
+        <FloatingBackButton onPress={onClose} />
       </View>
     </View>
   );

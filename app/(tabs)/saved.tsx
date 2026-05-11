@@ -40,6 +40,7 @@ import { formatRelativeTime } from "../../utils/TimeUtils";
 import { SkeletonLoader, SkeletonRow } from "../../components/SkeletonLoader";
 import { GridModal } from "../../components/GridComponents";
 
+import { FloatingBackButton } from "../../components/FloatingBackButton";
 import {
   StyleSheet,
   Text,
@@ -423,6 +424,7 @@ export default function SeriesScreen() {
 
   const [navigationStack, setNavigationStack] = useState<NavigationStackItem[]>([]);
   const navigationStackRef = useRef<NavigationStackItem[]>([]);
+  const lastBackPressTime = useRef(0);
   
   useEffect(() => {
     navigationStackRef.current = navigationStack;
@@ -436,6 +438,11 @@ export default function SeriesScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        // Throttle
+        const now = Date.now();
+        if (now - lastBackPressTime.current < 400) return true;
+        lastBackPressTime.current = now;
+
         // 1. If in full screen, allow video player to handle back
         if (playerMode === 'full') return false;
 
@@ -3162,6 +3169,7 @@ function SeriesPreviewModal({
       </View>
 
       {/* FloatingPlayer moved to parent level for persistence */}
+      <FloatingBackButton onPress={onClose} visible={playerMode !== 'full'} />
       </View>
     </Modal>
   );

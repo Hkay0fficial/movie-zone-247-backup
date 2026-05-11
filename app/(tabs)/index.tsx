@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, memo } from "react";
+import { FloatingBackButton } from "../../components/FloatingBackButton";
 import {
   StyleSheet,
   Text,
@@ -5999,6 +6000,8 @@ export const MoviePreviewContent = memo(({
 
             <View style={{ height: 40 }} />
           </Animated.ScrollView>
+
+          <FloatingBackButton onPress={onClose} visible={playerMode !== 'full'} />
         </KeyboardAvoidingView>
 
 
@@ -6038,6 +6041,10 @@ export const MoviePreviewModal = memo((props: any) => {
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100000 }]}>
       <MoviePreviewContent {...props} />
+      <FloatingBackButton 
+        onPress={props.onClose} 
+        visible={props.playerMode !== 'full'} 
+      />
     </View>
   );
 }); // End of MoviePreviewModal memo
@@ -6753,6 +6760,7 @@ export default function HomeScreen() {
    const isNotificationVisibleRef = useRef(isNotificationVisible);
    const showPremiumModalRef = useRef(showPremiumModal);
    const showPlanModalRef = useRef(showPlanModal);
+   const lastBackPressTime = useRef(0);
 
    useEffect(() => { isSearchVisibleRef.current = isSearchVisible; }, [isSearchVisible]);
    useEffect(() => { isNotificationVisibleRef.current = isNotificationVisible; }, [isNotificationVisible]);
@@ -6762,12 +6770,15 @@ export default function HomeScreen() {
    useFocusEffect(
      useCallback(() => {
        const onBackPress = () => {
-         // 1. If player is active in full screen, close it first
+         // Throttle back press to prevent double-pops (especially on Gesture Navigation)
+         const now = Date.now();
+         if (now - lastBackPressTime.current < 400) return true;
+         lastBackPressTime.current = now;
+
+         // 1. If player is active in full screen, YIELD to the player's own handler
+         // The ModernVideoPlayer has its own listener which handles animations and orientation.
          if (playerModeRef.current === 'full') {
-           setPlayerMode('closed');
-           setPlayingNow(null);
-           setIsPreview(false);
-           return true;
+           return false; 
          }
          
          // 2. Close search/notifications if open
@@ -6796,9 +6807,9 @@ export default function HomeScreen() {
            return true;
          }
          
-         // 5. Prevent app exit and force Home navigation
-         router.navigate('/(tabs)');
-         return true;
+         // 5. If we are at the root of the Home tab, allow the OS to handle back (App Exit)
+         // This is standard Android behavior. 
+         return false;
        };
 
        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -7089,21 +7100,8 @@ export default function HomeScreen() {
     const sub = DeviceEventEmitter.addListener("homeTabPress", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
-    const movieSub = DeviceEventEmitter.addListener(
-      "movieSelected",
-      (m: (Movie | Series) & { autoPlay?: boolean }) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setIsStackLoading(true);
-        setNavigationStack((prev) => {
-          if (prev.length > 0) {
-            const top = prev[prev.length - 1];
-            if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-          }
-          return [...prev, { type: 'movie', movie: m }];
-        });
-        setTimeout(() => setIsStackLoading(false), 400);
-      },
-    );
+    // ─── REMOVED REDUNDANT movieSelected LISTENER ───
+    // Previews are now handled locally within each tab to fix hardware back button issues.
 
 
     const sectionSub = DeviceEventEmitter.addListener(
@@ -7123,7 +7121,6 @@ export default function HomeScreen() {
     );
     return () => {
       sub.remove();
-      movieSub.remove();
       sectionSub.remove();
     };
   }, [navigationStack.length]); // Removed playerMode and backHandler from here
@@ -7443,7 +7440,7 @@ export default function HomeScreen() {
                   }
 
                   return (
-                    <MoviePreviewContent
+                    <MoviePreviewModal
                       key={`movie-${index}`}
                       movie={item.movie}
                       onClose={onClose}
@@ -7452,6 +7449,7 @@ export default function HomeScreen() {
                         if (isSeries) {
                           router.push(`/(tabs)/saved?seriesId=${m.id}`);
                         } else {
+                          setIsStackLoading(true);
                           setNavigationStack((prev) => {
                             if (prev.length > 0) {
                               const top = prev[prev.length - 1];
@@ -7459,6 +7457,7 @@ export default function HomeScreen() {
                             }
                             return [...prev, { type: 'movie', movie: m }];
                           });
+                          setTimeout(() => setIsStackLoading(false), 600);
                         }
                       }}
                       onSeeAll={(title: string, data: (Movie | Series)[]) => {
@@ -7481,12 +7480,12 @@ export default function HomeScreen() {
                       playerMode={playerMode}
                       playerTitle={playerTitle}
                       selectedVideoUrl={selectedVideoUrl}
-                      isMuted={!isFocused}
-                      onShowPremium={() => setShowPremiumModal(true)}
-                      onUpgrade={() => setShowPlanModal(true)}
                       isFocused={isFocused}
                       appState={appState}
+                      setIsPreview={setIsPreview}
                       isTop={index === navigationStack.length - 1}
+                      onShowPremium={() => setShowPremiumModal(true)}
+                      onUpgrade={() => setShowPlanModal(true)}
                     />
                   );
                 })}
