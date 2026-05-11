@@ -1551,16 +1551,10 @@ export default function ModernVideoPlayer({
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             if (NativeModules.PipModule) {
-                              // Send final params before entering
                               NativeModules.PipModule.updatePipParams(16, 9, true);
                               NativeModules.PipModule.enterPipMode();
                             } else {
-                              Alert.alert(
-                                "PiP Error",
-                                "Native PiP module not found. Please ensure you are using the latest version of the app and have rebuilt the native code.",
-                                [{ text: "OK" }]
-                              );
-                              console.warn("PipModule not found in NativeModules");
+                              Alert.alert("PiP Error", "Native PiP module not found.", [{ text: "OK" }]);
                             }
                           }} 
                           style={[styles.circleBtn, isPiPActive && styles.activeCircleBtn]}
@@ -1587,10 +1581,27 @@ export default function ModernVideoPlayer({
                       </TouchableOpacity>
 
                       {/* SPEED Button */}
-                      <TouchableOpacity onPress={() => setShowSpeedOverlay(true)} style={styles.circleBtn}>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setShowSpeedOverlay(true);
+                        }} 
+                        style={styles.circleBtn}
+                      >
                         <MaterialIcons name="speed" size={24} color="#fff" />
                       </TouchableOpacity>
 
+                      {/* GO BACK Button (1st in corner) */}
+                      <TouchableOpacity 
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          onClose();
+                        }} 
+                        style={[styles.circleBtn, { width: 'auto', paddingHorizontal: 16, flexDirection: 'row', gap: 6 }]}
+                      >
+                        <Ionicons name="arrow-back" size={20} color="#fff" />
+                        <Text style={[styles.badgeText, { fontSize: 13 }]}>Go Back</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 )}
