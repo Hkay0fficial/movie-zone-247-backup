@@ -125,7 +125,7 @@ const DiscoverCard = React.memo(({
         resizeMode="cover"
       />
 
-      {isActive && item.previewUrl && (
+      {isActive && item.previewUrl && isFocused && playerMode === 'closed' && !isModalOpen && (
         <View style={styles.videoWrapper}>
           <Video
             source={{ uri: item.previewUrl }}

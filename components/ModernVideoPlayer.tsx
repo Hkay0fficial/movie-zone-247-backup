@@ -523,15 +523,32 @@ export default function ModernVideoPlayer({
 
         setIsBuffering(true);
         const source = { uri: videoUrl };
+        console.log("[ModernVideoPlayer] Initiating load for:", videoUrl);
         
         await videoRef.current?.unloadAsync();
+        const isMovie = playingNow?.type === 'Movie' || !episodeId;
         const result = await videoRef.current?.loadAsync(
           source,
           { 
             shouldPlay: true, 
-            progressUpdateIntervalMillis: 500,
+            progressUpdateIntervalMillis: 1000,
             rate: playbackSpeedRef.current,
             shouldCorrectPitch: true,
+            // Android-specific optimizations for high-bitrate movies
+            ...(Platform.OS === 'android' ? {
+              androidImplementation: 'ExoPlayer',
+              bufferConfig: isMovie ? {
+                minBufferMs: 90000,          // 1.5m min buffer for movies
+                maxBufferMs: 240000,         // 4m max buffer for movies
+                bufferForPlaybackMs: 8000,    // 8s before start
+                bufferForPlaybackAfterRebufferMs: 15000, // 15s after lag
+              } : {
+                minBufferMs: 45000,          // 45s min buffer for series
+                maxBufferMs: 120000,         // 2m max buffer for series
+                bufferForPlaybackMs: 3000,
+                bufferForPlaybackAfterRebufferMs: 6000,
+              }
+            } : {})
           },
           false
         );
@@ -614,7 +631,7 @@ export default function ModernVideoPlayer({
     if (playerMode !== 'closed' && status.isLoaded && status.isPlaying && movieId) {
       const interval = setInterval(() => {
         savePlaybackProgress(movieId, (statusRef.current as any).positionMillis || 0, episodeId);
-      }, 5000);
+      }, 20000); // Increased to 20s to reduce UI thread load and Firestore writes during movies
       return () => clearInterval(interval);
     }
   }, [status.isLoaded, status.isPlaying, movieId, episodeId]);
@@ -1024,21 +1041,24 @@ export default function ModernVideoPlayer({
   // Formatting helpers
   const onPlaybackStatusUpdate = React.useCallback((s: AVPlaybackStatus) => {
     statusRef.current = s;
+    // Optimized status update: Only update UI-intensive animated values if controls are visible
     if (s.isLoaded && s.durationMillis) {
-      const bPct = (s.playableDurationMillis || 0) / s.durationMillis;
-      bufferedAnimPct.setValue(bPct);
-      
-      // Update progress bar knob if not scrubbing
-      if (!isScrubbingRef.current && s.durationMillis && s.durationMillis > 0) {
-        const pct = s.positionMillis / s.durationMillis;
-        if (!isNaN(pct)) {
-          scrubAnimPct.setValue(pct);
+      if (showControlsRef.current) {
+        const bPct = (s.playableDurationMillis || 0) / s.durationMillis;
+        bufferedAnimPct.setValue(bPct);
+        
+        // Update progress bar knob if not scrubbing
+        if (!isScrubbingRef.current && s.durationMillis && s.durationMillis > 0) {
+          const pct = s.positionMillis / s.durationMillis;
+          if (!isNaN(pct)) {
+            scrubAnimPct.setValue(pct);
+          }
         }
       }
     }
 
-      // Buffering overlay removed as requested to prevent intrusive UI pops
-      setIsBufferingDelayed(false);
+      // Buffering overlay logic optimized to avoid redundant updates
+      if (isBufferingDelayed) setIsBufferingDelayed(false);
 
     // Track AirPlay/external playback state
     if (s.isLoaded && Platform.OS === 'ios') {
@@ -1143,7 +1163,7 @@ export default function ModernVideoPlayer({
           
           <Video
           ref={videoRef}
-          source={{ uri: videoUrl || "" }}
+          // source={{ uri: videoUrl || "" }} // Removed to prevent double-loading (handled by loadAsync)
           style={styles.absFill}
           resizeMode={videoResizeMode}
           shouldPlay={playerMode !== 'closed' && (isFocused || isPiPActive)}
@@ -1156,11 +1176,17 @@ export default function ModernVideoPlayer({
           isLooping={isPreview && !!videoUrl?.includes('b-cdn.net') && videoUrl?.includes('preview.mp4')}
           progressUpdateIntervalMillis={1000}
           {...(Platform.OS === 'android' ? {
-            bufferConfig: {
-              minBufferMs: 15000,
-              maxBufferMs: 50000,
-              bufferForPlaybackMs: 1000,
-              bufferForPlaybackAfterRebufferMs: 2500,
+            androidImplementation: 'ExoPlayer',
+            bufferConfig: (playingNow?.type === 'Movie' || !episodeId) ? {
+              minBufferMs: 60000,          // Balanced: 1m min buffer for movies
+              maxBufferMs: 240000,         // 4m max buffer for movies
+              bufferForPlaybackMs: 5000,    // 5s before start (faster initial load)
+              bufferForPlaybackAfterRebufferMs: 10000, // 10s after lag
+            } : {
+              minBufferMs: 45000,          // 45s min buffer for series
+              maxBufferMs: 120000,         // 2m max buffer for series
+              bufferForPlaybackMs: 3000,
+              bufferForPlaybackAfterRebufferMs: 6000,
             }
           } : {})}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
@@ -1212,8 +1238,8 @@ export default function ModernVideoPlayer({
           </TouchableOpacity>
         )}
 
-        {/* Simple Black Loading Indicator */}
-        {(!status.isLoaded || isBuffering) && playerMode !== 'closed' && (
+        {/* Simple Black Loading Indicator - only for initial load */}
+        {(!status.isLoaded) && playerMode !== 'closed' && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', zIndex: 100 }]}>
             <ActivityIndicator size="large" color="#818cf8" />
             <Text style={{ color: '#fff', marginTop: 10, fontSize: 12, fontWeight: 'bold' }}>LOADING MEDIA...</Text>

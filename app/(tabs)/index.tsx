@@ -1248,7 +1248,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: 160,
+    bottom: -2,
   },
   previewSearchBtn: {
     position: "absolute",
@@ -2468,7 +2469,7 @@ export function SeriesPreviewContent({
         duration: series.episodeDuration || "45m",
         isPremium: !isFree,
         thumbnail: series.poster,
-        videoUrl: previewVideoUrl,
+        videoUrl: '',
         description: `This exciting episode follows the journey in ${series.title}.`,
       };
     });
@@ -2614,10 +2615,11 @@ export function SeriesPreviewContent({
             try { if (_safeSetEpId) _safeSetEpId(activeEpisode.id); } catch(e) {}
             if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
             if (setPlayerTitle) setPlayerTitle(series.title + " - " + activeEpisode.title);
+            if (setPlayingNow) setPlayingNow(series as any);
             if (setPlayerMode) setPlayerMode('full');
           }}
         >
-          {previewVideoUrl ? (
+          {previewVideoUrl && playerMode === 'closed' && isFocused && navigationStack.length === 0 ? (
             <Video
               source={{ uri: previewVideoUrl }}
               style={styles.previewPoster}
@@ -2956,6 +2958,8 @@ export function SeriesPreviewContent({
                     if (setSelectedVideoUrl) setSelectedVideoUrl((alreadyDownloadedState.localItem as any).localUri);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + alreadyDownloadedState.episode?.title);
                     if (setIsPreview) setIsPreview(false);
+                    if (setPlayingNow) setPlayingNow(series as any);
+                    if (setPlayingEpisodeId && alreadyDownloadedState.episode) setPlayingEpisodeId(alreadyDownloadedState.episode.id);
                     if (setPlayerMode) setPlayerMode('full');
                   }
                 }}
@@ -3244,11 +3248,41 @@ export const MoviePreviewContent = memo(({
   setPlayingEpisodeId?: (id: string) => void;
 }) => {
   const [isRenderReady, setIsRenderReady] = useState(false);
+  const mountAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     setIsRenderReady(false);
-    const timer = setTimeout(() => setIsRenderReady(true), 250);
+    // Smoothly animate in the entire modal
+    Animated.timing(mountAnim, {
+      toValue: 1,
+      duration: 350,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+
+    // Reset scroll position to top when movie changes
+    if (modalScrollRef.current) {
+      modalScrollRef.current.scrollTo({ y: 0, animated: false });
+    }
+
+    const timer = setTimeout(() => {
+      setIsRenderReady(true);
+    }, 150); // Reduced delay for snappier feel
     return () => clearTimeout(timer);
   }, [movie?.id]);
+
+  const contentFade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isRenderReady) {
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      contentFade.setValue(0);
+    }
+  }, [isRenderReady]);
 
   const router = useRouter();
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -4035,13 +4069,22 @@ export const MoviePreviewContent = memo(({
         StyleSheet.absoluteFill, 
         { 
           backgroundColor: "#0a0a0f",
-          transform: [{
-            translateX: pan.x.interpolate({
-              inputRange: [0, SCREEN_W],
-              outputRange: [0, SCREEN_W],
-              extrapolate: 'clamp'
-            })
-          }]
+          opacity: mountAnim,
+          transform: [
+            {
+              translateY: mountAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [60, 0], // Subtle slide up
+              })
+            },
+            {
+              translateX: pan.x.interpolate({
+                inputRange: [0, SCREEN_W],
+                outputRange: [0, SCREEN_W],
+                extrapolate: 'clamp'
+              })
+            }
+          ]
         }
       ]}
       {...panResponder.panHandlers}
@@ -4201,6 +4244,7 @@ export const MoviePreviewContent = memo(({
                 {/* ── Poster hero ── */}
                 <TouchableOpacity
                   activeOpacity={0.9}
+                  style={{ backgroundColor: '#0a0a0f' }}
                   onPress={() => {
                     const canWatch = (allMoviesFree && !isGuest) || (movie as any).isFree || isPaid;
                     if (!canWatch) {
@@ -4221,11 +4265,12 @@ export const MoviePreviewContent = memo(({
                     
                     setSelectedVideoUrl?.(finalUrl);
                     setPlayerTitle?.(movie.title + (firstPart ? " - " + (firstPart.title || "Part 1") : ""));
+                    if (firstPart && setPlayingEpisodeId) setPlayingEpisodeId(firstPart.id);
                     setPlayingNow?.(movie as Movie);
                     setPlayerMode?.('full');
                   }}
                 >
-                  {previewVideoUrl ? (
+                  {previewVideoUrl && playerMode === 'closed' && isFocused ? (
                     <>
                       <Video
                         source={{ 
@@ -4238,7 +4283,7 @@ export const MoviePreviewContent = memo(({
                         }}
                         style={styles.previewPoster}
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={playerMode === 'closed' && isFocused && appState === 'active'}
+                        shouldPlay={isRenderReady && playerMode === 'closed' && isFocused && appState === 'active'}
                         isLooping
                         isMuted={isMuted}
                         usePoster={true}
@@ -4248,12 +4293,12 @@ export const MoviePreviewContent = memo(({
                       />
                       {/* Preview Loading Indicator */}
                       {previewVideoUrl && ((!previewStatus.isLoaded && playerMode === 'closed') || (previewStatus.isLoaded && previewStatus.isBuffering)) && (
-                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20 }]}>
+                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }]}>
                           <ActivityIndicator size="small" color="#5B5FEF" />
                         </View>
                       )}
                       {/* Hidden Detector for Full Movie Duration (used if database has 0:00) */}
-                      {movie && !("seasons" in movie) && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && (
+                      {movie && !("seasons" in movie) && !detectedDuration && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && playerMode === 'closed' && isFocused && (
                         <Video
                           source={{ 
                             uri: resolveCDNUrl((movie as any).videoUrl),
@@ -4269,7 +4314,8 @@ export const MoviePreviewContent = memo(({
                               const mins = Math.floor(s.durationMillis / 60000);
                               const hrs = Math.floor(mins / 60);
                               const rMins = mins % 60;
-                              setDetectedDuration(hrs > 0 ? `${hrs}h ${rMins}m` : `${mins}m`);
+                              const result = hrs > 0 ? `${hrs}h ${rMins}m` : `${mins}m`;
+                              setDetectedDuration(result);
                             }
                           }}
                           style={{ width: 0, height: 0, position: 'absolute' }}
@@ -4284,7 +4330,7 @@ export const MoviePreviewContent = memo(({
                   )}
 
                   <LinearGradient
-                    colors={["transparent", "#0a0a0f"]}
+                    colors={["transparent", "rgba(10,10,15,0.7)", "#0a0a0f"]}
                     style={styles.previewPosterFade}
                   />
                   {/* Play Overlay */}
@@ -4735,6 +4781,7 @@ export const MoviePreviewContent = memo(({
                     </TouchableOpacity>
                   </View>
 
+                <Animated.View style={{ opacity: contentFade }}>
                 {isRenderReady ? (
                   <>
                 {/* ── SEASONS SECTION (For Series) ── */}
@@ -5091,13 +5138,14 @@ export const MoviePreviewContent = memo(({
                     <PreviewEpisodeSkeleton />
                   </View>
                 )}
+                </Animated.View>
                 </View>
               </>
             )}
 
             {/* ── Download Options Modal (Frosted Dark) ── */}
             <Modal
-              visible={showDownloadModal}
+              visible={showDownloadModal && playerMode !== 'full'}
               transparent
               animationType="fade"
               statusBarTranslucent
@@ -5398,7 +5446,7 @@ export const MoviePreviewContent = memo(({
             {/* ── Comments Sheet ── */}
             {showComments && (
               <Modal
-                visible
+                visible={playerMode !== 'full'}
                 animationType="slide"
                 transparent
                 statusBarTranslucent
@@ -5733,6 +5781,7 @@ export const MoviePreviewContent = memo(({
                 {/* ── Related Movies ── */}
                 {!hideSearchBy && (
                 <View style={{ paddingBottom: 6 }}>
+                <Animated.View style={{ opacity: contentFade }}>
                   {isRenderReady ? (
                     <>
               {/* YOU MAY ALSO LIKE */}
@@ -5941,6 +5990,7 @@ export const MoviePreviewContent = memo(({
                       <SkeletonRow />
                     </View>
                   )}
+                </Animated.View>
                 </View>
                 )}
               </>
@@ -6196,7 +6246,8 @@ const HeroBanner = memo(({
   onShowPremium,
   paused,
   isFocused,
-  appState
+  appState,
+  isModalOpen
 }: { 
   onSelect: (m: Movie) => void;
   isMuted: boolean;
@@ -6205,6 +6256,7 @@ const HeroBanner = memo(({
   paused: boolean;
   isFocused: boolean;
   appState: string;
+  isModalOpen: boolean;
 }) => {
   const router = useRouter();
   const { allMoviesFree, subscriptionBundle, isGuest, toggleFavorite, favorites, playerMode } = useSubscription();
@@ -6343,7 +6395,7 @@ const HeroBanner = memo(({
       {/* ── Video or Photo Hero ── */}
       <TouchableWithoutFeedback onPress={handleHeroPress}>
         <View style={[styles.heroVideo, { height: HERO_H }]}>
-          {movie.heroType === 'photo' ? (
+          {movie.heroType === 'photo' || playerMode !== 'closed' || !isFocused || isModalOpen ? (
             // Photo-only mode: custom hero image or poster fallback
             <Image
               source={{ uri: resolveCDNUrl(movie.heroPhotoUrl) || resolveCDNUrl(movie.poster) }}
@@ -6361,7 +6413,7 @@ const HeroBanner = memo(({
               }}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
-              shouldPlay={!paused && isFocused && appState === 'active' && playerMode === 'closed'}
+              shouldPlay={!paused && isFocused && appState === 'active' && playerMode === 'closed' && !isModalOpen}
               isLooping={false}
               isMuted={isMuted}
               onPlaybackStatusUpdate={onStatus}
@@ -7003,20 +7055,16 @@ export default function HomeScreen() {
     const movieSub = DeviceEventEmitter.addListener(
       "movieSelected",
       (m: (Movie | Series) & { autoPlay?: boolean }) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsStackLoading(true);
-        const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-        if (isSeries) {
-          router.push(`/(tabs)/saved?seriesId=${m.id}`);
-        } else {
-          setNavigationStack((prev) => {
-            if (prev.length > 0) {
-              const top = prev[prev.length - 1];
-              if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-            }
-            return [...prev, { type: 'movie', movie: m }];
-          });
-        }
-        setTimeout(() => setIsStackLoading(false), 800);
+        setNavigationStack((prev) => {
+          if (prev.length > 0) {
+            const top = prev[prev.length - 1];
+            if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+          }
+          return [...prev, { type: 'movie', movie: m }];
+        });
+        setTimeout(() => setIsStackLoading(false), 400);
       },
     );
 
@@ -7225,17 +7273,16 @@ export default function HomeScreen() {
         <HeroBanner
           onSelect={(m) => {
             const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-            if (isSeries) {
-              router.push(`/(tabs)/saved?seriesId=${m.id}`);
-            } else {
-               setNavigationStack((prev) => {
-                 if (prev.length > 0) {
-                   const top = prev[prev.length - 1];
-                   if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-                 }
-                 return [...prev, { type: 'movie', movie: m }];
-               });
-            }
+            setNavigationStack((prev) => {
+              if (prev.length > 0) {
+                const top = prev[prev.length - 1];
+                if (top.type === (isSeries ? 'series' : 'movie')) {
+                  const existingId = isSeries ? (top as any).series?.id : (top as any).movie?.id;
+                  if (String(existingId) === String(m.id)) return prev;
+                }
+              }
+              return [...prev, isSeries ? { type: 'series', series: m as any } : { type: 'movie', movie: m }];
+            });
           }}
           isMuted={isHeroMuted || navigationStack.length > 0}
           setIsMuted={setIsUserMuted}
@@ -7243,6 +7290,7 @@ export default function HomeScreen() {
           paused={!!playingNow || !isFocused || navigationStack.length > 0}
           isFocused={isFocused}
           appState={appState}
+          isModalOpen={navigationStack.length > 0}
         />
         <FilterChips 
           filters={{
@@ -7280,18 +7328,14 @@ export default function HomeScreen() {
               });
             }}
             onSelect={(m) => {
-              const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-              if (isSeries) {
-                router.push(`/(tabs)/saved?seriesId=${m.id}`);
-              } else {
-                 setNavigationStack((prev) => {
-                   if (prev.length > 0) {
-                     const top = prev[prev.length - 1];
-                     if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
-                   }
-                   return [...prev, { type: 'movie', movie: m }];
-                 });
-              }
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setNavigationStack((prev) => {
+                if (prev.length > 0) {
+                  const top = prev[prev.length - 1];
+                  if (top.type === 'movie' && String(top.movie.id) === String(m.id)) return prev;
+                }
+                return [...prev, { type: 'movie', movie: m }];
+              });
             }}
           />
         ))}
@@ -7326,7 +7370,7 @@ export default function HomeScreen() {
             pointerEvents={playerMode === 'full' ? 'none' : 'auto'}
           >
             {navigationStack.length > 0 && (
-              <View style={[StyleSheet.absoluteFill, { zIndex: 10000, backgroundColor: '#0a0a0f' }]}>
+              <View style={[StyleSheet.absoluteFill, { zIndex: 10000, backgroundColor: '#0a0a0f' }, playerMode === 'full' && { display: 'none' }]}>
                 {navigationStack.map((item, index) => {
                   const onClose = () => {
                     setNavigationStack((prev) => {

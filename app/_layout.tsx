@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 import { useFonts } from 'expo-font';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -146,6 +147,7 @@ function ModernVideoPlayerWrapper() {
       movieId={playingNow?.id}
       episodes={playingEpisodes}
       activeEpisodeId={playingEpisodeId || undefined}
+      episodeId={playingEpisodeId || undefined}
       onSelectEpisode={(ep) => {
         try {
           _safeSetPlayingEpisodeId(ep.id);
@@ -261,6 +263,24 @@ export default function RootLayout() {
       SystemUI.setBackgroundColorAsync('#0a0a0f').catch(() => {});
     }
     registerForPushNotificationsAsync();
+
+    // Configure global audio behavior to prevent AudioFocusNotAcquiredException
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+          playThroughEarpieceAndroid: false,
+          staysActiveInBackground: false,
+        });
+      } catch (e) {
+        console.warn("[RootLayout] Audio Setup Error:", e);
+      }
+    };
+    setupAudio();
   }, []);
 
   if (!fontsLoaded && !fontError) {

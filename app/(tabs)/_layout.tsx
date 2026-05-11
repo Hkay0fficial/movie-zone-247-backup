@@ -2122,7 +2122,10 @@ function CustomTabBar() {
       setGlobalGridVisible(true);
     });
     const sub3 = DeviceEventEmitter.addListener("setDetailStackVisible", (visible: boolean) => {
-      setIsDetailStackVisible(visible);
+      // Wrap in timeout to avoid "Cannot update a component while rendering a different component"
+      setTimeout(() => {
+        setIsDetailStackVisible(visible);
+      }, 0);
     });
 
     return () => {

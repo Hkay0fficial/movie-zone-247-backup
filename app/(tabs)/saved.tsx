@@ -407,9 +407,6 @@ export default function SeriesScreen() {
           setSeriesStack(prev => {
             const newStack = [...prev];
             newStack.pop();
-            if (newStack.length === 0) {
-              DeviceEventEmitter.emit("setDetailStackVisible", false);
-            }
             return newStack;
           });
           return true;
@@ -906,16 +903,13 @@ export default function SeriesScreen() {
           key={`${series.id}-${index}`}
           series={series}
           onClose={() => {
+            if (seriesStack.length === 1 && isExternalSearch) {
+              setIsExternalSearch(false);
+              router.back();
+            }
             setSeriesStack(prev => {
               const newStack = [...prev];
               newStack.splice(index, 1);
-              if (newStack.length === 0) {
-                DeviceEventEmitter.emit("setDetailStackVisible", false);
-                if (isExternalSearch) {
-                  setIsExternalSearch(false);
-                  router.back();
-                }
-              }
               return newStack;
             });
           }}
@@ -1032,6 +1026,7 @@ function SeriesPreviewModal({
     favorites,
     recordTrialUsage,
     setIsPreview,
+    setPlayingNow,
   } = useSubscription();
 
   const {
@@ -1080,8 +1075,9 @@ function SeriesPreviewModal({
       setIsPreview(!contentUrl);
       // Register the full episode list with the global context so Next/Prev work
       setActiveEpisodes(episodes);
-      setActivePartId(firstEp.id);
       setActiveEpisodeId(firstEp.id);
+      setActivePartId(firstEp.id);
+      setPlayingNow(series as any);
       setPlayerMode('full');
     }
   };
@@ -1557,7 +1553,7 @@ function SeriesPreviewModal({
 
   return (
     <Modal
-      visible={true}
+      visible={playerMode !== 'full'}
       transparent={true}
       animationType="none"
       onRequestClose={onClose}
@@ -1687,6 +1683,7 @@ function SeriesPreviewModal({
                 // Register episodes list so Next/Prev work
                 try { if (_safeSetEpId) _safeSetEpId(firstEp?.id || ''); } catch(e) {}
                 try { if (_safeSetEps) _safeSetEps(episodes); } catch(e) {}
+                setPlayingNow(series as any);
                 setPlayerMode('full');
               }}
             >
@@ -2183,8 +2180,9 @@ function SeriesPreviewModal({
                             setIsPreview(!contentUrl);
                             // Register all episodes so Next/Prev buttons work
                             setActiveEpisodes(episodes);
-                            setActivePartId(ep.id);
                             setActiveEpisodeId(ep.id);
+                            setActivePartId(ep.id);
+                            setPlayingNow(series as any);
                             setPlayerMode('full');
                           }}
                           activeOpacity={0.8}
@@ -2680,7 +2678,7 @@ function SeriesPreviewModal({
           {/* ── Comments Sheet ── */}
           {/* ── Download Options Modal (Frosted Dark) ── */}
           <Modal
-            visible={showDownloadModal}
+            visible={showDownloadModal && playerMode !== 'full'}
             transparent
             animationType="fade"
             statusBarTranslucent
@@ -2861,6 +2859,8 @@ function SeriesPreviewModal({
                       if (alreadyDownloadedState.localUri) {
                         setPlayerTitle(alreadyDownloadedState.activeEpisode?.title || "Episode");
                         setSelectedVideoUrl(alreadyDownloadedState.localUri);
+                        if (setPlayingNow) setPlayingNow(series as any);
+                        if (alreadyDownloadedState.activeEpisode) setActivePartId(alreadyDownloadedState.activeEpisode.id);
                         setPlayerMode('full');
                       }
                     }}
@@ -2935,7 +2935,7 @@ function SeriesPreviewModal({
 
           {showComments && (
             <Modal
-              visible
+              visible={playerMode !== 'full'}
               animationType="slide"
               transparent
               statusBarTranslucent

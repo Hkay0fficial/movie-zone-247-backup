@@ -327,12 +327,13 @@ export function GridModal({
   onClose: () => void;
   onSelect: (m: Movie | Series) => void;
 }) {
+  const { playerMode } = useSubscription();
   // BackHandler handled by parent SeriesScreen
   if (!visible) return null;
 
   return (
     <Modal
-      visible={visible}
+      visible={visible && playerMode !== "full"}
       transparent={true}
       animationType="none"
       onRequestClose={onClose}
