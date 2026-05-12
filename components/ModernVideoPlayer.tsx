@@ -22,6 +22,8 @@ import {
   AppState,
   ActivityIndicator,
   Alert,
+  DeviceEventEmitter,
+  UIManager,
 } from "react-native";
 import ReAnimated, { SlideInRight, SlideOutRight } from "react-native-reanimated";
 import * as SystemUI from "expo-system-ui";
@@ -74,13 +76,20 @@ import { requireNativeComponent, ViewStyle } from 'react-native';
 let _AirPlayNative: React.ComponentType<{ style?: ViewStyle }> | null = null;
 if (Platform.OS === 'ios') {
   try {
-    _AirPlayNative = requireNativeComponent('AirPlayButton') as any;
+    _AirPlayNative = UIManager.getViewManagerConfig('AirPlayButton')
+      ? requireNativeComponent('AirPlayButton') as any
+      : null;
   } catch {
     // Fallback: use a plain TouchableOpacity that opens the system route picker
     _AirPlayNative = null;
   }
 }
 const AirPlayNative = _AirPlayNative;
+
+const getPipModule = () => {
+  const modules = NativeModules as any;
+  return modules.PipModule || modules.PIPModule || modules.RNPipModule || null;
+};
 
 interface ModernVideoPlayerProps {
   playerMode: 'closed' | 'full' | 'mini';
@@ -279,29 +288,37 @@ export default function ModernVideoPlayer({
       setAppState(nextAppState);
     });
 
-    // PiP Event Listener
+    // PiP Event Listener. MainActivity emits this through DeviceEventEmitter; the
+    // native module emitter path is kept for builds that expose PipModule directly.
     let pipListener: any = null;
-    if (Platform.OS === 'android' && NativeModules.PipModule) {
+    const handlePipModeChange = (event: { isInPictureInPictureMode: boolean }) => {
+      const isActive = !!event.isInPictureInPictureMode;
+      isPiPActiveRef.current = isActive;
+      pipRequestedRef.current = isActive;
+      setIsPiPActive(isActive);
+      if (isActive) {
+        setShowControls(false);
+        showControlsRef.current = false;
+        setIsControlsMounted(false);
+        controlsOpacity.setValue(0);
+      } else {
+        setIsControlsMounted(true);
+        setShowControls(true);
+        showControlsRef.current = true;
+        controlsOpacity.setValue(1);
+      }
+    };
+
+    const devicePipListener = Platform.OS === 'android'
+      ? DeviceEventEmitter.addListener('onPictureInPictureModeChanged', handlePipModeChange)
+      : null;
+
+    const pipModule = getPipModule();
+    if (Platform.OS === 'android' && pipModule) {
       try {
         const { NativeEventEmitter } = require('react-native');
-        const eventEmitter = new NativeEventEmitter(NativeModules.PipModule);
-        pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', (event: { isInPictureInPictureMode: boolean }) => {
-          const isActive = !!event.isInPictureInPictureMode;
-          isPiPActiveRef.current = isActive;
-          pipRequestedRef.current = isActive;
-          setIsPiPActive(isActive);
-          if (event.isInPictureInPictureMode) {
-            setShowControls(false);
-            showControlsRef.current = false;
-            setIsControlsMounted(false);
-            controlsOpacity.setValue(0);
-          } else {
-            setIsControlsMounted(true);
-            setShowControls(true);
-            showControlsRef.current = true;
-            controlsOpacity.setValue(1);
-          }
-        });
+        const eventEmitter = new NativeEventEmitter(pipModule);
+        pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', handlePipModeChange);
       } catch (e) {
         console.warn("Failed to initialize PipModule listener:", e);
       }
@@ -309,6 +326,7 @@ export default function ModernVideoPlayer({
 
     return () => {
       appSubscription.remove();
+      devicePipListener?.remove();
       if (pipListener) pipListener.remove();
     };
   }, []);
@@ -348,6 +366,7 @@ export default function ModernVideoPlayer({
   const [showTimerOptions, setShowTimerOptions] = useState(false);
   const [sleepTimerMs, setSleepTimerMs] = useState(0);
   const [selectedTimerMins, setSelectedTimerMins] = useState(0); 
+  const [timelineWidthState, setTimelineWidthState] = useState(SCREEN_W - 100); // Initial guess 
 
   // Modern Gesture States
   const [isAdjustingBrightness, setIsAdjustingBrightness] = useState(false);
@@ -380,6 +399,41 @@ export default function ModernVideoPlayer({
   const lastStateUpdateRef = useRef(0);
   const lastPushedStateRef = useRef<AVPlaybackStatus>({} as AVPlaybackStatus);
 
+  const BufferingDots = useCallback(() => {
+    const dot1 = useRef(new Animated.Value(0.3)).current;
+    const dot2 = useRef(new Animated.Value(0.3)).current;
+    const dot3 = useRef(new Animated.Value(0.3)).current;
+    
+    useEffect(() => {
+      const createPulse = (val: Animated.Value, delay: number) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.timing(val, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+          ])
+        );
+      };
+      
+      const a1 = createPulse(dot1, 0);
+      const a2 = createPulse(dot2, 200);
+      const a3 = createPulse(dot3, 400);
+      
+      a1.start(); a2.start(); a3.start();
+      
+      return () => { a1.stop(); a2.stop(); a3.stop(); };
+    }, []);
+
+    return (
+      <View style={styles.bufferingDotsContainer}>
+        <Text style={styles.bufferingText}>LOADING</Text>
+        <Animated.View style={[styles.bufferingDot, { opacity: dot1, transform: [{ scale: dot1 }] }]} />
+        <Animated.View style={[styles.bufferingDot, { opacity: dot2, transform: [{ scale: dot2 }] }]} />
+        <Animated.View style={[styles.bufferingDot, { opacity: dot3, transform: [{ scale: dot3 }] }]} />
+      </View>
+    );
+  }, []);
+
   const [isClosing, setIsClosing] = useState(false);
   const playerModeRef = useRef(playerMode);
   const rotationTimeoutRef = useRef<any>(null);
@@ -393,11 +447,7 @@ export default function ModernVideoPlayer({
     if (isClosing) return;
     setIsClosing(true);
 
-    // 1. Determine direction based on current screen state
-    // If we are in landscape, "Right" (physical) is actually "Top" or "Bottom" (logical)
-    const isCurrentlyLandscape = SCREEN_W > SCREEN_H;
-
-    // 2. Stop audio immediately and save progress
+    // 1. Stop audio immediately and save progress
     if (videoRef.current && statusRef.current.isLoaded) {
       videoRef.current.pauseAsync().catch(() => {});
       if (movieId) {
@@ -405,7 +455,7 @@ export default function ModernVideoPlayer({
       }
     }
 
-    // 3. Animate out - Intelligently choose axis to match "Physical Right"
+    // 2. Animate out to the right while keeping the device orientation fixed.
     Animated.parallel([
       Animated.timing(fullPlayerAnim, {
         toValue: 0,
@@ -413,8 +463,7 @@ export default function ModernVideoPlayer({
         useNativeDriver: true,
       }),
       Animated.spring(playerPos, {
-        // If landscape, sliding to -SCREEN_H (Top) looks like sliding Right to the user's hand
-        toValue: isCurrentlyLandscape ? { x: 0, y: -SCREEN_H * 1.5 } : { x: SCREEN_W * 1.5, y: 0 },
+        toValue: { x: SCREEN_W * 1.5, y: 0 },
         tension: 50,
         friction: 14,
         useNativeDriver: true,
@@ -440,11 +489,9 @@ export default function ModernVideoPlayer({
         StatusBar.setHidden(true, 'fade');
         safeSetNavigationBar('hidden').catch(() => {});
 
-        // Snap immediately to position to cover underlying UI elements instantly
-        playerPos.setValue({ x: 0, y: 0 });
+        playerPos.setValue({ x: -SCREEN_W * 1.15, y: 0 });
         fullPlayerAnim.setValue(1);
 
-        // Still run a subtle spring for feel, but the background will be covered
         Animated.spring(playerPos, {
           toValue: { x: 0, y: 0 },
           tension: 80,
@@ -452,18 +499,9 @@ export default function ModernVideoPlayer({
           useNativeDriver: true,
         }).start();
 
-        // Force Portrait for previews, Landscape for full movies
+        // Keep the in-app player portrait. Users can still use the resize control without rotating the app.
         if (Platform.OS !== "web" && shouldLockOrientation) {
-          if (isPreview) {
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-          } else {
-             // Delay rotation slightly to ensure the player covers the screen first
-             setTimeout(() => {
-               if (playerModeRef.current === 'full') {
-                 ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
-               }
-             }, 400);
-          }
+          ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
         } else if (Platform.OS !== "web") {
           ScreenOrientation.unlockAsync().catch(() => {});
         }
@@ -533,8 +571,9 @@ export default function ModernVideoPlayer({
     if (!videoUrl || playerMode === 'closed' || !videoRef.current) return;
 
     // Reset PiP params when starting a new video
-    if (Platform.OS === 'android' && NativeModules.PipModule) {
-      NativeModules.PipModule.updatePipParams(16, 9, true);
+    const pipModule = getPipModule();
+    if (Platform.OS === 'android' && pipModule?.updatePipParams) {
+      pipModule.updatePipParams(16, 9, true);
     }
 
     const loadNewSource = async () => {
@@ -561,13 +600,13 @@ export default function ModernVideoPlayer({
             ...(Platform.OS === 'android' ? {
               androidImplementation: 'ExoPlayer',
               bufferConfig: isMovie ? {
-                minBufferMs: 90000,          // 1.5m min buffer for movies
-                maxBufferMs: 240000,         // 4m max buffer for movies
-                bufferForPlaybackMs: 8000,    // 8s before start
-                bufferForPlaybackAfterRebufferMs: 15000, // 15s after lag
+                minBufferMs: 45000,
+                maxBufferMs: 150000,
+                bufferForPlaybackMs: 3000,
+                bufferForPlaybackAfterRebufferMs: 8000,
               } : {
-                minBufferMs: 45000,          // 45s min buffer for series
-                maxBufferMs: 120000,         // 2m max buffer for series
+                minBufferMs: 45000,
+                maxBufferMs: 120000,
                 bufferForPlaybackMs: 3000,
                 bufferForPlaybackAfterRebufferMs: 6000,
               }
@@ -823,6 +862,67 @@ export default function ModernVideoPlayer({
     lastTapRef.current = now;
   };
 
+  const openAirPlayPicker = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await videoRef.current?.presentFullscreenPlayer();
+    } catch (e) {
+      Alert.alert(
+        "AirPlay Unavailable",
+        "AirPlay needs the iOS native route picker in the installed app build."
+      );
+    }
+  }, []);
+
+  const restoreControlsAfterFailedPip = useCallback(() => {
+    pipRequestedRef.current = false;
+    setIsControlsMounted(true);
+    setShowControls(true);
+    showControlsRef.current = true;
+    controlsOpacity.setValue(1);
+  }, [controlsOpacity]);
+
+  const enterAndroidPip = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const pipModule = getPipModule();
+
+    if (pipModule?.enterPipAndGoHome || pipModule?.enterPipMode) {
+      pipRequestedRef.current = true;
+      pipModule.updatePipParams?.(16, 9, true);
+      setShowControls(false);
+      showControlsRef.current = false;
+      setIsControlsMounted(false);
+      controlsOpacity.setValue(0);
+
+      try {
+        if (pipModule.enterPipAndGoHome) {
+          await pipModule.enterPipAndGoHome();
+        } else {
+          await pipModule.enterPipMode();
+        }
+      } catch (e) {
+        restoreControlsAfterFailedPip();
+        Alert.alert(
+          "PiP Unavailable",
+          "Android refused to start Picture-in-Picture. Please try again after the video starts playing."
+        );
+        return;
+      }
+
+      setTimeout(() => {
+        if (!isPiPActiveRef.current && appStateRef.current === 'active') {
+          restoreControlsAfterFailedPip();
+        }
+      }, 1200);
+      return;
+    }
+
+    Alert.alert(
+      "App Update Required",
+      "System Picture-in-Picture needs the latest native app build. Install the new APK, then this button will open video on the phone home screen."
+    );
+  }, [controlsOpacity, restoreControlsAfterFailedPip]);
+
   // Gesture Handling (Brightness/Volume/Scrub)
   const gestureStartXRef = useRef(0);
   const gestureStartYRef = useRef(0);
@@ -856,7 +956,8 @@ export default function ModernVideoPlayer({
         gestureStartYRef.current = pageY;
         
         const { width: currentW } = Dimensions.get('window');
-        if (Math.abs(g.dx) > Math.abs(g.dy)) {
+        // Swapped axis check for rotated player: deltaY is horizontal movement in player view
+        if (Math.abs(g.dy) > Math.abs(g.dx)) {
           gestureTypeRef.current = 'scrub';
           if (statusRef.current.isLoaded) {
             scrubPositionRef.current = statusRef.current.positionMillis;
@@ -889,19 +990,21 @@ export default function ModernVideoPlayer({
           const currentStatus = statusRef.current;
           if (currentStatus.isLoaded && currentStatus.durationMillis && progressBarWidth.current > 0) {
             const sensitivity = 0.8;
-            const delta = (g.dx / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
+            // Swapped axis for rotation: dy is scrubbing
+            const delta = (g.dy / progressBarWidth.current) * currentStatus.durationMillis * sensitivity;
             const newPos = Math.max(0, Math.min(currentStatus.durationMillis, (scrubPositionRef.current || 0) + delta));
             setScrubPosition(newPos);
           }
         } else if (gestureTypeRef.current === 'brightness') {
           const { height: currentH } = Dimensions.get('window');
-          const delta = -(g.dy / (currentH * 0.5));
+          // Swapped axis for rotation: volume/brightness were vertical (Y), now horizontal (X)
+          const delta = (g.dx / (currentW * 0.5)); 
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentBrightness(newValue);
           Brightness.setBrightnessAsync(newValue);
         } else if (gestureTypeRef.current === 'volume') {
           const { height: currentH } = Dimensions.get('window');
-          const delta = -(g.dy / (currentH * 0.5));
+          const delta = (g.dx / (currentW * 0.5));
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentVolume(newValue);
           videoRef.current?.setVolumeAsync(newValue);
@@ -942,6 +1045,58 @@ export default function ModernVideoPlayer({
   const timelineOffsetXRef = useRef(0);
   const volumeOffsetXRef = useRef(0);
 
+  const measureTimeline = () => {
+    timelineRef.current?.measure((x, y, width, height, pageX, pageY) => {
+      // In 90deg rotated mode, the bar is vertical on the screen.
+      // So pageY is the start offset and height is the length.
+      timelineOffsetXRef.current = pageY;
+      timelineWidthRef.current = Math.max(1, height);
+      setTimelineWidthState(Math.max(1, height));
+    });
+  };
+
+  const getTimelinePctFromTouch = (
+    event: GestureResponderEvent,
+    gestureState?: PanResponderGestureState
+  ) => {
+    const w = Math.max(1, timelineWidthRef.current);
+    const { pageX, pageY, locationX, locationY } = event.nativeEvent;
+    
+    // In 90deg rotated mode, X-axis of player maps to Y-axis of screen.
+    const absolutePos = (gestureState && Number.isFinite(gestureState.moveY) && gestureState.moveY !== 0)
+      ? gestureState.moveY
+      : pageY;
+
+    const touchPos = (Number.isFinite(absolutePos) && timelineOffsetXRef.current > 0)
+      ? absolutePos - timelineOffsetXRef.current
+      : locationY;
+
+    return Math.max(0, Math.min(1, touchPos / w));
+  };
+
+  const updateTimelineScrub = (
+    event: GestureResponderEvent,
+    gestureState?: PanResponderGestureState,
+    shouldUpdateText = false
+  ) => {
+    const currentStatus = statusRef.current;
+    const dur = currentStatus?.isLoaded ? currentStatus.durationMillis || 1 : 1;
+    const pct = getTimelinePctFromTouch(event, gestureState);
+    const newPos = pct * dur;
+
+    scrubAnimPct.setValue(pct);
+    scrubPositionRef.current = newPos;
+
+    // Throttle React state updates to ~60fps to keep JS thread responsive while scrubbing
+    const now = Date.now();
+    if (shouldUpdateText || now - (lastStateUpdateRef.current || 0) > 16) {
+      lastStateUpdateRef.current = now;
+      setScrubPosition(newPos);
+    }
+
+    return newPos;
+  };
+
   // Apply playback speed persistence
   useEffect(() => {
     if (status.isLoaded && !isScrubbing) {
@@ -959,47 +1114,18 @@ export default function ModernVideoPlayer({
         isInteractingRef.current = true;
         isScrubbingRef.current = true;
         setIsScrubbing(true);
-        
-        // Use localX for the exact touch position within the timeline
-        const touchX = e.nativeEvent.locationX;
-        const w = Math.max(1, timelineWidthRef.current);
-        const dur = statusRef.current?.durationMillis || 1;
-        const pct = Math.max(0, Math.min(1, touchX / w));
-        
-        (scrubAnimPct as any)._startPct = pct;
-        
-        const newPos = pct * dur;
-        scrubAnimPct.setValue(pct);
-        scrubPositionRef.current = newPos;
-        setScrubPosition(newPos);
+
+        measureTimeline();
+        updateTimelineScrub(e, g, true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         resetControlsTimer();
       },
       onPanResponderMove: (e, g) => {
-        const startPct = (scrubAnimPct as any)._startPct || 0;
-        const w = Math.max(1, timelineWidthRef.current);
-        const pctDelta = g.dx / w;
-        const dur = statusRef.current?.durationMillis || 1;
-        const pct = Math.max(0, Math.min(1, startPct + pctDelta));
-        
-        scrubAnimPct.setValue(pct);
-        scrubPositionRef.current = pct * dur;
-        
-        if (Math.abs(scrubPositionRef.current - ((scrubPositionRef as any)._lastDisplayed || 0)) > (dur / 200)) {
-          (scrubPositionRef as any)._lastDisplayed = scrubPositionRef.current;
-          setScrubPosition(scrubPositionRef.current);
-        }
+        updateTimelineScrub(e, g);
         resetControlsTimer();
       },
       onPanResponderRelease: (e, g) => {
-        const startPct = (scrubAnimPct as any)._startPct || 0;
-        const w = Math.max(1, timelineWidthRef.current);
-        const pctDelta = g.dx / w;
-        const dur = statusRef.current?.durationMillis || 1;
-        const pct = Math.max(0, Math.min(1, startPct + pctDelta));
-        const finalPos = pct * dur;
-        
-        scrubAnimPct.setValue(pct);
+        const finalPos = updateTimelineScrub(e, g, true);
         setScrubPosition(finalPos);
         videoRef.current?.setPositionAsync(finalPos);
         setIsScrubbing(false);
@@ -1025,26 +1151,27 @@ export default function ModernVideoPlayer({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e, g) => {
         isInteractingRef.current = true;
-        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
-        const w = volumeSliderWidthRef.current || 90;
-        const vol = Math.max(0, Math.min(1, touchX / w));
+        // Swapped axis for rotation: use pageY
+        const touchY = e.nativeEvent.pageY - volumeOffsetXRef.current;
+        const h = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchY / h));
         volumeDisplayAnim.setValue(vol);
         volumeAnimPct.setValue(vol);
         currentVolumeRef.current = vol;
         if (vol > 0 && isMuted) setIsMuted(false);
       },
       onPanResponderMove: (e, g) => {
-        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
-        const w = volumeSliderWidthRef.current || 90;
-        const vol = Math.max(0, Math.min(1, touchX / w));
+        const touchY = e.nativeEvent.pageY - volumeOffsetXRef.current;
+        const h = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchY / h));
         volumeDisplayAnim.setValue(vol);
         currentVolumeRef.current = vol;
         resetControlsTimer();
       },
       onPanResponderRelease: (e, g) => {
-        const touchX = e.nativeEvent.pageX - volumeOffsetXRef.current;
-        const w = volumeSliderWidthRef.current || 90;
-        const vol = Math.max(0, Math.min(1, touchX / w));
+        const touchY = e.nativeEvent.pageY - volumeOffsetXRef.current;
+        const h = volumeSliderWidthRef.current || 90;
+        const vol = Math.max(0, Math.min(1, touchY / h));
         volumeDisplayAnim.setValue(vol);
         currentVolumeRef.current = vol;
         setCurrentVolume(vol);
@@ -1080,8 +1207,20 @@ export default function ModernVideoPlayer({
       }
     }
 
-      // Buffering overlay logic optimized to avoid redundant updates
+    // Buffering overlay logic optimized to only show on real stalls
+    if (s.isLoaded && s.isPlaying && s.isBuffering) {
+      if (!isBufferingDelayed && !bufferTimeoutRef.current) {
+        (bufferTimeoutRef as any).current = setTimeout(() => {
+          setIsBufferingDelayed(true);
+        }, 2000); // 2 second delay: only show if the network is really struggling
+      }
+    } else {
+      if (bufferTimeoutRef.current) {
+        clearTimeout(bufferTimeoutRef.current);
+        (bufferTimeoutRef as any).current = null;
+      }
       if (isBufferingDelayed) setIsBufferingDelayed(false);
+    }
 
     // Track AirPlay/external playback state
     if (s.isLoaded && Platform.OS === 'ios') {
@@ -1210,16 +1349,11 @@ export default function ModernVideoPlayer({
           progressUpdateIntervalMillis={1000}
           {...(Platform.OS === 'android' ? {
             androidImplementation: 'ExoPlayer',
-            bufferConfig: (playingNow?.type === 'Movie' || !episodeId) ? {
-              minBufferMs: 60000,          // Balanced: 1m min buffer for movies
-              maxBufferMs: 240000,         // 4m max buffer for movies
-              bufferForPlaybackMs: 5000,    // 5s before start (faster initial load)
-              bufferForPlaybackAfterRebufferMs: 10000, // 10s after lag
-            } : {
-              minBufferMs: 45000,          // 45s min buffer for series
-              maxBufferMs: 120000,         // 2m max buffer for series
-              bufferForPlaybackMs: 3000,
-              bufferForPlaybackAfterRebufferMs: 6000,
+            bufferConfig: {
+              minBufferMs: 60000,     // Cache at least 60s
+              maxBufferMs: 300000,    // Cache up to 5 mins ahead
+              bufferForPlaybackMs: 5000,
+              bufferForPlaybackAfterRebufferMs: 10000,
             }
           } : {})}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
@@ -1279,7 +1413,10 @@ export default function ModernVideoPlayer({
           </View>
         )}
 
-        {/* Buffering Overlay Removed per user request */}
+        {/* Top-edge Loading Dots (Buffering) - Only shows on actual network stalls */}
+        {((isBufferingDelayed && status.isLoaded && status.isPlaying && status.isBuffering) || isBuffering) && playerMode !== 'closed' && (
+           <BufferingDots />
+        )}
 
 
           {/* Immersive Overlay Components */}
@@ -1328,7 +1465,7 @@ export default function ModernVideoPlayer({
                             <AirPlayNative style={styles.airPlayHeaderBtn} />
                           ) : (
                             <TouchableOpacity
-                              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                              onPress={openAirPlayPicker}
                               style={styles.absFillCenter}
                             >
                               <MaterialCommunityIcons
@@ -1477,7 +1614,8 @@ export default function ModernVideoPlayer({
                           <Animated.View style={[styles.progressBase, {
                             width: scrubAnimPct.interpolate({ 
                               inputRange: [0, 1], 
-                              outputRange: ['0%', '100%'] 
+                              outputRange: ['0%', '100%'],
+                              extrapolate: 'clamp'
                             })
                           }]}>
                             <LinearGradient
@@ -1493,10 +1631,15 @@ export default function ModernVideoPlayer({
                         <Animated.View 
                           style={[
                             styles.progressKnob,
-                            { left: scrubAnimPct.interpolate({ 
-                                inputRange: [0, 1], 
-                                outputRange: ['0%', '100%'] 
-                              })
+                            { transform: [
+                                { translateX: scrubAnimPct.interpolate({ 
+                                    inputRange: [0, 1], 
+                                    outputRange: [0, timelineWidthState || 1],
+                                    extrapolate: 'clamp'
+                                  }) 
+                                },
+                                { translateX: -8 } // Center knob (width 16 / 2)
+                              ]
                             }
                           ]} 
                         />
@@ -1507,14 +1650,11 @@ export default function ModernVideoPlayer({
                         style={styles.timelineContainer} 
                         {...timelinePanResponder.panHandlers}
                         onLayout={() => {
-                          timelineRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                            timelineOffsetXRef.current = pageX;
-                            timelineWidthRef.current = width;
-                          });
+                          measureTimeline();
                         }}
                       />
                     </View>
-                    <Text style={styles.timeText}>{formatTime(status.isLoaded ? status.durationMillis : 0)}</Text>
+                    <Text style={styles.timeText}>{formatTime(status.isLoaded ? status.durationMillis || 0 : 0)}</Text>
                   </View>
                 )}
 
@@ -1536,8 +1676,8 @@ export default function ModernVideoPlayer({
                         {...volumePanResponder.panHandlers}
                         onLayout={() => {
                           volumeSliderRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                            volumeOffsetXRef.current = pageX;
-                            volumeSliderWidthRef.current = width;
+                            volumeOffsetXRef.current = pageY;
+                            volumeSliderWidthRef.current = height;
                           });
                         }}
                       >
@@ -1581,29 +1721,7 @@ export default function ModernVideoPlayer({
                       {/* PiP Button */}
                       {Platform.OS === 'android' && (
                         <TouchableOpacity 
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            if (NativeModules.PipModule) {
-                              pipRequestedRef.current = true;
-                              NativeModules.PipModule.updatePipParams(16, 9, true);
-                              NativeModules.PipModule.enterPipMode();
-                              setShowControls(false);
-                              showControlsRef.current = false;
-                              setIsControlsMounted(false);
-                              controlsOpacity.setValue(0);
-                              setTimeout(() => {
-                                if (!isPiPActiveRef.current && appStateRef.current === 'active') {
-                                  pipRequestedRef.current = false;
-                                  setIsControlsMounted(true);
-                                  setShowControls(true);
-                                  showControlsRef.current = true;
-                                  controlsOpacity.setValue(1);
-                                }
-                              }, 1200);
-                            } else {
-                              Alert.alert("PiP Error", "Native PiP module not found.", [{ text: "OK" }]);
-                            }
-                          }} 
+                          onPress={enterAndroidPip} 
                           style={[styles.circleBtn, isPiPActive && styles.activeCircleBtn]}
                         >
                           <MaterialCommunityIcons 
@@ -1964,7 +2082,20 @@ export default function ModernVideoPlayer({
       <View style={containerStyle}>
         <ExpoStatusBar hidden={true} translucent />
         <Animated.View style={[styles.fullContainer, { elevation: 10000, zIndex: 10000 }]}>
-          {playerContent}
+          <View style={styles.virtualLandscapeStage}>
+            <View
+              style={[
+                styles.virtualLandscapeSurface,
+                {
+                  width: SCREEN_H,
+                  height: SCREEN_W,
+                  transform: [{ rotate: '90deg' }],
+                },
+              ]}
+            >
+              {playerContent}
+            </View>
+          </View>
         </Animated.View>
       </View>
     );
@@ -2022,6 +2153,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#000",
     zIndex: 9999,
+  },
+  virtualLandscapeStage: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  virtualLandscapeSurface: {
+    backgroundColor: "#000",
   },
   miniContainer: {
     position: 'absolute',
@@ -2205,6 +2346,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 8,
   },
+  bufferingDotsContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
+    height: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    gap: 8,
+  },
+  bufferingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#818cf8',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  bufferingText: {
+    color: '#818cf8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginRight: 8,
+    opacity: 0.8,
+  },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2263,6 +2434,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  activeCircleBtn: {
+    backgroundColor: 'rgba(129,140,248,0.22)',
+    borderColor: 'rgba(129,140,248,0.55)',
   },
   actionLabel: {
     color: 'rgba(255,255,255,0.7)',

@@ -3422,7 +3422,6 @@ export const MoviePreviewContent = memo(({
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
-  const [detectedDuration, setDetectedDuration] = useState<string | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
 
@@ -4081,7 +4080,7 @@ export const MoviePreviewContent = memo(({
   const computedTotalDuration = useMemo(() => {
     const mov = movie as any;
     if (mov.duration && mov.duration !== "N/A" && mov.duration !== "" && mov.duration !== "0:00") return mov.duration;
-    if (!movieParts || movieParts.length === 0) return mov.duration || (detectedDuration || "...");
+    if (!movieParts || movieParts.length === 0) return mov.duration || "...";
     
     const totalMinutes = movieParts.reduce((acc, part) => {
       const dur = part.duration || "";
@@ -4092,11 +4091,11 @@ export const MoviePreviewContent = memo(({
       return acc + (hrsCount * 60) + minsCount;
     }, 0);
     
-    if (totalMinutes === 0) return mov.duration || (detectedDuration || "...");
+    if (totalMinutes === 0) return mov.duration || "...";
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }, [movie, movieParts, detectedDuration]);
+  }, [movie, movieParts]);
 
   const relatedMovies = React.useMemo(() => {
     if (!movie) return [];
@@ -4387,30 +4386,6 @@ export const MoviePreviewContent = memo(({
                         <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }]}>
                           <ActivityIndicator size="small" color="#5B5FEF" />
                         </View>
-                      )}
-                      {/* Hidden Detector for Full Movie Duration (used if database has 0:00) */}
-                      {isRenderReady && movie && !("seasons" in movie) && !detectedDuration && (!(movie as any).duration || (movie as any).duration === "0:00") && (movie as any).videoUrl && playerMode === 'closed' && isFocused && (
-                        <Video
-                          source={{ 
-                            uri: resolveCDNUrl((movie as any).videoUrl),
-                            overridingExtension: (movie as any).videoUrl?.includes('.m3u8') ? 'm3u8' : undefined,
-                            headers: {
-                              'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
-                              'Referer': 'https://themoviezone247.com/'
-                            }
-                          }}
-                          shouldPlay={false}
-                          onPlaybackStatusUpdate={(s) => {
-                            if (s.isLoaded && s.durationMillis && !detectedDuration) {
-                              const mins = Math.floor(s.durationMillis / 60000);
-                              const hrs = Math.floor(mins / 60);
-                              const rMins = mins % 60;
-                              const result = hrs > 0 ? `${hrs}h ${rMins}m` : `${mins}m`;
-                              setDetectedDuration(result);
-                            }
-                          }}
-                          style={{ width: 0, height: 0, position: 'absolute' }}
-                        />
                       )}
                     </>
                   ) : (

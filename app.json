@@ -82,7 +82,8 @@
       "react-native-google-cast",
       "expo-updates",
       "expo-brightness",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "./plugins/withAirPlayButton"
     ],
     "experiments": {
       "typedRoutes": true,

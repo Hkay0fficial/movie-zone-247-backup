@@ -350,6 +350,26 @@ const SeriesPreviewOpeningSkeleton = React.memo(() => (
   </View>
 ));
 
+const SeriesGridOpeningSkeleton = React.memo(function SeriesGridOpeningSkeleton() {
+  return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', paddingHorizontal: 16, paddingTop: 56, zIndex: 20000, elevation: 20000 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+        <SkeletonLoader width={42} height={42} borderRadius={21} />
+        <SkeletonLoader width="72%" height={42} borderRadius={21} />
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <View key={i} style={{ width: '30%', marginBottom: 14 }}>
+            <SkeletonLoader width="100%" height={162} borderRadius={14} />
+            <SkeletonLoader width="86%" height={13} borderRadius={7} style={{ marginTop: 10 }} />
+            <SkeletonLoader width="58%" height={10} borderRadius={5} style={{ marginTop: 7 }} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+
 export default function SeriesScreen() {
   const router = useRouter();
   const { 
@@ -368,6 +388,8 @@ export default function SeriesScreen() {
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
   const [loadingSeriesLink, setLoadingSeriesLink] = useState(false);
+  const [isPreviewOpening, setIsPreviewOpening] = useState(false);
+  const [isGridOpening, setIsGridOpening] = useState(false);
 
   const handleTabPress = useCallback((title: string) => {
     if (featuredTab === title) return;
@@ -460,6 +482,53 @@ export default function SeriesScreen() {
     }
   }, [navigationStack]);
 
+  useEffect(() => {
+    DeviceEventEmitter.emit(
+      "setOverlayVisible",
+      navigationStack.length > 0 || loadingSeriesLink || isPreviewOpening || isGridOpening || playerMode === 'full'
+    );
+  }, [navigationStack.length, loadingSeriesLink, isPreviewOpening, isGridOpening, playerMode]);
+
+  const openSeriesPreviewWithLoader = useCallback((
+    series: Series,
+    options?: { replace?: boolean; afterOpen?: () => void }
+  ) => {
+    if (!series) return;
+    DeviceEventEmitter.emit("previewOpening");
+    DeviceEventEmitter.emit("setDetailStackVisible", true);
+    DeviceEventEmitter.emit("setOverlayVisible", true);
+    setIsPreviewOpening(true);
+
+    requestAnimationFrame(() => {
+      setNavigationStack(prev => {
+        const top = prev[prev.length - 1];
+        if (top?.type === 'series' && String(top.series.id) === String(series.id)) {
+          return prev;
+        }
+        return options?.replace ? [{ type: 'series', series }] : [...prev, { type: 'series', series }];
+      });
+      options?.afterOpen?.();
+      setTimeout(() => setIsPreviewOpening(false), 100);
+    });
+  }, []);
+
+  const openGridWithLoader = useCallback((title: string, data: Series[]) => {
+    DeviceEventEmitter.emit("setDetailStackVisible", true);
+    DeviceEventEmitter.emit("setOverlayVisible", true);
+    setIsGridOpening(true);
+
+    requestAnimationFrame(() => {
+      setNavigationStack(prev => {
+        const top = prev[prev.length - 1];
+        if (top?.type === 'grid' && top.title === title) {
+          return prev;
+        }
+        return [...prev, { type: 'grid', title, data }];
+      });
+      setTimeout(() => setIsGridOpening(false), 100);
+    });
+  }, []);
+
   const prevStackLength = useRef(0);
   useEffect(() => {
     if (prevStackLength.current > 0 && navigationStack.length === 0) {
@@ -533,8 +602,8 @@ export default function SeriesScreen() {
     return () => unsub();
   }, []);
   const handleOpenSection = useCallback((title: string, data: Series[]) => {
-    setNavigationStack(prev => [...prev, { type: 'grid', title, data }]);
-  }, []);
+    openGridWithLoader(title, data);
+  }, [openGridWithLoader]);
 
   const [activePartId, setActivePartId] = useState("");
   const [selectedSeason, setSelectedSeason] = useState(1);
@@ -632,7 +701,7 @@ export default function SeriesScreen() {
 
     const sub5 = DeviceEventEmitter.addListener("openSeriesPreview", (series: Series) => {
       if (series) {
-        setNavigationStack(prev => [...prev, { type: 'series', series }]);
+        openSeriesPreviewWithLoader(series);
       }
     });
 
@@ -641,7 +710,7 @@ export default function SeriesScreen() {
       sub4.remove();
       sub5.remove();
     };
-  }, []);
+  }, [openSeriesPreviewWithLoader]);
 
 
 
@@ -691,16 +760,20 @@ export default function SeriesScreen() {
       }
 
       if (found) {
-        setNavigationStack([{ type: 'series', series: found }]);
-        setIsExternalSearch(false);
-        setTimeout(() => setLoadingSeriesLink(false), 120);
+        openSeriesPreviewWithLoader(found, {
+          replace: true,
+          afterOpen: () => {
+            setIsExternalSearch(false);
+            setTimeout(() => setLoadingSeriesLink(false), 120);
+          },
+        });
       } else {
         setLoadingSeriesLink(false);
       }
     };
 
     handleSeriesLink();
-  }, [seriesId, isFocused, ALL_SERIES, router]);
+  }, [seriesId, isFocused, ALL_SERIES, router, openSeriesPreviewWithLoader]);
 
   const resetActivityTimer = () => {
     setShowCategories(prev => {
@@ -841,9 +914,7 @@ export default function SeriesScreen() {
                       />
                       <HorizontalSeriesRow 
                         data={filteredData.slice(0, 12)} 
-                        onSelect={(s) => {
-                          setNavigationStack(prev => [...prev, { type: 'series', series: s }]);
-                        }} 
+                        onSelect={(s) => openSeriesPreviewWithLoader(s)} 
                       />
                     </>
                   );
@@ -887,9 +958,7 @@ export default function SeriesScreen() {
                     />
                     <HorizontalSeriesRow 
                       data={sectionData.slice(0, 12)} 
-                      onSelect={(s) => {
-                        setNavigationStack(prev => [...prev, { type: 'series', series: s }]);
-                      }} 
+                      onSelect={(s) => openSeriesPreviewWithLoader(s)} 
                     />
                   </View>
                 );
@@ -908,9 +977,7 @@ export default function SeriesScreen() {
                 keyExtractor={(s) => s.id}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                 renderItem={({ item }) => (
-                  <SeriesCard item={item} onPress={() => {
-                    setNavigationStack([{ type: 'series', series: item }]);
-                  }} />
+                  <SeriesCard item={item} onPress={() => openSeriesPreviewWithLoader(item, { replace: true })} />
                 )}
               />
             </View>
@@ -939,17 +1006,22 @@ export default function SeriesScreen() {
           windowSize={5}
           renderItem={({ item }) => (
             <SeriesCard item={item} onPress={() => {
-              setNavigationStack([{ type: 'series', series: item }]);
-              setIsExternalSearch(false);
-              if (isSearchActive || query.length > 0) {
-                DeviceEventEmitter.emit("seriesSearchClosed");
-              }
+              openSeriesPreviewWithLoader(item, {
+                replace: true,
+                afterOpen: () => {
+                  setIsExternalSearch(false);
+                  if (isSearchActive || query.length > 0) {
+                    DeviceEventEmitter.emit("seriesSearchClosed");
+                  }
+                },
+              });
             }} />
           )}
         />
       )}
 
-      {loadingSeriesLink && <SeriesPreviewOpeningSkeleton />}
+      {(loadingSeriesLink || isPreviewOpening) && <SeriesPreviewOpeningSkeleton />}
+      {isGridOpening && !loadingSeriesLink && !isPreviewOpening && <SeriesGridOpeningSkeleton />}
 
       {/* Series Preview Modal Stack */}
       {navigationStack.map((item, index) => {
@@ -975,8 +1047,9 @@ export default function SeriesScreen() {
               data={item.data}
               onClose={onClose}
               onSelect={(s) => {
-                setNavigationStack(prev => [...prev, { type: 'series', series: s as Series }]);
-                setIsExternalSearch(false);
+                openSeriesPreviewWithLoader(s as Series, {
+                  afterOpen: () => setIsExternalSearch(false),
+                });
               }}
             />
           );
@@ -987,7 +1060,7 @@ export default function SeriesScreen() {
             key={`series-${index}`}
             series={item.series}
             onClose={onClose}
-            onSwitch={(s) => setNavigationStack(prev => [...prev, { type: 'series', series: s }])}
+            onSwitch={(s) => openSeriesPreviewWithLoader(s)}
             onSeeAll={(title, data) => handleOpenSection(title, data)}
             isMuted={index !== navigationStack.length - 1}
             onShowPremium={() => setShowPremiumModal(true)}

@@ -37,7 +37,8 @@ import {
   getCountFromServer,
   where,
   Timestamp,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore';
 import { 
   ref, 
@@ -137,7 +138,7 @@ export default function NativeAdminScreen() {
       case 'Media': return { title: 'Media Assets', subtitle: 'Manage promotional banners and imagery' };
       case 'Announcements': return { title: 'Announcements', subtitle: 'Broadcast platform-wide messages to all users' };
       case 'Logs': return { title: 'Activity Logs', subtitle: 'Audit administrative actions and system updates' };
-      case 'Settings': return { title: 'Settings', subtitle: 'Manage platform-wide overrides and account settings' };
+      case 'Settings': return { title: 'Settings', subtitle: 'Manage global app promotions and banners' };
       case 'AppLayout': return { title: 'App Layout', subtitle: 'Control sections and order on the home screen' };
       default: return { title: 'Admin Panel', subtitle: 'System Management' };
     }
@@ -226,7 +227,11 @@ export default function NativeAdminScreen() {
     eventMessage: '',
     expiresAt: '',
     duration: '1h',
-    customExpiresAt: ''
+    customExpiresAt: '',
+    showBanner: false,
+    bannerTheme: 'gold',
+    bannerButtonText: '',
+    bannerTargetUrl: ''
   });
   
   // --- Logs State ---
@@ -983,7 +988,7 @@ export default function NativeAdminScreen() {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-      await setDoc(doc(db, 'settings', 'global'), settings);
+      await setDoc(doc(db, 'settings', 'global'), settings, { merge: true });
       await logAdminAction('UPDATE_SETTINGS', 'Updated global application settings');
       Alert.alert('Success', 'Settings updated');
     } catch (err) {
@@ -991,6 +996,61 @@ export default function NativeAdminScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubscriberCompensation = async () => {
+    Alert.alert(
+      'Confirm Compensation',
+      'This will add +24 Days to the expiration of ALL active premium subscribers. Proceed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Send +24 Days', 
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const now = Date.now();
+              const subscribersQuery = query(
+                collection(db, 'users'), 
+                where('subscriptionBundle', '!=', 'None')
+              );
+              const snap = await getDocs(subscribersQuery);
+              
+              let updatedCount = 0;
+              const batch = writeBatch(db);
+              const bonusMs = 24 * 24 * 60 * 60 * 1000;
+
+              snap.docs.forEach((userDoc) => {
+                const userData = userDoc.data();
+                const currentExpiry = userData.subscriptionExpiresAt ? userData.subscriptionExpiresAt.seconds * 1000 : 0;
+                
+                // Only compensate active subscribers (expiry in future)
+                if (currentExpiry > now) {
+                  const newExpiry = new Date(currentExpiry + bonusMs);
+                  batch.update(userDoc.ref, {
+                    subscriptionExpiresAt: Timestamp.fromDate(newExpiry)
+                  });
+                  updatedCount++;
+                }
+              });
+
+              if (updatedCount > 0) {
+                await batch.commit();
+                await logAdminAction('UPDATE_USER', `Bulk compensated ${updatedCount} active subscribers with +24 days`);
+                Alert.alert('Success', `Successfully added +24 days to ${updatedCount} active subscribers.`);
+              } else {
+                Alert.alert('Info', 'No active subscribers found to compensate.');
+              }
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to process subscriber compensation');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
 
@@ -1729,149 +1789,231 @@ export default function NativeAdminScreen() {
     );
   };
 
-  const renderSettings = () => (
-    <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
-      <View style={{ height: 10 }} />
+  const renderSettings = () => {
+    const BANNER_THEMES = [
+      { id: 'gold', label: 'Gold (Premium)', color: '#f59e0b' },
+      { id: 'red', label: 'Red (Alert)', color: '#ef4444' },
+      { id: 'green', label: 'Green (Holiday)', color: '#10b981' },
+      { id: 'blue', label: 'Blue (Info)', color: '#3b82f6' },
+      { id: 'purple', label: 'Purple (System)', color: '#8b5cf6' },
+    ];
 
-      {/* --- Access Overrides --- */}
-      <View style={styles.dashboardSection}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="globe-outline" size={18} color="#6366f1" />
-          <Text style={styles.sectionTitle}>ACCESS OVERRIDES</Text>
-        </View>
+    return (
+      <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+        <View style={{ height: 10 }} />
 
-        <View style={styles.settingRow}>
-          <View style={{ flex: 1, marginRight: 16 }}>
-            <Text style={styles.settingTitle}>Holiday / Event Mode</Text>
-            <Text style={styles.settingDesc}>When active, ALL content becomes FREE for ALL users. Useful for holidays or system launches.</Text>
+        {/* --- Global Promotions --- */}
+        <View style={styles.dashboardSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="globe-outline" size={18} color="#6366f1" />
+            <Text style={styles.sectionTitle}>GLOBAL PROMOTIONS</Text>
           </View>
-          <Switch 
-            value={settings.allMoviesFree || false} 
-            onValueChange={(val) => setSettings({ ...settings, allMoviesFree: val, duration: val ? settings.duration : '' })}
-            trackColor={{ false: '#1e293b', true: '#6366f1' }}
-            thumbColor="#fff"
-          />
-        </View>
 
-        <View style={styles.noteBox}>
-          <Ionicons name="information-circle-outline" size={20} color="#6366f1" />
-          <Text style={styles.noteText}>
-            Note: This setting overrides per-movie pricing. Even if a movie is marked as "Paid", it will be available to non-subscribers while this mode is active.
-          </Text>
-        </View>
-
-        <Text style={styles.label}>Active Duration</Text>
-        <View style={styles.settingsDurationGrid}>
-          {['1h', '6h', '12h', '24h', 'Custom'].map(dur => (
-            <TouchableOpacity 
-              key={dur} 
-              style={[styles.settingsDurationBtn, settings.duration === dur && styles.settingsDurationBtnActive]}
-              onPress={() => setSettings({ ...settings, duration: dur })}
-            >
-              <Text style={[styles.settingsDurationText, settings.duration === dur && styles.settingsDurationTextActive]}>{dur}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {settings.duration === 'Custom' && (
-          <View>
-            <Text style={styles.label}>Custom Expiration</Text>
-            <View style={styles.inputWithBtn}>
-              <TextInput 
-                style={[styles.input, { flex: 1, marginBottom: 0 }]} 
-                placeholder="YYYY-MM-DD HH:MM" 
-                placeholderTextColor="#64748b"
-                value={settings.customExpiresAt}
-                onChangeText={(t) => setSettings({ ...settings, customExpiresAt: t })}
-              />
-              <TouchableOpacity style={styles.miniSelectBtn}>
-                <Ionicons name="calendar" size={18} color="#6366f1" />
-              </TouchableOpacity>
+          <View style={[styles.settingRow, { backgroundColor: '#16161e', padding: 20, borderRadius: 20, borderColor: '#f59e0b33', borderWidth: 1 }]}>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.settingTitle, { color: '#f59e0b' }]}>Holiday / Free Mode</Text>
+                <Ionicons name="flash" size={16} color="#f59e0b" />
+              </View>
+              <Text style={styles.settingDesc}>When active, ALL content becomes FREE for ALL users. Useful for holidays or system launches.</Text>
             </View>
-            <Text style={{ color: '#64748b', fontSize: 10, marginTop: 8, fontWeight: '700' }}>
-              Format: 2026-03-31 15:04
+            <Switch 
+              value={settings.allMoviesFree || false} 
+              onValueChange={(val) => setSettings({ ...settings, allMoviesFree: val })}
+              trackColor={{ false: '#1e293b', true: '#f59e0b' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.noteBox}>
+            <Ionicons name="information-circle-outline" size={20} color="#6366f1" />
+            <Text style={styles.noteText}>
+              Note: This automatically overrides per-movie pricing visually and functionally on the mobile app. To pair this with a visual ribbon, set up the Announcement Banner below.
             </Text>
           </View>
-        )}
-      </View>
 
-      {/* --- Announcement Banner --- */}
-      <View style={styles.dashboardSection}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="notifications-outline" size={18} color="#f59e0b" />
-          <Text style={styles.sectionTitle}>ANNOUNCEMENT BANNER</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Ionicons name="time-outline" size={16} color="#f59e0b" />
+            <Text style={[styles.label, { marginBottom: 0 }]}>Active Promotion Duration</Text>
+          </View>
+          
+          <View style={styles.settingsDurationGrid}>
+            {['1h', '6h', '12h', '24h'].map(dur => (
+              <TouchableOpacity 
+                key={dur} 
+                style={[styles.settingsDurationBtn, settings.duration === dur && styles.settingsDurationBtnActive]}
+                onPress={() => setSettings({ ...settings, duration: dur })}
+              >
+                <Text style={[styles.settingsDurationText, settings.duration === dur && styles.settingsDurationTextActive]}>{dur}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Custom Expiration</Text>
+          <View style={styles.inputWithBtn}>
+            <TextInput 
+              style={[styles.input, { flex: 1, marginBottom: 0 }]} 
+              placeholder="06/06/2026, 12:00 AM" 
+              placeholderTextColor="#475569"
+              value={settings.customExpiresAt}
+              onChangeText={(t) => setSettings({ ...settings, customExpiresAt: t })}
+            />
+            <TouchableOpacity style={styles.miniSelectBtn}>
+              <Ionicons name="calendar" size={18} color="#6366f1" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={{ color: '#475569', fontSize: 10, fontWeight: '700' }}>Auto-expires at:</Text>
+            <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '800' }}>{settings.customExpiresAt || '6/6/2026, 12:00:00 AM'}</Text>
+          </View>
         </View>
 
-        <Text style={styles.label}>Event Message</Text>
-        <View style={[styles.uniformCard, { padding: 0, overflow: 'hidden' }]}>
+        {/* --- Subscriber Compensation --- */}
+        <View style={styles.dashboardSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="gift-outline" size={18} color="#10b981" />
+            <Text style={styles.sectionTitle}>SUBSCRIBER COMPENSATION</Text>
+          </View>
+          
+          <Text style={[styles.settingDesc, { marginBottom: 16 }]}>
+            When you run a Global Holiday free event, you can optionally click this button below to automatically scan the database and add <Text style={{ color: '#10b981', fontWeight: 'bold' }}>+24 Days</Text> to the expiration timer of every user who currently has an active Premium subscription as an apology for the free event.
+          </Text>
+
+          <TouchableOpacity style={[styles.broadcastBtn, { backgroundColor: '#064e3b', borderColor: '#10b98133', borderWidth: 1 }]} onPress={handleSubscriberCompensation}>
+            <Ionicons name="gift" size={20} color="#10b981" />
+            <Text style={[styles.broadcastBtnText, { color: '#10b981' }]}>SEND +24 DAYS TO ACTIVE SUBSCRIBERS</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* --- In-App Banner Ribbon --- */}
+        <View style={styles.dashboardSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="eye-outline" size={18} color="#a855f7" />
+            <Text style={styles.sectionTitle}>IN-APP BANNER RIBBON</Text>
+          </View>
+
+          <View style={[styles.settingRow, { backgroundColor: '#6366f111', padding: 20, borderRadius: 20, borderColor: '#a855f733', borderWidth: 1 }]}>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text style={[styles.settingTitle, { color: '#a855f7' }]}>Show In-App Banner</Text>
+              <Text style={styles.settingDesc}>Displays a colored ribbon at the top of the mobile home screen.</Text>
+            </View>
+            <Switch 
+              value={settings.showBanner || false} 
+              onValueChange={(val) => setSettings({ ...settings, showBanner: val })}
+              trackColor={{ false: '#1e293b', true: '#a855f7' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 16 }}>
+            <Ionicons name="color-palette-outline" size={16} color="#64748b" />
+            <Text style={[styles.label, { marginBottom: 0 }]}>Banner Theme</Text>
+          </View>
+          <View style={styles.quickTagGrid}>
+            {BANNER_THEMES.map(theme => (
+              <TouchableOpacity 
+                key={theme.id} 
+                style={[styles.quickTagBtn, settings.bannerTheme === theme.id && { borderColor: theme.color, backgroundColor: theme.color + '11' }]}
+                onPress={() => setSettings({ ...settings, bannerTheme: theme.id })}
+              >
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.color }} />
+                <Text style={[styles.quickTagText, settings.bannerTheme === theme.id && { color: theme.color }]}>{theme.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 16 }}>
+            <Ionicons name="chatbox-outline" size={16} color="#64748b" />
+            <Text style={[styles.label, { marginBottom: 0 }]}>Banner Message</Text>
+          </View>
+          <View style={styles.quickTagGrid}>
+            {['🌙 Eid', '🎄 Christmas', '🍿 Weekend', '🚀 Launch'].map(tag => (
+              <TouchableOpacity 
+                key={tag} 
+                style={styles.quickTagBtn}
+                onPress={() => setSettings({ ...settings, eventMessage: (settings.eventMessage ? settings.eventMessage + ' ' : '') + tag })}
+              >
+                <Text style={styles.quickTagText}>{tag}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <View style={[styles.uniformCard, { padding: 16, backgroundColor: '#1e293b55' }]}>
+            <TextInput 
+              style={[styles.input, { height: 100, textAlignVertical: 'top', marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]} 
+              value={settings.eventMessage || ''} 
+              onChangeText={(text) => setSettings({ ...settings, eventMessage: text })}
+              placeholder="Enter message..."
+              placeholderTextColor="#475569"
+              multiline
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 16 }}>
+            <Ionicons name="link-outline" size={16} color="#64748b" />
+            <Text style={[styles.label, { marginBottom: 0 }]}>Button Text (Optional)</Text>
+          </View>
           <TextInput 
-            style={[styles.input, { height: 80, textAlignVertical: 'top', marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]} 
-            value={settings.eventMessage || ''} 
-            onChangeText={(text) => setSettings({ ...settings, eventMessage: text })}
-            placeholder="System Launch Celebration! 🚀 Global Free Access enabled! ✨"
+            style={styles.input} 
+            value={settings.bannerButtonText} 
+            onChangeText={t => setSettings({...settings, bannerButtonText: t})} 
+            placeholder="Watch Now"
             placeholderTextColor="#475569"
-            multiline
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Ionicons name="link-outline" size={16} color="#64748b" />
+            <Text style={[styles.label, { marginBottom: 0 }]}>Target URL (Optional)</Text>
+          </View>
+          <TextInput 
+            style={styles.input} 
+            value={settings.bannerTargetUrl} 
+            onChangeText={t => setSettings({...settings, bannerTargetUrl: t})} 
+            placeholder="e.g. URL or Movie ID"
+            placeholderTextColor="#475569"
           />
         </View>
 
-        <View style={styles.quickTagGrid}>
-          {['🌙 Eid', '🎄 Christmas', '🍿 Weekend', '🚀 Launch'].map(tag => (
-            <TouchableOpacity 
-              key={tag} 
-              style={styles.quickTagBtn}
-              onPress={() => setSettings({ ...settings, eventMessage: (settings.eventMessage ? settings.eventMessage + ' ' : '') + tag })}
-            >
-              <Text style={styles.quickTagText}>{tag}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Live Preview</Text>
-        <View style={styles.previewCard}>
-          <Text style={styles.previewText}>
-            {settings.eventMessage || "Enter a message to see preview..."}
-          </Text>
-        </View>
-      </View>
-
-      {/* --- Admin Profile --- */}
-      <View style={styles.dashboardSection}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="shield-checkmark-outline" size={18} color="#10b981" />
-          <Text style={styles.sectionTitle}>ADMIN PROFILE</Text>
-        </View>
-
-        <View style={styles.profileHeader}>
-          <View style={styles.profileIconBg}>
-            <Ionicons name="mail" size={24} color="#6366f1" />
+        {/* --- Admin Profile --- */}
+        <View style={styles.dashboardSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="shield-checkmark-outline" size={18} color="#10b981" />
+            <Text style={styles.sectionTitle}>ADMIN PROFILE</Text>
           </View>
-          <View>
-            <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>Developer Identity</Text>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 2 }}>{auth.currentUser?.email}</Text>
+
+          <View style={styles.profileHeader}>
+            <View style={styles.profileIconBg}>
+              <Ionicons name="mail" size={24} color="#6366f1" />
+            </View>
+            <View>
+              <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>Developer Identity</Text>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 2 }}>{auth.currentUser?.email}</Text>
+            </View>
           </View>
-        </View>
-        
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity 
-            style={[styles.outlineBtn, { flex: 1, alignItems: 'center', borderColor: '#334155' }]} 
-            onPress={() => auth.currentUser?.email && sendPasswordResetEmail(auth, auth.currentUser.email).then(() => Alert.alert('Sent', 'Check your email'))}
-          >
-            <Text style={[styles.outlineBtnText, { color: '#94a3b8' }]}>RESET PASSWORD</Text>
-          </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.outlineBtn, { flex: 1, alignItems: 'center', borderColor: '#ef444433', backgroundColor: '#ef444411' }]} onPress={handleLogout}>
-            <Text style={[styles.outlineBtnText, { color: '#ef4444' }]}>SIGN OUT</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={[styles.outlineBtn, { flex: 1, alignItems: 'center', borderColor: '#334155' }]} 
+              onPress={() => auth.currentUser?.email && sendPasswordResetEmail(auth, auth.currentUser.email).then(() => Alert.alert('Sent', 'Check your email'))}
+            >
+              <Text style={[styles.outlineBtnText, { color: '#94a3b8' }]}>RESET PASSWORD</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.outlineBtn, { flex: 1, alignItems: 'center', borderColor: '#ef444433', backgroundColor: '#ef444411' }]} onPress={handleLogout}>
+              <Text style={[styles.outlineBtnText, { color: '#ef4444' }]}>SIGN OUT</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <TouchableOpacity style={[styles.saveBtn, { marginHorizontal: 20, marginBottom: 20 }]} onPress={handleSaveSettings}>
-        <Text style={styles.saveBtnText}>SAVE GLOBAL SETTINGS</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.saveBtn, { marginHorizontal: 20, marginBottom: 20 }]} onPress={handleSaveSettings}>
+          <Text style={styles.saveBtnText}>SAVE GLOBAL SETTINGS</Text>
+        </TouchableOpacity>
 
-      <View style={{ height: 100 }} />
-    </ScrollView>
-  );
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    );
+  };
 
   const renderAppLayout = () => {
     return (
