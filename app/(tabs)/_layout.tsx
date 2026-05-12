@@ -20,13 +20,14 @@ import {
   Linking,
   BackHandler,
   ActivityIndicator,
+  InteractionManager,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ALL_ROWS,
@@ -44,6 +45,7 @@ import { GridModal, GridCard } from "../../components/GridComponents";
 import { useMovies } from "@/app/context/MovieContext";
 import { SkeletonLoader } from "../../components/SkeletonLoader";
 import { useSubscription } from "@/app/context/SubscriptionContext";
+import { useUser } from "@/app/context/UserContext";
 import { useDownloads } from "@/app/context/DownloadContext";
 import { auth, db } from "../../constants/firebaseConfig";
 import ClockAnimation from "../../components/ClockAnimation";
@@ -234,6 +236,7 @@ interface Notification {
   moviesList?: { id: string; title: string }[];
   seriesList?: { id: string; title: string }[];
   vjsDetailed?: { id: string; name: string; count: number }[];
+  epRange?: string;
 }
 
 const MOCK_NOTIFICATIONS: Notification[] = [];
@@ -494,40 +497,51 @@ function NotificationOverlay({
                       )}
                       {isUnread && <View style={styles.notificationCardSheen} />}
 
-                      <View
-                        style={[
-                          styles.notificationIconWrap,
-                          {
-                            backgroundColor:
-                              item.type === "movie"
-                                ? isRead ? "rgba(56,189,248,0.07)" : "rgba(56,189,248,0.15)"
-                                : item.type === "rating"
-                                  ? isRead ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.15)"
-                                  : isRead ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
-                          },
-                          isUnread && styles.notificationIconWrapNew,
-                        ]}
-                      >
-                        <Ionicons
-                          name={item.icon}
-                          size={18}
-                          color={
-                            isRead
-                              ? "rgba(255,255,255,0.35)"
-                              : item.type === "movie"
-                                ? "#38bdf8"
-                                : item.type === "rating"
-                                  ? "#f59e0b"
-                                  : "#fff"
-                          }
-                        />
-                      </View>
+                      {item.image ? (
+                        <View style={styles.notificationPosterWrap}>
+                          <Image source={{ uri: item.image }} style={styles.notificationPoster} />
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.notificationIconWrap,
+                            {
+                              backgroundColor:
+                                item.type === "movie"
+                                  ? isRead ? "rgba(56,189,248,0.07)" : "rgba(56,189,248,0.15)"
+                                  : item.type === "rating"
+                                    ? isRead ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.15)"
+                                    : isRead ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
+                            },
+                            isUnread && styles.notificationIconWrapNew,
+                          ]}
+                        >
+                          <Ionicons
+                            name={item.icon}
+                            size={18}
+                            color={
+                              isRead
+                                ? "rgba(255,255,255,0.35)"
+                                : item.type === "movie"
+                                  ? "#38bdf8"
+                                  : item.type === "rating"
+                                    ? "#f59e0b"
+                                    : "#fff"
+                            }
+                          />
+                        </View>
+                      )}
                       <View style={styles.notificationTextWrap}>
                         <View style={styles.notificationCardHeader}>
                           <View style={styles.notificationTitleRow}>
                             <Text style={[styles.notificationCardTitle, isRead && styles.notificationCardTitleRead]}>
                               {item.title}
                             </Text>
+                            {item.epRange && (
+                              <View style={styles.epRangeBadgeInline}>
+                                <Text style={styles.epRangeBadgeTextInline}>{item.epRange}</Text>
+                              </View>
+                            )}
                             {getFilteredItems(item).unreadTotal > 0 && !isRead && (
                               <View style={[
                                 styles.countBadge,
@@ -770,6 +784,46 @@ function NotificationOverlay({
     </View>
   );
 }
+
+function PreviewOpeningOverlay({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+
+  return (
+    <View style={styles.previewOpeningOverlay} pointerEvents="auto">
+      <View style={styles.previewOpeningBackdrop} />
+      <View style={styles.previewOpeningHero}>
+        <SkeletonLoader width="100%" height="100%" borderRadius={22} />
+      </View>
+      <View style={styles.previewOpeningTitleBlock}>
+        <SkeletonLoader width="68%" height={26} borderRadius={13} />
+        <SkeletonLoader width="44%" height={13} borderRadius={7} style={{ marginTop: 12 }} />
+      </View>
+      <View style={styles.previewOpeningChips}>
+        <SkeletonLoader width={76} height={30} borderRadius={15} />
+        <SkeletonLoader width={92} height={30} borderRadius={15} />
+        <SkeletonLoader width={68} height={30} borderRadius={15} />
+      </View>
+      <View style={styles.previewOpeningActions}>
+        <SkeletonLoader width="56%" height={48} borderRadius={24} />
+        <SkeletonLoader width={48} height={48} borderRadius={24} />
+        <SkeletonLoader width={48} height={48} borderRadius={24} />
+      </View>
+      <View style={styles.previewOpeningRows}>
+        {[0, 1, 2, 3].map((item) => (
+          <View key={item} style={styles.previewOpeningRow}>
+            <SkeletonLoader width={84} height={48} borderRadius={10} />
+            <View style={{ flex: 1 }}>
+              <SkeletonLoader width="82%" height={13} borderRadius={7} />
+              <SkeletonLoader width="46%" height={10} borderRadius={5} style={{ marginTop: 9 }} />
+            </View>
+            <SkeletonLoader width={30} height={30} borderRadius={15} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 import { Easing } from "react-native";
 
 // ─── Marquee Placeholder Component ─────────────────────────────────────────────
@@ -1650,6 +1704,7 @@ function CustomTabBar() {
     selectedVideoUrl,
     setSelectedVideoUrl
   } = useSubscription();
+  const { profile, markAsRated } = useUser();
   const { activeDownloads } = useDownloads();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -1664,6 +1719,7 @@ function CustomTabBar() {
   const [showEventPreview, setShowEventPreview] = useState(false);
   const [isFromHero, setIsFromHero] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
+  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
   const [checkedItemIds, setCheckedItemIds] = useState<Set<string>>(new Set());
   const [updateDismissCount, setUpdateDismissCount] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -1671,6 +1727,36 @@ function CustomTabBar() {
   const [isUpdateApplied, setIsUpdateApplied] = useState(false);
   const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
   const [isDetailStackVisible, setIsDetailStackVisible] = useState(false);
+  const [previewOpeningVisible, setPreviewOpeningVisible] = useState(false);
+  const previewOpeningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showPreviewOpening = useCallback(() => {
+    if (previewOpeningTimerRef.current) {
+      clearTimeout(previewOpeningTimerRef.current);
+    }
+    setPreviewOpeningVisible(true);
+    previewOpeningTimerRef.current = setTimeout(() => {
+      setPreviewOpeningVisible(false);
+      previewOpeningTimerRef.current = null;
+    }, 5000);
+  }, []);
+
+  const hidePreviewOpening = useCallback(() => {
+    if (previewOpeningTimerRef.current) {
+      clearTimeout(previewOpeningTimerRef.current);
+      previewOpeningTimerRef.current = null;
+    }
+    setPreviewOpeningVisible(false);
+  }, []);
+
+  const openMoviePreviewOnHome = useCallback((movie: Movie | Series) => {
+    router.push("/(tabs)" as any);
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        DeviceEventEmitter.emit("movieSelected", movie);
+      });
+    });
+  }, [router]);
 
   const readIdsRef = useRef(readIds);
   useEffect(() => {
@@ -1875,16 +1961,38 @@ function CustomTabBar() {
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       };
 
+      // Dynamic Rebranding: Transform "Spotlight" into "New Release"
+      let displayTitle = ann.subject || 'Announcement';
+      if (displayTitle.toLowerCase().includes('spotlight')) {
+        displayTitle = displayTitle.replace(/Spotlight/i, 'New Release');
+        type = 'trending';
+        icon = 'flame';
+      }
+
+      // Smart Episode Detection: Automatically extract "Ep 1-10" style strings
+      let epRange = ann.epRange || undefined;
+      const messageText = ann.message || ann.body || '';
+      if (!epRange) {
+        const epMatch = messageText.match(/ep(?:isodes?)?\s*(\d+(?:[-to\s,]+\d+)+)/i);
+        if (epMatch) {
+          epRange = epMatch[0].toUpperCase().replace('EPISODES', 'EP').replace('EPISODE', 'EP');
+        }
+      }
+
+      const mid = ann.movieId || ann.targetMovieId;
+      const linkedMovie = mid ? (liveMovies.find((m: any) => m.id === mid) || liveSeries.find((s: any) => s.id === mid)) : null;
+
       return {
         id: ann.id,
         type,
         icon,
-        title: ann.subject || 'Announcement',
+        title: displayTitle,
+        epRange,
         message: ann.message || ann.body || '',
         time: formatTime(ann.createdAt),
-        image: ann.imageUrl || undefined,
+        image: ann.imageUrl || linkedMovie?.poster || undefined,
         isNew: !readIds.has(ann.id),
-        movieId: ann.movieId || ann.targetMovieId || undefined,
+        movieId: mid || undefined,
       };
     });
 
@@ -1982,6 +2090,12 @@ function CustomTabBar() {
       setNotificationVisible(true);
     });
 
+    const sub7 = DeviceEventEmitter.addListener("triggerRating", () => {
+      setShowRatingModal(true);
+    });
+    const sub8 = DeviceEventEmitter.addListener("previewOpening", showPreviewOpening);
+    const sub9 = DeviceEventEmitter.addListener("previewOpened", hidePreviewOpening);
+
     return () => {
       sub.remove();
       sub2.remove();
@@ -1989,8 +2103,11 @@ function CustomTabBar() {
       sub4.remove();
       sub5.remove();
       sub6.remove();
+      sub7.remove();
+      sub8.remove();
+      sub9.remove();
     };
-  }, []);
+  }, [showPreviewOpening, hidePreviewOpening]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -2019,6 +2136,10 @@ function CustomTabBar() {
       }
       if (searchVisible) {
         setSearchVisible(false);
+        return true;
+      }
+      if (!active("/")) {
+        router.navigate("/(tabs)" as any);
         return true;
       }
       return false;
@@ -2101,10 +2222,16 @@ function CustomTabBar() {
       }
       setNotificationVisible(true);
       setReopenOnBack(false);
+      setTimeout(hidePreviewOpening, 120);
     }
-  }, [path, reopenOnBack, lastViewedItemId]);
+  }, [path, reopenOnBack, lastViewedItemId, hidePreviewOpening]);
 
   useEffect(() => {
+    const closingSub = DeviceEventEmitter.addListener("previewClosing", () => {
+      if (reopenOnBack) {
+        showPreviewOpening();
+      }
+    });
     const sub = DeviceEventEmitter.addListener("previewClosed", () => {
       if (reopenOnBack) {
         if (lastViewedItemId) {
@@ -2113,6 +2240,7 @@ function CustomTabBar() {
         }
         setNotificationVisible(true);
         setReopenOnBack(false);
+        setTimeout(hidePreviewOpening, 120);
       }
     });
     const sub2 = DeviceEventEmitter.addListener("openLiveReleaseGrid", () => {
@@ -2129,11 +2257,12 @@ function CustomTabBar() {
     });
 
     return () => {
+      closingSub.remove();
       sub.remove();
       sub2.remove();
       sub3.remove();
     };
-  }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries]);
+  }, [reopenOnBack, lastViewedItemId, liveMovies, liveSeries, showPreviewOpening, hidePreviewOpening, openMoviePreviewOnHome]);
 
   useEffect(() => {
     notifications.forEach(item => {
@@ -2274,34 +2403,34 @@ function CustomTabBar() {
     }
 
     if (item.movieId) {
-      // 1. Close overlay first to ensure clean navigation transition
+      const targetItem = TOTAL_LIVE_ITEMS.find(m => m.id === item.movieId);
+      const isSeries = targetItem && ("seasons" in targetItem || (targetItem as any).type === 'Series' || (targetItem as any).isMiniSeries);
+
+      // Preserve the notification tray as the previous step when the preview closes.
+      setReopenOnBack(true);
+      setLastViewedItemId(item.id);
+      showPreviewOpening();
+
       setNotificationVisible(false);
 
-      // 2. Delay navigation slightly to allow modal state cleanup and avoid stack conflicts
-      setTimeout(() => {
-        // Identify if it's a series or movie to navigate to the correct tab
-        const targetItem = TOTAL_LIVE_ITEMS.find(m => m.id === item.movieId);
-        const isSeries = targetItem && ("seasons" in targetItem || (targetItem as any).type === 'Series' || (targetItem as any).isMiniSeries);
-
-        if (isSeries) {
-          // Navigate to Series tab (saved) with reliable navigate() and ensure param is passed
-          router.navigate({
-            pathname: "/(tabs)/saved",
-            params: { seriesId: item.movieId }
-          } as any);
-        } else {
-          // Navigate to Home tab for movie preview
-          router.navigate({
-            pathname: "/(tabs)/",
-            params: { movieId: item.movieId }
-          } as any);
-        }
-      }, 100);
+      if (isSeries) {
+        router.navigate({
+          pathname: "/(tabs)/saved",
+          params: { seriesId: item.movieId }
+        } as any);
+      } else if (targetItem) {
+        openMoviePreviewOnHome(targetItem);
+      } else {
+        router.push("/(tabs)" as any);
+        InteractionManager.runAfterInteractions(() => {
+          router.setParams({ movieId: item.movieId } as any);
+        });
+      }
     } else if (item.sectionTitle) {
       setReopenOnBack(true);
       setNotificationVisible(false);
       // Switch to Home tab first then emit
-      router.push("/(tabs)/");
+      router.push("/(tabs)" as any);
       setTimeout(() => {
         DeviceEventEmitter.emit("sectionSelected", item.sectionTitle);
       }, 500);
@@ -2311,7 +2440,7 @@ function CustomTabBar() {
     }
   };
 
-  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
+
 
   const submitRating = async (rating: number) => {
     setIsRatingSubmitted(true);
@@ -2333,6 +2462,7 @@ function CustomTabBar() {
     }
 
     // 2. Clear local states and redirect
+    markAsRated(); // Update local and cloud profile
     setTimeout(() => {
       markRead('n5'); // Mark as read ONLY on submission
       Linking.openURL("market://details?id=com.moviezone247.app").catch(() => {
@@ -2362,21 +2492,20 @@ function CustomTabBar() {
           const isSeries = "seasons" in m || (m as any).type === 'Series' || (m as any).isMiniSeries;
           if (isSeries) {
             setGlobalGridVisible(false);
+            showPreviewOpening();
             router.push(`/(tabs)/saved?seriesId=${m.id}`);
           } else {
             setGlobalGridVisible(false);
             if (reopenOnBack) {
               setNotificationVisible(false);
             }
-            // Switch to Home tab to show preview
-            router.push("/(tabs)/");
-            // Emit to Home stack to show preview
-            DeviceEventEmitter.emit("movieSelected", m);
+            showPreviewOpening();
+            openMoviePreviewOnHome(m);
           }
         }}
       />
       {/* Status Bar Guard (Synchronized with Header) */}
-      {!isDetailStackVisible && playerMode !== 'full' && (
+      {!isDetailStackVisible && !previewOpeningVisible && playerMode !== 'full' && (
         <Animated.View 
           style={{
             position: 'absolute',
@@ -2395,7 +2524,7 @@ function CustomTabBar() {
       )}
 
       {/* Background for 3-button nav */}
-      {Platform.OS === 'android' && hasThreeButtonNav && !isDetailStackVisible && (
+      {Platform.OS === 'android' && hasThreeButtonNav && !isDetailStackVisible && !previewOpeningVisible && (
         <View
           style={{
             position: 'absolute',
@@ -2413,7 +2542,7 @@ function CustomTabBar() {
         </View>
       )}
 
-      {!searchVisible && !isDetailStackVisible && playerMode !== 'full' && (
+      {!searchVisible && !isDetailStackVisible && !previewOpeningVisible && playerMode !== 'full' && (
         <View style={[
           styles.topBarWrapper,
           {
@@ -2805,6 +2934,7 @@ function CustomTabBar() {
             setSearchVisible(false);
             setSearchVjOnly(false);
             setSearchAutoFocus(false);
+            showPreviewOpening();
             // Navigate to series detail (which is the saved tab)
             router.push(`/(tabs)/saved?seriesId=${movie.id}`);
           }
@@ -2815,12 +2945,8 @@ function CustomTabBar() {
             setSearchVisible(false);
             setSearchVjOnly(false);
             setSearchAutoFocus(false);
-            
-            // Switch to Home tab to show preview
-            router.push("/(tabs)/");
-            
-            // Emit to Home stack
-            DeviceEventEmitter.emit("movieSelected", movie);
+            showPreviewOpening();
+            openMoviePreviewOnHome(movie);
           }
 
         }}
@@ -2866,6 +2992,8 @@ function CustomTabBar() {
         markAllRead={handleMarkAllRead}
         loading={loadingAnnouncements}
       />
+
+      <PreviewOpeningOverlay visible={previewOpeningVisible} />
 
       {/* ── Holiday Event Preview Modal ── */}
       {showEventPreview && (
@@ -2961,7 +3089,7 @@ function CustomTabBar() {
         </View>
       )}
 
-      {!showInPlaceSearch && !isDetailStackVisible && playerMode === 'closed' && !isOverlayVisible && (
+      {!showInPlaceSearch && !isDetailStackVisible && !previewOpeningVisible && playerMode === 'closed' && !isOverlayVisible && (
         <View style={[styles.barWrapper, { bottom: Platform.OS === 'ios' ? 28 : insets.bottom + 8 }]} pointerEvents="box-none">
           <BlurView tint="dark" intensity={99} style={StyleSheet.absoluteFill} />
           <View style={styles.glassFill} />
@@ -3208,6 +3336,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  notificationPosterWrap: {
+    width: 52,
+    height: 76,
+    borderRadius: 10,
+    marginRight: 12,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  notificationPoster: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   notificationIconWrapNew: {
     shadowColor: "#10b981",
@@ -3281,6 +3425,20 @@ const styles = StyleSheet.create({
   },
   countBadgeTrendingText: {
     color: "#f59e0b",
+  },
+  epRangeBadgeInline: {
+    backgroundColor: "rgba(56, 189, 248, 0.15)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(56, 189, 248, 0.4)",
+  },
+  epRangeBadgeTextInline: {
+    color: "#38bdf8",
+    fontSize: 9,
+    fontWeight: "900",
   },
   vjPillsRow: {
     flexDirection: "row",
@@ -4379,5 +4537,55 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     fontSize: 11,
     fontWeight: "700",
+  },
+  previewOpeningOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 65000,
+    elevation: 65000,
+    backgroundColor: "#05050a",
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 70 : 52,
+    paddingBottom: 34,
+  },
+  previewOpeningBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#05050a",
+  },
+  previewOpeningTitleBlock: {
+    marginBottom: 14,
+  },
+  previewOpeningChips: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  previewOpeningActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 18,
+  },
+  previewOpeningHero: {
+    height: 245,
+    borderRadius: 22,
+    overflow: "hidden",
+    marginBottom: 18,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  previewOpeningRows: {
+    gap: 12,
+  },
+  previewOpeningRow: {
+    minHeight: 74,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.035)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.06)",
   },
 });

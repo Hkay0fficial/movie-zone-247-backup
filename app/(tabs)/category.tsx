@@ -307,8 +307,12 @@ export default function CategoryScreen() {
    useFocusEffect(
       useCallback(() => {
         const onBackPress = () => {
-          // 1. If in full screen, allow video player to handle back
-          if (playerMode === 'full') return false;
+          // 1. If in full screen, consume the event here too.
+          // Some Android devices miss the player's listener during orientation/timing changes.
+          if (playerMode === 'full') {
+            setPlayerMode('closed');
+            return true;
+          }
 
           // 2. Pop Navigation Stack (Previews)
           if (navigationStackRef.current.length > 0) {

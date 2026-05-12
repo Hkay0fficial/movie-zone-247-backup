@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingBackButton } from "../../components/FloatingBackButton";
-import { Movie, Series, getStreamUrl } from '@/constants/movieData';
+import { Movie, Series, getStreamUrl, ALL_GENRES, ALL_VJS } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
@@ -113,6 +113,8 @@ const GridSkeleton = React.memo(() => (
   </View>
 ));
 
+import { resolveCDNUrl } from '@/constants/bunnyConfig';
+
 // ─── Search Result Card ───────────────────────────────────────────────────────
 function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => void }) {
   const isSeries = 'seasons' in item;
@@ -124,7 +126,7 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
       onPress={onPress}
     >
       <View style={styles.cardInner}>
-        <Image source={{ uri: item.poster }} style={styles.cardPoster} />
+        <Image source={{ uri: resolveCDNUrl(item.poster) }} style={styles.cardPoster} />
         <LinearGradient
           colors={['transparent', 'rgba(10,10,15,0.95)'] as any}
           style={styles.cardGradient}
@@ -149,12 +151,13 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { allMovies, allSeries, loading } = useMovies();
-  const { setPlayingNow, setPlayerTitle, setSelectedVideoUrl, setPlayerMode } = useSubscription();
+  const { allMovies, allSeries, loading, selectedGenre, setSelectedGenre, selectedVJ, setSelectedVJ, clearFilters } = useMovies();
+  const { setPlayingNow, setPlayerTitle, setSelectedVideoUrl, setPlayerMode, playerMode } = useSubscription();
   const { profile } = useUser();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(Movie | Series)[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isStackLoading, setIsStackLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -184,44 +187,49 @@ export default function SearchScreen() {
 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
-
     if (!text.trim()) {
-      setResults([]);
+      setDebouncedQuery('');
       setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
     searchTimeout.current = setTimeout(() => {
-      const q = text.toLowerCase().trim();
-      const filtered = allContent.filter(item => {
-        const title = item.title?.toLowerCase() || '';
-        const genre = item.genre?.toLowerCase() || '';
-        const vj = item.vj?.toLowerCase() || '';
-        const year = String(item.year || '');
-
-        return title.includes(q) ||
-          genre.includes(q) ||
-          vj.includes(q) ||
-          year.includes(q);
-      });
-      setResults(filtered);
+      setDebouncedQuery(text.toLowerCase().trim());
       setIsSearching(false);
     }, 300);
-  }, [allContent]);
+  }, []);
 
-  const { playerMode } = useSubscription();
+  const displayResults = React.useMemo(() => {
+    if (!debouncedQuery) return allContent;
+    return allContent.filter(item => {
+      const title = item.title?.toLowerCase() || '';
+      const genre = item.genre?.toLowerCase() || '';
+      const vj = item.vj?.toLowerCase() || '';
+      const year = String(item.year || '');
+
+      return title.includes(debouncedQuery) ||
+        genre.includes(debouncedQuery) ||
+        vj.includes(debouncedQuery) ||
+        year.includes(debouncedQuery);
+    });
+  }, [allContent, debouncedQuery]);
+
+  const hasFilters = selectedGenre || selectedVJ || debouncedQuery.length > 0;
+
   const lastBackPressTime = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // 1. Yield to full screen player
-        if (playerMode === 'full') return false;
+        // 1. If in full screen, consume the event here too.
+        // Some Android devices miss the player's listener during orientation/timing changes.
+        if (playerMode === 'full') {
+          setPlayerMode('closed');
+          return true;
+        }
 
         // 2. Pop Navigation Stack (Previews)
         if (navigationStackRef.current.length > 0) {
@@ -230,8 +238,10 @@ export default function SearchScreen() {
         }
 
         // 3. Handle local search state
-        if (query.trim().length > 0) {
+        if (hasFilters) {
           setQuery('');
+          setDebouncedQuery('');
+          clearFilters();
           return true;
         }
 
@@ -241,7 +251,7 @@ export default function SearchScreen() {
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [query, playerMode, navigationStack.length])
+    }, [hasFilters, playerMode, navigationStack.length, clearFilters])
   );
 
   useEffect(() => {
@@ -268,7 +278,15 @@ export default function SearchScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (hasFilters) {
+                setQuery('');
+                setDebouncedQuery('');
+                clearFilters();
+              } else {
+                router.back();
+              }
+            }}
             style={styles.backBtn}
           >
             <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
@@ -278,9 +296,40 @@ export default function SearchScreen() {
           <Image source={{ uri: profile.profilePhoto }} style={styles.profilePic} />
         </Animated.View>
 
+        <View style={{ marginBottom: 15 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10, marginBottom: 10 }}>
+            {['All', ...ALL_VJS].map(vj => {
+               const isActive = selectedVJ === vj || (vj === 'All' && !selectedVJ);
+               return (
+                 <TouchableOpacity 
+                   key={vj} 
+                   onPress={() => setSelectedVJ(vj === 'All' ? null : vj)}
+                   style={[styles.pill, isActive && styles.pillActive]}
+                 >
+                   <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{vj === 'All' ? 'All VJs' : vj}</Text>
+                 </TouchableOpacity>
+               );
+            })}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+            {['All', ...ALL_GENRES].map(genre => {
+               const isActive = selectedGenre === genre || (genre === 'All' && !selectedGenre);
+               return (
+                 <TouchableOpacity 
+                   key={genre} 
+                   onPress={() => setSelectedGenre(genre === 'All' ? null : genre)}
+                   style={[styles.pill, isActive && styles.pillActive]}
+                 >
+                   <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{genre === 'All' ? 'All Genres' : genre}</Text>
+                 </TouchableOpacity>
+               );
+            })}
+          </ScrollView>
+        </View>
+
         {loading ? (
           <GridSkeleton />
-        ) : query.trim() === '' ? (
+        ) : !hasFilters ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <LinearGradient
@@ -295,7 +344,7 @@ export default function SearchScreen() {
             </Text>
 
           </View>
-        ) : query.length > 0 && results.length === 0 ? (
+        ) : displayResults.length === 0 ? (
           <View style={styles.premiumEmptyContainer}>
             <View style={styles.emptyIconGlow}>
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
@@ -309,7 +358,7 @@ export default function SearchScreen() {
           </View>
         ) : (
           <FlatList
-            data={query.length > 0 ? results : []}
+            data={displayResults}
             keyExtractor={(item) => item.id}
             numColumns={2}
             contentContainerStyle={styles.gridContainer}
@@ -317,21 +366,32 @@ export default function SearchScreen() {
               <ResultCard
                 item={item}
                 onPress={() => {
-                  setNavigationStack(prev => [...prev, item]);
+                  const isSeries = "seasons" in item || (item as any).type === "Series" || (item as any).isMiniSeries;
+                  if (isSeries) {
+                    router.push(`/(tabs)/saved?seriesId=${item.id}`);
+                  } else {
+                    setIsStackLoading(true);
+                    setNavigationStack(prev => [...prev, item]);
+                    setTimeout(() => setIsStackLoading(false), 600);
+                  }
                 }}
               />
             )}
             ListHeaderComponent={() => (
               <Text style={styles.resultsCount}>
-                {results.length} {results.length === 1 ? 'RESULT' : 'RESULTS'} FOUND FOR "{query.toUpperCase()}"
+                {displayResults.length} {displayResults.length === 1 ? 'RESULT' : 'RESULTS'} FOUND
               </Text>
             )}
           />
         )}
 
         <FloatingBackButton
-          visible={query.trim().length > 0 && navigationStack.length === 0}
-          onPress={() => setQuery('')}
+          visible={hasFilters && navigationStack.length === 0}
+          onPress={() => {
+            setQuery('');
+            setDebouncedQuery('');
+            clearFilters();
+          }}
           label="CLEAR SEARCH"
         />
 
@@ -389,12 +449,30 @@ export default function SearchScreen() {
             setSelectedVideoUrl={setSelectedVideoUrl}
             setPlayerTitle={setPlayerTitle}
             onSwitch={(m: any) => {
-              setNavigationStack(prev => [...prev, m]);
+              const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
+              if (isSeries) {
+                router.push(`/(tabs)/saved?seriesId=${m.id}`);
+              } else {
+                setIsStackLoading(true);
+                setNavigationStack(prev => [...prev, m]);
+                setTimeout(() => setIsStackLoading(false), 600);
+              }
             }}
             playingNow={null} // Managed by global context
             setPlayingNow={setPlayingNow}
           />
         ))}
+
+        {isStackLoading && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 15, 0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 10001 }]}>
+             <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+             <View style={{ backgroundColor: 'rgba(26,26,46,0.85)', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 15 }}>
+               <ActivityIndicator size="large" color="#5B5FEF" />
+               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 24, letterSpacing: 1 }}>Opening Content...</Text>
+               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 8, textAlign: 'center', fontWeight: '600' }}>Preparing your viewing experience</Text>
+             </View>
+          </View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -666,5 +744,25 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '900',
   },
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  pillActive: {
+    backgroundColor: 'rgba(91,95,239,0.2)',
+    borderColor: '#5B5FEF',
+  },
+  pillText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pillTextActive: {
+    color: '#fff',
+    fontWeight: '800',
+  },
 });
-

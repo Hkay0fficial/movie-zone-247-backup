@@ -68,6 +68,8 @@ interface SubscriptionContextType {
   isSubscribed: boolean;
   remainingDays: number;
   availablePlans: Plan[];
+  isNotificationVisible: boolean;
+  setIsNotificationVisible: (v: boolean) => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
@@ -113,7 +115,9 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   activeDevicesMeta: {},
   isSubscribed: false,
   remainingDays: 0,
-  availablePlans: [],
+  availablePlans: PLANS,
+  isNotificationVisible: false,
+  setIsNotificationVisible: () => {},
 });
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -146,6 +150,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [activeDevicesMeta, setActiveDevicesMeta] = useState<Record<string, any>>({});
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
   const [availablePlans, setAvailablePlans] = useState<Plan[]>(PLANS);
+  const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
   // Helper to get persistent hardware ID
   const getDeviceInfo = async () => {
@@ -624,6 +629,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isSubscribed,
     remainingDays,
     availablePlans,
+    isNotificationVisible,
+    setIsNotificationVisible,
   }), [
     subscriptionBundle,
     subscriptionExpiresAt,
@@ -657,6 +664,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isSubscribed,
     remainingDays,
     availablePlans,
+    isNotificationVisible,
+    setIsNotificationVisible,
   ]);
 
   return (

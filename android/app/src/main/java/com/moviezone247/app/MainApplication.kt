@@ -23,7 +23,7 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> {
           val packages = PackageList(this).packages.toMutableList()
-          // packages.add(PipPackage())
+          packages.add(PipPackage())
           return packages
         }
 

@@ -54,7 +54,7 @@ import { SettingsList } from '../../components/menu/SettingsList';
 import { ChoosePlanSection } from '../../components/menu/ChoosePlanSection';
 import { styles } from '../../components/menu/menu.styles';
 import PremiumAccessModal from '../../components/PremiumAccessModal';
-import { MoviePreviewContent, SeriesPreviewModal } from './index';
+import { MoviePreviewContent, SeriesPreviewContent as SeriesPreviewModal } from './index';
 import { GridContent } from './index';
 import { sendLocalNotification, addNotificationResponseListener } from '../../lib/notifications';
 
@@ -310,6 +310,12 @@ export default function MenuScreen() {
     billingAccount: true,
   });
 
+  React.useEffect(() => {
+    if (profile.notificationPrefs) {
+      setNotifSettings(prev => ({ ...prev, ...profile.notificationPrefs }));
+    }
+  }, [profile.notificationPrefs]);
+
   const handleClearNotifications = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -407,6 +413,14 @@ export default function MenuScreen() {
     activeDevicesMeta,
     removeDevice,
     availablePlans,
+    playingNow,
+    setPlayingNow,
+    playerMode,
+    setPlayerMode,
+    playerTitle,
+    setPlayerTitle,
+    selectedVideoUrl,
+    setSelectedVideoUrl,
   } = useSubscription();
 
   const {
@@ -1629,6 +1643,8 @@ export default function MenuScreen() {
                   isMuted={index !== navigationStack.length - 1 || !isFocused}
                   onShowPremium={() => setShowPremiumModal(true)}
                   onUpgrade={() => setShowPlanModal(true)}
+                  isFocused={isFocused}
+                  appState="active"
                 />
               );
             }
@@ -1657,6 +1673,8 @@ export default function MenuScreen() {
                 isMuted={index !== navigationStack.length - 1 || !isFocused}
                 onShowPremium={() => setShowPremiumModal(true)}
                 onUpgrade={() => setShowPlanModal(true)}
+                isFocused={isFocused}
+                appState="active"
               />
             );
           })}

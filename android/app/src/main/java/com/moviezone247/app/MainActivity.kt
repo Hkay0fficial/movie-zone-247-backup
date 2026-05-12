@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.app.PictureInPictureParams
 import android.util.Rational
-import androidx.core.view.WindowCompat
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -25,7 +24,6 @@ class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
-    WindowCompat.setDecorFitsSystemWindows(window, false)
     super.onCreate(null)
 // @generated begin react-native-google-cast-onCreate - expo prebuild (DO NOT MODIFY) sync-489050f2bf9933a98bbd9d93137016ae14c22faa
     RNGCCastContext.getSharedInstance(this)

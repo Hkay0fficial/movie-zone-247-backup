@@ -1,7 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, doc, onSnapshot, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../constants/firebaseConfig';
+import { registerForPushNotificationsAsync } from '../../lib/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 
 interface UserProfile {
   fullName: string;
@@ -14,6 +18,9 @@ interface UserProfile {
   createdAt?: any;
   is2FAEnabled: boolean;
   activeDeviceIds: string[];
+  completionCount: number;
+  hasRatedApp: boolean;
+  notificationPrefs?: Record<string, boolean>;
 }
 
 interface UserContextType {
@@ -25,6 +32,8 @@ interface UserContextType {
   getPlaybackProgress: (movieId: string, episodeId?: string) => { position: number; timestamp: number } | null;
   removeFromWatchHistory: (movieId: string, episodeId?: string) => Promise<void>;
   clearWatchHistory: () => Promise<void>;
+  incrementCompletion: () => Promise<number>;
+  markAsRated: () => Promise<void>;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -37,6 +46,14 @@ const DEFAULT_PROFILE: UserProfile = {
   watchHistory: {},
   is2FAEnabled: false,
   activeDeviceIds: [],
+  completionCount: 0,
+  hasRatedApp: false,
+  notificationPrefs: {
+    newReleases: true,
+    myListUpdates: true,
+    recommendations: false,
+    billingAccount: true,
+  },
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -102,15 +119,13 @@ async function ensureUserDocument(user: User) {
   }
 }
 
-import { registerForPushNotificationsAsync } from '../../lib/notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 const CACHE_KEY = '@user_profile_v3';
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
+  const registeredPushRef = useRef<{ uid: string; token: string; entry: Record<string, any> } | null>(null);
 
   // Load profile from cache on mount
   useEffect(() => {
@@ -139,14 +154,53 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Push Notification Registration
   useEffect(() => {
-    if (user) {
+    let cancelled = false;
+
+    const removeRegisteredToken = async () => {
+      const registered = registeredPushRef.current;
+      if (!registered) return;
+
+      registeredPushRef.current = null;
+      const userRef = doc(db, 'users', registered.uid);
+      await setDoc(userRef, {
+        pushTokens: arrayRemove(registered.entry),
+        lastPushTokenRemovedAt: serverTimestamp(),
+      }, { merge: true });
+    };
+
+    if (!user) {
+      removeRegisteredToken().catch(error => {
+        console.warn('Failed to remove push token from Firestore:', error);
+      });
+      return;
+    }
+
+    if (registeredPushRef.current && registeredPushRef.current.uid !== user.uid) {
+      removeRegisteredToken().catch(error => {
+        console.warn('Failed to remove previous user push token from Firestore:', error);
+      });
+    }
+
+    if (user && !user.isAnonymous) {
       const registerToken = async () => {
         try {
           const token = await registerForPushNotificationsAsync();
+          if (cancelled) return;
           if (token) {
             console.log('Push token successfully obtained:', token);
             const userRef = doc(db, 'users', user.uid);
-            await setDoc(userRef, { pushToken: token }, { merge: true });
+            const tokenEntry = {
+              token,
+              platform: Platform.OS,
+              deviceName: Device.deviceName || '',
+            };
+
+            registeredPushRef.current = { uid: user.uid, token, entry: tokenEntry };
+            await setDoc(userRef, {
+              pushToken: token,
+              pushTokens: arrayUnion(tokenEntry),
+              lastPushTokenUpdatedAt: serverTimestamp(),
+            }, { merge: true });
             console.log('Push token successfully saved to Firestore for user:', user.uid);
           } else {
             console.warn('registerForPushNotificationsAsync returned no token.');
@@ -157,7 +211,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       };
       registerToken();
     }
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, user?.isAnonymous]);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
@@ -195,6 +253,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.createdAt,
               is2FAEnabled: data.is2FAEnabled || false,
               activeDeviceIds: data.activeDeviceIds || [],
+              completionCount: data.completionCount || 0,
+              hasRatedApp: data.hasRatedApp || false,
+              notificationPrefs: data.notificationPrefs || DEFAULT_PROFILE.notificationPrefs,
             });
           } else {
             setProfile({
@@ -207,6 +268,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               watchHistory: {},
               is2FAEnabled: false,
               activeDeviceIds: [],
+              completionCount: 0,
+              hasRatedApp: false,
+              notificationPrefs: DEFAULT_PROFILE.notificationPrefs,
             });
           }
           setLoading(false);
@@ -320,6 +384,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const incrementCompletion = async () => {
+    const newCount = (profile.completionCount || 0) + 1;
+    setProfile(prev => ({ ...prev, completionCount: newCount }));
+    
+    if (user && !user.isAnonymous) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, { completionCount: newCount }, { merge: true });
+      } catch (e) {
+        console.error('UserContext: Failed to increment completion count:', e);
+      }
+    }
+    return newCount;
+  };
+
+  const markAsRated = async () => {
+    setProfile(prev => ({ ...prev, hasRatedApp: true }));
+    if (user && !user.isAnonymous) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, { hasRatedApp: true }, { merge: true });
+      } catch (e) {
+        console.error('UserContext: Failed to mark as rated:', e);
+      }
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       user, 
@@ -329,7 +420,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       savePlaybackProgress, 
       getPlaybackProgress,
       removeFromWatchHistory,
-      clearWatchHistory
+      clearWatchHistory,
+      incrementCompletion,
+      markAsRated
     }}>
       {children}
     </UserContext.Provider>

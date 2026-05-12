@@ -20,9 +20,10 @@ export interface LocalNotification {
 interface InAppNotificationProps {
   notification: LocalNotification | null;
   onClose: () => void;
+  onAddToList?: (notification: LocalNotification) => void;
 }
 
-export default function InAppNotification({ notification, onClose }: InAppNotificationProps) {
+export default function InAppNotification({ notification, onClose, onAddToList }: InAppNotificationProps) {
   const slideAnim = useRef(new Animated.Value(-200)).current;
   const router = useRouter();
 
@@ -119,7 +120,12 @@ export default function InAppNotification({ notification, onClose }: InAppNotifi
                <TouchableOpacity 
                 style={[styles.actionBtn, styles.secondaryAction]} 
                 onPress={() => {
-                   handlePress();
+                   if (notification && onAddToList) {
+                     onAddToList(notification);
+                     dismiss();
+                   } else {
+                     handlePress();
+                   }
                 }}
                >
                  <Ionicons name="add" size={16} color="#fff" />
@@ -205,9 +211,9 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   imageWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 68,
+    borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',

@@ -326,6 +326,30 @@ const SeriesSkeleton = React.memo(() => {
   );
 });
 
+const SeriesPreviewOpeningSkeleton = React.memo(() => (
+  <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', paddingHorizontal: 20, paddingTop: 56, zIndex: 20000, elevation: 20000 }]}>
+    <SkeletonLoader width="100%" height={245} borderRadius={22} style={{ marginBottom: 18 }} />
+    <SkeletonLoader width="64%" height={28} borderRadius={14} style={{ marginBottom: 12 }} />
+    <SkeletonLoader width="40%" height={14} borderRadius={7} style={{ marginBottom: 16 }} />
+    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+      <SkeletonLoader width={86} height={30} borderRadius={15} />
+      <SkeletonLoader width={72} height={30} borderRadius={15} />
+      <SkeletonLoader width={98} height={30} borderRadius={15} />
+    </View>
+    <SkeletonLoader width="58%" height={48} borderRadius={24} style={{ marginBottom: 20 }} />
+    {[0, 1, 2, 3].map((item) => (
+      <View key={item} style={{ minHeight: 74, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.035)' }}>
+        <SkeletonLoader width={84} height={48} borderRadius={10} />
+        <View style={{ flex: 1 }}>
+          <SkeletonLoader width="82%" height={13} borderRadius={7} />
+          <SkeletonLoader width="46%" height={10} borderRadius={5} style={{ marginTop: 9 }} />
+        </View>
+        <SkeletonLoader width={30} height={30} borderRadius={15} />
+      </View>
+    ))}
+  </View>
+));
+
 export default function SeriesScreen() {
   const router = useRouter();
   const { 
@@ -343,6 +367,7 @@ export default function SeriesScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All Series/Mini Series");
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
+  const [loadingSeriesLink, setLoadingSeriesLink] = useState(false);
 
   const handleTabPress = useCallback((title: string) => {
     if (featuredTab === title) return;
@@ -435,6 +460,20 @@ export default function SeriesScreen() {
     }
   }, [navigationStack]);
 
+  const prevStackLength = useRef(0);
+  useEffect(() => {
+    if (prevStackLength.current > 0 && navigationStack.length === 0) {
+      DeviceEventEmitter.emit("previewClosed");
+    } else if (navigationStack.length > 0) {
+      const timer = setTimeout(() => {
+        DeviceEventEmitter.emit("previewOpened");
+      }, 120);
+      prevStackLength.current = navigationStack.length;
+      return () => clearTimeout(timer);
+    }
+    prevStackLength.current = navigationStack.length;
+  }, [navigationStack.length]);
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -443,8 +482,12 @@ export default function SeriesScreen() {
         if (now - lastBackPressTime.current < 400) return true;
         lastBackPressTime.current = now;
 
-        // 1. If in full screen, allow video player to handle back
-        if (playerMode === 'full') return false;
+        // 1. If in full screen, consume the event here too.
+        // Some Android devices miss the player's listener during orientation/timing changes.
+        if (playerMode === 'full') {
+          setPlayerMode('closed');
+          return true;
+        }
 
         // 2. Close search/filter if active
         if (isSearchActive || query.length > 0) {
@@ -456,6 +499,7 @@ export default function SeriesScreen() {
 
         // 3. Pop Navigation Stack (Previews or Grids)
         if (navigationStackRef.current.length > 0) {
+          DeviceEventEmitter.emit("previewClosing");
           setNavigationStack(prev => prev.slice(0, -1));
           return true;
         }
@@ -625,17 +669,38 @@ export default function SeriesScreen() {
 
   // Handle incoming seriesId parameter from Home or Search
   useEffect(() => {
-    if (seriesId && typeof seriesId === 'string' && isFocused) {
-      const found = ALL_SERIES.find(s => s.id === seriesId);
-      if (found) {
-        // Push the found series to the stack to open its detail view
-        setNavigationStack([{ type: 'series', series: found }]);
-        // Clear the param and clear search state if any
-        setIsExternalSearch(false);
-        router.setParams({ seriesId: undefined } as any);
+    const handleSeriesLink = async () => {
+      if (!seriesId || typeof seriesId !== 'string' || !isFocused) return;
+      setLoadingSeriesLink(true);
+      router.setParams({ seriesId: undefined } as any);
+
+      let found = ALL_SERIES.find(s => String(s.id) === String(seriesId));
+
+      if (!found) {
+        try {
+          const seriesDoc = await getDoc(doc(db, 'series', String(seriesId)));
+          if (seriesDoc.exists()) {
+            found = { id: seriesDoc.id, ...seriesDoc.data() } as Series;
+          } else {
+            Alert.alert("Series Not Found", "This series may have been removed or is not available yet.");
+          }
+        } catch (error) {
+          console.error("Error fetching series preview:", error);
+          Alert.alert("Unable to Open", "Please check your connection and try again.");
+        }
       }
-    }
-  }, [seriesId, isFocused]);
+
+      if (found) {
+        setNavigationStack([{ type: 'series', series: found }]);
+        setIsExternalSearch(false);
+        setTimeout(() => setLoadingSeriesLink(false), 120);
+      } else {
+        setLoadingSeriesLink(false);
+      }
+    };
+
+    handleSeriesLink();
+  }, [seriesId, isFocused, ALL_SERIES, router]);
 
   const resetActivityTimer = () => {
     setShowCategories(prev => {
@@ -884,9 +949,12 @@ export default function SeriesScreen() {
         />
       )}
 
+      {loadingSeriesLink && <SeriesPreviewOpeningSkeleton />}
+
       {/* Series Preview Modal Stack */}
       {navigationStack.map((item, index) => {
         const onClose = () => {
+          DeviceEventEmitter.emit("previewClosing");
           if (navigationStack.length === 1 && isExternalSearch) {
             setIsExternalSearch(false);
             router.back();

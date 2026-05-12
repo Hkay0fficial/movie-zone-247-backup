@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect, useState, useCallback } from 'react';
-import { Platform, View, DeviceEventEmitter } from 'react-native';
+import { Dimensions, Platform, View, DeviceEventEmitter } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts } from 'expo-font';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -226,13 +226,10 @@ export default function RootLayout() {
   useEffect(() => {
     const initOrientation = async () => {
       if (Platform.OS !== 'web') {
-        // Unlock orientation for large screen devices (tablets/foldables) to satisfy Play Store requirements.
-        // Only lock to portrait for standard handsets.
-        const { isDevice } = await import('expo-device');
-        const deviceType = await import('expo-device').then(d => d.getDeviceTypeAsync());
-        
-        // DeviceType.PHONE = 1, DeviceType.TABLET = 2
-        if (deviceType === 1) {
+        const { width, height } = Dimensions.get('window');
+        const isLargeScreen = Math.min(width, height) >= 600;
+
+        if (!isLargeScreen) {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         } else {
           await ScreenOrientation.unlockAsync();

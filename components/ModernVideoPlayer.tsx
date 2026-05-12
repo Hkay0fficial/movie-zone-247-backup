@@ -138,7 +138,8 @@ export default function ModernVideoPlayer({
   subtitles = [],
 }: ModernVideoPlayerProps) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const { savePlaybackProgress, getPlaybackProgress } = useUser();
+  const shouldLockOrientation = Math.min(SCREEN_W, SCREEN_H) < 600;
+  const { savePlaybackProgress, getPlaybackProgress, incrementCompletion, profile } = useUser();
   const insets = useSafeAreaInsets();
 
   // Smart Title Logic: Handles "Title - Title By Vj HD EP 1" redundancy
@@ -262,15 +263,19 @@ export default function ModernVideoPlayer({
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
   const [isPiPActive, setIsPiPActive] = useState(false);
+  const appStateRef = useRef(AppState.currentState);
+  const isPiPActiveRef = useRef(false);
+  const pipRequestedRef = useRef(false);
 
   useEffect(() => {
     const appSubscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.match(/active/) && nextAppState.match(/inactive|background/)) {
+      if (appStateRef.current.match(/active/) && nextAppState.match(/inactive|background/)) {
         // App backgrounded: Pause if not in PiP
-        if (!isPiPActive && videoRef.current) {
+        if (!isPiPActiveRef.current && !pipRequestedRef.current && videoRef.current) {
           videoRef.current.pauseAsync().catch(() => {});
         }
       }
+      appStateRef.current = nextAppState;
       setAppState(nextAppState);
     });
 
@@ -281,12 +286,20 @@ export default function ModernVideoPlayer({
         const { NativeEventEmitter } = require('react-native');
         const eventEmitter = new NativeEventEmitter(NativeModules.PipModule);
         pipListener = eventEmitter.addListener('onPictureInPictureModeChanged', (event: { isInPictureInPictureMode: boolean }) => {
-          setIsPiPActive(!!event.isInPictureInPictureMode);
+          const isActive = !!event.isInPictureInPictureMode;
+          isPiPActiveRef.current = isActive;
+          pipRequestedRef.current = isActive;
+          setIsPiPActive(isActive);
           if (event.isInPictureInPictureMode) {
             setShowControls(false);
             showControlsRef.current = false;
             setIsControlsMounted(false);
             controlsOpacity.setValue(0);
+          } else {
+            setIsControlsMounted(true);
+            setShowControls(true);
+            showControlsRef.current = true;
+            controlsOpacity.setValue(1);
           }
         });
       } catch (e) {
@@ -410,8 +423,10 @@ export default function ModernVideoPlayer({
       // Call onClose immediately so the UI is freed
       onClose();
       // Restore orientation ONLY after the player is fully off-screen in the background
-      if (Platform.OS !== "web") {
+      if (Platform.OS !== "web" && shouldLockOrientation) {
         ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      } else if (Platform.OS !== "web") {
+        ScreenOrientation.unlockAsync().catch(() => {});
       }
       // Keep isClosing true for an extra moment to ensure unmount finishes without flicker
       setTimeout(() => setIsClosing(false), 100);
@@ -438,7 +453,7 @@ export default function ModernVideoPlayer({
         }).start();
 
         // Force Portrait for previews, Landscape for full movies
-        if (Platform.OS !== "web") {
+        if (Platform.OS !== "web" && shouldLockOrientation) {
           if (isPreview) {
             ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
           } else {
@@ -449,11 +464,15 @@ export default function ModernVideoPlayer({
                }
              }, 400);
           }
+        } else if (Platform.OS !== "web") {
+          ScreenOrientation.unlockAsync().catch(() => {});
         }
       } else {
         StatusBar.setHidden(false, 'fade');
-        if (Platform.OS !== "web") {
+        if (Platform.OS !== "web" && shouldLockOrientation) {
            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+        } else if (Platform.OS !== "web") {
+           ScreenOrientation.unlockAsync().catch(() => {});
         }
         safeSetNavigationBar('visible').catch(() => {});
         fullPlayerAnim.setValue(0);
@@ -485,13 +504,17 @@ export default function ModernVideoPlayer({
       if (hideInterval) clearInterval(hideInterval);
       
       // Failsafe: Ensure orientation and UI are restored when player unmounts
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== 'web' && shouldLockOrientation) {
         ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      } else if (Platform.OS !== 'web') {
+        ScreenOrientation.unlockAsync().catch(() => {});
+      }
+      if (Platform.OS !== 'web') {
         StatusBar.setHidden(false, 'fade');
         safeSetNavigationBar('visible').catch(() => {});
       }
     };
-  }, [playerMode]);
+  }, [playerMode, shouldLockOrientation]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -1072,8 +1095,18 @@ export default function ModernVideoPlayer({
       return;
     }
 
-    if (s.isLoaded && s.didJustFinish && hasNext && onNext) {
-      onNext();
+    if (s.isLoaded && s.didJustFinish) {
+      if (hasNext && onNext) {
+        onNext();
+      } else if (!isPreview) {
+        // Standalone movie or last part finished - track completion
+        incrementCompletion().then(count => {
+          // Trigger rating modal after 3 completed movies if they haven't rated yet
+          if (count >= 3 && !profile.hasRatedApp) {
+            DeviceEventEmitter.emit("triggerRating");
+          }
+        });
+      }
     }
 
     // Memoized showNextSuggestion state update
@@ -1551,8 +1584,22 @@ export default function ModernVideoPlayer({
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             if (NativeModules.PipModule) {
+                              pipRequestedRef.current = true;
                               NativeModules.PipModule.updatePipParams(16, 9, true);
                               NativeModules.PipModule.enterPipMode();
+                              setShowControls(false);
+                              showControlsRef.current = false;
+                              setIsControlsMounted(false);
+                              controlsOpacity.setValue(0);
+                              setTimeout(() => {
+                                if (!isPiPActiveRef.current && appStateRef.current === 'active') {
+                                  pipRequestedRef.current = false;
+                                  setIsControlsMounted(true);
+                                  setShowControls(true);
+                                  showControlsRef.current = true;
+                                  controlsOpacity.setValue(1);
+                                }
+                              }, 1200);
                             } else {
                               Alert.alert("PiP Error", "Native PiP module not found.", [{ text: "OK" }]);
                             }
@@ -2820,4 +2867,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 });
-
