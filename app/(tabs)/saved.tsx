@@ -351,8 +351,11 @@ const SeriesPreviewOpeningSkeleton = React.memo(() => (
 ));
 
 const SeriesGridOpeningSkeleton = React.memo(function SeriesGridOpeningSkeleton() {
+  const insets = useSafeAreaInsets();
+  const topPadding = Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 48 : insets.top + 48;
+  
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', paddingHorizontal: 16, paddingTop: 56, zIndex: 20000, elevation: 20000 }]}>
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0a0a0f', paddingHorizontal: 16, paddingTop: topPadding + 10, zIndex: 20000 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 22 }}>
         <SkeletonLoader width={42} height={42} borderRadius={21} />
         <SkeletonLoader width="72%" height={42} borderRadius={21} />
@@ -371,6 +374,7 @@ const SeriesGridOpeningSkeleton = React.memo(function SeriesGridOpeningSkeleton(
 });
 
 export default function SeriesScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { 
     allSeries: ALL_SERIES, 
@@ -389,7 +393,54 @@ export default function SeriesScreen() {
   const [featuredTab, setFeaturedTab] = useState<string>("New Releases");
   const [loadingSeriesLink, setLoadingSeriesLink] = useState(false);
   const [isPreviewOpening, setIsPreviewOpening] = useState(false);
-  const [isGridOpening, setIsGridOpening] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<any>(null);
+
+  const SearchLoadingDots = useCallback(() => {
+    const dot1 = useRef(new Animated.Value(0.3)).current;
+    const dot2 = useRef(new Animated.Value(0.3)).current;
+    const dot3 = useRef(new Animated.Value(0.3)).current;
+    
+    useEffect(() => {
+      const createPulse = (val: Animated.Value, delay: number) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(val, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.timing(val, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+          ])
+        );
+      };
+      const a1 = createPulse(dot1, 0);
+      const a2 = createPulse(dot2, 200);
+      const a3 = createPulse(dot3, 400);
+      a1.start(); a2.start(); a3.start();
+      return () => { a1.stop(); a2.stop(); a3.stop(); };
+    }, []);
+
+    const topOffset = Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 48 : insets.top + 48;
+
+    return (
+      <View style={{ 
+        position: 'absolute', 
+        top: topOffset, 
+        left: 0, 
+        right: 0, 
+        height: 30, 
+        flexDirection: 'row', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        zIndex: 10000,
+        gap: 6,
+        backgroundColor: '#0a0a0f'
+      }}>
+        <Text style={{ color: '#818cf8', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginRight: 4 }}>SEARCHING</Text>
+        <Animated.View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#818cf8', opacity: dot1, transform: [{ scale: dot1 }] }} />
+        <Animated.View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#818cf8', opacity: dot2, transform: [{ scale: dot2 }] }} />
+        <Animated.View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#818cf8', opacity: dot3, transform: [{ scale: dot3 }] }} />
+      </View>
+    );
+  }, [insets.top]);
 
   const handleTabPress = useCallback((title: string) => {
     if (featuredTab === title) return;
@@ -688,8 +739,14 @@ export default function SeriesScreen() {
       setQuery(text);
       if (text && text.trim().length > 0) {
         setIsSearchActive(true);
+        setIsSearching(true);
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+           setIsSearching(false);
+        }, 400);
       } else {
         setIsSearchActive(false);
+        setIsSearching(false);
       }
     });
 
@@ -833,7 +890,7 @@ export default function SeriesScreen() {
 
       {/* Spacer for header - hidden when series detail is open */}
       {navigationStack.length === 0 && (
-        <View style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight! + 48 : 40, paddingBottom: 0 }} />
+        <View style={{ paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 48 : insets.top + 48, paddingBottom: 0 }} />
       )}
 
       {navigationStack.length === 0 && (
@@ -983,6 +1040,10 @@ export default function SeriesScreen() {
             </View>
           </View>
         </ScrollView>
+      ) : isSearching ? (
+        <View style={{ flex: 1 }}>
+           <SeriesGridOpeningSkeleton />
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -1022,6 +1083,7 @@ export default function SeriesScreen() {
 
       {(loadingSeriesLink || isPreviewOpening) && <SeriesPreviewOpeningSkeleton />}
       {isGridOpening && !loadingSeriesLink && !isPreviewOpening && <SeriesGridOpeningSkeleton />}
+      {isSearching && <SearchLoadingDots />}
 
       {/* Series Preview Modal Stack */}
       {navigationStack.map((item, index) => {

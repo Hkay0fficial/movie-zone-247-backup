@@ -344,6 +344,8 @@ export default function SearchScreen() {
             </Text>
 
           </View>
+        ) : (loading || isSearching) ? (
+          <GridSkeleton />
         ) : displayResults.length === 0 ? (
           <View style={styles.premiumEmptyContainer}>
             <View style={styles.emptyIconGlow}>
