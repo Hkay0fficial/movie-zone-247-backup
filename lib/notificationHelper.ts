@@ -9,6 +9,8 @@ class DownloadNotificationManager {
   private lastUpdate: Record<string, number> = {};
   private lastPausedState: Record<string, boolean> = {};
   private activeNotifications: Set<string> = new Set();
+  private permissionChecked = false;
+  private hasPermission = true;
   private UPDATE_THROTTLE_MS = 1000; // 1 second between system tray updates
 
   async initChannel() {
@@ -27,12 +29,12 @@ class DownloadNotificationManager {
       {
         identifier: 'pause',
         buttonTitle: 'Pause Download',
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: true },
       },
       {
         identifier: 'cancel',
         buttonTitle: 'Cancel',
-        options: { isDestructive: true, opensAppToForeground: false },
+        options: { isDestructive: true, opensAppToForeground: true },
       },
     ]);
 
@@ -41,14 +43,36 @@ class DownloadNotificationManager {
       {
         identifier: 'resume',
         buttonTitle: 'Resume',
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: true },
       },
       {
         identifier: 'cancel',
         buttonTitle: 'Cancel',
-        options: { isDestructive: true, opensAppToForeground: false },
+        options: { isDestructive: true, opensAppToForeground: true },
       },
     ]);
+  }
+
+  private async ensurePermission() {
+    if (this.permissionChecked) return this.hasPermission;
+
+    try {
+      const existing = await Notifications.getPermissionsAsync();
+      let status = existing.status;
+
+      if (status !== 'granted') {
+        const requested = await Notifications.requestPermissionsAsync();
+        status = requested.status;
+      }
+
+      this.hasPermission = status === 'granted';
+    } catch (e) {
+      console.warn('[DownloadNotification] Permission check failed:', e);
+      this.hasPermission = false;
+    }
+
+    this.permissionChecked = true;
+    return this.hasPermission;
   }
 
   async updateProgress(
@@ -58,8 +82,12 @@ class DownloadNotificationManager {
     subtext: string = '', 
     posterUrl: string = '',
     isPaused: boolean = false,
-    movieId?: string 
+    movieId?: string,
+    episodeId?: string
   ) {
+    const canNotify = await this.ensurePermission();
+    if (!canNotify) return;
+
     const now = Date.now();
     const last = this.lastUpdate[id] || 0;
 
@@ -86,7 +114,7 @@ class DownloadNotificationManager {
     const content: Notifications.NotificationContentInput = {
       title: title, // Main title is the MovieName
       body: bodyText,
-      data: { movieId: movieId || id, downloadId: id, type: 'download' }, // Add data for tap support
+      data: { movieId: movieId || id, downloadId: id, episodeId, type: 'download' }, // Add data for tap support
       sound: isComplete ? 'default' : false,
       sticky: !isComplete, 
       categoryIdentifier: isComplete ? undefined : (isPaused ? 'download_paused' : 'download_active'),
@@ -113,14 +141,28 @@ class DownloadNotificationManager {
     this.activeNotifications.delete(id);
     delete this.lastUpdate[id];
     delete this.lastPausedState[id];
-    await Notifications.dismissNotificationAsync(`download_${id}`);
+    const notificationId = `download_${id}`;
+    await Promise.allSettled([
+      Notifications.dismissNotificationAsync(notificationId),
+      Notifications.cancelScheduledNotificationAsync(notificationId),
+    ]);
   }
 
-  async notifyError(title: string, message: string) {
-     await Notifications.scheduleNotificationAsync({
+  async notifyError(id: string, title: string, message: string, movieId?: string, episodeId?: string) {
+    const canNotify = await this.ensurePermission();
+    if (!canNotify) return;
+
+    this.activeNotifications.delete(id);
+    delete this.lastUpdate[id];
+    delete this.lastPausedState[id];
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: `download_${id}`,
       content: {
         title: `Download Failed: ${title}`,
         body: message,
+        data: { movieId: movieId || id, downloadId: id, episodeId, type: 'download_error' },
+        sticky: false,
         color: '#ef4444',
       },
       trigger: Platform.OS === 'android' ? { channelId: 'downloads' } : null,

@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingBackButton } from "../../components/FloatingBackButton";
-import { Movie, Series, getStreamUrl, ALL_GENRES, ALL_VJS } from '@/constants/movieData';
+import { Movie, Series, ALL_GENRES, ALL_VJS } from '@/constants/movieData';
 import { useMovies } from '@/app/context/MovieContext';
 import { useSubscription } from '@/app/context/SubscriptionContext';
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
@@ -115,9 +115,32 @@ const GridSkeleton = React.memo(() => (
 
 import { resolveCDNUrl } from '@/constants/bunnyConfig';
 
+const normalizeSearchValue = (value: any) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const compactSearchValue = (value: any) => normalizeSearchValue(value).replace(/\s+/g, '');
+
+const getContentPartCount = (item: Movie | Series) => {
+  const rawCount = Number((item as any).episodes || 0);
+  const multiplier = Number((item as any).episodesPerPart || 1);
+  const episodeListCount = Array.isArray((item as any).episodeList)
+    ? (item as any).episodeList.length * multiplier
+    : 0;
+  const partsCount = Array.isArray((item as any).parts)
+    ? (item as any).parts.length * multiplier
+    : 0;
+
+  return Math.max(Number.isFinite(rawCount) ? rawCount : 0, episodeListCount, partsCount);
+};
+
 // ─── Search Result Card ───────────────────────────────────────────────────────
 function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => void }) {
   const isSeries = 'seasons' in item;
+  const partCount = getContentPartCount(item);
 
   return (
     <TouchableOpacity
@@ -131,6 +154,14 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
           colors={['transparent', 'rgba(10,10,15,0.95)'] as any}
           style={styles.cardGradient}
         />
+        {(isSeries || partCount > 1) && (
+          <View style={styles.partBadge}>
+            <Ionicons name="ellipsis-horizontal" size={9} color="#fff" style={{ marginRight: 2 }} />
+            <Text style={styles.partBadgeText}>
+              {partCount || 1} {isSeries ? 'EP' : partCount === 1 ? 'PART' : 'PARTS'}
+            </Text>
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.cardMeta}>
@@ -151,7 +182,7 @@ function ResultCard({ item, onPress }: { item: Movie | Series; onPress: () => vo
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { allMovies, allSeries, loading, selectedGenre, setSelectedGenre, selectedVJ, setSelectedVJ, clearFilters } = useMovies();
+  const { allMovies, allSeries, loading, selectedGenre, setSelectedGenre, selectedVJ, setSelectedVJ } = useMovies();
   const { setPlayingNow, setPlayerTitle, setSelectedVideoUrl, setPlayerMode, playerMode } = useSubscription();
   const { profile } = useUser();
   const [query, setQuery] = useState('');
@@ -203,23 +234,67 @@ export default function SearchScreen() {
   }, []);
 
   const displayResults = React.useMemo(() => {
-    if (!debouncedQuery) return allContent;
-    return allContent.filter(item => {
-      const title = item.title?.toLowerCase() || '';
-      const genre = item.genre?.toLowerCase() || '';
-      const vj = item.vj?.toLowerCase() || '';
+    let results = allContent;
+
+    if (selectedVJ) {
+      const vjFilter = normalizeSearchValue(selectedVJ);
+      results = results.filter(item => normalizeSearchValue(item.vj).includes(vjFilter));
+    }
+
+    if (selectedGenre) {
+      const genreFilter = normalizeSearchValue(selectedGenre);
+      results = results.filter(item => normalizeSearchValue(item.genre).includes(genreFilter));
+    }
+
+    if (!debouncedQuery) return results;
+
+    const compactQuery = compactSearchValue(debouncedQuery);
+
+    return results.filter(item => {
+      const title = normalizeSearchValue(item.title);
+      const compactTitle = compactSearchValue(item.title);
+      const genre = normalizeSearchValue(item.genre);
+      const vj = normalizeSearchValue(item.vj);
       const year = String(item.year || '');
+      const description = normalizeSearchValue((item as any).description);
+      const episodeText = Array.isArray((item as any).episodeList)
+        ? normalizeSearchValue((item as any).episodeList.map((ep: any) => `${ep.title || ''} ${ep.episode || ''} ${ep.season || ''}`).join(' '))
+        : '';
 
       return title.includes(debouncedQuery) ||
+        compactTitle.includes(compactQuery) ||
         genre.includes(debouncedQuery) ||
         vj.includes(debouncedQuery) ||
-        year.includes(debouncedQuery);
+        year.includes(debouncedQuery) ||
+        description.includes(debouncedQuery) ||
+        episodeText.includes(debouncedQuery);
     });
-  }, [allContent, debouncedQuery]);
+  }, [allContent, debouncedQuery, selectedGenre, selectedVJ]);
 
-  const hasFilters = selectedGenre || selectedVJ || debouncedQuery.length > 0;
+  const hasFilters = Boolean(selectedGenre || selectedVJ || debouncedQuery.length > 0);
 
-  const lastBackPressTime = useRef(0);
+  const openPreview = useCallback((item: Movie | Series) => {
+    setIsStackLoading(true);
+    setNavigationStack(prev => [...prev, item]);
+    setTimeout(() => setIsStackLoading(false), 600);
+  }, []);
+
+  const clearOneSearchStep = useCallback(() => {
+    if (query.length > 0 || debouncedQuery.length > 0) {
+      setQuery('');
+      setDebouncedQuery('');
+      return true;
+    }
+    if (selectedGenre) {
+      setSelectedGenre(null);
+      return true;
+    }
+    if (selectedVJ) {
+      setSelectedVJ(null);
+      return true;
+    }
+    return false;
+  }, [debouncedQuery.length, query.length, selectedGenre, selectedVJ, setSelectedGenre, setSelectedVJ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -238,10 +313,7 @@ export default function SearchScreen() {
         }
 
         // 3. Handle local search state
-        if (hasFilters) {
-          setQuery('');
-          setDebouncedQuery('');
-          clearFilters();
+        if (hasFilters && clearOneSearchStep()) {
           return true;
         }
 
@@ -251,7 +323,7 @@ export default function SearchScreen() {
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [hasFilters, playerMode, navigationStack.length, clearFilters])
+    }, [clearOneSearchStep, hasFilters, playerMode, router, setPlayerMode])
   );
 
   useEffect(() => {
@@ -279,10 +351,8 @@ export default function SearchScreen() {
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <TouchableOpacity
             onPress={() => {
-              if (hasFilters) {
-                setQuery('');
-                setDebouncedQuery('');
-                clearFilters();
+              if (hasFilters && clearOneSearchStep()) {
+                return;
               } else {
                 router.back();
               }
@@ -365,16 +435,7 @@ export default function SearchScreen() {
             renderItem={({ item }) => (
               <ResultCard
                 item={item}
-                onPress={() => {
-                  const isSeries = "seasons" in item || (item as any).type === "Series" || (item as any).isMiniSeries;
-                  if (isSeries) {
-                    router.push(`/(tabs)/saved?seriesId=${item.id}`);
-                  } else {
-                    setIsStackLoading(true);
-                    setNavigationStack(prev => [...prev, item]);
-                    setTimeout(() => setIsStackLoading(false), 600);
-                  }
-                }}
+                onPress={() => openPreview(item)}
               />
             )}
             ListHeaderComponent={() => (
@@ -388,9 +449,7 @@ export default function SearchScreen() {
         <FloatingBackButton
           visible={hasFilters && navigationStack.length === 0}
           onPress={() => {
-            setQuery('');
-            setDebouncedQuery('');
-            clearFilters();
+            clearOneSearchStep();
           }}
           label="CLEAR SEARCH"
         />
@@ -449,14 +508,7 @@ export default function SearchScreen() {
             setSelectedVideoUrl={setSelectedVideoUrl}
             setPlayerTitle={setPlayerTitle}
             onSwitch={(m: any) => {
-              const isSeries = "seasons" in m || m.type === 'Series' || (m as any).isMiniSeries;
-              if (isSeries) {
-                router.push(`/(tabs)/saved?seriesId=${m.id}`);
-              } else {
-                setIsStackLoading(true);
-                setNavigationStack(prev => [...prev, m]);
-                setTimeout(() => setIsStackLoading(false), 600);
-              }
+              openPreview(m);
             }}
             playingNow={null} // Managed by global context
             setPlayingNow={setPlayingNow}
@@ -665,6 +717,25 @@ const styles = StyleSheet.create({
   vjText: {
     color: '#5B5FEF',
     fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  partBadge: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(17,17,24,0.76)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  partBadgeText: {
+    color: '#fff',
+    fontSize: 9,
     fontWeight: '900',
     textTransform: 'uppercase',
   },

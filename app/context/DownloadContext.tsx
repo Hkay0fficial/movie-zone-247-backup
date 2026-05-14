@@ -25,8 +25,8 @@ import { useSubscription } from './SubscriptionContext';
 import * as Notifications from 'expo-notifications';
 import { downloadNotificationManager } from '@/lib/notificationHelper';
 import { addNotificationResponseListener } from '@/lib/notifications';
-import { db } from '../../constants/firebaseConfig';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { auth, db } from '../../constants/firebaseConfig';
+import { doc, updateDoc, increment, runTransaction, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 const {
   documentDirectory,
@@ -77,18 +77,23 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadEntry>>({});
   const [downloadQueue, setDownloadQueue] = useState<string[]>([]);
   const [episodeDownloads, setEpisodeDownloads] = useState<Record<string, string>>({});
+  const [episodeParentMap, setEpisodeParentMap] = useState<Record<string, string>>({});
   const [downloadedMovies, setDownloadedMovies] = useState<any[]>([]);
   const [downloadsUsedToday, setDownloadsUsedToday] = useState(0);
 
   const subscriptionData = useSubscription();
   const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
+  const hasInternalDownloadAccess = isPaid || isSubscribed || subscriptionBundle !== 'None' || allMoviesFree;
 
   // Refs for download engine state
   const entriesRef = useRef<Record<string, DownloadEntry>>({});
   const resumablesRef = useRef<Record<string, FileSystem.DownloadResumable>>({});
   const cancelledIdsRef = useRef<Set<string>>(new Set()); 
   const completedIdsRef = useRef<Set<string>>(new Set()); 
+  const reservedExternalIdsRef = useRef<Set<string>>(new Set());
+  const cancelledSeriesIdsRef = useRef<Set<string>>(new Set());
   const isProcessing = useRef(false);
+  const externalReservationQueueRef = useRef(Promise.resolve());
 
   // ── MIGRATION CLEANUP ────────────────────────────────────────────────────────
   // This kills any legacy "Auto-downloads" by clearing the old context's keys
@@ -108,15 +113,22 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const load = async () => {
       try {
-        const [epSaved, movSaved, usedSaved, dateSaved] = await Promise.all([
+        const [epSaved, parentSaved, movSaved, usedSaved, dateSaved] = await Promise.all([
           AsyncStorage.getItem('down_episodes'),
+          AsyncStorage.getItem('down_episode_parents'),
           AsyncStorage.getItem('down_movies'),
           AsyncStorage.getItem('down_used_today_v2'),
           AsyncStorage.getItem('down_date_v2'),
         ]);
         if (epSaved) setEpisodeDownloads(JSON.parse(epSaved));
+        if (parentSaved) setEpisodeParentMap(JSON.parse(parentSaved));
         if (movSaved) setDownloadedMovies(JSON.parse(movSaved));
-        
+
+        if (!isGuest) {
+          setDownloadsUsedToday(0);
+          return;
+        }
+
         const today = new Date().toDateString();
         if (dateSaved === today && usedSaved) {
           setDownloadsUsedToday(parseInt(usedSaved, 10));
@@ -128,12 +140,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch (_) {}
     };
     load();
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     AsyncStorage.setItem('down_episodes', JSON.stringify(episodeDownloads));
+    AsyncStorage.setItem('down_episode_parents', JSON.stringify(episodeParentMap));
     AsyncStorage.setItem('down_movies', JSON.stringify(downloadedMovies));
-  }, [episodeDownloads, downloadedMovies]);
+  }, [episodeDownloads, episodeParentMap, downloadedMovies]);
 
   useEffect(() => {
     AsyncStorage.setItem('down_used_today_v2', String(downloadsUsedToday));
@@ -199,6 +212,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = response.notification.request.content.data;
       const id = data?.downloadId || data?.movieId;
       const parentId = data?.movieId; // Use specifically for routing
+      const episodeId = data?.episodeId;
       if (!id) return;
 
       if (actionId === 'pause') {
@@ -212,7 +226,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { router } = require('expo-router');
         router.push({
           pathname: '/(tabs)',
-          params: { movieId: parentId || id }
+          params: { movieId: parentId || id, episodeId }
         });
       }
     });
@@ -220,8 +234,47 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   // ── Logic Helpers ───────────────────────────────────────────────────────────
+  const getDownloadDateKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getExternalCounterRef = () => {
+    const user = auth.currentUser;
+    const dateKey = getDownloadDateKey();
+
+    if (isGuest) {
+      const id = subscriptionData.deviceId || user?.uid;
+      return id ? doc(db, 'device_trials', id) : null;
+    }
+
+    return user ? doc(db, 'users', user.uid, 'downloadCounters', dateKey) : null;
+  };
+
+  useEffect(() => {
+    const ref = getExternalCounterRef();
+    if (!ref) return;
+
+    const unsub = onSnapshot(ref, (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      const dateKey = getDownloadDateKey();
+
+      if (isGuest) {
+        const usageDate = data.externalDownloadDate || '';
+        setDownloadsUsedToday(usageDate === dateKey ? (data.externalDownloadsUsed || 0) : 0);
+      } else {
+        setDownloadsUsedToday(data.externalDownloadsUsed || 0);
+      }
+    }, () => {});
+
+    return unsub;
+  }, [auth.currentUser?.uid, isGuest, subscriptionData.deviceId]);
+
   const getExternalDownloadLimit = () => {
-    if (isGuest) return 1; // 1 Free Trial
+    if (isGuest) return (subscriptionData as any).hasUsedGuestTrial ? 0 : 1; // 1 Free Trial total
     if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit;
     const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
     if (normalizedBundle === 'none') return 0;
@@ -244,12 +297,113 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const entry = entriesRef.current[id];
     const poster = entry?.poster || '';
     const movieId = entry?.movieId || id;
-    downloadNotificationManager.updateProgress(id, title, progress, speed, poster, isPaused, movieId)
+    const episodeId = entry?.isEpisode ? id : undefined;
+    downloadNotificationManager.updateProgress(id, title, progress, speed, poster, isPaused, movieId, episodeId)
       .catch(e => console.warn('[Notif] Update failed:', e));
   };
 
+  const reserveExternalDownloadSlotNow = async (entry: DownloadEntry) => {
+    if (entry.mode !== 'external') return true;
+
+    if (!isPaid && !isSubscribed && !isGuest) {
+      Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable external downloads.');
+      return false;
+    }
+
+    const ref = getExternalCounterRef();
+    const limit = getExternalDownloadLimit();
+    const dateKey = getDownloadDateKey();
+
+    if (!ref || limit <= 0) {
+      Alert.alert('Limit Reached', 'External downloads are not available on your current plan.');
+      return false;
+    }
+
+    try {
+      const usedAfterReserve = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        const data = snap.exists() ? snap.data() : {};
+        const usageDate = isGuest ? (data.externalDownloadDate || '') : dateKey;
+        const currentUsed = usageDate === dateKey ? (data.externalDownloadsUsed || 0) : 0;
+
+        if (currentUsed >= limit) {
+          throw new Error('LIMIT_REACHED');
+        }
+
+        const nextUsed = currentUsed + 1;
+        transaction.set(ref, {
+          externalDownloadsUsed: nextUsed,
+          externalDownloadDate: dateKey,
+          updatedAt: serverTimestamp(),
+          ...(isGuest ? {} : { userId: auth.currentUser?.uid, date: dateKey }),
+        }, { merge: true });
+
+        return nextUsed;
+      });
+
+      reservedExternalIdsRef.current.add(entry.id);
+      setDownloadsUsedToday(usedAfterReserve);
+      return true;
+    } catch (error: any) {
+      const isLimitReached = error?.message === 'LIMIT_REACHED';
+      const message = isLimitReached
+        ? (isGuest
+          ? 'You have already used your free trial download. Please register or upgrade to continue.'
+          : 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.')
+        : 'Could not confirm your external download allowance. Please try again in a moment.';
+      console.warn('[DownloadContext] External download limit check failed:', error?.code || error?.message || error);
+      Alert.alert(isLimitReached ? 'Limit Reached' : 'Download Limit Check Failed', message);
+      return false;
+    }
+  };
+
+  const reserveExternalDownloadSlot = (entry: DownloadEntry) => {
+    if (entry.mode !== 'external') return Promise.resolve(true);
+
+    const task = externalReservationQueueRef.current.then(() => reserveExternalDownloadSlotNow(entry));
+    externalReservationQueueRef.current = task.then(() => undefined).catch(() => undefined);
+    return task;
+  };
+
+  const releaseExternalDownloadSlot = async (id: string) => {
+    if (!reservedExternalIdsRef.current.has(id)) return;
+    reservedExternalIdsRef.current.delete(id);
+
+    const ref = getExternalCounterRef();
+    if (!ref) return;
+
+    try {
+      const nextUsed = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (!snap.exists()) return 0;
+
+        const data = snap.data();
+        const dateKey = getDownloadDateKey();
+        const usageDate = isGuest ? (data.externalDownloadDate || '') : dateKey;
+        const currentUsed = usageDate === dateKey ? (data.externalDownloadsUsed || 0) : 0;
+        const updatedUsed = Math.max(0, currentUsed - 1);
+
+        transaction.set(ref, {
+          externalDownloadsUsed: updatedUsed,
+          externalDownloadDate: dateKey,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        return updatedUsed;
+      });
+
+      setDownloadsUsedToday(nextUsed);
+    } catch (_) {}
+  };
+
   // ── Actions ─────────────────────────────────────────────────────────────────
-  const enqueue = (entry: DownloadEntry) => {
+  const enqueue = async (entry: DownloadEntry) => {
+    if (cancelledSeriesIdsRef.current.has(entry.movieId)) {
+      cancelledIdsRef.current.add(entry.id);
+      downloadNotificationManager.dismiss(entry.id).catch(() => {});
+      return false;
+    }
+
     // 1. Check existing queue/active state
     if (entriesRef.current[entry.id]) {
       Alert.alert('In Progress', 'This item is already downloading or in your queue.');
@@ -258,21 +412,8 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 2. Enforce Plan Limits
     if (entry.mode === 'external') {
-      // Strict: Only actual subscribers or guest trialers can save to gallery
-      if (!isSubscribed && !isGuest) {
-        Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable external downloads.');
-        return false;
-      }
-      
-      const remainingExternal = getRemainingDownloads();
-      if (remainingExternal <= 0) {
-        if (isGuest) {
-          Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
-        } else {
-          Alert.alert('Limit Reached', 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.');
-        }
-        return false;
-      }
+      const reserved = await reserveExternalDownloadSlot(entry);
+      if (!reserved) return false;
     } else {
       // Internal Mode
       if (isGuest && !allMoviesFree) {
@@ -281,7 +422,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
           return false;
         }
-      } else if (!isPaid && !allMoviesFree) {
+      } else if (!hasInternalDownloadAccess) {
         Alert.alert('Subscription Required', 'Offline viewing inside the app is a premium feature. Please upgrade to start downloading.');
         return false;
       }
@@ -326,13 +467,6 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       progress: 0, speedString: '', isPaused: false,
       mode, url, item: series, isEpisode: true,
     });
-
-    // Increment download count in Firestore
-    if (series.id) {
-      updateDoc(doc(db, 'series', series.id), {
-        downloads: increment(1)
-      }).catch(e => console.warn('Failed to increment series downloads:', e));
-    }
   };
 
   const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external') => {
@@ -361,14 +495,6 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       poster: movie.poster || '', progress: 0, speedString: '', isPaused: false,
       mode, url, item: movie, isEpisode: false,
     });
-
-    // Increment download count in Firestore
-    if (movie.id) {
-      const collectionName = (movie as any).episodes ? 'series' : 'movies';
-      updateDoc(doc(db, collectionName, movie.id), {
-        downloads: increment(1)
-      }).catch(e => console.warn('Failed to increment movie downloads:', e));
-    }
   };
 
   const pauseDownload = (id: string) => {
@@ -400,9 +526,12 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const cancelDownload = (id: string) => {
     console.log('[Download] Cancelling:', id);
     cancelledIdsRef.current.add(id);
+    const entry = entriesRef.current[id];
     const resumable = resumablesRef.current[id];
     if (resumable) resumable.cancelAsync().catch(() => {});
+    if (entry?.mode === 'external') releaseExternalDownloadSlot(id);
     downloadNotificationManager.dismiss(id).catch(() => {});
+    setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 500);
     delete resumablesRef.current[id];
     delete entriesRef.current[id];
     isProcessing.current = false; 
@@ -412,19 +541,65 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const cancelSeriesDownloads = (seriesId: string) => {
     console.log('[Download] Cancelling all episodes for series:', seriesId);
+    cancelledSeriesIdsRef.current.add(seriesId);
+    setTimeout(() => cancelledSeriesIdsRef.current.delete(seriesId), 3000);
+
     const toCancel = Object.values(entriesRef.current)
       .filter(entry => entry.movieId === seriesId)
       .map(entry => entry.id);
-    
-    toCancel.forEach(id => cancelDownload(id));
+
+    if (toCancel.length === 0) return;
+
+    toCancel.forEach(id => {
+      cancelledIdsRef.current.add(id);
+    });
+
+    toCancel.forEach(id => {
+      const entry = entriesRef.current[id];
+      const resumable = resumablesRef.current[id];
+      if (resumable) resumable.cancelAsync().catch(() => {});
+      if (entry?.mode === 'external') releaseExternalDownloadSlot(id);
+      downloadNotificationManager.dismiss(id).catch(() => {});
+      setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 500);
+      setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 1500);
+      delete resumablesRef.current[id];
+      delete entriesRef.current[id];
+    });
+
+    isProcessing.current = false;
+    setDownloadQueue(prev => prev.filter(qid => !toCancel.includes(qid)));
+    setActiveDownloads(prev => {
+      const next = { ...prev };
+      toCancel.forEach(id => delete next[id]);
+      return next;
+    });
   };
 
   const removeDownload = (id: string) => {
     setDownloadedMovies(prev => prev.filter(m => m.id !== id));
     setEpisodeDownloads(prev => {
       const next = { ...prev };
+      if (next[id]) {
+        delete next[id];
+      } else {
+        Object.keys(next).forEach(key => {
+          const parentId = episodeParentMap[key];
+          if (parentId === id || key.startsWith(`${id}-ep-`)) {
+            delete next[key];
+          }
+        });
+      }
+      return next;
+    });
+    setEpisodeParentMap(prev => {
+      const next = { ...prev };
+      if (next[id]) {
+        delete next[id];
+      }
       Object.keys(next).forEach(key => {
-        if (key.includes(id)) delete next[key];
+        if (next[key] === id || key === id || key.startsWith(`${id}-ep-`)) {
+          delete next[key];
+        }
       });
       return next;
     });
@@ -434,9 +609,20 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const movie = downloadedMovies.find(m => m.id === id);
       const epUri = episodeDownloads[id];
-      const uri = movie?.localUri || epUri;
-      
-      if (uri) {
+      const childEpisodeIds = Object.keys(episodeDownloads).filter((epId) => {
+        const parentId = episodeParentMap[epId];
+        return parentId === id || epId.startsWith(`${id}-ep-`);
+      });
+      const urisToDelete = new Set<string>();
+
+      if (movie?.localUri) urisToDelete.add(movie.localUri);
+      if (epUri) urisToDelete.add(epUri);
+      childEpisodeIds.forEach((epId) => {
+        const childUri = episodeDownloads[epId];
+        if (childUri) urisToDelete.add(childUri);
+      });
+
+      for (const uri of urisToDelete) {
         await FileSystem.deleteAsync(uri, { idempotent: true });
       }
       
@@ -584,34 +770,64 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (success && lastResultUri && !cancelledIdsRef.current.has(id)) {
           if (mode === 'external') {
             const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status === 'granted') {
-              await Promise.race([
-                MediaLibrary.createAssetAsync(lastResultUri),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000)),
-              ]).catch(() => {});
+            if (status !== 'granted') {
+              await releaseExternalDownloadSlot(id);
+              await FileSystem.deleteAsync(lastResultUri, { idempotent: true }).catch(() => {});
+              await downloadNotificationManager.notifyError(
+                id,
+                title,
+                'Media permission was denied. Allow Photos and Videos permission to save this download.',
+                entry.movieId,
+                isEpisode ? id : undefined
+              ).catch(() => {});
+              Alert.alert('Permission Required', 'Please allow media access in your phone settings to save external downloads.');
+              return;
             }
-            if (isGuest) recordTrialUsage();
-          }
-          if (isEpisode) {
-            setEpisodeDownloads(prev => ({ ...prev, [id]: lastResultUri }));
-            setDownloadedMovies(prev => prev.some(m => m.id === item.id) ? prev : [item, ...prev]);
-          } else {
-            setDownloadedMovies(prev => prev.some(m => m.id === id) ? prev : [{ ...item, localUri: lastResultUri } as any, ...prev]);
+
+            await Promise.race([
+              MediaLibrary.createAssetAsync(lastResultUri),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000)),
+            ]);
+
+            await FileSystem.deleteAsync(lastResultUri, { idempotent: true }).catch(() => {});
           }
 
-          // ONLY increment the daily limit counter for EXTERNAL downloads or GUEST trials
-          // Paid users enjoy unlimited internal downloads
-          if (mode === 'external' || isGuest) {
+          if (isGuest) recordTrialUsage();
+
+          const analyticsCollection = isEpisode || 'seasons' in item ? 'series' : 'movies';
+          const analyticsId = isEpisode ? entry.movieId : item.id;
+          if (analyticsId) {
+            updateDoc(doc(db, analyticsCollection, analyticsId), {
+              downloads: increment(1)
+            }).catch(e => console.warn('Failed to increment completed downloads:', e));
+          }
+
+          if (isEpisode) {
+            if (mode === 'internal') {
+              setEpisodeParentMap(prev => ({ ...prev, [id]: item.id }));
+              setEpisodeDownloads(prev => ({ ...prev, [id]: lastResultUri }));
+              setDownloadedMovies(prev => prev.some(m => m.id === item.id) ? prev : [item, ...prev]);
+            }
+          } else if (mode === 'internal') {
+            setDownloadedMovies(prev => prev.some(m => m.id === id) ? prev : [{ ...item, ...(mode === 'internal' ? { localUri: lastResultUri } : {}) } as any, ...prev]);
+          }
+
+          // External downloads are counted when the slot is reserved. Do not
+          // count them again here, or cancel/retry can desync the visible limit.
+          if (isGuest && mode !== 'external') {
             setDownloadsUsedToday(prev => prev + 1);
           }
           
           completedIdsRef.current.add(id);
           updateNotification(id, title, 100, 'Complete', true);
         } else if (!success && fatalError && !cancelledIdsRef.current.has(id)) {
+          if (mode === 'external') await releaseExternalDownloadSlot(id);
           Alert.alert('Download Failed', `"${title}" - ${fatalError}`);
-          downloadNotificationManager.notifyError(title, fatalError).catch(() => {});
+          downloadNotificationManager.notifyError(id, title, fatalError, entry.movieId, isEpisode ? id : undefined).catch(() => {});
         }
-      } catch (err) {} finally {
+      } catch (err) {
+        if (mode === 'external') await releaseExternalDownloadSlot(id);
+      } finally {
         delete resumablesRef.current[id];
         delete entriesRef.current[id];
         isProcessing.current = false;

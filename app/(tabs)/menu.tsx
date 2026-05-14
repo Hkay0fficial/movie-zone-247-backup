@@ -122,7 +122,10 @@ export default function MenuScreen() {
       }
       setIsMenuLoading(false);
     }, (error: any) => {
-      if (error.code === 'permission-denied') return;
+      if (error.code === 'permission-denied') {
+        setIsMenuLoading(false);
+        return;
+      }
       console.error("Menu Config listener error:", error);
       setIsMenuLoading(false);
     });
@@ -421,6 +424,7 @@ export default function MenuScreen() {
     setPlayerTitle,
     selectedVideoUrl,
     setSelectedVideoUrl,
+    isDeviceBlocked,
   } = useSubscription();
 
   const {
@@ -428,7 +432,7 @@ export default function MenuScreen() {
     getExternalDownloadLimit,
     getRemainingDownloads,
     downloadedMovies,
-    removeDownload,
+    deleteDownload,
     activeDownloads,
     episodeDownloads,
   } = useDownloads();
@@ -509,7 +513,8 @@ export default function MenuScreen() {
       setRenewalDate(date.toLocaleDateString('en-US', options));
     } else if (subscriptionBundle.toLowerCase().includes('vip')) {
       setRenewalDate('Permanent Access');
-    } else if (subscriptionBundle !== 'None') {
+    } else if (isPaid) {
+
       setRenewalDate('Processing Coverage...');
     } else {
       setRenewalDate('No active subscription');
@@ -527,7 +532,7 @@ export default function MenuScreen() {
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
 
   React.useEffect(() => {
-    if (auth.currentUser?.uid) {
+    if (auth.currentUser?.uid && !isGuest) {
       const q = query(
         collection(db, 'users', auth.currentUser.uid, 'transactions'),
         orderBy('createdAt', 'desc')
@@ -544,7 +549,7 @@ export default function MenuScreen() {
       });
       return () => unsubscribe();
     }
-  }, [auth.currentUser?.uid]);
+  }, [auth.currentUser?.uid, isGuest]);
 
   React.useEffect(() => {
     if (contextPaymentMethod) {
@@ -1283,6 +1288,49 @@ export default function MenuScreen() {
     toggleStatsModal(null);
   };
 
+  const handleLogout = React.useCallback(async () => {
+    try {
+      if (deviceId) {
+        try {
+          await removeDevice(deviceId);
+        } catch (e) {
+          console.error('Failed to remove device on logout:', e);
+        }
+      }
+
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {}
+      await signOut(auth);
+      router.replace('/login');
+    } catch (e) {
+      console.error('Failed to logout:', e);
+      Alert.alert('Logout Failed', 'Please try again.');
+    }
+  }, [deviceId, removeDevice, router]);
+
+  if (isDeviceBlocked) {
+    return (
+      <View style={styles.container}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0f0f14' }]}>
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+        </View>
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: insets.top + 80, justifyContent: 'center' }}>
+          <View style={{ borderRadius: 26, padding: 24, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+              <Ionicons name="phone-portrait-outline" size={30} color="#f87171" />
+            </View>
+            <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', marginBottom: 10 }}>Device Limit Reached</Text>
+            <Text style={{ color: '#a8b0c2', fontSize: 15, lineHeight: 22, marginBottom: 22 }}>
+              This account has reached its device limit. Log out here, then sign in on the device you want to use or ask the admin to remove an old device.
+            </Text>
+            <LogoutButton onPress={handleLogout} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (isMenuLoading) {
     return <MenuSkeleton />;
   }
@@ -1473,7 +1521,7 @@ export default function MenuScreen() {
                   currentScrollY={currentScrollY}
                   activeDownloads={activeDownloads}
                   downloadedMovies={downloadedMovies}
-                  removeDownload={removeDownload}
+                  deleteDownload={deleteDownload}
                   notifications={notifications}
                   handleClearNotifications={handleClearNotifications}
                   handleNotificationPress={handleNotificationPress}
@@ -1762,8 +1810,9 @@ export default function MenuScreen() {
         <SettingsList
           menuItems={menuItems}
           userEmail={userEmail}
+          isGuest={isGuest}
           onItemPress={(item) => {
-            if (isGuest && (item.id === '1' || item.id === '2')) {
+            if (isGuest && (item.id === '1' || item.id === '2' || item.id === '3')) {
               setShowGuestPlanModal(true);
             } else {
               setSelectedItem(item);
@@ -1775,27 +1824,7 @@ export default function MenuScreen() {
 
         {/* ── Logout ── */}
         <LogoutButton
-          onPress={async () => {
-            try {
-              // 1. Clear device footprint before signing out
-              if (deviceId) {
-                try {
-                  await removeDevice(deviceId);
-                } catch (e) {
-                  console.error('Failed to remove device on logout:', e);
-                }
-              }
-
-              // 2. Perform standard sign-outs
-              try {
-                await GoogleSignin.signOut();
-              } catch (e) {}
-              await signOut(auth);
-              router.replace('/login');
-            } catch (e) {
-              console.error('Failed to logout:', e);
-            }
-          }}
+          onPress={handleLogout}
         />
 
         {/* ── Footer ── */}

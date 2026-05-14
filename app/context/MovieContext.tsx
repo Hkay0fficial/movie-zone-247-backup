@@ -44,8 +44,45 @@ function getFullCountryName(code: string) {
   return COUNTRY_MAP[c.toUpperCase()] || code;
 }
 
+function getPinnedTargets(data: any): string[] {
+  const rawTargets = data.pinnedTo || data.pinnedCategories || data.pinCategories || [];
+  if (Array.isArray(rawTargets)) return rawTargets.filter(Boolean);
+  if (typeof rawTargets === 'string') {
+    return rawTargets
+      .split(',')
+      .map(target => target.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function getIsFree(data: any): boolean {
+  const accessMode = String(data.accessMode || data.access || '').toLowerCase();
+  if (accessMode === 'free') return true;
+  if (accessMode === 'premium') return false;
+  return !!data.isFree;
+}
+
+function getHeroType(data: any): 'video' | 'photo' {
+  const heroType = String(data.heroType || data.heroMediaType || '').toLowerCase();
+  return heroType === 'photo' ? 'photo' : 'video';
+}
+
+function normalizeRating(value: any, fallback: string) {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value);
+}
+
+function toMillis(value: any): number {
+  if (typeof value === 'number') return value;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value?.seconds) return value.seconds * 1000;
+  return value ? new Date(value).getTime() : 0;
+}
+
 interface AppUpdateConfig {
   latestVersion: string;
+  latestBuild?: string;
   updateMessage: string;
   forceUpdate: boolean;
   isUpdateAvailable: boolean;
@@ -68,7 +105,6 @@ interface MovieContextType {
   markAllRead: (ids: string[]) => void;
 
   allRows: { title: string; data: (Movie | Series)[] }[];
-  allSeries: Series[];
   newSeries: Series[];
   trendingSeries: Series[];
   mostViewedSeries: Series[];
@@ -186,18 +222,27 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
           if (now > expDate) return; // Skip if expired
         }
         
+        const rawType = String(data.type || 'Movie');
+        const isSeriesType = rawType === 'Series' || rawType === 'Mini' || rawType === 'Mini Series';
+        const pinnedTo = getPinnedTargets(data);
+        const isFree = getIsFree(data);
+        const heroType = getHeroType(data);
+        const poster = data.coverUrl || data.posterUrl || data.poster || data.posterArt || '';
+        const heroPhotoUrl = data.heroPhotoUrl || data.heroImageUrl || data.heroBannerUrl || data.backdropUrl || data.landscapeBackdrop || '';
+        const createdAt = toMillis(data.createdAt);
+        
         // Convert to our Movie/Series interface
-        if (data.type === 'Series') {
+        if (isSeriesType) {
           fetchedSeries.push({
             id: doc.id,
             title: data.title || 'Unknown Series',
             genre: data.genre || 'Drama',
             seasons: data.season || data.seasons || 1,
             year: data.year ? parseInt(data.year) : 2024,
-            rating: data.rating || '8.0',
+            rating: normalizeRating(data.rating, '8.0'),
             vj: data.vj || 'Unknown VJ',
             status: data.status || 'Ongoing',
-            poster: data.coverUrl || data.posterUrl || data.poster || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b',
+            poster: poster || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b',
             episodes: data.episodes || 10,
             episodeList: (data.episodeList || []).map((ep: any) => ({
               ...ep,
@@ -212,14 +257,19 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             totalDuration: data.duration && data.duration !== '0:00' ? data.duration : (data.totalDuration || '0:00'),
             previewDuration: data.previewDuration,
             episodeDuration: data.episodeDuration || '45m',
-            isMiniSeries: data.isMiniSeries || false,
+            isMiniSeries: data.isMiniSeries || rawType === 'Mini' || rawType === 'Mini Series',
+            isFree,
             isHero: data.isHero || false,
+            isPinned: data.isPinned || pinnedTo.length > 0,
+            pinnedTo,
+            views: data.views || 0,
+            downloads: data.downloads || 0,
             isNewRelease: data.isNewRelease || false,
             isNewReleaseSeries: data.isNewReleaseSeries || false,
-            heroType: data.heroType || 'video',
+            heroType,
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
-            heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0))),
+            heroPhotoUrl: resolveCDNUrl(heroPhotoUrl),
+            createdAt,
             country: getFullCountryName(data.country || ''),
             episodesPerPart: data.episodesPerPart || 1,
           });
@@ -229,15 +279,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             title: data.title || 'Untitled Movie',
             year: data.year ? parseInt(data.year) : 2024,
             genre: data.genre || 'Action',
-            rating: data.rating || '8.2',
+            rating: normalizeRating(data.rating, '8.2'),
             vj: data.vj || 'Unknown VJ',
-            poster: data.coverUrl || data.posterUrl || data.poster || 'https://images.unsplash.com/photo-1485846234645-a62644f84728',
+            poster: poster || 'https://images.unsplash.com/photo-1485846234645-a62644f84728',
             description: data.synopsis || data.description || 'Newly uploaded movie.',
             videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined)),
             previewUrl: resolveCDNUrl(data.previewUrl || ''),
             bunnyVideoId: data.bunnyVideoId || '',
             previewBunnyVideoId: data.previewBunnyVideoId || '',
-            isFree: data.isFree || false,
+            isFree,
             parts: data.parts || [],
             episodeList: data.episodeList || [],
             synopsis: data.synopsis || '',
@@ -245,12 +295,16 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             previewDuration: data.previewDuration,
             freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             isHero: data.isHero || false,
+            isPinned: data.isPinned || pinnedTo.length > 0,
+            pinnedTo,
+            views: data.views || 0,
+            downloads: data.downloads || 0,
             isNewRelease: data.isNewRelease || false,
             isNewReleaseSeries: data.isNewReleaseSeries || false,
-            heroType: data.heroType || 'video',
+            heroType,
             heroVideoUrl: resolveCDNUrl(data.heroVideoUrl || ''),
-            heroPhotoUrl: resolveCDNUrl(data.heroPhotoUrl || ''),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (data.createdAt ? new Date(data.createdAt).getTime() : 0))),
+            heroPhotoUrl: resolveCDNUrl(heroPhotoUrl),
+            createdAt,
             country: getFullCountryName(data.country || ''),
             episodesPerPart: data.episodesPerPart || 1,
           });
@@ -444,13 +498,45 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
 
     // ── Apply Global Filters ──
     const applyGlobalFilters = (list: any[]) => {
+      const normalize = (value: any) =>
+        String(value || "")
+          .toLowerCase()
+          .replace(/&/g, " and ")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      const compact = (value: any) => normalize(value).replace(/\s+/g, "");
+      const searchableText = (m: any) => {
+        const episodeList = Array.isArray(m.episodeList)
+          ? m.episodeList.map((ep: any) => `${ep.title || ""} ${ep.episode || ""} ${ep.season || ""}`).join(" ")
+          : "";
+        const parts = Array.isArray(m.parts)
+          ? m.parts.map((part: any) => `${part.title || ""} ${part.name || ""}`).join(" ")
+          : "";
+
+        return normalize([
+          m.title,
+          m.genre,
+          m.vj,
+          m.year,
+          m.rating,
+          m.description,
+          m.country,
+          m.director,
+          m.cast,
+          "seasons" in m ? (m.isMiniSeries ? "mini series miniseries episodes" : "series season episodes") : "movie film parts",
+          episodeList,
+          parts,
+        ].join(" "));
+      };
+
       let res = [...list];
       if (selectedVJ) {
-        const vjQ = selectedVJ.toLowerCase().trim();
-        res = res.filter(m => (m.vj || "").toLowerCase().includes(vjQ));
+        const vjQ = normalize(selectedVJ);
+        res = res.filter(m => normalize(m.vj).includes(vjQ));
       }
       if (selectedGenre) {
-        res = res.filter(m => (m.genre || "").toLowerCase().includes(selectedGenre.toLowerCase()));
+        const genreQ = normalize(selectedGenre);
+        res = res.filter(m => normalize(m.genre).includes(genreQ));
       }
       if (selectedYear) {
         res = res.filter(m => String(m.year) === selectedYear);
@@ -459,12 +545,12 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         res = res.filter(m => parseFloat(m.rating || "0") >= minRating);
       }
       if (searchQuery) {
-        const sQ = searchQuery.toLowerCase().trim();
-        res = res.filter(m => 
-          m.title.toLowerCase().includes(sQ) || 
-          (m.genre || "").toLowerCase().includes(sQ) || 
-          (m.vj || "").toLowerCase().includes(sQ)
-        );
+        const sQ = normalize(searchQuery);
+        const compactQ = compact(searchQuery);
+        res = res.filter(m => {
+          const fullText = searchableText(m);
+          return fullText.includes(sQ) || compact(m.title).includes(compactQ);
+        });
       }
       return res;
     };
@@ -594,11 +680,31 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     
     // ── Personalized Rows ──
     // Continue Watching: Map watchHistory IDs to full objects, sorted by timestamp
+    const inferSeasonFromHistory = (history: any, fallbackItem: any) => {
+      const explicitSeason = Number(history?.season || history?.selectedSeason || history?.lastSeason);
+      if (Number.isFinite(explicitSeason) && explicitSeason > 0) return explicitSeason;
+
+      const episodeId = String(history?.episodeId || '');
+      const seasonFromId = episodeId.match(/-ep-\d+-(\d+)$/);
+      if (seasonFromId) return Number(seasonFromId[1]);
+
+      const episodeNumber = Number(episodeId.match(/(?:ep|episode)[-_ ]?(\d+)/i)?.[1]);
+      const totalEpisodes = Number(fallbackItem?.episodes || fallbackItem?.episodeList?.length || 0);
+      const seasons = Number(fallbackItem?.seasons || 1);
+      if (Number.isFinite(episodeNumber) && episodeNumber > 0 && seasons > 1 && totalEpisodes > 0) {
+        return Math.min(seasons, Math.max(1, Math.ceil(episodeNumber / Math.ceil(totalEpisodes / seasons))));
+      }
+
+      return undefined;
+    };
+
     const continueWatching = Object.entries(watchHistory)
       .map(([key, history]) => {
         const movieId = key.includes('_') ? key.split('_')[0] : key;
         const item = allContent.find(m => m.id === movieId);
-        return item ? { ...item, ...(history as any) } as any : null;
+        if (!item) return null;
+        const selectedSeason = inferSeasonFromHistory(history, item);
+        return { ...item, ...(history as any), ...(selectedSeason ? { selectedSeason, lastSeason: selectedSeason } : {}) } as any;
       })
       .filter((m): m is any => m !== null)
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))

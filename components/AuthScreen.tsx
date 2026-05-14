@@ -35,6 +35,7 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   sendPasswordResetEmail,
+  sendEmailVerification,
   OAuthProvider,
   signInWithCredential
 } from 'firebase/auth';
@@ -683,8 +684,22 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
         });
         await AsyncStorage.setItem('hasAccount', 'true');
 
-        triggerHaptic('success');
-        router.replace('/(tabs)');
+        // Trigger verification email logic
+        try {
+          await sendEmailVerification(user);
+          triggerHaptic('success');
+
+          Alert.alert(
+            "Account Created!",
+            `Welcome to THE MOVIE ZONE, ${fullName}!\n\nA verification email has been sent to ${user.email}. Please verify your email to fully secure your account.`,
+            [{ text: "Continue", onPress: () => router.replace('/(tabs)') }]
+          );
+        } catch (emailErr: any) {
+          console.error("Verification email failed:", emailErr);
+          // If email fails (rare), still allow login but notify user
+          triggerHaptic('success');
+          router.replace('/(tabs)');
+        }
       }
     } catch (error: any) {
       console.error('Auth Error:', error.code, error.message);
@@ -1379,7 +1394,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
                   <Text style={styles.guestModalTitle}>Continue as Guest?</Text>
                   <Text style={styles.guestModalBody}>
-                    You can explore the app as a guest, but some premium features may require an account.
+                    Browse the library first. Guest mode keeps data on this phone only, with limited downloads and no subscription purchase until you create an account.
                   </Text>
 
                   {/* Buttons */}

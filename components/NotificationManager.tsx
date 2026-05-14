@@ -35,6 +35,22 @@ export default function NotificationManager() {
     );
   };
 
+  const getNotificationImageUrl = (data: any, content?: any, linkedContent?: any) => {
+    return (
+      data?.imageUrl ||
+      data?.image ||
+      data?.posterUrl ||
+      data?.coverUrl ||
+      data?.bannerUrl ||
+      content?.richContent?.image ||
+      content?.attachments?.[0]?.url ||
+      linkedContent?.poster ||
+      linkedContent?.coverUrl ||
+      linkedContent?.backdropUrl ||
+      ''
+    );
+  };
+
   const isPromotionalNotification = (data: any) => (
     data?.type === 'holiday' ||
     data?.type === 'promotion' ||
@@ -101,7 +117,7 @@ export default function NotificationManager() {
     const fallbackContent = {
       id: movieId,
       title: data.title || data.movieTitle || 'Saved title',
-      poster: data.imageUrl || data.image || '',
+      poster: getNotificationImageUrl(data),
       type: data.contentType || data.type || 'movie',
     };
     const content = linkedContent || fallbackContent;
@@ -165,7 +181,7 @@ export default function NotificationManager() {
       setActiveNotification({
         title: content.title || 'Notification',
         body: content.body || '',
-        imageUrl: data?.imageUrl || data?.image || (content.attachments?.[0]?.url) || linkedMovie?.poster,
+        imageUrl: getNotificationImageUrl(data, content, linkedMovie),
         data: data
       });
     });

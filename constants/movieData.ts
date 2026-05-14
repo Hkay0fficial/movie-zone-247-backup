@@ -12,6 +12,7 @@ export interface Movie {
   duration: string;
   previewDuration?: string;
   description?: string;
+  synopsis?: string;
   videoUrl?: string;
   previewUrl?: string;
   subtitleUrl?: string; // NEW: Path to .vtt or .srt
@@ -20,18 +21,26 @@ export interface Movie {
   isHero?: boolean;
   isPinned?: boolean;
   pinnedTo?: string[];
+  isNewRelease?: boolean;
+  isNewReleaseSeries?: boolean;
+  views?: number;
+  downloads?: number;
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
   parts?: { id: string; title: string; videoUrl?: string; previewUrl?: string; duration?: string; previewDuration?: string; bunnyVideoId?: string; subtitleUrl?: string }[];
+  episodeList?: { title: string; url: string; videoUrl?: string; duration?: string; subtitleUrl?: string; qualityOptions?: { label: string; url: string }[] }[];
+  freeEpisodesCount?: number;
   bunnyVideoId?: string;
+  previewBunnyVideoId?: string;
   bunnyLibraryId?: string;
   bunnyLibraryId2?: string;
   episodesPerPart?: number;
   country?: string;
   createdAt?: number;
+  isMiniSeries?: boolean;
 }
 
 export interface Series {
@@ -59,12 +68,17 @@ export interface Series {
   isHero?: boolean;
   isPinned?: boolean;
   pinnedTo?: string[];
+  views?: number;
+  downloads?: number;
+  isNewRelease?: boolean;
+  isNewReleaseSeries?: boolean;
   type?: 'Movie' | 'Series';
   coverUrl?: string;
   heroType?: 'video' | 'photo';
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
   bunnyVideoId?: string;
+  previewBunnyVideoId?: string;
   bunnyLibraryId?: string;
   createdAt?: number;
   episodesPerPart?: number;
@@ -235,6 +249,7 @@ export interface HeroMovie {
   description: string;
   poster: string;
   videoUrl: string;
+  previewUrl?: string;
   heroVideoUrl?: string;
   heroPhotoUrl?: string;
   heroType?: 'video' | 'photo';
@@ -278,4 +293,3 @@ export const ALL_ROWS: { title: string; data: (Movie | Series)[] }[] = [
   { title: 'Indian Movies',      data: INDIAN_MOVIES     },
   { title: 'VJ Collection',      data: VJ_COLLECTION     },
 ];
-

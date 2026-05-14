@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayRemove, deleteField, runTransaction } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import { Platform, Animated, Dimensions, StyleSheet } from 'react-native';
@@ -33,6 +33,13 @@ interface SubscriptionContextType {
   paymentMethod: string;
   allMoviesFree: boolean;
   eventMessage: string;
+  holidayExpiresAt: string;
+  holidayBadgeText: string;
+  holidayBadgeColor: string;
+  isBannerActive: boolean;
+  bannerTheme: string;
+  bannerButtonText: string;
+  bannerActionUrl: string;
   favorites: (Movie | Series)[];
   toggleFavorite: (item: Movie | Series) => void;
   recordTrialUsage: () => Promise<void>;
@@ -42,6 +49,7 @@ interface SubscriptionContextType {
   removeDevice: (id: string) => Promise<void>;
   deviceLimit: number;
   customExternalLimit: number;
+  hasUsedGuestTrial: boolean;
   minAppVersion: string;
   latestVersion: string;
   latestBuild: string;
@@ -81,6 +89,13 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   paymentMethod: '',
   allMoviesFree: false,
   eventMessage: '',
+  holidayExpiresAt: '',
+  holidayBadgeText: 'Holiday',
+  holidayBadgeColor: '#e11d48',
+  isBannerActive: false,
+  bannerTheme: 'amber',
+  bannerButtonText: '',
+  bannerActionUrl: '',
   favorites: [],
   toggleFavorite: () => {},
   recordTrialUsage: async () => {},
@@ -90,6 +105,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   removeDevice: async () => {},
   deviceLimit: 1,
   customExternalLimit: 0,
+  hasUsedGuestTrial: false,
   minAppVersion: '',
   latestVersion: '',
   latestBuild: '',
@@ -125,6 +141,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<number | null>(null);
   const [allMoviesFree, setAllMoviesFree] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
+  const [holidayExpiresAt, setHolidayExpiresAt] = useState('');
+  const [holidayBadgeText, setHolidayBadgeText] = useState('Holiday');
+  const [holidayBadgeColor, setHolidayBadgeColor] = useState('#e11d48');
+  const [isBannerActive, setIsBannerActive] = useState(false);
+  const [bannerTheme, setBannerTheme] = useState('amber');
+  const [bannerButtonText, setBannerButtonText] = useState('');
+  const [bannerActionUrl, setBannerActionUrl] = useState('');
   const [minAppVersion, setMinAppVersion] = useState('');
   const [latestVersion, setLatestVersion] = useState('');
   const [latestBuild, setLatestBuild] = useState('');
@@ -149,8 +172,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [activeDeviceIds, setActiveDeviceIds] = useState<string[]>([]);
   const [activeDevicesMeta, setActiveDevicesMeta] = useState<Record<string, any>>({});
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
-  const [availablePlans, setAvailablePlans] = useState<Plan[]>(PLANS);
+  const [availablePlans, setAvailablePlans] = React.useState<Plan[]>([]);
+  const [ticker, setTicker] = React.useState(0);
+
+  // Minute-by-minute heartbeat to refresh time-based logic (isPaid, remainingDays)
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTicker(t => t + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+
+  const parseSubscriptionExpiry = (value: any): number | null => {
+    if (!value) return null;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (value instanceof Date) return value.getTime();
+    return null;
+  };
 
   // Helper to get persistent hardware ID
   const getDeviceInfo = async () => {
@@ -245,7 +290,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setActiveDeviceIds(fetchedActiveDevices);
             setActiveDevicesMeta(fetchedDeviceMeta);
             
-            const extLimit = userData.customExternalLimit || 0;
+            const extLimit = userData.customExternalLimit || userData.downloadLimit || 0;
             const devLimit = userData.customDeviceLimit || 0;
             setCustomExternalLimit(extLimit);
             setCustomDeviceLimit(devLimit);
@@ -274,26 +319,46 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               const baseLimit = dynamicDeviceLimits[normalizedBundle] || 1;
               const limit = devLimit > 0 ? devLimit : baseLimit;
               const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
+              const userRef = doc(db, 'users', user.uid);
 
               // 1. Ensure current device is registered for activity tracking
               if (!isAlreadyRegistered) {
-                if (fetchedActiveDevices.length < limit) {
-                  const updateData: any = {
-                    activeDeviceIds: arrayUnion(currentId),
-                    [`activeDevicesMeta.${currentId}`]: { 
-                      name: currentName, 
-                      lastUsed: new Date().toISOString() 
+                try {
+                  await runTransaction(db, async (transaction) => {
+                    const freshSnap = await transaction.get(userRef);
+                    const freshData = freshSnap.exists() ? freshSnap.data() : {};
+                    const freshDevices = freshData.activeDeviceIds || [];
+                    const freshMeta = freshData.activeDevicesMeta || {};
+
+                    if (freshDevices.includes(currentId)) {
+                      transaction.set(userRef, {
+                        [`activeDevicesMeta.${currentId}`]: {
+                          ...(freshMeta[currentId] || {}),
+                          name: currentName,
+                          lastUsed: new Date().toISOString(),
+                        }
+                      }, { merge: true });
+                      return;
                     }
-                  };
-                  
-                  await updateDoc(doc(db, 'users', user.uid), updateData).catch(async (err) => {
-                    if (err.code === 'not-found') {
-                      await setDoc(doc(db, 'users', user.uid), updateData, { merge: true }).catch(() => {});
+
+                    if (freshDevices.length >= limit) {
+                      throw new Error('DEVICE_LIMIT_REACHED');
                     }
+
+                    transaction.set(userRef, {
+                      activeDeviceIds: [...freshDevices, currentId],
+                      [`activeDevicesMeta.${currentId}`]: {
+                        name: currentName,
+                        lastUsed: new Date().toISOString(),
+                      }
+                    }, { merge: true });
                   });
+
                   setIsDeviceBlocked(false);
-                } else {
-                  setIsDeviceBlocked(true);
+                } catch (err: any) {
+                  if (err?.message === 'DEVICE_LIMIT_REACHED') {
+                    setIsDeviceBlocked(true);
+                  }
                 }
               } else {
                 setIsDeviceBlocked(false);
@@ -312,30 +377,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             runDeviceCheck();
             
-            if (expiresAt && expiresAt.seconds) {
-              const expirationMs = expiresAt.seconds * 1000;
-              const isExpired = Date.now() > expirationMs;
-              const finalBundle = isExpired ? 'None' : bundle;
-              const finalExpires = isExpired ? null : expirationMs;
+            const expirationMs = parseSubscriptionExpiry(expiresAt);
+            const isExpired = expirationMs !== null && Date.now() > expirationMs;
+            const finalBundle = isExpired ? 'None' : bundle;
+            const finalExpires = isExpired ? null : expirationMs;
 
-              setSubscriptionBundle(finalBundle);
-              setSubscriptionExpiresAt(finalExpires);
-              
-              // Cache the result
-              AsyncStorage.setItem('cached_subscription', JSON.stringify({
-                bundle: finalBundle,
-                expiresAt: finalExpires,
-                guestStatus: user.isAnonymous
-              })).catch(() => {});
-            } else {
-              setSubscriptionBundle(bundle);
-              setSubscriptionExpiresAt(null);
-              AsyncStorage.setItem('cached_subscription', JSON.stringify({
-                bundle: bundle,
-                expiresAt: null,
-                guestStatus: user.isAnonymous
-              })).catch(() => {});
-            }
+            setSubscriptionBundle(finalBundle);
+            setSubscriptionExpiresAt(finalExpires);
+
+            AsyncStorage.setItem('cached_subscription', JSON.stringify({
+              bundle: finalBundle,
+              expiresAt: finalExpires,
+              guestStatus: user.isAnonymous
+            })).catch(() => {});
           } else if (!snap.metadata.fromCache) {
             // Only reset if we have confirmed with the server that the doc doesn't exist
             // This prevents overwriting our cached data when offline
@@ -429,6 +483,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (now > expirationTime) {
               setAllMoviesFree(false);
               setEventMessage('');
+              setHolidayExpiresAt('');
+              setHolidayBadgeText(data.holidayBadgeText || 'Holiday');
+              setHolidayBadgeColor(data.holidayBadgeColor || '#e11d48');
+              setIsBannerActive(data.isBannerActive || false);
+              setBannerTheme(data.bannerTheme || 'amber');
+              setBannerButtonText(data.bannerButtonText || '');
+              setBannerActionUrl(data.bannerActionUrl || data.bannerTargetUrl || '');
               if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
@@ -438,6 +499,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
           setAllMoviesFree(data.allMoviesFree || false);
           setEventMessage(data.eventMessage || '');
+          setHolidayExpiresAt(expiresAtStr || '');
+          setHolidayBadgeText(data.holidayBadgeText || 'Holiday');
+          setHolidayBadgeColor(data.holidayBadgeColor || '#e11d48');
+          setIsBannerActive(data.isBannerActive || false);
+          setBannerTheme(data.bannerTheme || 'amber');
+          setBannerButtonText(data.bannerButtonText || '');
+          setBannerActionUrl(data.bannerActionUrl || data.bannerTargetUrl || '');
           if (data.minAppVersion) setMinAppVersion(data.minAppVersion);
           return false;
         };
@@ -573,17 +641,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const isPaid = subscriptionBundle !== 'None';
+  const hasPlanAccess = subscriptionBundle !== 'None' || customExternalLimit > 0 || customDeviceLimit > 0;
+  const isPaid = hasPlanAccess && (subscriptionExpiresAt === null || subscriptionExpiresAt > Date.now());
   const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] || 1);
 
   // Global Player Animated Values
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
   const playerSize = React.useMemo(() => new Animated.Value(SCREEN_W), []);
 
-  const isSubscribed = isPaid && subscriptionExpiresAt !== null && subscriptionExpiresAt > Date.now();
-  const remainingDays = subscriptionExpiresAt 
-    ? Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
+  const isSubscribed = isPaid;
+  const remainingDays = React.useMemo(() => {
+    if (!subscriptionExpiresAt) return 0;
+    return Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)));
+  }, [subscriptionExpiresAt, ticker]);
+
 
   const contextValue = React.useMemo(() => ({
     subscriptionBundle,
@@ -594,6 +665,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     paymentMethod,
     allMoviesFree,
     eventMessage,
+    holidayExpiresAt,
+    holidayBadgeText,
+    holidayBadgeColor,
+    isBannerActive,
+    bannerTheme,
+    bannerButtonText,
+    bannerActionUrl,
     favorites,
     toggleFavorite,
     recordTrialUsage,
@@ -604,6 +682,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     removeDevice,
     deviceLimit,
     customExternalLimit,
+    hasUsedGuestTrial,
     minAppVersion,
     latestVersion,
     latestBuild,
@@ -631,6 +710,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     availablePlans,
     isNotificationVisible,
     setIsNotificationVisible,
+    ticker
   }), [
     subscriptionBundle,
     subscriptionExpiresAt,
@@ -639,6 +719,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     paymentMethod,
     allMoviesFree,
     eventMessage,
+    holidayExpiresAt,
+    holidayBadgeText,
+    holidayBadgeColor,
+    isBannerActive,
+    bannerTheme,
+    bannerButtonText,
+    bannerActionUrl,
     favorites,
     isDeviceBlocked,
     activeDeviceIds,
@@ -646,6 +733,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     deviceId,
     deviceLimit,
     customExternalLimit,
+    hasUsedGuestTrial,
     minAppVersion,
     latestVersion,
     latestBuild,
@@ -666,6 +754,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     availablePlans,
     isNotificationVisible,
     setIsNotificationVisible,
+    ticker
   ]);
 
   return (
