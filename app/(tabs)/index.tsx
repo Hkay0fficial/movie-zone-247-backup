@@ -455,18 +455,48 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    position: "relative",
     // Removed padding to allow marquee to reach edges
+  },
+  eventMessageClip: {
+    position: "absolute",
+    // Start the scrolling text to the right of the fixed pill so no glyphs
+    // can appear in the banner's left rounded corner area.
+    left: 168,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    overflow: "hidden",
+    paddingRight: 12,
+    zIndex: 1,
+  },
+  eventHolidayPill: {
+    position: "absolute",
+    left: 6,
+    right: 6,
+    top: 5,
+    bottom: 5,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    zIndex: 100,
   },
   eventBadge: {
     position: "absolute",
-    left: 8,
+    left: 7,
     zIndex: 100,
     backgroundColor: "#e11d48",
-    paddingHorizontal: 10,
+    width: 148,
+    height: 30,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 15,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -476,9 +506,11 @@ const styles = StyleSheet.create({
   },
   eventBadgeText: {
     color: "#fff",
-    fontSize: 8.5,
+    fontSize: 7.8,
     fontWeight: "900",
     letterSpacing: 0.5,
+    flexShrink: 1,
+    textTransform: "uppercase",
   },
   eventMessageText: {
     color: "#fff",
@@ -2345,7 +2377,8 @@ export function SeriesPreviewContent({
     cancelSeriesDownloads,
   } = useDownloads();
 
-  const isPaid = subscriptionBundle !== 'None';
+  const isPaid = sub.isPaid;
+
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const [descExpanded, setDescExpanded] = useState(false);
@@ -2361,6 +2394,7 @@ export function SeriesPreviewContent({
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
   const [alreadyDownloadedState, setAlreadyDownloadedState] = useState<{ visible: boolean, episode?: any, localItem?: any }>({ visible: false });
+  const [bulkDownloadState, setBulkDownloadState] = useState<{ visible: boolean; pending: any[] }>({ visible: false, pending: [] });
 
   const handleDownload = (episode?: any) => {
     if (!series) return;
@@ -2539,6 +2573,54 @@ export function SeriesPreviewContent({
     return episodes.some((ep: any) => ctxActiveDownloads[ep.id]);
   }, [episodes, ctxActiveDownloads]);
 
+  const startSeriesDownloadAll = () => {
+    if (!series) return;
+
+    if (isSeriesDownloading) {
+      cancelSeriesDownloads(series.id);
+      return;
+    }
+
+    if (!isPaid && (!allMoviesFree || isGuest)) {
+      onShowPremium();
+      return;
+    }
+
+    const pendingEpisodes = episodes.filter((ep: any) => !ctxActiveDownloads[ep.id] && !ctxEpisodeDownloads[ep.id]);
+    if (pendingEpisodes.length === 0) return;
+
+    setBulkDownloadState({ visible: true, pending: pendingEpisodes });
+  };
+
+  const startBulkSeriesDownload = async (mode: 'internal' | 'external') => {
+    const pending = bulkDownloadState.pending;
+    if (!series || pending.length === 0) {
+      setBulkDownloadState({ visible: false, pending: [] });
+      return;
+    }
+
+    if (mode === 'external') {
+      if (!isPaid) {
+        setBulkDownloadState({ visible: false, pending: [] });
+        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+        return;
+      }
+      if (getRemainingDownloads() < pending.length) {
+        setBulkDownloadState({ visible: false, pending: [] });
+        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} external download token${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
+        return;
+      }
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow gallery access before starting external downloads.");
+        return;
+      }
+    }
+
+    setBulkDownloadState({ visible: false, pending: [] });
+    pending.forEach((ep: any) => downloadEpisode(series, ep, mode));
+  };
+
   // Keep the active episode inside the currently selected season.
   useEffect(() => {
     if (episodes.length > 0 && (!activeEpisodeId || !episodes.some((ep) => ep.id === activeEpisodeId))) {
@@ -2548,11 +2630,9 @@ export function SeriesPreviewContent({
 
   const activeEpisode = useMemo(() => episodes.find((e) => e.id === activeEpisodeId) || (episodes && episodes.length > 0 ? episodes[0] : null), [episodes, activeEpisodeId]);
 
-  const activeDl = ctxActiveDownloads[activeEpisode?.id] || 
-                   ctxActiveDownloads[series.id] || 
-                   Object.values(ctxActiveDownloads).find(d => (d as any).item?.id === series.id);
+  const activeDl = activeEpisode?.id ? ctxActiveDownloads[activeEpisode.id] : undefined;
   
-  const isDownloaded = !!ctxEpisodeDownloads[activeEpisode?.id] || !!ctxEpisodeDownloads[series.id];
+  const isDownloaded = activeEpisode?.id ? !!ctxEpisodeDownloads[activeEpisode.id] : false;
 
   const computedTotalDuration = useMemo(() => {
     if ((series as any).duration && (series as any).duration !== "N/A" && (series as any).duration !== "") return (series as any).duration;
@@ -2563,8 +2643,44 @@ export function SeriesPreviewContent({
   }, [(series as any).duration, episodes]);
 
   const isFavorite = favorites.some((f: any) => f.id === series?.id);
-  const currentIndex = episodes.findIndex(e => e.id === activeEpisode.id);
+  const currentIndex = activeEpisode ? episodes.findIndex(e => e.id === activeEpisode.id) : -1;
   const insets = useSafeAreaInsets();
+  const previewHeaderTopInset = Math.max(insets.top, Platform.OS === "android" ? 34 : 0);
+  const previewHeaderHeight = previewHeaderTopInset + 52;
+  const previewHeaderTranslateY = useRef(new Animated.Value(0)).current;
+  const previewStatusGuardOpacity = useRef(new Animated.Value(0)).current;
+  const lastPreviewScrollY = useRef(0);
+  const previewHeaderHiddenRef = useRef(false);
+  const setPreviewHeaderHidden = useCallback((hidden: boolean) => {
+    if (previewHeaderHiddenRef.current === hidden) return;
+    previewHeaderHiddenRef.current = hidden;
+    Animated.parallel([
+      Animated.timing(previewHeaderTranslateY, {
+        toValue: hidden ? -previewHeaderHeight : 0,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(previewStatusGuardOpacity, {
+        toValue: hidden ? 1 : 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [previewHeaderHeight, previewHeaderTranslateY, previewStatusGuardOpacity]);
+  const handlePreviewHeaderScroll = useCallback((event: any) => {
+    const y = Math.max(0, event.nativeEvent.contentOffset.y || 0);
+    const delta = y - lastPreviewScrollY.current;
+    if (y < 12) {
+      setPreviewHeaderHidden(false);
+    } else if (delta > 6) {
+      setPreviewHeaderHidden(true);
+    } else if (delta < -6) {
+      setPreviewHeaderHidden(false);
+    }
+    lastPreviewScrollY.current = y;
+  }, [setPreviewHeaderHidden]);
 
   useEffect(() => {
     if (!showComments || !series?.id) return;
@@ -2621,6 +2737,22 @@ export function SeriesPreviewContent({
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
       <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: previewHeaderTopInset + StyleSheet.hairlineWidth,
+          zIndex: 130,
+          opacity: previewStatusGuardOpacity,
+        }}
+      >
+        <View style={{ height: previewHeaderTopInset, backgroundColor: "rgba(10, 10, 15, 0.96)" }} />
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.18)" }} />
+      </Animated.View>
+
+      <Animated.View
         pointerEvents="box-none"
         style={{
           position: "absolute",
@@ -2629,13 +2761,18 @@ export function SeriesPreviewContent({
           justifyContent: "space-between",
           paddingHorizontal: 16,
           zIndex: 110,
-          height: 64,
-          paddingTop: insets.top,
+          height: previewHeaderHeight,
+          paddingTop: previewHeaderTopInset + 4,
+          transform: [{ translateY: previewHeaderTranslateY }],
+          overflow: "visible",
         }}
       >
         <Animated.View
           style={[StyleSheet.absoluteFill, {
             opacity: scrollY.interpolate({ inputRange: [200, 240], outputRange: [0, 1], extrapolate: "clamp" }),
+            backgroundColor: "rgba(10, 10, 15, 0.95)",
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: "rgba(91, 95, 239, 0.5)",
           }]}
           pointerEvents="none"
         >
@@ -2644,16 +2781,16 @@ export function SeriesPreviewContent({
 
         <TouchableOpacity
           style={styles.closeBtn}
-          onPress={onClose}
+          onPress={() => setIsMuted(!isMuted)}
         >
-          <Ionicons name="close" size={24} color="#fff" />
+          <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.closeBtn, { marginLeft: 'auto' }]}
-          onPress={() => setIsMuted(!isMuted)}
+          onPress={() => DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true })}
         >
-          <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="#fff" />
+          <Ionicons name="search" size={20} color="#fff" />
         </TouchableOpacity>
       </Animated.View>
 
@@ -2661,11 +2798,19 @@ export function SeriesPreviewContent({
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false, listener: handlePreviewHeaderScroll }
+        )}
+        scrollEventThrottle={16}
       >
         <TouchableOpacity 
           activeOpacity={0.9}
           onPress={() => {
+            if (!activeEpisode) {
+              Alert.alert("Coming Soon", "Episodes for this series are still being prepared.");
+              return;
+            }
             // Prioritize local downloaded file for offline playback
             const localUri = ctxEpisodeDownloads[activeEpisode.id];
             const finalUrl = localUri || activeEpisode.videoUrl || previewVideoUrl;
@@ -2879,18 +3024,7 @@ export function SeriesPreviewContent({
               <TouchableOpacity 
                 style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isSeriesDownloading ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderColor: isSeriesDownloading ? 'rgba(239, 68, 68, 0.4)' : 'transparent', borderWidth: isSeriesDownloading ? StyleSheet.hairlineWidth : 0 }}
                 onPress={() => {
-                  if (isSeriesDownloading) {
-                    cancelSeriesDownloads(series.id);
-                  } else {
-                    episodes.forEach((ep: any) => {
-                      const isDl = ctxActiveDownloads[ep.id];
-                      const isDownloaded = ctxEpisodeDownloads[ep.id];
-                      if (!isDl && !isDownloaded) {
-                        if (!isPaid && (!allMoviesFree || isGuest)) onShowPremium();
-                        else downloadEpisode(series, ep, 'internal');
-                      }
-                    });
-                  }
+                  startSeriesDownloadAll();
                 }}
               >
                 <Ionicons name={isSeriesDownloading ? "close-circle-outline" : "download-outline"} size={16} color={isSeriesDownloading ? "#ef4444" : "#fff"} />
@@ -2907,7 +3041,7 @@ export function SeriesPreviewContent({
               return (
                 <TouchableOpacity
                   key={ep.id}
-                  style={[styles.episodeItemPremium, activeEpisode.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                  style={[styles.episodeItemPremium, activeEpisode?.id === ep.id && { borderColor: '#5B5FEF', backgroundColor: 'rgba(91,95,239,0.1)' }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={() => {
                     const canWatch = (allMoviesFree && !isGuest) || series.isFree || isPaid;
                     if (!canWatch) {
@@ -2920,9 +3054,14 @@ export function SeriesPreviewContent({
                     try { if (_safeSetEpId) _safeSetEpId(ep.id); } catch(e) {}
                     // Prioritize local downloaded file for offline playback
                     const localUri = ctxEpisodeDownloads[ep.id];
-                    if (setSelectedVideoUrl) setSelectedVideoUrl(localUri || ep.videoUrl);
+                    const finalUrl = localUri || ep.videoUrl || previewVideoUrl;
+                    if (!finalUrl) {
+                      Alert.alert("Coming Soon", "This episode is not available yet.");
+                      return;
+                    }
+                    if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
-                    if (setIsPreview) setIsPreview(false);
+                    if (setIsPreview) setIsPreview(!localUri && !ep.videoUrl);
                     if (setPlayingNow) setPlayingNow(series);
                     if (setPlayerMode) setPlayerMode('full');
                   }}
@@ -2945,8 +3084,7 @@ export function SeriesPreviewContent({
                         } else if (isDownloaded) {
                           setAlreadyDownloadedState({ visible: true, episode: ep, localItem: { localUri: ctxEpisodeDownloads[ep.id] } });
                         } else {
-                           if (!isPaid && (!allMoviesFree || isGuest)) onShowPremium();
-                           else downloadEpisode(series, ep, 'internal');
+                           handleDownload(ep);
                         }
                       }}
                       style={{ padding: 4 }}
@@ -2990,6 +3128,65 @@ export function SeriesPreviewContent({
           )}
         </View>
       </ScrollView>
+
+      {/* ── ALREADY DOWNLOADED MODAL FOR SERIES ── */}
+      <Modal
+        visible={bulkDownloadState.visible && playerMode !== 'full'}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBulkDownloadState({ visible: false, pending: [] })}
+      >
+        <View style={styles.downloadModalCentering}>
+          <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.72)" }]}
+            activeOpacity={1}
+            onPress={() => setBulkDownloadState({ visible: false, pending: [] })}
+          />
+          <Animated.View style={styles.downloadGlassCard}>
+            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={["rgba(255,255,255,0.08)", "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={styles.downloadIconHeader}>
+              <View style={styles.downloadIconCircle}>
+                <Ionicons name="cloud-download" size={32} color="#5B5FEF" />
+              </View>
+            </View>
+            <Text style={styles.downloadTitle}>Download Options</Text>
+            <Text style={styles.downloadSub}>
+              Choose your preferred method to save "{bulkDownloadState.pending.length} episode{bulkDownloadState.pending.length === 1 ? "" : "s"}" for offline viewing.
+            </Text>
+            <View style={styles.downloadActions}>
+              <TouchableOpacity style={styles.downloadPrimaryBtn} onPress={() => startBulkSeriesDownload('internal')} activeOpacity={0.8}>
+                <LinearGradient colors={["#5B5FEF", "#4A4EDD"]} style={StyleSheet.absoluteFill} />
+                <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+                <Text style={styles.downloadPrimaryBtnText}>DOWNLOAD</Text>
+                <View style={{ backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                  <Text style={{ fontSize: 9, color: "#fff", fontWeight: "700" }}>{isGuest ? "TRIAL" : "UNLIMITED"}</Text>
+                </View>
+                <View style={styles.pillSheen} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.downloadSecondaryBtn} onPress={() => startBulkSeriesDownload('external')} activeOpacity={0.7}>
+                <Ionicons name="folder-outline" size={20} color="#94a3b8" />
+                <Text style={styles.downloadSecondaryBtnText}>EXTERNAL DOWNLOAD</Text>
+                <View style={{ backgroundColor: getRemainingDownloads() === 0 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                  <Text style={{ fontSize: 9, color: getRemainingDownloads() === 0 ? "#ef4444" : "#94a3b8", fontWeight: "700" }}>
+                    {getRemainingDownloads() === 0 ? "0 left" : `${getRemainingDownloads()} left`}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              {getRemainingDownloads() <= 3 && (
+                <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onUpgrade(); }}>
+                  <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
+                    {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
+                <Text style={styles.downloadCancelText}>Maybe Later</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
 
       {/* ── ALREADY DOWNLOADED MODAL FOR SERIES ── */}
       <Modal
@@ -3051,7 +3248,7 @@ export function SeriesPreviewContent({
                   }
                   if (getRemainingDownloads() === 0) {
                      setAlreadyDownloadedState({ visible: false });
-                     onShowPremium();
+                     Alert.alert("Limit Reached", "You have reached your daily limit for external downloads.");
                      return;
                   }
 
@@ -3165,7 +3362,7 @@ export function SeriesPreviewContent({
               <TouchableOpacity
                 style={[
                   styles.downloadSecondaryBtn,
-                  (!isPaid && getRemainingDownloads() === 0) && { opacity: 0.5 }
+                  getRemainingDownloads() === 0 && { opacity: 0.5 }
                 ]}
                 onPress={() => {
                   if (!isPaid) {
@@ -3327,7 +3524,8 @@ export const MoviePreviewContent = memo(({
     setIsRenderReady(false);
     setPosterLoading(true);
     setPreviewStatus({} as AVPlaybackStatus);
-    setSelectedSeason(1);
+    const incomingSeason = Number((movie as any)?.season || (movie as any)?.selectedSeason || (movie as any)?.lastSeason);
+    setSelectedSeason(Number.isFinite(incomingSeason) && incomingSeason > 0 ? incomingSeason : 1);
     setActivePartId(null);
     setShowOtherParts(false);
     // Smoothly animate in the entire modal
@@ -3335,7 +3533,7 @@ export const MoviePreviewContent = memo(({
       toValue: 1,
       duration: 220,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
 
     // Reset scroll position to top when movie changes
@@ -3387,6 +3585,8 @@ export const MoviePreviewContent = memo(({
   const [browseSection, setBrowseSection] = useState(ALL_ROWS[0]?.title ?? 'New Releases');
   const {
     subscriptionBundle,
+    isPaid: contextIsPaid,
+    isSubscribed: contextIsSubscribed,
     setSubscriptionBundle,
     allMoviesFree,
     isGuest,
@@ -3410,8 +3610,10 @@ export const MoviePreviewContent = memo(({
     deleteDownload,
     getRemainingDownloads,
     getExternalDownloadLimit,
+    cancelSeriesDownloads,
   } = useDownloads();
-  const isPaid = subscriptionBundle !== 'None';
+  const isPaid = contextIsPaid;
+
   const [previewQuery, setPreviewQuery] = useState("");
   const [browseSectionModal, setBrowseSectionModal] = useState<{
     title: string;
@@ -3431,6 +3633,42 @@ export const MoviePreviewContent = memo(({
   const searchAnim = useRef(new Animated.Value(0)).current;
   const previewInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
+  const previewHeaderTopInset = Math.max(insets.top, Platform.OS === "android" ? 34 : 0);
+  const previewHeaderHeight = previewHeaderTopInset + 52;
+  const previewHeaderTranslateY = useRef(new Animated.Value(0)).current;
+  const previewStatusGuardOpacity = useRef(new Animated.Value(0)).current;
+  const lastPreviewScrollY = useRef(0);
+  const previewHeaderHiddenRef = useRef(false);
+  const setPreviewHeaderHidden = useCallback((hidden: boolean) => {
+    if (previewHeaderHiddenRef.current === hidden) return;
+    previewHeaderHiddenRef.current = hidden;
+    Animated.parallel([
+      Animated.timing(previewHeaderTranslateY, {
+        toValue: hidden ? -previewHeaderHeight : 0,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(previewStatusGuardOpacity, {
+        toValue: hidden ? 1 : 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [previewHeaderHeight, previewHeaderTranslateY, previewStatusGuardOpacity]);
+  const handlePreviewHeaderScroll = useCallback((event: any) => {
+    const y = Math.max(0, event.nativeEvent.contentOffset.y || 0);
+    const delta = y - lastPreviewScrollY.current;
+    if (y < 12) {
+      setPreviewHeaderHidden(false);
+    } else if (delta > 6) {
+      setPreviewHeaderHidden(true);
+    } else if (delta < -6) {
+      setPreviewHeaderHidden(false);
+    }
+    lastPreviewScrollY.current = y;
+  }, [setPreviewHeaderHidden]);
   const playPulse = useRef(new Animated.Value(1)).current;
   const downloadPulse = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
@@ -3511,6 +3749,7 @@ export const MoviePreviewContent = memo(({
   const [showComments, setShowComments] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [alreadyDownloadedState, setAlreadyDownloadedState] = useState<{ visible: boolean, episode?: any, localItem?: any }>({ visible: false });
+  const [bulkDownloadState, setBulkDownloadState] = useState<{ visible: boolean; pending: any[] }>({ visible: false, pending: [] });
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<any[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -3643,9 +3882,13 @@ export const MoviePreviewContent = memo(({
     }
 
     // If already downloaded, show options instead of re-downloading silently
-    const isAlreadyDownloaded = downloadedMovies.some(m => m.id === movie.id);
+    const isAlreadyDownloaded = episode
+      ? !!episodeDownloads[targetId]
+      : downloadedMovies.some(m => m.id === movie.id);
     if (isAlreadyDownloaded) {
-      const localItem = downloadedMovies.find(m => m.id === movie.id);
+      const localItem = episode
+        ? { ...episode, localUri: episodeDownloads[targetId] }
+        : downloadedMovies.find(m => m.id === movie.id);
       setAlreadyDownloadedState({ visible: true, episode, localItem });
       return;
     }
@@ -3914,11 +4157,17 @@ export const MoviePreviewContent = memo(({
        }
 
        parts = list.map((ep: any, index: number) => {
+         const explicitIndex = Number(ep.episode || ep.episodeNumber || ep.episodeIndex || ep.index);
+         const globalIndex = Number.isFinite(explicitIndex) && explicitIndex > 0
+           ? explicitIndex
+           : ("seasons" in movie && movie.seasons > 1
+             ? ((selectedSeason - 1) * Math.ceil(((movie as any).episodeList || []).length / movie.seasons)) + index + 1
+             : index + 1);
          const isFree = index < ((movie as any).freeEpisodesCount || 0) || movie.isFree;
-         let displayIdx: any = index + 1;
+         let displayIdx: any = globalIndex;
          if (multiplier > 1) {
-           const start = (index * multiplier) + 1;
-           const end = (index + 1) * multiplier;
+           const start = ((globalIndex - 1) * multiplier) + 1;
+           const end = globalIndex * multiplier;
            displayIdx = `${start}-${end}`;
          }
          return {
@@ -3991,6 +4240,116 @@ export const MoviePreviewContent = memo(({
     
     return parts.length > 1 ? parts : [];
   }, [movie, allPool, selectedSeason]);
+
+  const totalSeriesEpisodeCount = React.useMemo(() => {
+    if (!movie || !("seasons" in movie)) return 0;
+    const explicit = Number((movie as any).episodes);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const fullListCount = Array.isArray((movie as any).episodeList) ? (movie as any).episodeList.length : 0;
+    const partCount = fullListCount || movieParts.length;
+    return partCount * ((movie as any).episodesPerPart || 1);
+  }, [movie, movieParts]);
+
+  const selectedSeasonEpisodeCount = React.useMemo(() => {
+    if (!movie || !("seasons" in movie)) return 0;
+    return movieParts.length * ((movie as any).episodesPerPart || 1);
+  }, [movie, movieParts]);
+
+  const allSeriesDownloadParts = React.useMemo(() => {
+    if (!movie || !("seasons" in movie) || !Array.isArray((movie as any).episodeList)) return movieParts;
+
+    const list = (movie as any).episodeList;
+    const seasons = Math.max(1, Number(movie.seasons || 1));
+    const perSeason = Math.ceil(list.length / seasons);
+    const localIndexBySeason: Record<number, number> = {};
+
+    return list.map((ep: any, index: number) => {
+      const explicitSeason = Number(ep.season ?? ep.seasonNumber ?? ep.seasonIndex);
+      const title = String(ep.title || "");
+      const titleSeason = Number(title.match(/\bs(?:eason)?\s*0?(\d+)\b/i)?.[1] || title.match(/\bseason\s*0?(\d+)\b/i)?.[1]);
+      const season = Number.isFinite(explicitSeason) && explicitSeason > 0
+        ? explicitSeason
+        : (Number.isFinite(titleSeason) && titleSeason > 0 ? titleSeason : Math.floor(index / perSeason) + 1);
+      const localIndex = localIndexBySeason[season] || 0;
+      localIndexBySeason[season] = localIndex + 1;
+      const episodeNumber = Number(ep.episode || ep.episodeNumber || ep.episodeIndex || ep.index);
+      const displayIndex = Number.isFinite(episodeNumber) && episodeNumber > 0 ? episodeNumber : index + 1;
+
+      return {
+        id: `${movie.id}-ep-${localIndex}-${season}`,
+        displayIndex,
+        title: ep.title,
+        videoUrl: ep.url,
+        url: ep.url,
+        poster: movie.poster,
+        duration: ep.duration || (movie as any).duration || "",
+        vj: movie.vj,
+        year: movie.year,
+        genre: movie.genre,
+        rating: movie.rating,
+        isFree: localIndex < ((movie as any).freeEpisodesCount || 0) || movie.isFree,
+      };
+    });
+  }, [movie, movieParts]);
+
+  const isPartsDownloading = React.useMemo(() => {
+    const partsToCheck = movie && "seasons" in movie ? allSeriesDownloadParts : movieParts;
+    return partsToCheck.some((part: any) => activeDownloads[part.id]);
+  }, [movie, movieParts, allSeriesDownloadParts, activeDownloads]);
+
+  const startPartsDownloadAll = () => {
+    if (!movie || movieParts.length === 0) return;
+
+    if (isPartsDownloading) {
+      cancelSeriesDownloads(movie.id);
+      return;
+    }
+
+    if (!isPaid && (!allMoviesFree || isGuest)) {
+      onShowPremium();
+      return;
+    }
+
+    const downloadParts = "seasons" in movie ? allSeriesDownloadParts : movieParts;
+    const pendingParts = downloadParts.filter((part: any) => !activeDownloads[part.id] && !episodeDownloads?.[part.id]);
+    if (pendingParts.length === 0) return;
+
+    setBulkDownloadState({ visible: true, pending: pendingParts });
+  };
+
+  const startBulkPartsDownload = async (mode: 'internal' | 'external') => {
+    const pending = bulkDownloadState.pending;
+    if (!movie || pending.length === 0) {
+      setBulkDownloadState({ visible: false, pending: [] });
+      return;
+    }
+
+    if (mode === 'external') {
+      if (!isPaid) {
+        setBulkDownloadState({ visible: false, pending: [] });
+        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+        return;
+      }
+      if (getRemainingDownloads() < pending.length) {
+        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} external download token${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
+        return;
+      }
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow gallery access before starting external downloads.");
+        return;
+      }
+    }
+
+    const parent = "seasons" in movie ? (movie as Series) : ({ ...movie, episodeList: pending } as any);
+    setBulkDownloadState({ visible: false, pending: [] });
+    pending.forEach((part: any) => {
+      downloadEpisode(parent, {
+        ...part,
+        url: part.url || part.videoUrl || '',
+      }, mode);
+    });
+  };
 
   useEffect(() => {
     if (movie && movieParts.length > 0) {
@@ -4116,40 +4475,89 @@ export const MoviePreviewContent = memo(({
 
   const previewSearchResults = previewQuery.trim()
     ? (() => {
-        const q = previewQuery.toLowerCase().trim();
-        let searchQ = q;
-        
-        // 1. Map aliases
-        if (q === "trending movies") searchQ = "trending";
-        if (q === "newly released" || q === "newly movie" || q === "latest") searchQ = "new releases";
-        if (q === "most viewed movies" || q === "most viewed") searchQ = "most viewed";
+        const normalize = (value: any) =>
+          String(value || "")
+            .toLowerCase()
+            .replace(/&/g, " and ")
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
 
-        // 2. Section Matches
-        const sectionMatches = ALL_ROWS.filter(r => r.title?.toLowerCase().includes(searchQ)).flatMap(r => r.data);
+        const compact = (value: any) => normalize(value).replace(/\s+/g, "");
+        const q = normalize(previewQuery);
+        const compactQ = compact(previewQuery);
+        const aliasMap: Record<string, string> = {
+          "trending movies": "trending",
+          "trend": "trending",
+          "newly released": "new releases",
+          "newly movie": "new releases",
+          "new movies": "new releases",
+          "latest": "new releases",
+          "latest movies": "new releases",
+          "most viewed movies": "most viewed",
+          "popular": "most viewed",
+          "downloads": "most downloaded",
+          "downloaded": "most downloaded",
+          "mini": "mini series",
+          "miniseries": "mini series",
+        };
+        const searchQ = aliasMap[q] || q;
+        const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace(/^vj\s+/, "") : searchQ;
 
-        // 3. Regional & Type Mapping
-        const regionalMatches: (Movie | Series)[] = [];
-        if (searchQ.includes("chinese")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("chinese")));
-        if (searchQ.includes("filipino")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("filipino")));
-        if (searchQ.includes("korean")) regionalMatches.push(...allPool.filter(m => m.genre?.toLowerCase().includes("korean")));
-        if (searchQ === "mini series") regionalMatches.push(...allPool.filter(m => "isMiniSeries" in m && m.isMiniSeries));
-        if (searchQ === "series") regionalMatches.push(...allPool.filter(m => "seasons" in m && !("isMiniSeries" in m && m.isMiniSeries)));
+        const itemTypeText = (m: Movie | Series) => {
+          if ("seasons" in m) return (m as any).isMiniSeries ? "mini series miniseries episodes" : "series seasons episodes";
+          return "movie film";
+        };
 
-        // 4. Fuzzy match
-        const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
-        const fuzzyMatches = allPool.filter((m) => {
-          return (
-            (m.title || "").toLowerCase().includes(searchQ) ||
-            (m.genre || "").toLowerCase().includes(searchQ) ||
-            String(m.year).includes(searchQ) ||
-            (m.vj || "").toLowerCase().includes(vjSearchQuery) ||
-            (m.title || "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
-          );
-        });
+        const searchableText = (m: Movie | Series) => {
+          const episodes = Array.isArray((m as any).episodeList)
+            ? (m as any).episodeList.map((ep: any) => `${ep.title || ""} ${ep.episode || ""} ${ep.season || ""}`).join(" ")
+            : "";
+          return normalize([
+            m.title,
+            m.genre,
+            m.rating,
+            m.year,
+            m.vj,
+            (m as any).description,
+            (m as any).director,
+            (m as any).cast,
+            (m as any).country,
+            itemTypeText(m),
+            episodes,
+          ].join(" "));
+        };
 
-        // Combine and dedup
-        const combined = [...sectionMatches, ...regionalMatches, ...fuzzyMatches];
-        return Array.from(new Map(combined.map(item => [item.id, item])).values());
+        const sectionMatches = ALL_ROWS
+          .filter(r => normalize(r.title).includes(searchQ))
+          .flatMap(r => r.data);
+
+        const scoredMatches = allPool
+          .map((m) => {
+            const title = normalize(m.title);
+            const titleCompact = compact(m.title);
+            const vj = normalize(m.vj);
+            const genre = normalize(m.genre);
+            const fullText = searchableText(m);
+            let score = 0;
+
+            if (title === searchQ) score += 120;
+            if (title.startsWith(searchQ)) score += 80;
+            if (title.includes(searchQ) || titleCompact.includes(compactQ)) score += 55;
+            if (vj.includes(vjSearchQuery)) score += searchQ.startsWith("vj ") ? 75 : 35;
+            if (genre.includes(searchQ)) score += 40;
+            if (String(m.year).includes(searchQ)) score += 25;
+            if (fullText.includes(searchQ)) score += 15;
+            if (searchQ === "mini series" && "isMiniSeries" in m && (m as any).isMiniSeries) score += 85;
+            if (searchQ === "series" && "seasons" in m && !(("isMiniSeries" in m) && (m as any).isMiniSeries)) score += 85;
+            if ((searchQ === "movie" || searchQ === "movies") && !("seasons" in m)) score += 65;
+
+            return { item: m, score };
+          })
+          .filter(({ score }) => score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map(({ item }) => item);
+
+        return Array.from(new Map([...sectionMatches, ...scoredMatches].map(item => [item.id, item])).values());
       })()
     : [];
 
@@ -4183,6 +4591,21 @@ export const MoviePreviewContent = memo(({
           barStyle="light-content"
           translucent
         />
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: previewHeaderTopInset + StyleSheet.hairlineWidth,
+            zIndex: 130,
+            opacity: previewStatusGuardOpacity,
+          }}
+        >
+          <View style={{ height: previewHeaderTopInset, backgroundColor: "rgba(10, 10, 15, 0.96)" }} />
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.18)" }} />
+        </Animated.View>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -4191,7 +4614,7 @@ export const MoviePreviewContent = memo(({
             <View
               style={{
                 position: "absolute",
-                top: insets.top + (Platform.OS === 'ios' ? 0 : 5),
+                top: previewHeaderTopInset + 4,
                 left: 0,
                 right: 0,
                 flexDirection: "row",
@@ -4254,8 +4677,10 @@ export const MoviePreviewContent = memo(({
               justifyContent: "space-between",
               paddingHorizontal: 16,
               zIndex: 110,
-              height: 64, // Tightened to exactly match search icon bottom (30+34)
-              paddingTop: insets.top, // Move content down to previous top position
+              height: previewHeaderHeight,
+              paddingTop: previewHeaderTopInset + 4,
+              transform: [{ translateY: previewHeaderTranslateY }],
+              overflow: "visible",
             }}
           >
             <Animated.View
@@ -4278,9 +4703,9 @@ export const MoviePreviewContent = memo(({
             {/* Mute Toggle on Left, aligned with Search on Right */}
             <TouchableOpacity
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
                 backgroundColor: "rgba(0,0,0,0.4)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -4298,9 +4723,9 @@ export const MoviePreviewContent = memo(({
             {!isSearchVisible && previewQuery.trim().length === 0 && (
               <TouchableOpacity
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
                   backgroundColor: "rgba(0,0,0,0.4)",
                   alignItems: "center",
                   justifyContent: "center",
@@ -4325,7 +4750,7 @@ export const MoviePreviewContent = memo(({
             contentContainerStyle={{ paddingBottom: 100 }}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false },
+              { useNativeDriver: false, listener: handlePreviewHeaderScroll },
             )}
             scrollEventThrottle={16}
           >
@@ -4346,16 +4771,22 @@ export const MoviePreviewContent = memo(({
                     // Prioritize local downloaded file for offline playback
                     let finalUrl: string | undefined;
                     if (firstPart) {
-                      finalUrl = episodeDownloads?.[firstPart.id] || firstPart.videoUrl;
+                      finalUrl = episodeDownloads?.[firstPart.id] || firstPart.videoUrl || previewVideoUrl;
                     } else {
                       // Single movie: check if it's downloaded locally
                       const dl = downloadedMovies.find(m => m.id === movie.id);
-                      finalUrl = (dl as any)?.localUri || (movie as any).videoUrl;
+                      finalUrl = (dl as any)?.localUri || (movie as any).videoUrl || previewVideoUrl;
+                    }
+
+                    if (!finalUrl) {
+                      Alert.alert("Coming Soon", "This video is still being prepared.");
+                      return;
                     }
                     
                     setSelectedVideoUrl?.(finalUrl);
                     setPlayerTitle?.(movie.title + (firstPart ? " - " + (firstPart.title || "Part 1") : ""));
                     if (firstPart && setPlayingEpisodeId) setPlayingEpisodeId(firstPart.id);
+                    setIsPreview?.(!((firstPart && (episodeDownloads?.[firstPart.id] || firstPart.videoUrl)) || (!firstPart && (downloadedMovies.find(m => m.id === movie.id) as any)?.localUri || (movie as any).videoUrl)));
                     setPlayingNow?.(movie as Movie);
                     setPlayerMode?.('full');
                   }}
@@ -4600,7 +5031,7 @@ export const MoviePreviewContent = memo(({
                               paddingVertical: 3,
                             }}>
                               <Text style={{ color: '#818cf8', fontSize: 11, fontWeight: '900' }}>
-                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {movieParts.length * ((movie as any).episodesPerPart || 1)}
+                                EP {movieParts[currentIndex]?.displayIndex || currentIndex + 1} / {totalSeriesEpisodeCount || selectedSeasonEpisodeCount || movieParts.length}
                               </Text>
                             </View>
                           )}
@@ -4623,7 +5054,9 @@ export const MoviePreviewContent = memo(({
                         paddingVertical: 3,
                       }}>
                         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '800' }}>
-                          {movieParts.length} {movieParts.length === 1 ? 'PART' : 'PARTS'}
+                          {"seasons" in movie
+                            ? `${totalSeriesEpisodeCount || selectedSeasonEpisodeCount || movieParts.length} EP`
+                            : `${movieParts.length} ${movieParts.length === 1 ? 'PART' : 'PARTS'}`}
                         </Text>
                       </View>
                     )}
@@ -5013,9 +5446,31 @@ export const MoviePreviewContent = memo(({
                             {movie.title.toUpperCase()} {"seasons" in movie ? "EPISODE" : "OTHER PARTS"}
                           </Text>
                           <View style={{ flex: 1 }} />
+                          <TouchableOpacity
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              backgroundColor: isPartsDownloading ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.1)',
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 16,
+                              marginRight: 8,
+                              borderWidth: isPartsDownloading ? StyleSheet.hairlineWidth : 0,
+                              borderColor: isPartsDownloading ? 'rgba(239,68,68,0.45)' : 'transparent',
+                            }}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              startPartsDownloadAll();
+                            }}
+                          >
+                            <Ionicons name={isPartsDownloading ? "close-circle-outline" : "download-outline"} size={12} color={isPartsDownloading ? "#ef4444" : "#fff"} />
+                            <Text style={{ color: isPartsDownloading ? '#ef4444' : '#fff', fontSize: 10, fontWeight: '700', marginLeft: 4 }}>
+                              {isPartsDownloading ? "CANCEL ALL" : "DL ALL"}
+                            </Text>
+                          </TouchableOpacity>
                           <View style={styles.epCountPillPremium}>
                             <Text style={styles.epCountTextPremium}>
-                              {"seasons" in movie ? `${movieParts.length * ((movie as any).episodesPerPart || 1)} EP` : `EP ${(movie as any).episodes || (movieParts.length * ((movie as any).episodesPerPart || 1))}`}
+                              {"seasons" in movie ? `${totalSeriesEpisodeCount || selectedSeasonEpisodeCount || movieParts.length} EP` : `EP ${(movie as any).episodes || (movieParts.length * ((movie as any).episodesPerPart || 1))}`}
                             </Text>
                           </View>
                           <Ionicons
@@ -5043,8 +5498,14 @@ export const MoviePreviewContent = memo(({
                             setActivePartId(mp.id);
                             // Prioritize local downloaded file for offline playback
                             const localUri = episodeDownloads?.[mp.id];
-                            setSelectedVideoUrl?.(localUri || mp.videoUrl);
+                            const finalUrl = localUri || mp.videoUrl || previewVideoUrl;
+                            if (!finalUrl) {
+                              Alert.alert("Coming Soon", "This video is still being prepared.");
+                              return;
+                            }
+                            setSelectedVideoUrl?.(finalUrl);
                             setPlayerTitle?.(mp.title);
+                            setIsPreview?.(!localUri && !mp.videoUrl);
                             setPlayerMode?.('full');
                           }}
 
@@ -5221,6 +5682,85 @@ export const MoviePreviewContent = memo(({
                 </View>
               </>
             )}
+
+            <Modal
+              visible={bulkDownloadState.visible && playerMode !== 'full'}
+              transparent
+              animationType="fade"
+              statusBarTranslucent
+              onRequestClose={() => setBulkDownloadState({ visible: false, pending: [] })}
+            >
+              <View style={styles.downloadModalCentering}>
+                <TouchableOpacity
+                  style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.78)" }]}
+                  activeOpacity={1}
+                  onPress={() => setBulkDownloadState({ visible: false, pending: [] })}
+                />
+                <Animated.View style={styles.downloadGlassCard}>
+                  <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={["rgba(255,255,255,0.08)", "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.downloadIconHeader}>
+                    <View style={styles.downloadIconCircle}>
+                      <Ionicons name="cloud-download" size={32} color="#5B5FEF" />
+                    </View>
+                  </View>
+                  <Text style={styles.downloadTitle}>Download Options</Text>
+                  <Text style={styles.downloadSub}>
+                    Choose your preferred method to save "{bulkDownloadState.pending.length} episode{bulkDownloadState.pending.length === 1 ? "" : "s"}" for offline viewing.
+                  </Text>
+                  <View style={styles.downloadActions}>
+                    <TouchableOpacity style={styles.downloadPrimaryBtn} onPress={() => startBulkPartsDownload('internal')} activeOpacity={0.8}>
+                      <LinearGradient colors={["#5B5FEF", "#4A4EDD"]} style={StyleSheet.absoluteFill} />
+                      <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+                      <Text style={styles.downloadPrimaryBtnText}>DOWNLOAD</Text>
+                      <View style={{ backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 9, color: "#fff", fontWeight: "700" }}>{isGuest ? "TRIAL" : "UNLIMITED"}</Text>
+                      </View>
+                      <View style={styles.pillSheen} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.downloadSecondaryBtn,
+                        (!isPaid || bulkDownloadState.pending.length > getRemainingDownloads()) && { opacity: 0.42 },
+                      ]}
+                      onPress={() => {
+                        if (!isPaid) {
+                          Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+                          return;
+                        }
+                        if (bulkDownloadState.pending.length > getRemainingDownloads()) {
+                          setBulkDownloadState({ visible: false, pending: [] });
+                          Alert.alert("Limit Reached", `This batch needs ${bulkDownloadState.pending.length} external tokens, but you only have ${getRemainingDownloads()} left.`);
+                          return;
+                        }
+                        startBulkPartsDownload('external');
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="folder-outline" size={20} color="#94a3b8" />
+                      <Text style={styles.downloadSecondaryBtnText}>EXTERNAL DOWNLOAD</Text>
+                      <View style={{ backgroundColor: bulkDownloadState.pending.length > getRemainingDownloads() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 9, color: bulkDownloadState.pending.length > getRemainingDownloads() ? "#ef4444" : "#94a3b8", fontWeight: "700" }}>
+                          {bulkDownloadState.pending.length > getRemainingDownloads()
+                            ? `${bulkDownloadState.pending.length} needed`
+                            : `${getRemainingDownloads()} left`}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    {getRemainingDownloads() <= 3 && (
+                      <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onUpgrade(); }}>
+                        <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
+                          {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
+                      <Text style={styles.downloadCancelText}>Maybe Later</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              </View>
+            </Modal>
 
             {/* ── Download Options Modal (Frosted Dark) ── */}
             <Modal
@@ -5465,7 +6005,7 @@ export const MoviePreviewContent = memo(({
                         }
                         if (getRemainingDownloads() === 0) {
                            setAlreadyDownloadedState({ visible: false });
-                           onShowPremium();
+                           Alert.alert("Limit Reached", "You have reached your daily limit for external downloads.");
                            return;
                         }
 
@@ -6104,23 +6644,23 @@ export const MoviePreviewContent = memo(({
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
 export const MoviePreviewModal = memo((props: any) => {
   useEffect(() => {
-    if (props.movie) {
+    if (props.movie && props.isTop !== false) {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         props.onClose();
         return true;
       });
       return () => backHandler.remove();
     }
-  }, [props.movie, props.onClose]);
+  }, [props.isTop, props.movie, props.onClose]);
 
   if (!props.movie) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 100000 }]}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 100000 }]} pointerEvents={props.isTop === false ? 'none' : 'auto'}>
       <MoviePreviewContent {...props} />
       <FloatingBackButton 
         onPress={props.onClose} 
-        visible={props.playerMode !== 'full'} 
+        visible={props.isTop !== false && props.playerMode !== 'full'} 
       />
     </View>
   );
@@ -6135,6 +6675,11 @@ export const MovieCard = memo(({
 }) => {
   const { isPaid, allMoviesFree, isGuest } = useSubscription();
   const isLocked = !isPaid && !movie.isFree && (!allMoviesFree || isGuest);
+  const partCount = Math.max(
+    Number((movie as any).episodes || 0),
+    Array.isArray((movie as any).episodeList) ? (movie as any).episodeList.length * Number((movie as any).episodesPerPart || 1) : 0,
+    Array.isArray((movie as any).parts) ? (movie as any).parts.length * Number((movie as any).episodesPerPart || 1) : 0,
+  );
 
   return (
     <TouchableOpacity
@@ -6166,10 +6711,10 @@ export const MovieCard = memo(({
             <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes} EP</Text>
           </View>
         ) : (
-          ((movie as any).episodes > 1 || (movie.episodeList && movie.episodeList.length > 1)) && (
+          partCount > 1 && (
             <View style={styles.epBadgePremium}>
                <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-               <Text style={styles.epBadgeTextPremium}>{(movie as any).episodes || movie.episodeList?.length} PART</Text>
+               <Text style={styles.epBadgeTextPremium}>{partCount} {partCount === 1 ? "PART" : "PARTS"}</Text>
             </View>
           )
         )}
@@ -6756,6 +7301,44 @@ const HeroBanner = memo(({
 });
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
+const BANNER_THEMES: Record<string, { gradient: [string, string]; badge: string }> = {
+  amber: { gradient: ["rgba(245, 158, 11, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#f59e0b" },
+  gold: { gradient: ["rgba(245, 158, 11, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#f59e0b" },
+  rose: { gradient: ["rgba(225, 29, 72, 0.45)", "rgba(10, 10, 15, 0.85)"], badge: "#e11d48" },
+  red: { gradient: ["rgba(225, 29, 72, 0.45)", "rgba(10, 10, 15, 0.85)"], badge: "#e11d48" },
+  emerald: { gradient: ["rgba(16, 185, 129, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#10b981" },
+  green: { gradient: ["rgba(16, 185, 129, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#10b981" },
+  blue: { gradient: ["rgba(59, 130, 246, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#3b82f6" },
+  purple: { gradient: ["rgba(168, 85, 247, 0.42)", "rgba(10, 10, 15, 0.85)"], badge: "#a855f7" },
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const fallback = `rgba(225, 29, 72, ${alpha})`;
+  const value = hex.replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(value)) return fallback;
+
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const formatHolidayRemaining = (expiresAt: string | undefined, nowMs: number) => {
+  if (!expiresAt) return '';
+  const end = new Date(expiresAt).getTime();
+  const diffMs = end - nowMs;
+  if (Number.isNaN(end) || diffMs <= 0) return '';
+
+  const totalMinutes = Math.ceil(diffMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}h left`;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { 
@@ -6798,6 +7381,13 @@ export default function HomeScreen() {
   const { 
     allMoviesFree, 
     eventMessage, 
+    holidayExpiresAt,
+    holidayBadgeText,
+    holidayBadgeColor,
+    isBannerActive,
+    bannerTheme,
+    bannerButtonText,
+    bannerActionUrl,
     isGuest, 
     subscriptionBundle,
     isDeviceBlocked,
@@ -6805,6 +7395,7 @@ export default function HomeScreen() {
     removeDevice,
     deviceLimit,
     remainingDays,
+    isPaid,
     isSubscribed,
     favorites,
     playingNow,
@@ -6819,10 +7410,20 @@ export default function HomeScreen() {
     isNotificationVisible,
     setIsNotificationVisible
   } = sub;
+  const [holidayTick, setHolidayTick] = useState(Date.now());
 
   const { downloadedMovies = [] } = useDownloads() || {};
   const [showExpiryReminder, setShowExpiryReminder] = useState(false);
   const [hasShownReminderThisSession, setHasShownReminderThisSession] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isUserMuted, setIsUserMuted] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isStackLoading, setIsStackLoading] = useState(false);
+  const [isPreviewOpening, setIsPreviewOpening] = useState(false);
+  const [isGridOpening, setIsGridOpening] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [navigationStack, setNavigationStack] = useState<StackItem[]>([]);
   const navigationStackRef = useRef(navigationStack);
   const playerModeRef = useRef(playerMode);
@@ -6834,6 +7435,18 @@ export default function HomeScreen() {
   useEffect(() => {
     playerModeRef.current = playerMode;
   }, [playerMode]);
+
+  const popNavigationStack = useCallback(() => {
+    let didPop = false;
+    setNavigationStack(prev => {
+      if (prev.length === 0) return prev;
+      const next = prev.slice(0, -1);
+      DeviceEventEmitter.emit("previewClosing", { remainingDepth: next.length });
+      didPop = true;
+      return next;
+    });
+    return didPop;
+  }, []);
 
    // ─── STABLE BACK HANDLER LOGIC ──────────────────────────────────────────
    const isSearchVisibleRef = useRef(isSearchVisible);
@@ -6884,19 +7497,43 @@ export default function HomeScreen() {
 
          // 4. If we have a navigation stack, pop one level
          if (navigationStackRef.current.length > 0) {
-           DeviceEventEmitter.emit("previewClosing");
-           setNavigationStack(prev => prev.slice(0, -1));
+           popNavigationStack();
+           return true;
+         }
+
+         // 5. Walk filters/search back one step at a time while staying on Home.
+         if (searchQuery) {
+           setSearchQuery('');
+           return true;
+         }
+         if (selectedGenre) {
+           setSelectedGenre(null);
+           return true;
+         }
+         if (selectedVJ) {
+           setSelectedVJ(null);
+           return true;
+         }
+         if (selectedType) {
+           setSelectedType(null);
+           return true;
+         }
+         if (selectedYear) {
+           setSelectedYear(null);
+           return true;
+         }
+         if (minRating > 0) {
+           setMinRating(0);
            return true;
          }
          
-         // 5. If we are at the root of the Home tab, allow the OS to handle back (App Exit)
-         // This is standard Android behavior. 
-         return false;
+         // 6. At Home root, consume back so Android does not play the "no back" sound.
+         return true;
        };
 
        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
        return () => subscription.remove();
-     }, [router])
+     }, [minRating, popNavigationStack, searchQuery, selectedGenre, selectedType, selectedVJ, selectedYear, setIsNotificationVisible, setMinRating, setPlayerMode, setSearchQuery, setSelectedGenre, setSelectedType, setSelectedVJ, setSelectedYear])
    );
 
   const prevStackLength = useRef(0);
@@ -6912,16 +7549,6 @@ export default function HomeScreen() {
     }
     prevStackLength.current = navigationStack.length;
   }, [navigationStack.length]);
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [isUserMuted, setIsUserMuted] = useState(false);
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [isStackLoading, setIsStackLoading] = useState(false);
-  const [isPreviewOpening, setIsPreviewOpening] = useState(false);
-  const [isGridOpening, setIsGridOpening] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
 
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
@@ -7098,6 +7725,26 @@ export default function HomeScreen() {
 
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const stackAnim = useRef(new Animated.Value(SCREEN_H)).current; // Start hidden (off-screen bottom)
+  const holidayRemainingLabel = useMemo(() => formatHolidayRemaining(holidayExpiresAt, holidayTick), [holidayExpiresAt, holidayTick]);
+  const hasHolidayBanner = allMoviesFree && !isGuest;
+  const hasAnnouncementBanner = isBannerActive && !!eventMessage;
+  const shouldShowTopBanner = hasHolidayBanner || hasAnnouncementBanner;
+  const isHolidayOnly = hasHolidayBanner && !hasAnnouncementBanner;
+  const activeBannerTheme = BANNER_THEMES[bannerTheme] || BANNER_THEMES.amber;
+  const holidayPillColor = holidayBadgeColor || activeBannerTheme.badge;
+  const bannerGradient = hasHolidayBanner
+    ? [hexToRgba(holidayPillColor, 0.48), "rgba(10, 10, 15, 0.88)"] as [string, string]
+    : activeBannerTheme.gradient;
+  const bannerText = `${eventMessage || (hasHolidayBanner ? "Enjoy all movies for FREE during this holiday period!" : "")}${bannerButtonText ? `  •  ${bannerButtonText}` : ''}`;
+  const bannerBadgeText = hasHolidayBanner
+    ? `${holidayBadgeText || 'Holiday'}${holidayRemainingLabel ? ` • ${holidayRemainingLabel}` : ''}`
+    : "ANNOUNCEMENT";
+
+  useEffect(() => {
+    if (!hasHolidayBanner || !holidayExpiresAt) return;
+    const interval = setInterval(() => setHolidayTick(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, [hasHolidayBanner, holidayExpiresAt]);
 
   useEffect(() => {
     const isVisible = navigationStack.length > 0 || loadingDeepLink || isPreviewOpening || isGridOpening;
@@ -7130,8 +7777,7 @@ export default function HomeScreen() {
   }, [navigationStack.length, loadingDeepLink, isPreviewOpening, isGridOpening, playerMode, isFocused]);
 
   useEffect(() => {
-    const shouldShowBanner = allMoviesFree ? !isGuest : !!eventMessage;
-    if (shouldShowBanner) {
+    if (shouldShowTopBanner) {
       const startAnimation = () => {
         bannerAnim.setValue(SCREEN_W); // Start from off-screen right
         Animated.timing(bannerAnim, {
@@ -7146,7 +7792,7 @@ export default function HomeScreen() {
       bannerAnim.setValue(0);
       bannerAnim.stopAnimation();
     }
-  }, [allMoviesFree, eventMessage]);
+  }, [bannerAnim, shouldShowTopBanner, bannerText, holidayRemainingLabel]);
 
   // Listen for search and notification overlay visibility changes
   useEffect(() => {
@@ -7275,6 +7921,24 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
 
+  const handleTopBannerPress = useCallback(() => {
+    const target = (bannerActionUrl || '').trim();
+    if (target) {
+      if (/^https?:\/\//i.test(target)) {
+        Linking.openURL(target).catch(() => {});
+        return;
+      }
+
+      const targetContent = allPool.find((item) => String(item.id) === target);
+      if (targetContent) {
+        openPreviewWithLoader(targetContent);
+        return;
+      }
+    }
+
+    DeviceEventEmitter.emit("openNotifications", { highlightId: "event_n1" });
+  }, [allPool, bannerActionUrl, openPreviewWithLoader]);
+
   const ROWS = liveRows;
 
   // Increment views and track user activity
@@ -7397,7 +8061,7 @@ export default function HomeScreen() {
           />
         }
       >
-        {(allMoviesFree ? !isGuest : !!eventMessage) && (
+        {shouldShowTopBanner && (
           <TouchableOpacity 
             style={[
               styles.eventBannerContainer,
@@ -7408,28 +8072,39 @@ export default function HomeScreen() {
               }
             ]}
             activeOpacity={0.9}
-            onPress={() => DeviceEventEmitter.emit("openNotifications", { highlightId: "event_n1" })}
+            onPress={handleTopBannerPress}
           >
             <LinearGradient
-              colors={(allMoviesFree && !isGuest) ? ["rgba(225, 29, 72, 0.4)", "rgba(10, 10, 15, 0.8)"] : ["rgba(91, 95, 239, 0.4)", "rgba(10, 10, 15, 0.8)"]}
+              colors={bannerGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.eventBannerContent}>
-              <View style={{ flex: 1, marginLeft: 105, overflow: 'hidden' }}>
-                <Animated.View style={[styles.animatedMessage, { transform: [{ translateX: bannerAnim }], width: 2000, paddingLeft: 0 }]}>
-                  <Text style={[styles.eventMessageText, { width: 'auto' }]} numberOfLines={1}>
-                    {eventMessage || (allMoviesFree && !isGuest ? "Enjoy all movies for FREE today!" : "")}
-                  </Text>
-                  <View style={styles.eventBadgePulse} />
-                </Animated.View>
-              </View>
+              {!isHolidayOnly && (
+                <View style={styles.eventMessageClip}>
+                  <Animated.View style={[styles.animatedMessage, { transform: [{ translateX: bannerAnim }], width: 2000, paddingLeft: 0 }]}>
+                    <Text style={[styles.eventMessageText, { width: 'auto' }]} numberOfLines={1}>
+                      {bannerText}
+                    </Text>
+                    <View style={styles.eventBadgePulse} />
+                  </Animated.View>
+                </View>
+              )}
 
-              <View style={[styles.eventBadge, !(allMoviesFree && !isGuest) && { backgroundColor: '#5B5FEF' }]}>
-                <Ionicons name={allMoviesFree ? "gift-outline" : "megaphone-outline"} size={12} color="#fff" />
-                <Text style={styles.eventBadgeText}>{(allMoviesFree && !isGuest) ? "HOLIDAY MODE" : "ANNOUNCEMENT"}</Text>
-              </View>
+              {isHolidayOnly ? (
+                <View style={[styles.eventHolidayPill, { backgroundColor: holidayPillColor }]}>
+                  <Ionicons name="gift-outline" size={14} color="#fff" />
+                  <Text style={styles.eventBadgeText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                    {bannerBadgeText}
+                  </Text>
+                </View>
+              ) : (
+                <View style={[styles.eventBadge, { backgroundColor: hasHolidayBanner ? holidayPillColor : activeBannerTheme.badge }]}>
+                  <Ionicons name={hasHolidayBanner ? "gift-outline" : "megaphone-outline"} size={12} color="#fff" />
+                  <Text style={styles.eventBadgeText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{bannerBadgeText}</Text>
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         )}
@@ -7508,31 +8183,29 @@ export default function HomeScreen() {
             {navigationStack.length > 0 && (
               <View style={[StyleSheet.absoluteFill, { zIndex: 10000, backgroundColor: '#0a0a0f' }, playerMode === 'full' && { display: 'none' }]}>
                 {navigationStack.map((item, index) => {
+                  const isTop = index === navigationStack.length - 1;
                   const onClose = () => {
-                    DeviceEventEmitter.emit("previewClosing");
                     setNavigationStack((prev) => {
+                      if (index !== prev.length - 1) return prev;
                       const newStack = [...prev];
-                      newStack.splice(index, 1);
+                      newStack.pop();
+                      DeviceEventEmitter.emit("previewClosing", { remainingDepth: newStack.length });
                       return newStack;
                     });
                   };
 
                   if (item.type === 'grid') {
                     return (
-                      <GridContent
-                        key={`grid-${index}`}
-                        title={item.title}
-                        data={item.data}
-                        onClose={onClose}
-                        onSelect={(m) => {
-                          const isSeries = "seasons" in m || m.type === 'Series' || (m as any).type === 'Mini Series' || (m as any).isMiniSeries;
-                          if (isSeries) {
-                            router.push(`/(tabs)/saved?seriesId=${m.id}`);
-                          } else {
+                      <View key={`grid-${index}`} style={StyleSheet.absoluteFill} pointerEvents={isTop ? 'auto' : 'none'}>
+                        <GridContent
+                          title={item.title}
+                          data={item.data}
+                          onClose={onClose}
+                          onSelect={(m) => {
                             openPreviewWithLoader(m);
-                          }
-                        }}
-                      />
+                          }}
+                        />
+                      </View>
                     );
                   }
 
@@ -7544,12 +8217,7 @@ export default function HomeScreen() {
                       movie={previewItem}
                       onClose={onClose}
                       onSwitch={(m: Movie | Series) => {
-                        const isSeries = "seasons" in m || m.type === 'Series' || (m as any).type === 'Mini Series' || (m as any).isMiniSeries;
-                        if (isSeries) {
-                          router.push(`/(tabs)/saved?seriesId=${m.id}`);
-                        } else {
-                          openPreviewWithLoader(m);
-                        }
+                        openPreviewWithLoader(m);
                       }}
                       onSeeAll={(title: string, data: (Movie | Series)[]) => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -7595,6 +8263,8 @@ export default function HomeScreen() {
       <PremiumAccessModal
         visible={showPremiumModal}
         isGuest={isGuest}
+        isPaid={isPaid}
+
         onClose={() => setShowPremiumModal(false)}
         onLogin={() => {
           setShowPremiumModal(false);

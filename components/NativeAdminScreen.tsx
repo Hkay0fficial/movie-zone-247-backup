@@ -120,6 +120,22 @@ interface LayoutSection {
   isVisible: boolean;
 }
 
+const normalizeList = (value: any): string[] => {
+  if (Array.isArray(value)) return value.map(String).map(v => v.trim()).filter(Boolean);
+  if (typeof value === 'string') return value.split(',').map(v => v.trim()).filter(Boolean);
+  return [];
+};
+
+const compactFirestoreData = (value: any): any => {
+  if (Array.isArray(value)) return value.map(compactFirestoreData);
+  if (!value || typeof value !== 'object' || value instanceof Timestamp || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, compactFirestoreData(entryValue)])
+  );
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function NativeAdminScreen() {
@@ -654,6 +670,7 @@ export default function NativeAdminScreen() {
           plan: d.subscriptionBundle || 'None',
           subscriptionExpiresAt: d.subscriptionExpiresAt ? d.subscriptionExpiresAt.seconds * 1000 : null,
           totalViews: d.totalViews || 0,
+          lastLogin: d.lastLogin || d.lastActive || d.createdAt || null,
           createdAt: d.createdAt
         } as UserData;
       });
@@ -754,10 +771,25 @@ export default function NativeAdminScreen() {
   // ─── Actions ────────────────────────────────────────────────────────────────
 
   const handleSaveContent = async () => {
-    if (!contentForm.title) return Alert.alert('Error', 'Title is required');
+    if (!contentForm.title?.trim()) return Alert.alert('Error', 'Title is required');
     setLoading(true);
     try {
       const data = { ...contentForm, updatedAt: serverTimestamp() };
+      data.title = data.title.trim();
+      data.type = data.type === 'Series' || data.type === 'Mini' || data.type === 'Mini Series' ? 'Series' : 'Movie';
+      data.isMiniSeries = data.type === 'Series' && !!data.isMiniSeries;
+      data.genre = data.genre || 'Action';
+      data.vj = !data.vj || String(data.vj).toLowerCase() === 'none' ? '' : data.vj;
+      data.rating = data.rating ? String(data.rating).trim() : '';
+      data.year = data.year ? String(data.year).trim() : '';
+      data.description = data.description || data.synopsis || '';
+      data.synopsis = data.synopsis || data.description || '';
+      data.isFree = data.accessMode === 'free' ? true : data.accessMode === 'premium' ? false : !!data.isFree;
+      data.heroType = data.heroType === 'photo' || data.heroMediaType === 'photo' ? 'photo' : 'video';
+      data.pinnedTo = normalizeList(data.pinnedTo || data.pinnedCategories || data.pinCategories);
+      data.isPinned = !!data.isPinned || data.pinnedTo.length > 0;
+      data.episodesPerPart = Number(data.episodesPerPart) > 0 ? Number(data.episodesPerPart) : 1;
+      data.freeEpisodesCount = Number(data.freeEpisodesCount) > 0 ? Number(data.freeEpisodesCount) : 0;
       
       // --- Automatic Image Uploads ---
       if (data.poster && data.poster.startsWith('file://')) {
@@ -770,21 +802,58 @@ export default function NativeAdminScreen() {
       }
 
       data.coverUrl = data.poster; // Mapping for app compatibility
+      if (!data.heroPhotoUrl && data.heroImageUrl) data.heroPhotoUrl = data.heroImageUrl;
+      if (!data.heroPhotoUrl && data.heroBannerUrl) data.heroPhotoUrl = data.heroBannerUrl;
+      if (!data.heroPhotoUrl && data.backdropUrl) data.heroPhotoUrl = data.backdropUrl;
+
+      const episodeList = Array.isArray(data.episodeList)
+        ? data.episodeList
+            .map((ep: any, index: number) => ({
+              ...ep,
+              title: ep.title || (data.type === 'Series' ? `Episode ${index + 1}` : `Part ${index + 1}`),
+              url: ep.url || ep.videoUrl || '',
+              videoUrl: ep.videoUrl || ep.url || '',
+              duration: ep.duration || data.episodeDuration || data.duration || '',
+            }))
+            .filter((ep: any) => ep.url || ep.videoUrl || ep.title)
+        : [];
+      data.episodeList = episodeList;
 
       // Cleanup extra fields before saving to keep Firestore clean
       if (data.type === 'Movie') {
-        // Keep episodeList and freeEpisodesCount for Movie parts
+        if (data.hasParts) {
+          data.parts = episodeList.map((ep: any, index: number) => ({
+            id: ep.id || `${editingId || 'part'}-${index + 1}`,
+            title: ep.title || `Part ${index + 1}`,
+            videoUrl: ep.videoUrl || ep.url || '',
+            previewUrl: ep.previewUrl || '',
+            duration: ep.duration || data.duration || '',
+            previewDuration: ep.previewDuration || data.previewDuration || '',
+            bunnyVideoId: ep.bunnyVideoId || '',
+            subtitleUrl: ep.subtitleUrl || '',
+          }));
+        } else {
+          data.parts = [];
+          data.episodeList = [];
+          data.freeEpisodesCount = 0;
+        }
         delete data.isMiniSeries;
         delete data.seasons;
         delete data.status;
+      } else {
+        data.seasons = Number(data.seasons) > 0 ? Number(data.seasons) : 1;
+        data.episodes = episodeList.length || Number(data.episodes) || 0;
+        data.status = data.status || 'Ongoing';
+        delete data.parts;
+        delete data.hasParts;
       }
 
       let docId = editingId;
       if (editingId) {
-        await updateDoc(doc(db, 'movies', editingId), data);
+        await updateDoc(doc(db, 'movies', editingId), compactFirestoreData(data));
         await logAdminAction('UPDATE_CONTENT', `Updated ${data.type}: ${data.title}`, editingId, data.title);
       } else {
-        const newDoc = await addDoc(collection(db, 'movies'), { ...data, createdAt: serverTimestamp() });
+        const newDoc = await addDoc(collection(db, 'movies'), compactFirestoreData({ ...data, createdAt: serverTimestamp() }));
         docId = newDoc.id;
         await logAdminAction('CREATE_CONTENT', `Created ${data.type}: ${data.title}`, docId, data.title);
       }
@@ -817,6 +886,35 @@ export default function NativeAdminScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openContentEditor = (item: any) => {
+    const existingEpisodes = Array.isArray(item.episodeList) && item.episodeList.length > 0
+      ? item.episodeList
+      : Array.isArray(item.parts)
+        ? item.parts.map((part: any, index: number) => ({
+            title: part.title || `Part ${index + 1}`,
+            url: part.url || part.videoUrl || '',
+            videoUrl: part.videoUrl || part.url || '',
+            duration: part.duration || '',
+            previewUrl: part.previewUrl || '',
+            previewDuration: part.previewDuration || '',
+            bunnyVideoId: part.bunnyVideoId || '',
+            subtitleUrl: part.subtitleUrl || '',
+          }))
+        : [];
+
+    setEditingId(item.id);
+    setContentForm({
+      ...item,
+      hasParts: item.type === 'Movie' && existingEpisodes.length > 0,
+      episodeList: existingEpisodes,
+      synopsis: item.synopsis || item.description || '',
+      poster: item.poster || item.coverUrl || item.posterUrl || '',
+      heroType: item.heroType || item.heroMediaType || 'video',
+      pinnedTo: normalizeList(item.pinnedTo || item.pinnedCategories || item.pinCategories),
+    });
+    setIsContentModalVisible(true);
   };
 
   const handleUserAction = async (action: 'Ban' | 'Unban' | 'Delete' | 'UpdatePlan' | 'Cleanup', extra?: any) => {
@@ -1235,7 +1333,7 @@ export default function NativeAdminScreen() {
                 <View style={styles.itemActionCol}>
                    <Text style={styles.itemYear}>{item.year || 'N/A'}</Text>
                    {!isSelectMode && (
-                    <TouchableOpacity onPress={() => { setEditingId(item.id); setContentForm(item); setIsContentModalVisible(true); }} style={styles.editBtnSmall}>
+                    <TouchableOpacity onPress={() => openContentEditor(item)} style={styles.editBtnSmall}>
                       <Ionicons name="pencil" size={16} color="#6366f1" />
                     </TouchableOpacity>
                    )}
@@ -3189,11 +3287,6 @@ const styles = StyleSheet.create({
   // Series Specific
   seriesSection: { marginTop: 10 },
   epTitle: { color: '#fff', fontSize: 12, fontWeight: '800', marginTop: 15, marginBottom: 10, opacity: 0.6 },
-  epBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#1e293b', marginBottom: 10, gap: 10 },
-  epInput: { color: '#fff', fontSize: 13, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b', flex: 1 },
-  epRemove: { padding: 10, backgroundColor: '#450a0a', borderRadius: 10 },
-  addEpBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#334155', borderRadius: 12, marginTop: 10 },
-  addEpBtnText: { color: '#6366f1', fontSize: 12, fontWeight: '900' },
   
   // Type Selectors
   typeRow: { flexDirection: 'row', gap: 12, marginBottom: 10 },

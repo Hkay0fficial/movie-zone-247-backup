@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.moviezone247.app",
-      "versionCode": 23,
+      "versionCode": 24,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"

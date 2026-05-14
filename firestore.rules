@@ -1,6 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function touchesEntitlements() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'subscriptionBundle',
+        'subscriptionExpiresAt',
+        'paymentMethod',
+        'customExternalLimit',
+        'customDeviceLimit',
+        'downloadLimit',
+        'isBanned',
+        'status',
+        'role',
+        'plan'
+      ]);
+    }
+
+    function createsEntitlements() {
+      return request.resource.data.keys().hasAny([
+        'customExternalLimit',
+        'customDeviceLimit',
+        'downloadLimit',
+        'isBanned',
+        'status',
+        'plan'
+      ])
+      || (request.resource.data.keys().hasAny(['role']) && request.resource.data.role != 'user')
+      || (request.resource.data.keys().hasAny(['subscriptionBundle']) && request.resource.data.subscriptionBundle != 'None')
+      || (request.resource.data.keys().hasAny(['subscriptionExpiresAt']) && request.resource.data.subscriptionExpiresAt != null)
+      || (request.resource.data.keys().hasAny(['paymentMethod']) && request.resource.data.paymentMethod != '');
+    }
+
     // Allow read access to global settings for all users (including guests)
     match /settings/global {
       allow read: if true;
@@ -29,9 +63,34 @@ service cloud.firestore {
 
     // Main users collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, delete: if isOwner(userId);
+      allow create: if isOwner(userId) && !createsEntitlements();
+      allow update: if isOwner(userId) && !touchesEntitlements();
+
+      match /downloadCounters/{dateId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.userId == userId
+          && request.resource.data.externalDownloadsUsed is int
+          && request.resource.data.externalDownloadsUsed >= 0
+          && request.resource.data.externalDownloadsUsed <= 1000;
+        allow update: if isOwner(userId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.externalDownloadsUsed is int
+          && request.resource.data.externalDownloadsUsed >= 0
+          && request.resource.data.externalDownloadsUsed <= 1000
+          && request.resource.data.externalDownloadsUsed <= resource.data.externalDownloadsUsed + 1;
+      }
       
-      match /{allSubcollections=**} {
+      match /favorites/{favoriteId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /notifications/{notificationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /transactions/{transactionId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
@@ -64,4 +123,3 @@ service cloud.firestore {
     }
   }
 }
-

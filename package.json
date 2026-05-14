@@ -8,7 +8,11 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "ota:staging:android": "APP_VARIANT=staging eas update --branch staging --platform android",
+    "ota:production:android": "eas update --branch production --platform android",
+    "build:staging:android": "APP_VARIANT=staging eas build --profile staging --platform android",
+    "build:production:android": "eas build --profile production --platform android"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.3",

@@ -49,7 +49,7 @@ interface PreferencesAndActivityProps {
   currentScrollY: number;
   activeDownloads?: Record<string, any>;
   downloadedMovies: any[];
-  removeDownload: (id: string) => void;
+  deleteDownload: (id: string) => void;
   notifications: Notification[];
   handleClearNotifications: () => void;
   handleNotificationPress: (n: Notification) => void;
@@ -77,7 +77,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
   currentScrollY,
   activeDownloads = {},
   downloadedMovies,
-  removeDownload,
+  deleteDownload,
   notifications,
   handleClearNotifications,
   handleNotificationPress,
@@ -183,7 +183,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
           text: 'Delete', 
           style: 'destructive', 
           onPress: () => {
-            selectedIds.forEach(id => removeDownload(id));
+            selectedIds.forEach(id => deleteDownload(id));
             setSelectedIds(new Set());
             setIsEditMode(false);
           } 
@@ -328,7 +328,7 @@ export const PreferencesAndActivity: React.FC<PreferencesAndActivityProps> = ({
                                     `Remove "${m.title}" from your downloads?`,
                                     [
                                       { text: 'Cancel', style: 'cancel' },
-                                      { text: 'Remove', style: 'destructive', onPress: () => removeDownload((m as any).id) },
+                                      { text: 'Remove', style: 'destructive', onPress: () => deleteDownload((m as any).id) },
                                     ]
                                   );
                                 }}

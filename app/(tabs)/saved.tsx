@@ -568,8 +568,12 @@ export default function SeriesScreen() {
 
         // 3. Pop Navigation Stack (Previews or Grids)
         if (navigationStackRef.current.length > 0) {
-          DeviceEventEmitter.emit("previewClosing");
-          setNavigationStack(prev => prev.slice(0, -1));
+          setNavigationStack(prev => {
+            if (prev.length === 0) return prev;
+            const next = prev.slice(0, -1);
+            DeviceEventEmitter.emit("previewClosing", { remainingDepth: next.length });
+            return next;
+          });
           return true;
         }
 
@@ -1025,15 +1029,17 @@ export default function SeriesScreen() {
 
       {/* Series Preview Modal Stack */}
       {navigationStack.map((item, index) => {
+        const isTop = index === navigationStack.length - 1;
         const onClose = () => {
-          DeviceEventEmitter.emit("previewClosing");
-          if (navigationStack.length === 1 && isExternalSearch) {
-            setIsExternalSearch(false);
-            router.back();
-          }
           setNavigationStack(prev => {
+            if (index !== prev.length - 1) return prev;
             const newStack = [...prev];
-            newStack.splice(index, 1);
+            newStack.pop();
+            DeviceEventEmitter.emit("previewClosing", { remainingDepth: newStack.length });
+            if (newStack.length === 0 && isExternalSearch) {
+              setIsExternalSearch(false);
+              router.back();
+            }
             return newStack;
           });
         };
@@ -1042,7 +1048,7 @@ export default function SeriesScreen() {
           return (
             <GridModal
               key={`grid-${index}`}
-              visible={playerMode !== 'full'}
+              visible={isTop && playerMode !== 'full'}
               title={item.title}
               data={item.data}
               onClose={onClose}
@@ -1070,6 +1076,7 @@ export default function SeriesScreen() {
             setPlayerTitle={setPlayerTitle}
             selectedVideoUrl={selectedVideoUrl}
             playerTitle={playerTitle}
+            isTop={isTop}
             setActivePartId={(id) => {
               setActivePartId(id);
               try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
@@ -1126,6 +1133,7 @@ function SeriesPreviewModal({
   setPlayerTitle,
   selectedVideoUrl,
   playerTitle,
+  isTop,
   setActivePartId,
   setActiveEpisodes,
   isFocused,
@@ -1143,6 +1151,7 @@ function SeriesPreviewModal({
   setPlayerTitle: (t: string) => void;
   selectedVideoUrl: string;
   playerTitle: string;
+  isTop?: boolean;
   setActivePartId: (id: string) => void;
   setActiveEpisodes: (eps: any[]) => void;
   isFocused: boolean;
@@ -1160,6 +1169,8 @@ function SeriesPreviewModal({
     setIsPreview,
     setPlayingNow,
   } = useSubscription();
+  const hasInternalDownloadAccess = isPaid || (allMoviesFree && !isGuest);
+
 
   const {
     activeDownloads,
@@ -1171,6 +1182,7 @@ function SeriesPreviewModal({
     deleteDownload,
     getRemainingDownloads,
     getExternalDownloadLimit,
+    cancelSeriesDownloads,
   } = useDownloads();
 
 
@@ -1218,11 +1230,9 @@ function SeriesPreviewModal({
     (s) => s.genre === series.genre && s.id !== series.id,
   ).slice(0, 6);
 
-  // Helper for background download status
-  // Helper for background download status - checks both general series or current episode
-  const activeDl = activeDownloads[activeEpisodeId] || 
-                   activeDownloads[series.id] || 
-                   Object.values(activeDownloads).find(d => d.item?.id === series.id);
+  // Keep the preview action scoped to the selected episode; episode downloads
+  // should not make the whole parent series look like it is downloading.
+  const activeDl = activeEpisodeId ? activeDownloads[activeEpisodeId] : undefined;
   const seriesDownloadPct = activeDl?.progress;
   const isThisDownloading = activeDl !== undefined;
   const seriesInputRef = useRef<TextInput>(null);
@@ -1278,15 +1288,53 @@ function SeriesPreviewModal({
 
   // Removed internal BackHandler - handled by parent SeriesScreen
   const insets = useSafeAreaInsets();
+  const previewHeaderTopInset = Math.max(insets.top, Platform.OS === "android" ? 34 : 0);
+  const previewHeaderHeight = previewHeaderTopInset + 52;
   const playPulse = useRef(new Animated.Value(1)).current;
   const downloadPulse = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const myListScale = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const previewHeaderTranslateY = useRef(new Animated.Value(0)).current;
+  const previewStatusGuardOpacity = useRef(new Animated.Value(0)).current;
+  const lastPreviewScrollY = useRef(0);
+  const previewHeaderHiddenRef = useRef(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [seriesQuery, setSeriesQuery] = useState("");
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>("");
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+
+  const setPreviewHeaderHidden = useCallback((hidden: boolean) => {
+    if (previewHeaderHiddenRef.current === hidden) return;
+    previewHeaderHiddenRef.current = hidden;
+    Animated.parallel([
+      Animated.timing(previewHeaderTranslateY, {
+        toValue: hidden ? -previewHeaderHeight : 0,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(previewStatusGuardOpacity, {
+        toValue: hidden ? 1 : 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [previewHeaderHeight, previewHeaderTranslateY, previewStatusGuardOpacity]);
+
+  const handlePreviewHeaderScroll = useCallback((event: any) => {
+    const y = Math.max(0, event.nativeEvent.contentOffset.y || 0);
+    const delta = y - lastPreviewScrollY.current;
+    if (y < 12) {
+      setPreviewHeaderHidden(false);
+    } else if (delta > 6) {
+      setPreviewHeaderHidden(true);
+    } else if (delta < -6) {
+      setPreviewHeaderHidden(false);
+    }
+    lastPreviewScrollY.current = y;
+  }, [setPreviewHeaderHidden]);
 
   // Derive a consistent video preview URL for this series
   // Priority: actual uploaded series preview > main video > fallback demo reel
@@ -1356,6 +1404,52 @@ function SeriesPreviewModal({
     });
   }, [series, previewVideoUrl, selectedSeason]);
 
+  const isSeriesDownloading = useMemo(() => {
+    return episodes.some((ep: any) => activeDownloads[ep.id]);
+  }, [episodes, activeDownloads]);
+
+  const startSeriesDownloadAll = () => {
+    if (!series) return;
+
+    if (isSeriesDownloading) {
+      cancelSeriesDownloads(series.id);
+      return;
+    }
+
+    const pendingEpisodes = episodes.filter((ep: any) => !episodeDownloads[ep.id] && !activeDownloads[ep.id]);
+    if (pendingEpisodes.length === 0) return;
+
+    setBulkDownloadState({ visible: true, pending: pendingEpisodes });
+  };
+
+  const startBulkSeriesDownload = async (mode: 'internal' | 'external') => {
+    const pending = bulkDownloadState.pending;
+    if (!series || pending.length === 0) {
+      setBulkDownloadState({ visible: false, pending: [] });
+      return;
+    }
+
+    if (mode === 'external') {
+      if (!isPaid) {
+        setBulkDownloadState({ visible: false, pending: [] });
+        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+        return;
+      }
+      if (getRemainingDownloads() < pending.length) {
+        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} external download token${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
+        return;
+      }
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow gallery access before starting external downloads.");
+        return;
+      }
+    }
+
+    setBulkDownloadState({ visible: false, pending: [] });
+    pending.forEach((ep: any) => downloadEpisode(series, ep, mode));
+  };
+
   useEffect(() => {
     if (episodes && episodes.length > 0) {
       setActiveEpisodes(episodes);
@@ -1420,6 +1514,7 @@ function SeriesPreviewModal({
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [alreadyDownloadedState, setAlreadyDownloadedState] = useState<{ visible: boolean, activeEpisode?: any, localUri?: string }>({ visible: false });
   const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
+  const [bulkDownloadState, setBulkDownloadState] = useState<{ visible: boolean; pending: any[] }>({ visible: false, pending: [] });
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<any[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -1564,7 +1659,7 @@ function SeriesPreviewModal({
       onShowPremium?.();
       return;
     }
-    if (getRemainingDownloads() === 0) {
+    if (getRemainingDownloads() === 0 && !hasInternalDownloadAccess) {
       onShowPremium?.();
       return;
     }
@@ -1606,7 +1701,8 @@ function SeriesPreviewModal({
     const currentIndex = episodes.findIndex(e => e.id === activeEpisodeId);
     if (currentIndex < episodes.length - 1) {
       const nextEp = episodes[currentIndex + 1];
-      const canWatchNext = (allMoviesFree && !isGuest) || (nextEp as any).isFree || (nextEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchNext = (allMoviesFree && !isGuest) || (nextEp as any).isFree || (nextEp as any).isPremium === false || isPaid;
+
       if (!canWatchNext) {
         onShowPremium?.();
         return;
@@ -1616,7 +1712,13 @@ function SeriesPreviewModal({
       setPlayerTitle(nextEp.title);
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads[nextEp.id];
-      setSelectedVideoUrl(localUri || nextEp.videoUrl);
+      const finalUrl = localUri || nextEp.videoUrl || previewVideoUrl;
+      if (!finalUrl) {
+        Alert.alert("Coming Soon", "This episode is not available yet.");
+        return;
+      }
+      setSelectedVideoUrl(finalUrl);
+      setIsPreview(!localUri && !nextEp.videoUrl);
     }
   };
 
@@ -1624,7 +1726,8 @@ function SeriesPreviewModal({
     const currentIndex = episodes.findIndex(e => e.id === activeEpisodeId);
     if (currentIndex > 0) {
       const prevEp = episodes[currentIndex - 1];
-      const canWatchPrev = (allMoviesFree && !isGuest) || (prevEp as any).isFree || (prevEp as any).isPremium === false || (subscriptionBundle !== 'None' && !isGuest);
+      const canWatchPrev = (allMoviesFree && !isGuest) || (prevEp as any).isFree || (prevEp as any).isPremium === false || isPaid;
+
       if (!canWatchPrev) {
         onShowPremium?.();
         return;
@@ -1634,7 +1737,13 @@ function SeriesPreviewModal({
       setPlayerTitle(prevEp.title);
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads[prevEp.id];
-      setSelectedVideoUrl(localUri || prevEp.videoUrl);
+      const finalUrl = localUri || prevEp.videoUrl || previewVideoUrl;
+      if (!finalUrl) {
+        Alert.alert("Coming Soon", "This episode is not available yet.");
+        return;
+      }
+      setSelectedVideoUrl(finalUrl);
+      setIsPreview(!localUri && !prevEp.videoUrl);
     }
   };
 
@@ -1685,7 +1794,7 @@ function SeriesPreviewModal({
 
   return (
     <Modal
-      visible={playerMode !== 'full'}
+      visible={isTop !== false && playerMode !== 'full'}
       transparent={true}
       animationType="none"
       onRequestClose={onClose}
@@ -1702,6 +1811,21 @@ function SeriesPreviewModal({
           barStyle="light-content"
           translucent
         />
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: previewHeaderTopInset + StyleSheet.hairlineWidth,
+            zIndex: 130,
+            opacity: previewStatusGuardOpacity,
+          }}
+        >
+          <View style={{ height: previewHeaderTopInset, backgroundColor: "rgba(10, 10, 15, 0.96)" }} />
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.18)" }} />
+        </Animated.View>
         <SafeAreaView style={{ flex: 1 }}>
           <Animated.View
             pointerEvents="box-none"
@@ -1714,8 +1838,10 @@ function SeriesPreviewModal({
               justifyContent: "space-between",
               paddingHorizontal: 16,
               zIndex: 110,
-              height: 64,
-              paddingTop: insets.top,
+              height: previewHeaderHeight,
+              paddingTop: previewHeaderTopInset + 4,
+              transform: [{ translateY: previewHeaderTranslateY }],
+              overflow: "visible",
             }}
           >
             <Animated.View
@@ -1727,31 +1853,22 @@ function SeriesPreviewModal({
                     outputRange: [0, 1],
                     extrapolate: "clamp",
                   }),
+                  backgroundColor: "rgba(10, 10, 15, 0.95)",
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: "rgba(91, 95, 239, 0.5)",
                 },
               ]}
               pointerEvents="none"
             >
               <BlurView intensity={99} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(15, 15, 25, 0.95)" }]} />
-              <LinearGradient
-                colors={["rgba(15, 15, 25, 0.95)", "transparent"] as any}
-                style={{
-                  position: "absolute",
-                  bottom: -12,
-                  left: 0,
-                  right: 0,
-                  height: 12,
-                }}
-                pointerEvents="none"
-              />
             </Animated.View>
 
             {/* Mute Toggle on Left, aligned with Search on Right */}
             <TouchableOpacity
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
                 backgroundColor: "rgba(0,0,0,0.4)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1768,9 +1885,9 @@ function SeriesPreviewModal({
 
             <TouchableOpacity
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
                 backgroundColor: "rgba(0,0,0,0.4)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1789,7 +1906,7 @@ function SeriesPreviewModal({
               contentContainerStyle={{ paddingBottom: 160 }}
               onScroll={Animated.event(
                 [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: false },
+                { useNativeDriver: false, listener: handlePreviewHeaderScroll },
               )}
               scrollEventThrottle={16}
             >
@@ -2251,18 +2368,26 @@ function SeriesPreviewModal({
                       </Text>
                       <View style={{ flex: 1 }} />
                       <TouchableOpacity 
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8 }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isSeriesDownloading ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.1)',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 16,
+                          marginRight: 8,
+                          borderWidth: isSeriesDownloading ? StyleSheet.hairlineWidth : 0,
+                          borderColor: isSeriesDownloading ? 'rgba(239,68,68,0.45)' : 'transparent',
+                        }}
                         onPress={(e) => {
                           e.stopPropagation();
-                          episodes.forEach((ep: any) => {
-                            if (!episodeDownloads[ep.id] && !activeDownloads[ep.id]) {
-                              downloadEpisode(series, ep, 'internal');
-                            }
-                          });
+                          startSeriesDownloadAll();
                         }}
                       >
-                        <Ionicons name="download-outline" size={12} color="#fff" />
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', marginLeft: 4 }}>DL ALL</Text>
+                        <Ionicons name={isSeriesDownloading ? "close-circle-outline" : "download-outline"} size={12} color={isSeriesDownloading ? "#ef4444" : "#fff"} />
+                        <Text style={{ color: isSeriesDownloading ? '#ef4444' : '#fff', fontSize: 10, fontWeight: '700', marginLeft: 4 }}>
+                          {isSeriesDownloading ? "CANCEL ALL" : "DL ALL"}
+                        </Text>
                       </TouchableOpacity>
                       <View style={styles.epCountPillPremium}>
                         <Text style={styles.epCountTextPremium}>
@@ -2305,6 +2430,10 @@ function SeriesPreviewModal({
                             // Prioritize actual content (downloaded or stream) over preview
                             const contentUrl = episodeDownloads[ep.id] || ep.videoUrl;
                             const finalUrl = contentUrl || previewVideoUrl;
+                            if (!finalUrl) {
+                              Alert.alert("Coming Soon", "This episode is not available yet.");
+                              return;
+                            }
                             setSelectedVideoUrl(finalUrl);
                             // Show series + episode name in player header
                             const epLabel = ep.title ? `${series.title} - ${ep.title}` : series.title;
@@ -2806,6 +2935,65 @@ function SeriesPreviewModal({
             </View>
           )}
 
+
+          <Modal
+            visible={bulkDownloadState.visible && playerMode !== 'full'}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={() => setBulkDownloadState({ visible: false, pending: [] })}
+          >
+            <View style={styles.downloadModalCentering}>
+              <TouchableOpacity
+                style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.78)" }]}
+                activeOpacity={1}
+                onPress={() => setBulkDownloadState({ visible: false, pending: [] })}
+              />
+              <Animated.View style={styles.downloadGlassCard}>
+                <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={["rgba(255,255,255,0.08)", "transparent"] as any} style={StyleSheet.absoluteFill} />
+                <View style={styles.downloadIconHeader}>
+                  <View style={styles.downloadIconCircle}>
+                    <Ionicons name="cloud-download" size={32} color="#5B5FEF" />
+                  </View>
+                </View>
+                <Text style={styles.downloadTitle}>Download Options</Text>
+                <Text style={styles.downloadSub}>
+                  Choose your preferred method to save "{bulkDownloadState.pending.length} episode{bulkDownloadState.pending.length === 1 ? "" : "s"}" for offline viewing.
+                </Text>
+                <View style={styles.downloadActions}>
+                  <TouchableOpacity style={styles.downloadPrimaryBtn} onPress={() => startBulkSeriesDownload('internal')} activeOpacity={0.8}>
+                    <LinearGradient colors={["#5B5FEF", "#4A4EDD"] as any} style={StyleSheet.absoluteFill} />
+                    <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+                    <Text style={styles.downloadPrimaryBtnText}>DOWNLOAD</Text>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                      <Text style={{ fontSize: 9, color: "#fff", fontWeight: "700" }}>{isGuest ? "TRIAL" : "UNLIMITED"}</Text>
+                    </View>
+                    <View style={styles.pillSheen} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.downloadSecondaryBtn} onPress={() => startBulkSeriesDownload('external')} activeOpacity={0.7}>
+                    <Ionicons name="folder-outline" size={20} color="#94a3b8" />
+                    <Text style={styles.downloadSecondaryBtnText}>EXTERNAL DOWNLOAD</Text>
+                    <View style={{ backgroundColor: getRemainingDownloads() === 0 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
+                      <Text style={{ fontSize: 9, color: getRemainingDownloads() === 0 ? "#ef4444" : "#94a3b8", fontWeight: "700" }}>
+                        {getRemainingDownloads() === 0 ? "0 left" : `${getRemainingDownloads()} left`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  {getRemainingDownloads() <= 3 && (
+                    <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onClose(); router.push("/(tabs)/menu?upgrade=true"); }}>
+                      <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
+                        {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
+                    <Text style={styles.downloadCancelText}>Maybe Later</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
+          </Modal>
 
           {/* ── Comments Sheet ── */}
           {/* ── Download Options Modal (Frosted Dark) ── */}
@@ -3310,7 +3498,7 @@ function SeriesPreviewModal({
       </View>
 
       {/* FloatingPlayer moved to parent level for persistence */}
-      <FloatingBackButton onPress={onClose} visible={playerMode !== 'full'} />
+      <FloatingBackButton onPress={onClose} visible={isTop !== false && playerMode !== 'full'} />
       </View>
     </Modal>
   );

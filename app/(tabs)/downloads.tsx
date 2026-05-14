@@ -15,7 +15,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export default function DownloadsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { downloadedMovies, removeDownload, activeDownloads } = useDownloads();
+  const { downloadedMovies, deleteDownload, activeDownloads } = useDownloads();
   const { setPlayingNow, setPlayerMode, setPlayerTitle, setSelectedVideoUrl, setIsPreview } = useSubscription();
   const [filterType, setFilterType] = React.useState<'All' | 'Movie' | 'Series'>('All');
 
@@ -121,7 +121,7 @@ export default function DownloadsScreen() {
                         `Remove "${m.title}"?`,
                         [
                           { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => removeDownload(m.id) },
+                          { text: 'Remove', style: 'destructive', onPress: () => deleteDownload(m.id) },
                         ]
                       );
                     }}

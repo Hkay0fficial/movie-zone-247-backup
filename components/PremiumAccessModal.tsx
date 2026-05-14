@@ -32,6 +32,8 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 interface PremiumAccessModalProps {
   visible: boolean;
   isGuest: boolean;
+  isPaid?: boolean;
+  mode?: 'subscription' | 'downloads';
   onClose: () => void;
   onLogin: () => void;
   onSignUp: () => void;
@@ -43,6 +45,8 @@ interface PremiumAccessModalProps {
 export default function PremiumAccessModal({
   visible,
   isGuest,
+  isPaid = false,
+  mode = 'subscription',
   onClose,
   onLogin,
   onSignUp,
@@ -51,6 +55,7 @@ export default function PremiumAccessModal({
   guestMessage,
 }: PremiumAccessModalProps) {
   const insets = useSafeAreaInsets();
+  const isDownloadLimitMode = !isGuest && (mode === 'downloads' || isPaid);
   
   const triggerHaptic = (type: 'impact' | 'success' | 'warning' = 'impact') => {
     if (type === 'impact') {
@@ -151,7 +156,7 @@ export default function PremiumAccessModal({
                 }}
               >
                 <Text style={styles.noThanksText}>
-                  Don't have an account? <Text style={{ color: '#5B5FEF', fontWeight: '800' }}>Sign Up</Text>
+                  Don&apos;t have an account? <Text style={{ color: '#5B5FEF', fontWeight: '800' }}>Sign Up</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -162,43 +167,78 @@ export default function PremiumAccessModal({
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(91, 95, 239, 0.15)' }]}>
                   <Ionicons name="sparkles" size={28} color="#5B5FEF" />
                 </View>
-                <Text style={styles.title}>Go Premium Now</Text>
+                <Text style={styles.title}>
+                  {isDownloadLimitMode ? 'External Downloads Used' : 'Go Premium Now'}
+                </Text>
                 <Text style={styles.subtitle}>
-                  Upgrade your account to watch this movie and many others with best quality and no ads.
+                  {isDownloadLimitMode
+                    ? 'You can still watch and download inside the app. Add more external download tokens to save files directly to your phone storage.'
+                    : 'Upgrade your account to watch this movie and many others with best quality and no ads.'}
                 </Text>
               </View>
 
               <View style={styles.benefitsContainer}>
-                <BenefitItem 
-                  icon="tv-outline" 
-                  title="Full HD & HD Streaming" 
-                  desc="High definition quality on all your devices" 
-                  color="#5B5FEF"
-                />
-                <BenefitItem 
-                  icon="ban-outline" 
-                  title="Zero Advertisements" 
-                  desc="No interruptions during your cinema time" 
-                  color="#ef4444"
-                />
-                <BenefitItem 
-                  icon="cloud-download-outline" 
-                  title="Offline Viewing" 
-                  desc="Unlimited downloads for on-the-go" 
-                  color="#3b82f6"
-                />
-                <BenefitItem 
-                  icon="phone-portrait-outline" 
-                  title="External Downloads" 
-                  desc="Save movies directly to your device storage" 
-                  color="#f59e0b"
-                />
-                <BenefitItem 
-                  icon="gift-outline" 
-                  title="Huge Bonus Access" 
-                  desc="Get up to 1 MONTH FREE with your plan" 
-                  color="#10b981"
-                />
+                {isDownloadLimitMode ? (
+                  <>
+                    <BenefitItem
+                      icon="phone-portrait-outline"
+                      title="External Tokens Finished"
+                      desc="Your daily phone-storage saves are used up"
+                      color="#f59e0b"
+                    />
+                    <BenefitItem
+                      icon="cloud-download-outline"
+                      title="App Downloads Still Work"
+                      desc="Save inside Movie Zone without using external tokens"
+                      color="#3b82f6"
+                    />
+                    <BenefitItem
+                      icon="refresh-outline"
+                      title="Tokens Refresh"
+                      desc="Your external allowance renews on the next cycle"
+                      color="#10b981"
+                    />
+                    <BenefitItem
+                      icon="add-circle-outline"
+                      title="Need More Today?"
+                      desc="Choose a bigger plan or token capacity"
+                      color="#5B5FEF"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <BenefitItem
+                      icon="tv-outline"
+                      title="Full HD & HD Streaming"
+                      desc="High definition quality on all your devices"
+                      color="#5B5FEF"
+                    />
+                    <BenefitItem
+                      icon="ban-outline"
+                      title="Zero Advertisements"
+                      desc="No interruptions during your cinema time"
+                      color="#ef4444"
+                    />
+                    <BenefitItem
+                      icon="cloud-download-outline"
+                      title="Offline Viewing"
+                      desc="Unlimited downloads for on-the-go"
+                      color="#3b82f6"
+                    />
+                    <BenefitItem
+                      icon="phone-portrait-outline"
+                      title="External Downloads"
+                      desc="Save movies directly to your device storage"
+                      color="#f59e0b"
+                    />
+                    <BenefitItem
+                      icon="gift-outline"
+                      title="Huge Bonus Access"
+                      desc="Get up to 1 MONTH FREE with your plan"
+                      color="#10b981"
+                    />
+                  </>
+                )}
               </View>
 
               <TouchableOpacity 
@@ -214,7 +254,9 @@ export default function PremiumAccessModal({
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientBtn}
                 >
-                  <Text style={styles.primaryBtnText}>Upgrade Now</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {isDownloadLimitMode ? 'Get More Downloads' : 'Upgrade Now'}
+                  </Text>
                   <Ionicons name="chevron-forward" size={20} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>

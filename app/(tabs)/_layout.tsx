@@ -52,6 +52,8 @@ import ClockAnimation from "../../components/ClockAnimation";
 import EmptyState from "../../components/EmptyState";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
+import SubscriptionGuard from "../../components/SubscriptionGuard";
+
 
 // ─── Back Handler Listener Component ─────────────────────────────────────────────
 function BackHandlerListener({ visible, onBack }: { visible: boolean; onBack: () => boolean }) {
@@ -244,6 +246,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [];
 // ─── Notification Overlay ───────────────────────────────────────────────────
 function NotificationOverlay({
   visible,
+  coveredByDetail = false,
   onClose,
   onSelect,
   showRatingModal,
@@ -262,6 +265,7 @@ function NotificationOverlay({
   setExpandedNotificationId,
   setReopenOnBack,
   setLastViewedItemId,
+  setCoveredByDetail,
   isUpdateLocked,
   isUpdateApplied,
   isRatingPermanentlyRemoved,
@@ -272,8 +276,10 @@ function NotificationOverlay({
   highlightedId,
   markAllRead,
   loading,
+  TOTAL_LIVE_ITEMS,
 }: {
   visible: boolean;
+  coveredByDetail?: boolean;
   onClose: () => void;
   onSelect: (item: Notification) => void;
   showRatingModal: boolean;
@@ -292,6 +298,7 @@ function NotificationOverlay({
   setExpandedNotificationId: (id: string | null) => void;
   setReopenOnBack: (val: boolean) => void;
   setLastViewedItemId: (id: string | null) => void;
+  setCoveredByDetail: (covered: boolean) => void;
   isUpdateLocked: boolean;
   isUpdateApplied: boolean;
   isRatingPermanentlyRemoved: boolean;
@@ -306,6 +313,7 @@ function NotificationOverlay({
 }) {
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   useEffect(() => {
     if (visible && highlightedId) {
@@ -356,7 +364,7 @@ function NotificationOverlay({
   }, [notifications, isUpdateApplied, isRatingPermanentlyRemoved, readIds]);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && !coveredByDetail) {
       const backAction = () => {
         if (showRatingModal) {
           setShowRatingModal(false);
@@ -373,12 +381,21 @@ function NotificationOverlay({
       const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
       return () => backHandler.remove();
     }
-  }, [visible, showRatingModal, expandedType, onClose]);
+  }, [visible, coveredByDetail, showRatingModal, expandedType, onClose]);
 
   if (!visible) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 20000 }]}>
+    <View
+      pointerEvents={coveredByDetail ? "none" : "auto"}
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          zIndex: coveredByDetail ? 1 : 20000,
+          opacity: coveredByDetail ? 0 : 1,
+        },
+      ]}
+    >
       {/* Top Line Separator (Synchronized with global theme) */}
       <View 
         style={{
@@ -587,6 +604,7 @@ function NotificationOverlay({
 
                                           // "Command" the app to navigate
                                           if (expandedType === 'movies') {
+                                            setCoveredByDetail(true);
                                             (router as any).setParams({ movieId: subItem.id } as any);
                                           } else {
                                             DeviceEventEmitter.emit("sectionSelected", subItem.title || subItem.name);
@@ -896,12 +914,14 @@ const MarqueePlaceholder = ({
 // ─── Search Overlay (Universal) ─────────────────────────────────────────────
 function SearchOverlay({
   visible,
+  coveredByDetail = false,
   onClose,
   onSelect,
   vjOnly = false,
   autoFocusRequested = false,
 }: {
   visible: boolean;
+  coveredByDetail?: boolean;
   onClose: () => void;
   onSelect: (m: Movie) => void;
   vjOnly?: boolean;
@@ -1039,6 +1059,60 @@ function SearchOverlay({
   const isPerformingFiltering =
     hasActiveFilters || expandedFilter !== null || discoveryMode === "sections";
 
+  const getSearchPartCount = (item: Movie | Series) => {
+    const multiplier = Number((item as any).episodesPerPart || 1);
+    return Math.max(
+      Number((item as any).episodes || 0),
+      Array.isArray((item as any).episodeList) ? (item as any).episodeList.length * multiplier : 0,
+      Array.isArray((item as any).parts) ? (item as any).parts.length * multiplier : 0,
+    );
+  };
+
+  const getSearchBlob = (item: Movie | Series) => {
+    const partCount = getSearchPartCount(item);
+    const partTitles = [
+      ...(Array.isArray((item as any).episodeList) ? (item as any).episodeList : []),
+      ...(Array.isArray((item as any).parts) ? (item as any).parts : []),
+    ].map((part: any, index: number) => `${part?.title || ""} part ${index + 1}`).join(" ");
+
+    return [
+      item.title,
+      item.genre,
+      item.vj,
+      String(item.year),
+      partTitles,
+      partCount > 1 ? `${partCount} parts part ${partCount}` : "",
+    ].join(" ").toLowerCase();
+  };
+
+  const renderSearchBadges = (item: Movie | Series) => {
+    const isSeries = "seasons" in item;
+    const partCount = getSearchPartCount(item);
+
+    return (
+      <>
+        <View style={styles.genreBadge}>
+          <Text style={[styles.genreBadgeText, isSeries && { color: "#fff" }]}>
+            {isSeries ? ((item as any).isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
+          </Text>
+        </View>
+        {isSeries ? (
+          <View style={styles.epBadgePremium}>
+            <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
+            <Text style={styles.epBadgeTextPremium}>{partCount || (item as any).episodes} EP</Text>
+          </View>
+        ) : (
+          partCount > 1 && (
+            <View style={styles.epBadgePremium}>
+              <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
+              <Text style={styles.epBadgeTextPremium}>{partCount} {partCount === 1 ? "PART" : "PARTS"}</Text>
+            </View>
+          )
+        )}
+      </>
+    );
+  };
+
   const results = isFiltering
     ? (() => {
       const q = query.toLowerCase().trim();
@@ -1058,10 +1132,9 @@ function SearchOverlay({
         // 2. Fuzzy search across all items (movies + series)
         const vjSearchQuery = searchQ.startsWith("vj ") ? searchQ.replace("vj ", "") : searchQ;
         const attributeMatches = TOTAL_LIVE_ITEMS.filter((m) => {
+          const searchable = getSearchBlob(m);
           return (
-            m.title.toLowerCase().includes(searchQ) ||
-            m.genre.toLowerCase().includes(searchQ) ||
-            String(m.year).includes(searchQ) ||
+            searchable.includes(searchQ) ||
             m.vj.toLowerCase().includes(vjSearchQuery) ||
             m.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(searchQ.replace(/[^a-z0-9]/g, ""))
           );
@@ -1132,7 +1205,7 @@ function SearchOverlay({
   );
 
   useEffect(() => {
-    if (visible) {
+    if (visible && !coveredByDetail) {
       const backAction = () => {
         if (expandedFilter) {
           setExpandedFilter(null);
@@ -1153,12 +1226,21 @@ function SearchOverlay({
       const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
       return () => backHandler.remove();
     }
-  }, [visible, expandedFilter, hasActiveFilters, query, onClose]);
+  }, [visible, coveredByDetail, expandedFilter, hasActiveFilters, query, onClose]);
 
   if (!visible) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 30000 }]}>
+    <View
+      pointerEvents={coveredByDetail ? "none" : "auto"}
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          zIndex: coveredByDetail ? 1 : 30000,
+          opacity: coveredByDetail ? 0 : 1,
+        },
+      ]}
+    >
       {/* Top Line Separator (Synchronized with global theme) */}
       <View 
         style={{
@@ -1362,17 +1444,7 @@ function SearchOverlay({
                                   <Ionicons name="lock-closed" size={9} color="#fff" />
                                 </View>
                               )}
-                              <View style={styles.genreBadge}>
-                                <Text style={[styles.genreBadgeText, "seasons" in item && { color: "#fff" }]}>
-                                  {"seasons" in item ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                </Text>
-                              </View>
-                              {"seasons" in item && (
-                                <View style={styles.epBadgePremium}>
-                                  <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                  <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                </View>
-                              )}
+                              {renderSearchBadges(item)}
                             </View>
                             <View style={styles.searchResultInfo}>
                               <Text
@@ -1428,17 +1500,7 @@ function SearchOverlay({
                                     <View style={styles.vjBadge}>
                                       <Text style={styles.vjBadgeText}>{item.vj}</Text>
                                     </View>
-                                    <View style={styles.genreBadge}>
-                                      <Text style={styles.genreBadgeText}>
-                                        {("seasons" in item) ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                      </Text>
-                                    </View>
-                                    {("seasons" in item) && (
-                                      <View style={styles.epBadgePremium}>
-                                        <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                        <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                      </View>
-                                    )}
+                                    {renderSearchBadges(item)}
                                   </View>
                                   <View style={styles.searchResultInfo}>
                                     <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
@@ -1466,17 +1528,7 @@ function SearchOverlay({
                                   <View style={styles.vjBadge}>
                                     <Text style={styles.vjBadgeText}>{item.vj}</Text>
                                   </View>
-                                  <View style={styles.genreBadge}>
-                                    <Text style={styles.genreBadgeText}>
-                                      {("seasons" in item) ? (item.isMiniSeries ? "Mini Series" : "Series") : shortenGenre(item.genre)}
-                                    </Text>
-                                  </View>
-                                  {("seasons" in item) && (
-                                    <View style={styles.epBadgePremium}>
-                                      <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                      <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                    </View>
-                                  )}
+                                  {renderSearchBadges(item)}
                                 </View>
                                 <View style={styles.searchResultInfo}>
                                   <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
@@ -1503,15 +1555,7 @@ function SearchOverlay({
                                   <View style={styles.vjBadge}>
                                     <Text style={styles.vjBadgeText}>{item.vj}</Text>
                                   </View>
-                                  <View style={styles.genreBadge}>
-                                    <Text style={styles.genreBadgeText}>
-                                      {item.isMiniSeries ? "Mini Series" : "Series"}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.epBadgePremium}>
-                                    <Ionicons name="ellipsis-horizontal" size={10} color="#fff" style={{ marginRight: 2 }} />
-                                    <Text style={styles.epBadgeTextPremium}>{(item as any).episodes} EP</Text>
-                                  </View>
+                                  {renderSearchBadges(item)}
                                 </View>
                                 <View style={styles.searchResultInfo}>
                                   <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
@@ -1714,7 +1758,9 @@ function CustomTabBar() {
 
   const [searchVjOnly, setSearchVjOnly] = useState(false);
   const [searchAutoFocus, setSearchAutoFocus] = useState(false);
+  const [searchCoveredByDetail, setSearchCoveredByDetail] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
+  const [notificationCoveredByDetail, setNotificationCoveredByDetail] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showEventPreview, setShowEventPreview] = useState(false);
   const [isFromHero, setIsFromHero] = useState(false);
@@ -1818,16 +1864,30 @@ function CustomTabBar() {
   }, [shouldReopenSearch]);
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener("previewClosed", () => {
-      if (shouldReopenRef.current) {
-        // Small delay to allow the closing modal to finish its animation
-        setTimeout(() => {
-          setSearchVisible(true);
-          setShouldReopenSearch(false);
-        }, 100);
+    const closingSub = DeviceEventEmitter.addListener("previewClosing", (event?: { remainingDepth?: number }) => {
+      if (shouldReopenRef.current && typeof event?.remainingDepth === "number" && event.remainingDepth === 0) {
+        setSearchCoveredByDetail(false);
+        setSearchVisible(true);
+        setShouldReopenSearch(false);
+      }
+      if (typeof event?.remainingDepth === "number" && event.remainingDepth === 0) {
+        setNotificationCoveredByDetail(false);
+        setGlobalGridCoveredByDetail(false);
       }
     });
-    return () => sub.remove();
+    const sub = DeviceEventEmitter.addListener("previewClosed", () => {
+      if (shouldReopenRef.current) {
+        setSearchCoveredByDetail(false);
+        setSearchVisible(true);
+        setShouldReopenSearch(false);
+      }
+      setNotificationCoveredByDetail(false);
+      setGlobalGridCoveredByDetail(false);
+    });
+    return () => {
+      closingSub.remove();
+      sub.remove();
+    };
   }, []);
 
   const prevPath = useRef(path);
@@ -1835,6 +1895,7 @@ function CustomTabBar() {
     // If we were on the saved tab (Series detail) and we move back to another tab
     // and we were previously searching, re-open the search.
     if (prevPath.current === "/(tabs)/saved" && path !== "/(tabs)/saved" && shouldReopenRef.current) {
+      setSearchCoveredByDetail(false);
       setSearchVisible(true);
       setShouldReopenSearch(false);
     }
@@ -2046,6 +2107,7 @@ function CustomTabBar() {
     const sub2 = DeviceEventEmitter.addListener("openSearchOverlay", (data?: { autoFocus?: boolean }) => {
       // Force a re-trigger of focus by setting to false first if already true
       setSearchAutoFocus(false);
+      setSearchCoveredByDetail(false);
       setSearchVisible(true);
       if (data?.autoFocus) {
         setTimeout(() => setSearchAutoFocus(true), 50);
@@ -2115,6 +2177,9 @@ function CustomTabBar() {
         setShowEventPreview(false);
         return true;
       }
+      if (isDetailStackVisible) {
+        return false;
+      }
       if (showInPlaceSearch) {
         setShowInPlaceSearch(false);
         setInPlaceSearchQuery("");
@@ -2122,10 +2187,12 @@ function CustomTabBar() {
         Keyboard.dismiss();
         return true;
       }
-      if (globalGridVisible) {
+      if (globalGridVisible && !globalGridCoveredByDetail) {
         setGlobalGridVisible(false);
+        setGlobalGridCoveredByDetail(false);
         if (reopenOnBack) {
           setNotificationVisible(true);
+          setNotificationCoveredByDetail(false);
           setReopenOnBack(false);
         }
         return true;
@@ -2151,7 +2218,7 @@ function CustomTabBar() {
     );
 
     return () => backHandler.remove();
-  }, [showInPlaceSearch, notificationVisible, searchVisible, globalGridVisible, reopenOnBack, showEventPreview]);
+  }, [showInPlaceSearch, notificationVisible, searchVisible, globalGridVisible, globalGridCoveredByDetail, reopenOnBack, showEventPreview, isDetailStackVisible]);
 
   useEffect(() => {
     if (!active("/(tabs)/saved") && showInPlaceSearch) {
@@ -2190,6 +2257,7 @@ function CustomTabBar() {
 
   // Premium Grid View State for Notifications
   const [globalGridVisible, setGlobalGridVisible] = useState(false);
+  const [globalGridCoveredByDetail, setGlobalGridCoveredByDetail] = useState(false);
   const [globalGridTitle, setGlobalGridTitle] = useState("");
   const [globalGridData, setGlobalGridData] = useState<(Movie | Series)[]>([]);
 
@@ -2253,6 +2321,11 @@ function CustomTabBar() {
       // Wrap in timeout to avoid "Cannot update a component while rendering a different component"
       setTimeout(() => {
         setIsDetailStackVisible(visible);
+        if (!visible) {
+          setSearchCoveredByDetail(false);
+          setNotificationCoveredByDetail(false);
+          setGlobalGridCoveredByDetail(false);
+        }
       }, 0);
     });
 
@@ -2393,6 +2466,8 @@ function CustomTabBar() {
 
       if (gridData.length > 0) {
         setReopenOnBack(true);
+        setNotificationCoveredByDetail(false);
+        setGlobalGridCoveredByDetail(false);
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
         setGlobalGridVisible(true);
@@ -2411,7 +2486,7 @@ function CustomTabBar() {
       setLastViewedItemId(item.id);
       showPreviewOpening();
 
-      setNotificationVisible(false);
+      setNotificationCoveredByDetail(true);
 
       if (isSeries) {
         router.navigate({
@@ -2428,7 +2503,7 @@ function CustomTabBar() {
       }
     } else if (item.sectionTitle) {
       setReopenOnBack(true);
-      setNotificationVisible(false);
+      setNotificationCoveredByDetail(true);
       // Switch to Home tab first then emit
       router.push("/(tabs)" as any);
       setTimeout(() => {
@@ -2478,27 +2553,28 @@ function CustomTabBar() {
   return (
     <>
       <GridModal
-        visible={globalGridVisible}
+        visible={globalGridVisible && !globalGridCoveredByDetail}
         title={globalGridTitle}
         data={globalGridData}
         onClose={() => {
           setGlobalGridVisible(false);
+          setGlobalGridCoveredByDetail(false);
           if (reopenOnBack) {
             setNotificationVisible(true);
+            setNotificationCoveredByDetail(false);
             setReopenOnBack(false);
           }
         }}
         onSelect={(m) => {
           const isSeries = "seasons" in m || (m as any).type === 'Series' || (m as any).isMiniSeries;
+          setGlobalGridCoveredByDetail(true);
+          if (reopenOnBack) {
+            setNotificationCoveredByDetail(true);
+          }
           if (isSeries) {
-            setGlobalGridVisible(false);
             showPreviewOpening();
             router.push(`/(tabs)/saved?seriesId=${m.id}`);
           } else {
-            setGlobalGridVisible(false);
-            if (reopenOnBack) {
-              setNotificationVisible(false);
-            }
             showPreviewOpening();
             openMoviePreviewOnHome(m);
           }
@@ -2917,11 +2993,13 @@ function CustomTabBar() {
 
       <SearchOverlay
         visible={searchVisible}
+        coveredByDetail={searchCoveredByDetail}
         autoFocusRequested={searchAutoFocus}
         onClose={() => {
           setSearchVisible(false);
           setSearchVjOnly(false);
           setSearchAutoFocus(false);
+          setSearchCoveredByDetail(false);
         }}
         onSelect={(movie) => {
           const isActuallySeries =
@@ -2931,7 +3009,7 @@ function CustomTabBar() {
 
           if (isActuallySeries) {
             setShouldReopenSearch(true);
-            setSearchVisible(false);
+            setSearchCoveredByDetail(true);
             setSearchVjOnly(false);
             setSearchAutoFocus(false);
             showPreviewOpening();
@@ -2939,10 +3017,9 @@ function CustomTabBar() {
             router.push(`/(tabs)/saved?seriesId=${movie.id}`);
           }
           else {
-            // For movies, we close search so the preview (rendered in index.tsx) can show on top.
-            // When preview closes, search will reopen via "previewClosed" listener.
+            // Keep Search mounted under the detail stack so back lands on the exact page/filter state.
             setShouldReopenSearch(true);
-            setSearchVisible(false);
+            setSearchCoveredByDetail(true);
             setSearchVjOnly(false);
             setSearchAutoFocus(false);
             showPreviewOpening();
@@ -2957,8 +3034,10 @@ function CustomTabBar() {
       <NotificationOverlay
         TOTAL_LIVE_ITEMS={TOTAL_LIVE_ITEMS}
         visible={notificationVisible}
+        coveredByDetail={notificationCoveredByDetail}
         onClose={() => {
           setNotificationVisible(false);
+          setNotificationCoveredByDetail(false);
           setIsFromHero(false);
         }}
         onSelect={onSelect}
@@ -2982,6 +3061,7 @@ function CustomTabBar() {
         setExpandedNotificationId={setExpandedNotificationId}
         setReopenOnBack={setReopenOnBack}
         setLastViewedItemId={setLastViewedItemId}
+        setCoveredByDetail={setNotificationCoveredByDetail}
         isUpdateLocked={updateDismissCount >= 3}
         isUpdateApplied={isUpdateApplied}
         isRatingPermanentlyRemoved={isRatingPermanentlyRemoved}
@@ -3143,15 +3223,17 @@ function CustomTabBar() {
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 export default function TabLayout() {
   return (
-    <Tabs
-      tabBar={() => <CustomTabBar />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="saved" options={{ title: "Series" }} />
-      <Tabs.Screen name="category" options={{ title: "Discover" }} />
-      <Tabs.Screen name="menu" options={{ title: "Profile" }} />
-    </Tabs>
+    <SubscriptionGuard>
+      <Tabs
+        tabBar={() => <CustomTabBar />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen name="index" options={{ title: "Home" }} />
+        <Tabs.Screen name="saved" options={{ title: "Series" }} />
+        <Tabs.Screen name="category" options={{ title: "Discover" }} />
+        <Tabs.Screen name="menu" options={{ title: "Profile" }} />
+      </Tabs>
+    </SubscriptionGuard>
   );
 }
 

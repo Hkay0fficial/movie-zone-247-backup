@@ -90,14 +90,15 @@ async function ensureUserDocument(user: User) {
   if (!docSnap.exists()) {
     // First time — create full profile
     await setDoc(userRef, {
-      fullName: displayName || (authProvider === 'anonymous' ? 'Guest User' : 'User'),
+      fullName: displayName || (authProvider === 'anonymous' ? 'Guest' : 'User'),
       email: email,
       profilePhoto: photo,
       username: '',
       phoneNumber: user.phoneNumber || '',
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
-      role: 'user',
+      role: authProvider === 'anonymous' ? 'guest' : 'user',
+      isGuest: authProvider === 'anonymous',
       authProvider,
       subscriptionBundle: 'None',
       activeDeviceIds: [],
@@ -242,13 +243,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const isAnonymous = currentUser.isAnonymous;
             setProfile({
-              fullName: data.fullName || currentUser.displayName || 'User',
+              fullName: isAnonymous ? 'Guest' : (data.fullName || currentUser.displayName || 'User'),
               username: data.username || '',
               phoneNumber: data.phoneNumber || currentUser.phoneNumber || '',
               profilePhoto: data.profilePhoto || currentUser.photoURL || '',
-              email: data.email || currentUser.email || '',
-              isGuest: currentUser.isAnonymous,
+              email: isAnonymous ? 'Create an account to save your data' : (data.email || currentUser.email || ''),
+              isGuest: isAnonymous,
               watchHistory: data.watchHistory || {},
               createdAt: data.createdAt,
               is2FAEnabled: data.is2FAEnabled || false,
@@ -258,13 +260,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               notificationPrefs: data.notificationPrefs || DEFAULT_PROFILE.notificationPrefs,
             });
           } else {
+            const isAnonymous = currentUser.isAnonymous;
             setProfile({
-              fullName: currentUser.displayName || 'User',
+              fullName: isAnonymous ? 'Guest' : (currentUser.displayName || 'User'),
               username: '',
               phoneNumber: '',
               profilePhoto: currentUser.photoURL || '',
-              email: currentUser.email || '',
-              isGuest: currentUser.isAnonymous,
+              email: isAnonymous ? 'Create an account to save your data' : (currentUser.email || ''),
+              isGuest: isAnonymous,
               watchHistory: {},
               is2FAEnabled: false,
               activeDeviceIds: [],

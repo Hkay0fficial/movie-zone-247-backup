@@ -153,9 +153,11 @@ export function GridCard({
         const isSeries = "seasons" in movie;
         const multiplier = (movie as any).episodesPerPart || 1;
         const epList = (movie as any).episodeList || [];
+        const partsList = (movie as any).parts || [];
         const count = (movie as any).episodes || 0;
         const listCount = epList.length * multiplier;
-        const total = Math.max(count, listCount);
+        const partsCount = Array.isArray(partsList) ? partsList.length * multiplier : 0;
+        const total = Math.max(count, listCount, partsCount);
 
         if (total <= 1 && !isSeries) return null;
 

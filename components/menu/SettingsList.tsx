@@ -19,6 +19,7 @@ interface MenuItem {
 interface SettingsListProps {
   menuItems: MenuItem[];
   userEmail: string;
+  isGuest?: boolean;
   onItemPress: (item: MenuItem) => void;
   onAdminPress: () => void;
   onAboutPress: () => void;
@@ -27,6 +28,7 @@ interface SettingsListProps {
 export const SettingsList: React.FC<SettingsListProps> = ({
   menuItems,
   userEmail,
+  isGuest = false,
   onItemPress,
   onAdminPress,
   onAboutPress
@@ -66,7 +68,13 @@ export const SettingsList: React.FC<SettingsListProps> = ({
         overflow: 'hidden',
         paddingVertical: 10
       }]}>
-        {filteredItems.map((item, i) => (
+        {filteredItems.map((item, i) => {
+          const guestLocked = isGuest && ['1', '2', '3'].includes(item.id);
+          const subtitle = guestLocked
+            ? (item.id === '3' ? 'Create an account to upgrade' : 'Sign in to manage this')
+            : item.subtitle;
+
+          return (
           <TouchableOpacity
             key={item.id}
             style={[
@@ -90,12 +98,12 @@ export const SettingsList: React.FC<SettingsListProps> = ({
               </View>
               <View style={styles.menuTextWrap}>
                 <Text style={styles.settingsRowText}>{item.title}</Text>
-                <Text style={styles.menuSub}>{item.subtitle}</Text>
+                <Text style={styles.menuSub}>{subtitle}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
+            <Ionicons name={guestLocked ? "lock-closed-outline" : "chevron-forward"} size={16} color={guestLocked ? "rgba(129,140,248,0.8)" : "rgba(255,255,255,0.2)"} />
           </TouchableOpacity>
-        ))}
+        )})}
       </View>
     </View>
   );
