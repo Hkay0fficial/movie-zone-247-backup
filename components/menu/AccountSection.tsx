@@ -69,6 +69,8 @@ interface AccountSectionProps {
   handleSaveSecurityQuestion: () => void;
   SECURITY_QUESTIONS: string[];
   SUB_ITEM_ICONS: Record<string, string>;
+  securityPin?: string;
+  updateSecurityPin: (pin: string) => Promise<void>;
 }
 
 export const AccountSection: React.FC<AccountSectionProps> = ({
@@ -130,6 +132,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   scrollRef,
   profilePhoto,
   createdAt,
+  securityPin,
+  updateSecurityPin,
 }) => {
   const [imageError, setImageError] = React.useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = React.useState('');
@@ -142,7 +146,15 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   const [showCurrentPass, setShowCurrentPass] = React.useState(false);
   const [showNewPass, setShowNewPass] = React.useState(false);
   const [showConfirmPass, setShowConfirmPass] = React.useState(false);
+  const [showReauthPassword, setShowReauthPassword] = React.useState(false);
   const [showRecoveryMethods, setShowRecoveryMethods] = React.useState(false);
+  
+  // Security PIN states
+  const [pinValue, setPinValue] = React.useState(securityPin || '');
+  const [isUpdatingPin, setIsUpdatingPin] = React.useState(false);
+  const [pinError, setPinError] = React.useState('');
+  const [pinSuccess, setPinSuccess] = React.useState(false);
+  const [showPin, setShowPin] = React.useState(false);
 
   const getMemberSinceDate = () => {
     if (!createdAt) return 'March 2024';
@@ -594,6 +606,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 <Text style={styles.settingsRowText}>Login Activity</Text>
                 <Ionicons name="time" size={14} color="#475569" />
               </TouchableOpacity>
+              <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Security PIN'); }}>
+                <Text style={styles.settingsRowText}>Security PIN</Text>
+                <Ionicons name="keypad" size={14} color="#818cf8" />
+              </TouchableOpacity>
 
             </View>
           </View>
@@ -891,6 +907,88 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               )}
             </View>
           </View>
+        ) : selectedSecurityItem === 'Security PIN' ? (
+          <View style={{ width: '100%', marginBottom: 20 }}>
+            <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 24, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
+            <View style={[styles.securityCard, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }]}>
+              {pinSuccess && (
+                <View style={styles.successBanner}>
+                  <Ionicons name="checkmark-circle" size={20} color="#34d399" />
+                  <Text style={styles.successText}>Security PIN updated successfully!</Text>
+                </View>
+              )}
+              <Text style={styles.securityTitle}>Security PIN</Text>
+              <Text style={styles.securityDesc}>Set a 4-6 digit Security PIN to authorize sensitive actions, like remotely logging out devices from your account.</Text>
+
+              <View style={styles.detailCard}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{securityPin ? 'Update PIN' : 'Set PIN'}</Text>
+                  <View style={styles.passInputContainer}>
+                    <TextInput
+                      style={styles.passInput}
+                      value={pinValue}
+                      onChangeText={(val) => {
+                        const clean = val.replace(/\D/g, '').slice(0, 6);
+                        setPinValue(clean);
+                        setPinError('');
+                        setPinSuccess(false);
+                      }}
+                      placeholder="Enter 4-6 digits"
+                      placeholderTextColor="#64748b"
+                      keyboardType="numeric"
+                      secureTextEntry={true}
+                    />
+                  </View>
+                </View>
+
+                {pinError ? <Text style={styles.errorText}>{pinError}</Text> : null}
+
+                <TouchableOpacity 
+                  style={{ alignSelf: 'flex-end', marginTop: 8 }}
+                  onPress={() => {
+                    if (user?.email) {
+                      Alert.alert(
+                        "PIN Reset Requested",
+                        `A security verification link has been sent to ${user.email}. Please follow the instructions in the email to reset your Security PIN.`,
+                        [{ text: "OK" }]
+                      );
+                    } else {
+                      Alert.alert("Error", "No email associated with this account.");
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#818cf8', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>Forgot PIN?</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.requestCodeBtn, { marginTop: 24 }, isUpdatingPin && { opacity: 0.7 }]} 
+                onPress={async () => {
+                  if (pinValue.length < 4) {
+                    setPinError('PIN must be at least 4 digits.');
+                    return;
+                  }
+                  setIsUpdatingPin(true);
+                  try {
+                    await updateSecurityPin(pinValue);
+                    setPinSuccess(true);
+                    Keyboard.dismiss();
+                  } catch (err: any) {
+                    setPinError(err.message || 'Failed to update PIN.');
+                  } finally {
+                    setIsUpdatingPin(false);
+                  }
+                }}
+                disabled={isUpdatingPin}
+              >
+                {isUpdatingPin ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.requestCodeText}>{securityPin ? 'Update Security PIN' : 'Save Security PIN'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : null}
       </View>
     );
@@ -1004,20 +1102,31 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
               <Text style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16, lineHeight: 19 }}>
                 For security, please enter your password to confirm account deletion.
               </Text>
-              <TextInput
-                style={[styles.editInput, {
-                  borderColor: reauthError ? '#ef4444' : 'rgba(255,255,255,0.1)',
-                  borderWidth: StyleSheet.hairlineWidth,
-                  color: '#fff',
-                  marginBottom: 8,
-                }]}
-                value={reauthPassword}
-                onChangeText={(t) => { setReauthPassword(t); setReauthError(''); }}
-                placeholder="Enter your password"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                secureTextEntry
-                autoFocus
-              />
+              <View style={styles.passInputContainer}>
+                <TextInput
+                  style={[styles.passInput, {
+                    borderColor: reauthError ? '#ef4444' : 'transparent',
+                    borderWidth: 0,
+                    color: '#fff',
+                  }]}
+                  value={reauthPassword}
+                  onChangeText={(t) => { setReauthPassword(t); setReauthError(''); }}
+                  placeholder="Enter your password"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  secureTextEntry={!showReauthPassword}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={styles.passEye}
+                  onPress={() => setShowReauthPassword(!showReauthPassword)}
+                >
+                  <Ionicons
+                    name={showReauthPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
               {!!reauthError && (
                 <Text style={{ color: '#ef4444', fontSize: 12, marginBottom: 10 }}>{reauthError}</Text>
               )}

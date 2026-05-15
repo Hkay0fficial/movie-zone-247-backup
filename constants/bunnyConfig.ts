@@ -1,6 +1,33 @@
+import Constants from 'expo-constants';
+
+const extra = (Constants.expoConfig?.extra || Constants.manifest2?.extra || {}) as Record<string, any>;
+
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+const trimLeadingSlash = (value: string) => value.replace(/^\/+/, '');
+
 export const BUNNY_CONFIG = {
-  LIBRARY_ID: '631781',
-  PULL_ZONE: 'vz-f805e1e6-44b.b-cdn.net',
+  LIBRARY_ID: String(extra.bunnyLibraryId || process.env.EXPO_PUBLIC_BUNNY_LIBRARY_ID || '631781'),
+  PULL_ZONE: String(extra.bunnyPullZone || process.env.EXPO_PUBLIC_BUNNY_PULL_ZONE || 'vz-f805e1e6-44b.b-cdn.net'),
+  B2_BUCKET_URL: trimTrailingSlash(String(extra.b2BucketUrl || process.env.EXPO_PUBLIC_B2_BUCKET_URL || '')),
+  B2_FRIENDLY_URL: trimTrailingSlash(String(extra.b2FriendlyUrl || process.env.EXPO_PUBLIC_B2_FRIENDLY_URL || '')),
+};
+
+const CDN_BASE = `https://${BUNNY_CONFIG.PULL_ZONE}`;
+
+const URL_ORIGINS_TO_REWRITE = [
+  'https://themoviezone247.com',
+  'https://www.themoviezone247.com',
+  'https://themoviezone247.b-cdn.net',
+  BUNNY_CONFIG.B2_BUCKET_URL,
+  BUNNY_CONFIG.B2_FRIENDLY_URL,
+].filter(Boolean);
+
+export const getBunnyUrl = (path: string | undefined): string => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path) || path.startsWith('//')) {
+    return resolveCDNUrl(path);
+  }
+  return `${CDN_BASE}/${trimLeadingSlash(path)}`;
 };
 
 /**
@@ -22,9 +49,8 @@ export const getPreviewClipUrl = (
     return { url: resolveCDNUrl(item.previewUrl), type: 'video' };
   }
   if (item?.bunnyVideoId) {
-    const pullZone = BUNNY_CONFIG.PULL_ZONE;
     return {
-      url: `https://${pullZone}/${item.bunnyVideoId}/preview.webp`,
+      url: getBunnyUrl(`${item.bunnyVideoId}/preview.webp`),
       type: 'webp',
     };
   }
@@ -39,22 +65,21 @@ export const getPreviewClipUrl = (
 export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true): string => {
   if (!url) return '';
   
-  const origin = 'https://themoviezone247.com';
-  const cdnBase = `https://${BUNNY_CONFIG.PULL_ZONE}`;
-  
   // Ensure protocol
   if (url.startsWith('//')) {
     url = 'https:' + url;
   }
 
-  if (url.startsWith(origin)) {
-    url = url.replace(origin, cdnBase);
+  for (const origin of URL_ORIGINS_TO_REWRITE) {
+    if (url.startsWith(origin)) {
+      url = url.replace(origin, CDN_BASE);
+      break;
+    }
   }
 
-  // Auto-correct old, incorrect Pull Zone hostnames
-  const oldCdnBase = 'themoviezone247.b-cdn.net';
-  if (url.includes(oldCdnBase)) {
-    url = url.replace(oldCdnBase, BUNNY_CONFIG.PULL_ZONE);
+  // Auto-correct older b-cdn hostnames to the configured Pull Zone.
+  if (url.includes('.b-cdn.net') && !url.includes(BUNNY_CONFIG.PULL_ZONE)) {
+    url = url.replace(/https:\/\/[^/]+\.b-cdn\.net/i, CDN_BASE);
   }
 
   // Auto-correct older previews that were stored as .webp image URLs
@@ -64,7 +89,7 @@ export const resolveCDNUrl = (url: string | undefined, forceHLS: boolean = true)
   
   // Auto-convert old Bunny MP4 links to HLS (playlist.m3u8) for mobile reliability
   // ONLY if forceHLS is true (we need MP4 for downloads)
-  if (forceHLS && url.includes('b-cdn.net') && (url.endsWith('.mp4') || url.includes('play_720p.mp4'))) {
+  if (forceHLS && url.includes('b-cdn.net') && (url.endsWith('.mp4') || /play_\d+p\.mp4/.test(url))) {
     return url.replace(/play_\d+p\.mp4/, 'playlist.m3u8').replace(/\.mp4$/, '/playlist.m3u8');
   }
 

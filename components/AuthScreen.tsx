@@ -15,10 +15,12 @@ import {
   Alert,
   Modal,
   Dimensions,
-  StatusBar as RNStatusBar
+  StatusBar as RNStatusBar,
+  BackHandler
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -416,6 +418,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState('');
+  const [showBlockAlert, setShowBlockAlert] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
@@ -535,6 +538,24 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       keyboardDidShowListener.remove();
     };
   }, []);
+
+  // ─── BLOCK BACK BUTTON IF COMING FROM DEVICE BLOCK ─────────────────────────
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (params.fromBlock === 'true') {
+          // Trigger the custom premium alert modal
+          setShowBlockAlert(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          return true; // Consume the event
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [params.fromBlock])
+  );
 
   // Automatic Flip Timer (10 Seconds)
   useEffect(() => {
@@ -1176,6 +1197,8 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                             icon="shield-checkmark-outline"
                             secureTextEntry={!showPassword}
                             onChangeText={setConfirmPassword}
+                            showPasswordToggle
+                            onPasswordToggle={() => setShowPassword(!showPassword)}
                             onFocus={() => setFocusedField('confirmPassword')}
                             onBlur={() => {
                               setFocusedField(null);
@@ -1434,10 +1457,50 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                 </Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      {/* ─── CUSTOM ACTION REQUIRED MODAL ────────────────────────── */}
+      <Modal
+        visible={showBlockAlert}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowBlockAlert(false)}
+      >
+        <View style={styles.alertOverlay}>
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+          <Animated.View 
+            entering={FadeInDown.springify()}
+            style={styles.alertContainer}
+          >
+            <View style={styles.alertIconContainer}>
+              <Ionicons name="shield-alert" size={32} color="#f59e0b" />
+            </View>
+            
+            <Text style={styles.alertTitle}>Action Required</Text>
+            <Text style={styles.alertSubtitle}>
+              Please login with another account or sign up to continue.
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.alertBtn}
+              activeOpacity={0.8}
+              onPress={() => setShowBlockAlert(false)}
+            >
+              <LinearGradient
+                colors={['#f59e0b', '#d97706']}
+                style={styles.alertBtnGradient}
+              >
+                <Text style={styles.alertBtnText}>OK</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      <RNStatusBar barStyle="light-content" />
     </View>
   );
 }
@@ -1826,5 +1889,60 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: '700',
     fontSize: 15,
+  },
+  alertOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertContainer: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: 'rgba(30, 30, 45, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  alertIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertSubtitle: {
+    color: '#94a3b8',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  alertBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  alertBtnGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

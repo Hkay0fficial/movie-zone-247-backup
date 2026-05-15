@@ -7,7 +7,7 @@ import {
   HeroMovie,
   resolveCDNUrl,
 } from '../../constants/movieData';
-import { BUNNY_CONFIG } from '../../constants/bunnyConfig';
+import { getBunnyUrl } from '../../constants/bunnyConfig';
 import { SubscriptionProvider, useSubscription } from './SubscriptionContext';
 import { useUser } from './UserContext';
 import * as Application from 'expo-application';
@@ -250,7 +250,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             })),
             freeEpisodesCount: data.freeEpisodesCount ? parseInt(data.freeEpisodesCount) : 0,
             description: data.synopsis || data.description || '',
-            videoUrl: resolveCDNUrl(data.videoUrl || (data.episodeList && data.episodeList[0]?.url) || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined)),
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.episodeList && data.episodeList[0]?.url) || (data.bunnyVideoId ? getBunnyUrl(`${data.bunnyVideoId}/playlist.m3u8`) : undefined)),
             previewUrl: resolveCDNUrl(data.previewUrl || ''),
             bunnyVideoId: data.bunnyVideoId || '',
             previewBunnyVideoId: data.previewBunnyVideoId || '',
@@ -283,7 +283,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
             vj: data.vj || 'Unknown VJ',
             poster: poster || 'https://images.unsplash.com/photo-1485846234645-a62644f84728',
             description: data.synopsis || data.description || 'Newly uploaded movie.',
-            videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? `https://${BUNNY_CONFIG.PULL_ZONE}/${data.bunnyVideoId}/playlist.m3u8` : undefined)),
+            videoUrl: resolveCDNUrl(data.videoUrl || (data.bunnyVideoId ? getBunnyUrl(`${data.bunnyVideoId}/playlist.m3u8`) : undefined)),
             previewUrl: resolveCDNUrl(data.previewUrl || ''),
             bunnyVideoId: data.bunnyVideoId || '',
             previewBunnyVideoId: data.previewBunnyVideoId || '',

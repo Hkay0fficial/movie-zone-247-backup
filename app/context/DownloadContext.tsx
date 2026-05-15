@@ -35,22 +35,30 @@ const {
   createDownloadResumable,
 } = FileSystem;
 
-const inferExternalDailyLimit = (planName: string, fallback = 1) => {
-  const name = planName.toLowerCase();
-  if (name.includes('2 month')) return 5;
-  if (name.includes('1 month') || name.includes('month')) return 3;
-  if (name.includes('2 week')) return 2;
-  return fallback;
+const inferExternalDailyLimit = (plan: any, fallback = 1) => {
+  const base = plan?.externalDownloadDailyLimit || plan?.downloadLimit || fallback;
+  const bonus = plan?.bonusDownloads || 0;
+  return base + bonus;
 };
 
-const inferExternalTotalLimit = (planName: string, fallback = 1) => {
-  const name = planName.toLowerCase();
-  if (name.includes('1 day')) return 1;
-  if (name.includes('1 week')) return 8;
-  if (name.includes('2 week')) return 16;
-  if (name.includes('1 month') || name === 'month') return 32;
-  if (name.includes('2 month')) return 60;
-  return fallback;
+const inferExternalTotalLimit = (plan: any, fallback = 1) => {
+  const base = plan?.externalDownloadTotalLimit || plan?.downloadLimit || fallback;
+  const bonus = plan?.bonusDownloads || 0;
+  
+  // If no explicit total limit is set, and it's not a legacy override, 
+  // we might want to infer it for long-duration plans, 
+  // but for consistency with admin, we should trust the fields.
+  if (plan?.externalDownloadTotalLimit) return plan.externalDownloadTotalLimit + bonus;
+  
+  // Fallback to legacy inference ONLY if explicit fields are missing
+  const name = (plan?.name || '').toLowerCase();
+  if (name.includes('1 day')) return (plan?.downloadLimit || 1) + bonus;
+  if (name.includes('1 week')) return Math.max(8, (plan?.downloadLimit || 1) * 7) + bonus;
+  if (name.includes('2 week')) return Math.max(16, (plan?.downloadLimit || 1) * 14) + bonus;
+  if (name.includes('1 month') || name === 'month') return Math.max(32, (plan?.downloadLimit || 1) * 30) + bonus;
+  if (name.includes('2 month')) return Math.max(60, (plan?.downloadLimit || 1) * 60) + bonus;
+
+  return (plan?.downloadLimit || fallback) + bonus;
 };
 
 interface DownloadEntry {
@@ -101,7 +109,11 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [externalDownloadsUsedTotal, setExternalDownloadsUsedTotal] = useState(0);
 
   const subscriptionData = useSubscription();
-  const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, subscriptionExpiresAt, isGuest, recordTrialUsage } = subscriptionData;
+  const { 
+    isPaid, isSubscribed, allMoviesFree, subscriptionBundle, 
+    subscriptionExpiresAt, isGuest, recordTrialUsage,
+    planLimits 
+  } = subscriptionData;
   const hasInternalDownloadAccess = isPaid || isSubscribed || allMoviesFree;
 
   // Refs for download engine state
@@ -302,7 +314,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else {
         setDownloadsUsedToday(data.externalDownloadsUsed || 0);
       }
-    }, () => {});
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("DownloadContext: Daily counter listener error:", error);
+    });
 
     return unsub;
   }, [auth.currentUser?.uid, isGuest, subscriptionData.deviceId]);
@@ -319,7 +334,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
       setExternalDownloadsUsedTotal(data.planKey === expectedPlanKey ? (data.externalDownloadsUsedTotal || 0) : 0);
-    }, () => {});
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("DownloadContext: Total counter listener error:", error);
+    });
 
     return unsub;
   }, [auth.currentUser?.uid, isGuest, subscriptionData.deviceId, subscriptionBundle, subscriptionExpiresAt]);
@@ -337,11 +355,9 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (normalizedBundle === 'none') return 0;
 
     const matchedPlan = getMatchedPlan();
-    if ((subscriptionData as any).customExternalLimit > 0) {
-      return Math.max(1, matchedPlan ? inferExternalDailyLimit(matchedPlan.name, matchedPlan.externalDownloadDailyLimit || matchedPlan.downloadLimit || 1) : 1);
-    }
+    if (!matchedPlan) return planLimits[subscriptionBundle] || 1;
 
-    return matchedPlan ? inferExternalDailyLimit(matchedPlan.name, matchedPlan.externalDownloadDailyLimit || matchedPlan.downloadLimit || 1) : 1;
+    return inferExternalDailyLimit(matchedPlan);
   };
 
   const getExternalTotalDownloadLimit = () => {
@@ -351,7 +367,9 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (normalizedBundle === 'none') return 0;
 
     const matchedPlan = getMatchedPlan();
-    return matchedPlan ? inferExternalTotalLimit(matchedPlan.name, matchedPlan.externalDownloadTotalLimit || matchedPlan.downloadLimit || 1) : 1;
+    if (!matchedPlan) return (planLimits[subscriptionBundle] || 1) * 30; // Rough guess if plan doc missing
+
+    return inferExternalTotalLimit(matchedPlan);
   };
 
   const getExternalDownloadLimit = () => {

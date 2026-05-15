@@ -21,6 +21,7 @@ interface UserProfile {
   completionCount: number;
   hasRatedApp: boolean;
   notificationPrefs?: Record<string, boolean>;
+  securityPin?: string;
 }
 
 interface UserContextType {
@@ -34,6 +35,7 @@ interface UserContextType {
   clearWatchHistory: () => Promise<void>;
   incrementCompletion: () => Promise<number>;
   markAsRated: () => Promise<void>;
+  updateSecurityPin: (pin: string) => Promise<void>;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -258,6 +260,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               completionCount: data.completionCount || 0,
               hasRatedApp: data.hasRatedApp || false,
               notificationPrefs: data.notificationPrefs || DEFAULT_PROFILE.notificationPrefs,
+              securityPin: data.securityPin || '',
             });
           } else {
             const isAnonymous = currentUser.isAnonymous;
@@ -414,6 +417,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateSecurityPin = async (pin: string) => {
+    setProfile(prev => ({ ...prev, securityPin: pin }));
+    if (user && !user.isAnonymous) {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, { securityPin: pin }, { merge: true });
+      } catch (e) {
+        console.error('UserContext: Failed to update security pin:', e);
+        throw e;
+      }
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       user, 
@@ -425,7 +441,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       removeFromWatchHistory,
       clearWatchHistory,
       incrementCompletion,
-      markAsRated
+      markAsRated,
+      updateSecurityPin
     }}>
       {children}
     </UserContext.Provider>

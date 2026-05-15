@@ -16,6 +16,21 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Bunny CDN + Backblaze B2
+
+Media URLs are normalized in `constants/bunnyConfig.ts`. The app can receive URLs from Firestore that point to your site, Bunny, or public Backblaze B2 bucket URLs, and it will rewrite them to the configured Bunny Pull Zone for playback and image loading.
+
+Set these public Expo environment variables before building:
+
+```bash
+EXPO_PUBLIC_BUNNY_PULL_ZONE=your-pull-zone.b-cdn.net
+EXPO_PUBLIC_BUNNY_LIBRARY_ID=your-bunny-stream-library-id
+EXPO_PUBLIC_B2_BUCKET_URL=https://f000.backblazeb2.com/file/your-bucket
+EXPO_PUBLIC_B2_FRIENDLY_URL=https://your-bucket.s3.us-west-004.backblazeb2.com
+```
+
+Use Bunny's Pull Zone origin as the Backblaze B2 public bucket URL, then save only Bunny CDN URLs or B2 public URLs in Firestore. Do not put Backblaze `keyID`, application keys, or S3 secrets in this Expo app; uploads to B2 should happen from a backend, secure admin portal, or manual storage workflow.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

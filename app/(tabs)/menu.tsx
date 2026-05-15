@@ -277,7 +277,7 @@ export default function MenuScreen() {
   const [cameFromSubscription, setCameFromSubscription] = React.useState(false);
   const [fromNotification, setFromNotification] = React.useState(false);
   const router = useRouter();
-  const { user, profile, loading: userLoading, removeFromWatchHistory, clearWatchHistory } = useUser();
+  const { user, profile, loading: userLoading, removeFromWatchHistory, clearWatchHistory, updateSecurityPin } = useUser();
   const { appUpdateConfig, continueWatching, globalSettings } = useMovies();
 
   // Profile data from context
@@ -454,6 +454,8 @@ export default function MenuScreen() {
     selectedVideoUrl,
     setSelectedVideoUrl,
     isDeviceBlocked,
+    remoteLogoutWithPin,
+    deviceRemovalRequests,
   } = useSubscription();
 
   const {
@@ -630,23 +632,23 @@ export default function MenuScreen() {
     setErrorText('');
 
     try {
-      // 1. Initiate the Charge (STK Push)
-      const chargeResponse = await fetch(`${PAYMENT_API_BASE}/charge`, {
+      // 1. Initiate the Relworx Charge (STK Push)
+      const chargeResponse = await fetch(`${PAYMENT_API_BASE}/relworx-charge`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'bypass-tunnel-reminder': 'true'
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           phoneNumber: paymentPhone.replace(/\D/g, ''),
           amount: selectedPlanForPayment?.price?.replace(/\D/g, '') || 0,
           currency: 'UGX',
           email: userEmail || 'customer@themoviezone247.com',
-          network: selectedPaymentMethod?.id === 'mtn' ? 'MTN' : 'AIRTEL',
           uid: auth.currentUser?.uid,
           planName: selectedPlanForPayment?.name?.split(' [')[0]
         }),
       });
+
 
       const responseText = await chargeResponse.text();
       let chargeData;
@@ -1359,6 +1361,10 @@ export default function MenuScreen() {
           }}
           planName={subscriptionBundle}
           limit={deviceLimit}
+          removalRequests={deviceRemovalRequests}
+          onRemoteLogout={remoteLogoutWithPin}
+          hasSecurityPin={!!profile.securityPin}
+          onSwitchAccount={handleLogout}
         />
       </View>
     );
@@ -1500,6 +1506,8 @@ export default function MenuScreen() {
                     handleSaveSecurityQuestion={handleSaveSecurityQuestion}
                     SECURITY_QUESTIONS={SECURITY_QUESTIONS}
                     SUB_ITEM_ICONS={SUB_ITEM_ICONS}
+                    securityPin={profile.securityPin}
+                    updateSecurityPin={updateSecurityPin}
                   />
                 )}
 

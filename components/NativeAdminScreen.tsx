@@ -52,6 +52,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth, storage } from '../constants/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { ALL_GENRES, ALL_VJS, Movie, Series } from '../constants/movieData';
+import { getBunnyUrl, resolveCDNUrl } from '../constants/bunnyConfig';
 import { Plan, PLANS } from '../constants/planData';
 import { useMovies } from '../app/context/MovieContext';
 import { Image } from 'expo-image';
@@ -453,7 +454,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
         Alert.alert('Success', 'Image uploaded successfully!');
       } catch (err) {
         console.error("Upload Error:", err);
-        Alert.alert('Upload Failed', 'There was an error uploading your image to Firebase.');
+        Alert.alert('Upload Failed', 'There was an error uploading your image.');
       } finally {
         setIsUploading(false);
       }
@@ -869,12 +870,18 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
       // --- Automatic Image Uploads ---
       if (data.poster && data.poster.startsWith('file://')) {
         const path = `posters/${Date.now()}_${data.title.replace(/\s+/g, '_')}.jpg`;
-        data.poster = await uploadToFirebase(data.poster, path);
+        data.poster = resolveCDNUrl(await uploadToFirebase(data.poster, path));
       }
       if (data.heroPhotoUrl && data.heroPhotoUrl.startsWith('file://')) {
         const path = `hero/${Date.now()}_${data.title.replace(/\s+/g, '_')}.jpg`;
-        data.heroPhotoUrl = await uploadToFirebase(data.heroPhotoUrl, path);
+        data.heroPhotoUrl = resolveCDNUrl(await uploadToFirebase(data.heroPhotoUrl, path));
       }
+
+      data.poster = resolveCDNUrl(data.poster);
+      data.videoUrl = resolveCDNUrl(data.videoUrl);
+      data.previewUrl = resolveCDNUrl(data.previewUrl);
+      data.heroVideoUrl = resolveCDNUrl(data.heroVideoUrl);
+      data.heroPhotoUrl = resolveCDNUrl(data.heroPhotoUrl);
 
       data.coverUrl = data.poster; // Mapping for app compatibility
       if (!data.heroPhotoUrl && data.heroImageUrl) data.heroPhotoUrl = data.heroImageUrl;
@@ -886,8 +893,8 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
             .map((ep: any, index: number) => ({
               ...ep,
               title: ep.title || (data.type === 'Series' ? `Episode ${index + 1}` : `Part ${index + 1}`),
-              url: ep.url || ep.videoUrl || '',
-              videoUrl: ep.videoUrl || ep.url || '',
+              url: resolveCDNUrl(ep.url || ep.videoUrl || ''),
+              videoUrl: resolveCDNUrl(ep.videoUrl || ep.url || ''),
               duration: ep.duration || data.episodeDuration || data.duration || '',
             }))
             .filter((ep: any) => ep.url || ep.videoUrl || ep.title)
@@ -900,8 +907,8 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
           data.parts = episodeList.map((ep: any, index: number) => ({
             id: ep.id || `${editingId || 'part'}-${index + 1}`,
             title: ep.title || `Part ${index + 1}`,
-            videoUrl: ep.videoUrl || ep.url || '',
-            previewUrl: ep.previewUrl || '',
+            videoUrl: resolveCDNUrl(ep.videoUrl || ep.url || ''),
+            previewUrl: resolveCDNUrl(ep.previewUrl || ''),
             duration: ep.duration || data.duration || '',
             previewDuration: ep.previewDuration || data.previewDuration || '',
             bunnyVideoId: ep.bunnyVideoId || '',
@@ -2683,7 +2690,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
                       onPress={async () => {
                         let urlToScan = contentForm.videoUrl;
                         if (!urlToScan && contentForm.bunnyVideoId) {
-                          urlToScan = `https://vz-f805e1e6-44b.b-cdn.net/${contentForm.bunnyVideoId}/play_240p.mp4`;
+                          urlToScan = getBunnyUrl(`${contentForm.bunnyVideoId}/play_240p.mp4`);
                         }
                         if (!urlToScan) return Alert.alert('Error', 'Please provide a video URL or Bunny ID first');
                         

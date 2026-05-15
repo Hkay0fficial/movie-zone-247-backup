@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Image, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,7 @@ const { width } = Dimensions.get('window');
 export default function Index() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const rootNavigationState = useRootNavigationState();
   
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -67,7 +68,7 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (showOnboarding === null) return;
+    if (showOnboarding === null || !rootNavigationState?.key) return;
 
     // Authentication & Navigation
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -94,7 +95,7 @@ export default function Index() {
     });
     
     return () => unsubscribe();
-  }, [showOnboarding, params]);
+  }, [showOnboarding, params, rootNavigationState?.key]);
 
   const handleOnboardingComplete = async () => {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true');

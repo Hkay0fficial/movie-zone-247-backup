@@ -110,6 +110,7 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { db, auth } from "../../constants/firebaseConfig";
+import { signOut } from "firebase/auth";
 import { PreviewEpisodeSkeleton } from "../../components/SkeletonLoader";
 import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { formatRelativeTime } from "../../utils/TimeUtils";
@@ -7479,9 +7480,25 @@ export default function HomeScreen() {
     setSelectedVideoUrl,
     setIsPreview,
     isNotificationVisible,
-    setIsNotificationVisible
+    setIsNotificationVisible,
+    deviceRemovalRequests,
+    remoteLogoutWithPin,
   } = sub;
+  const { profile } = useUser();
   const setPlayingEpisodeId = (sub as any).setPlayingEpisodeId as ((id: string | null) => void) | undefined;
+
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = useCallback(async (mode: 'login' | 'signup' = 'login') => {
+    try {
+      setIsLoggingOut(true);
+      await signOut(auth);
+      router.replace(`/login?fromBlock=true&mode=${mode}`);
+    } catch (e) {
+      console.error(e);
+      setIsLoggingOut(false);
+    }
+  }, [router]);
   const [holidayTick, setHolidayTick] = useState(Date.now());
 
   const { downloadedMovies = [] } = useDownloads() || {};
@@ -8385,7 +8402,7 @@ export default function HomeScreen() {
       />
 
       <DeviceManagerModal
-        visible={isDeviceBlocked && !isGuest}
+        visible={(isDeviceBlocked && !isGuest) || isLoggingOut}
         activeDeviceIds={activeDeviceIds}
         currentDeviceId={deviceId || ((Application as any).androidId || null)}
         onRemoveDevice={removeDevice}
@@ -8393,6 +8410,11 @@ export default function HomeScreen() {
         onUpgrade={() => setShowPlanModal(true)}
         planName={subscriptionBundle}
         limit={deviceLimit}
+        removalRequests={deviceRemovalRequests}
+        onRemoteLogout={remoteLogoutWithPin}
+        hasSecurityPin={!!profile.securityPin}
+        onSwitchAccount={handleLogout}
+        isLoggingOut={isLoggingOut}
       />
     </KeyboardAvoidingView>
 

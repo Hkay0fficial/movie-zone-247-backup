@@ -1,4 +1,4 @@
-import { resolveCDNUrl, BUNNY_CONFIG } from './bunnyConfig';
+import { resolveCDNUrl, getBunnyUrl } from './bunnyConfig';
 // Shared movie data for the app
 
 export interface Movie {
@@ -161,9 +161,7 @@ export const getStreamUrl = (item: Movie | Series | any): string => {
 
   // 1. Bunny.net HLS Stream if ID is present
   if (item.bunnyVideoId) {
-    const libraryId = item.bunnyLibraryId || BUNNY_CONFIG.LIBRARY_ID;
-    const pullZone = BUNNY_CONFIG.PULL_ZONE;
-    return `https://${pullZone}/${item.bunnyVideoId}/playlist.m3u8`;
+    return getBunnyUrl(`${item.bunnyVideoId}/playlist.m3u8`);
   }
 
   // 2. Direct Video URL (resolved via CDN if origin)

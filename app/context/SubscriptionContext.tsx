@@ -8,6 +8,7 @@ import * as Device from 'expo-device';
 import { Alert, Platform, Animated, Dimensions, StyleSheet } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
 import { Plan, PLANS } from '../../constants/planData';
+import PremiumAlert from '../../components/PremiumAlert';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -46,7 +47,9 @@ interface SubscriptionContextType {
   isDeviceBlocked: boolean;
   activeDeviceIds: string[];
   deviceId: string | null;
-  removeDevice: (id: string) => Promise<void>;
+  removeDevice: (id: string, force?: boolean) => Promise<void>;
+  forceRemoveDevice: (id: string) => Promise<void>;
+  remoteLogoutWithPin: (targetId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   unregisterCurrentDevice: () => Promise<void>;
   switchToGuest: () => Promise<void>;
   deviceLimit: number;
@@ -80,6 +83,9 @@ interface SubscriptionContextType {
   availablePlans: Plan[];
   isNotificationVisible: boolean;
   setIsNotificationVisible: (v: boolean) => void;
+  deviceRemovalRequests: Record<string, any>;
+  planLimits: Record<string, number>;
+  deviceLimits: Record<string, number>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
@@ -105,6 +111,8 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   activeDeviceIds: [],
   deviceId: null,
   removeDevice: async () => {},
+  forceRemoveDevice: async () => {},
+  remoteLogoutWithPin: async () => ({ success: false, error: 'Not implemented' }),
   unregisterCurrentDevice: async () => {},
   switchToGuest: async () => {},
   deviceLimit: 1,
@@ -138,6 +146,9 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   availablePlans: PLANS,
   isNotificationVisible: false,
   setIsNotificationVisible: () => {},
+  deviceRemovalRequests: {},
+  planLimits: dynamicPlanLimits,
+  deviceLimits: dynamicDeviceLimits,
 });
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -179,6 +190,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [availablePlans, setAvailablePlans] = React.useState<Plan[]>([]);
   const [ticker, setTicker] = React.useState(0);
   const handledRemovalRequestsRef = useRef<Set<string>>(new Set());
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon?: string;
+    iconColor?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+  });
 
   // Minute-by-minute heartbeat to refresh time-based logic (isPaid, remainingDays)
   React.useEffect(() => {
@@ -188,6 +212,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => clearInterval(interval);
   }, []);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  const [deviceRemovalRequests, setDeviceRemovalRequests] = useState<Record<string, any>>({});
+  const [planLimits, setPlanLimits] = useState<Record<string, number>>(dynamicPlanLimits);
+  const [deviceLimits, setDeviceLimits] = useState<Record<string, number>>(dynamicDeviceLimits);
 
   const parseSubscriptionExpiry = (value: any): number | null => {
     if (!value) return null;
@@ -257,12 +284,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const dLimits: Record<string, number> = { 'premium': 5, 'vip': 999, 'none': 0 };
 
       effectivePlans.forEach(p => {
-          pLimits[p.name] = p.externalDownloadDailyLimit || p.downloadLimit || 1;
+          const baseLimit = p.externalDownloadDailyLimit || p.downloadLimit || 1;
+          const bonusLimit = (p as any).bonusDownloads || 0;
+          pLimits[p.name] = baseLimit + bonusLimit;
           dLimits[p.name.toLowerCase()] = p.deviceLimit ?? 1;
       });
 
       dynamicPlanLimits = pLimits;
       dynamicDeviceLimits = dLimits;
+      setPlanLimits(pLimits);
+      setDeviceLimits(dLimits);
+    }, (error: any) => {
+      if (error.code === 'permission-denied') return;
+      console.error("SubscriptionContext: Plans listener error:", error);
     });
     return unsub;
   }, []);
@@ -293,6 +327,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const fetchedDeviceMeta = userData.activeDevicesMeta || {};
             setActiveDeviceIds(fetchedActiveDevices);
             setActiveDevicesMeta(fetchedDeviceMeta);
+            setDeviceRemovalRequests(userData.deviceRemovalRequests || {});
             
             const extLimit = userData.customExternalLimit || userData.downloadLimit || 0;
             const devLimit = userData.customDeviceLimit || 0;
@@ -324,10 +359,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               const requestKey = `${currentId}:${pendingRequest?.requestedAt || ''}`;
               if (pendingRequest?.status === 'pending' && !handledRemovalRequestsRef.current.has(requestKey)) {
                 handledRemovalRequestsRef.current.add(requestKey);
-                Alert.alert(
-                  'Deactivate this device?',
-                  'Another device wants to use this account. Allow this device to be removed from the account slots?',
-                  [
+                setAlertConfig({
+                  visible: true,
+                  title: 'Deactivate this device?',
+                  message: 'Another device wants to use this account. Allow this device to be removed from the account slots?',
+                  icon: 'cellphone-remove',
+                  iconColor: '#f59e0b',
+                  buttons: [
                     {
                       text: 'No',
                       style: 'cancel',
@@ -351,7 +389,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                       },
                     },
                   ],
-                );
+                });
+
               }
 
               // 0. Check if this device has been explicitly kicked
@@ -668,10 +707,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const removeDevice = async (targetId: string) => {
+  const removeDevice = async (targetId: string, force: boolean = false) => {
     if (auth.currentUser && !isGuest) {
       try {
         const userRef = doc(db, 'users', auth.currentUser.uid);
+
+        if (force) {
+          await forceRemoveDevice(targetId);
+          return;
+        }
 
         await updateDoc(userRef, {
           [`deviceRemovalRequests.${targetId}`]: {
@@ -680,10 +724,76 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             requestedAt: new Date().toISOString(),
           },
         });
-        Alert.alert('Request sent', 'The registered device will see a popup to approve or deny deactivation.');
+        setAlertConfig({
+          visible: true,
+          title: 'Request sent',
+          message: 'The registered device will see a popup to approve or deny deactivation. If they refuse or are offline, you can force remove them.',
+          icon: 'send-circle-outline',
+          iconColor: '#10b981',
+          buttons: [{ text: 'OK', onPress: () => {} }]
+        });
+
       } catch (err) {
         console.error("Failed to request device removal:", err);
       }
+    }
+  };
+
+  const forceRemoveDevice = async (targetId: string) => {
+    if (auth.currentUser && !isGuest) {
+      try {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          activeDeviceIds: arrayRemove(targetId),
+          [`activeDevicesMeta.${targetId}`]: deleteField(),
+          [`deviceRemovalRequests.${targetId}`]: deleteField(),
+          [`kickedDevices.${targetId}`]: true,
+        });
+        setAlertConfig({
+          visible: true,
+          title: 'Device Removed',
+          message: 'The device has been forcibly removed from your account.',
+          icon: 'shield-check-outline',
+          iconColor: '#10b981',
+          buttons: [{ text: 'GREAT', onPress: () => {} }]
+        });
+      } catch (err) {
+        console.error("Failed to force remove device:", err);
+      }
+    }
+  };
+
+  const remoteLogoutWithPin = async (targetId: string, pin: string) => {
+    if (!auth.currentUser || isGuest) return { success: false, error: 'Auth required' };
+ 
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) return { success: false, error: 'User profile not found' };
+      
+      const storedPin = userSnap.data().securityPin;
+      
+      if (!storedPin) {
+        return { success: false, error: 'NO_PIN_SET' };
+      }
+      
+      if (storedPin !== pin) {
+        return { success: false, error: 'INVALID_PIN' };
+      }
+ 
+      // Pin matches, perform force removal
+      await updateDoc(userRef, {
+        activeDeviceIds: arrayRemove(targetId),
+        [`activeDevicesMeta.${targetId}`]: deleteField(),
+        [`deviceRemovalRequests.${targetId}`]: deleteField(),
+        [`kickedDevices.${targetId}`]: true,
+      });
+ 
+      return { success: true };
+    } catch (err) {
+      console.error("Failed to perform remote logout with pin:", err);
+      return { success: false, error: 'Database error' };
     }
   };
 
@@ -751,6 +861,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     activeDevicesMeta,
     deviceId,
     removeDevice,
+    forceRemoveDevice,
+    remoteLogoutWithPin,
     unregisterCurrentDevice,
     switchToGuest,
     deviceLimit,
@@ -783,6 +895,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     availablePlans,
     isNotificationVisible,
     setIsNotificationVisible,
+    planLimits,
+    deviceLimits,
+    deviceRemovalRequests,
     ticker
   }), [
     subscriptionBundle,
@@ -827,12 +942,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     availablePlans,
     isNotificationVisible,
     setIsNotificationVisible,
+    planLimits,
+    deviceLimits,
+    deviceRemovalRequests,
+    remoteLogoutWithPin,
     ticker
   ]);
 
   return (
     <SubscriptionContext.Provider value={contextValue}>
       {children}
+      <PremiumAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        icon={alertConfig.icon as any}
+        iconColor={alertConfig.iconColor}
+      />
     </SubscriptionContext.Provider>
   );
 };
