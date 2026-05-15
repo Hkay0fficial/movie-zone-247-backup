@@ -35,6 +35,24 @@ const {
   createDownloadResumable,
 } = FileSystem;
 
+const inferExternalDailyLimit = (planName: string, fallback = 1) => {
+  const name = planName.toLowerCase();
+  if (name.includes('2 month')) return 5;
+  if (name.includes('1 month') || name.includes('month')) return 3;
+  if (name.includes('2 week')) return 2;
+  return fallback;
+};
+
+const inferExternalTotalLimit = (planName: string, fallback = 1) => {
+  const name = planName.toLowerCase();
+  if (name.includes('1 day')) return 1;
+  if (name.includes('1 week')) return 8;
+  if (name.includes('2 week')) return 16;
+  if (name.includes('1 month') || name === 'month') return 32;
+  if (name.includes('2 month')) return 60;
+  return fallback;
+};
+
 interface DownloadEntry {
   id: string;
   title: string;
@@ -80,9 +98,10 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [episodeParentMap, setEpisodeParentMap] = useState<Record<string, string>>({});
   const [downloadedMovies, setDownloadedMovies] = useState<any[]>([]);
   const [downloadsUsedToday, setDownloadsUsedToday] = useState(0);
+  const [externalDownloadsUsedTotal, setExternalDownloadsUsedTotal] = useState(0);
 
   const subscriptionData = useSubscription();
-  const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
+  const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, subscriptionExpiresAt, isGuest, recordTrialUsage } = subscriptionData;
   const hasInternalDownloadAccess = isPaid || isSubscribed || allMoviesFree;
 
   // Refs for download engine state
@@ -254,9 +273,24 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return user ? doc(db, 'users', user.uid, 'downloadCounters', dateKey) : null;
   };
 
+  const getExternalPlanKey = () => {
+    if (isGuest) return `guest:${subscriptionData.deviceId || auth.currentUser?.uid || 'unknown'}`;
+    return `${subscriptionBundle || 'None'}:${subscriptionExpiresAt || 'no-expiry'}`;
+  };
+
+  const getExternalTotalCounterRef = () => {
+    const user = auth.currentUser;
+    if (isGuest) {
+      const id = subscriptionData.deviceId || user?.uid;
+      return id ? doc(db, 'device_trials', id) : null;
+    }
+    return user ? doc(db, 'users', user.uid, 'downloadCounters', 'external_total') : null;
+  };
+
   useEffect(() => {
     const ref = getExternalCounterRef();
-    if (!ref) return;
+    const totalRef = getExternalTotalCounterRef();
+    if (!ref || !totalRef) return;
 
     const unsub = onSnapshot(ref, (snap) => {
       const data = snap.exists() ? snap.data() : {};
@@ -273,21 +307,61 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return unsub;
   }, [auth.currentUser?.uid, isGuest, subscriptionData.deviceId]);
 
-  const getExternalDownloadLimit = () => {
+  useEffect(() => {
+    const ref = getExternalTotalCounterRef();
+    if (!ref) return;
+
+    const expectedPlanKey = getExternalPlanKey();
+    const unsub = onSnapshot(ref, (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      if (isGuest) {
+        setExternalDownloadsUsedTotal(data.hasUsedTrial ? 1 : 0);
+        return;
+      }
+      setExternalDownloadsUsedTotal(data.planKey === expectedPlanKey ? (data.externalDownloadsUsedTotal || 0) : 0);
+    }, () => {});
+
+    return unsub;
+  }, [auth.currentUser?.uid, isGuest, subscriptionData.deviceId, subscriptionBundle, subscriptionExpiresAt]);
+
+  const getMatchedPlan = () => {
+    const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
+    return subscriptionData.availablePlans.find(
+      p => p.name.toLowerCase() === normalizedBundle
+    );
+  };
+
+  const getExternalDailyDownloadLimit = () => {
     if (isGuest) return (subscriptionData as any).hasUsedGuestTrial ? 0 : 1; // 1 Free Trial total
+    const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
+    if (normalizedBundle === 'none') return 0;
+
+    const matchedPlan = getMatchedPlan();
+    if ((subscriptionData as any).customExternalLimit > 0) {
+      return Math.max(1, matchedPlan ? inferExternalDailyLimit(matchedPlan.name, matchedPlan.externalDownloadDailyLimit || matchedPlan.downloadLimit || 1) : 1);
+    }
+
+    return matchedPlan ? inferExternalDailyLimit(matchedPlan.name, matchedPlan.externalDownloadDailyLimit || matchedPlan.downloadLimit || 1) : 1;
+  };
+
+  const getExternalTotalDownloadLimit = () => {
+    if (isGuest) return (subscriptionData as any).hasUsedGuestTrial ? 0 : 1;
     if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit;
     const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
     if (normalizedBundle === 'none') return 0;
 
-    const matchedPlan = subscriptionData.availablePlans.find(
-      p => p.name.toLowerCase() === normalizedBundle
-    );
+    const matchedPlan = getMatchedPlan();
+    return matchedPlan ? inferExternalTotalLimit(matchedPlan.name, matchedPlan.externalDownloadTotalLimit || matchedPlan.downloadLimit || 1) : 1;
+  };
 
-    return matchedPlan ? (matchedPlan.downloadLimit || 1) : 1;
+  const getExternalDownloadLimit = () => {
+    return Math.min(getExternalDailyDownloadLimit(), getExternalTotalDownloadLimit());
   };
 
   const getRemainingDownloads = () => {
-    return Math.max(0, getExternalDownloadLimit() - downloadsUsedToday);
+    const dailyRemaining = getExternalDailyDownloadLimit() - downloadsUsedToday;
+    const totalRemaining = getExternalTotalDownloadLimit() - externalDownloadsUsedTotal;
+    return Math.max(0, Math.min(dailyRemaining, totalRemaining));
   };
 
   const isEpisodeDownloaded = (epId: string) => !!episodeDownloads[epId];
@@ -311,45 +385,71 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const ref = getExternalCounterRef();
-    const limit = getExternalDownloadLimit();
+    const totalRef = getExternalTotalCounterRef();
+    const dailyLimit = getExternalDailyDownloadLimit();
+    const totalLimit = getExternalTotalDownloadLimit();
     const dateKey = getDownloadDateKey();
+    const planKey = getExternalPlanKey();
 
-    if (!ref || limit <= 0) {
+    if (!ref || !totalRef || dailyLimit <= 0 || totalLimit <= 0) {
       Alert.alert('Limit Reached', 'External downloads are not available on your current plan.');
       return false;
     }
 
     try {
-      const usedAfterReserve = await runTransaction(db, async (transaction) => {
-        const snap = await transaction.get(ref);
-        const data = snap.exists() ? snap.data() : {};
-        const usageDate = isGuest ? (data.externalDownloadDate || '') : dateKey;
-        const currentUsed = usageDate === dateKey ? (data.externalDownloadsUsed || 0) : 0;
+      const reservation = await runTransaction(db, async (transaction) => {
+        const [dailySnap, totalSnap] = await Promise.all([
+          transaction.get(ref),
+          transaction.get(totalRef),
+        ]);
+        const dailyData = dailySnap.exists() ? dailySnap.data() : {};
+        const totalData = totalSnap.exists() ? totalSnap.data() : {};
+        const usageDate = isGuest ? (dailyData.externalDownloadDate || '') : dateKey;
+        const currentDailyUsed = usageDate === dateKey ? (dailyData.externalDownloadsUsed || 0) : 0;
+        const currentTotalUsed = isGuest
+          ? (totalData.hasUsedTrial ? 1 : 0)
+          : (totalData.planKey === planKey ? (totalData.externalDownloadsUsedTotal || 0) : 0);
 
-        if (currentUsed >= limit) {
-          throw new Error('LIMIT_REACHED');
+        if (currentDailyUsed >= dailyLimit) {
+          throw new Error('DAILY_LIMIT_REACHED');
+        }
+        if (currentTotalUsed >= totalLimit) {
+          throw new Error('TOTAL_LIMIT_REACHED');
         }
 
-        const nextUsed = currentUsed + 1;
+        const nextDailyUsed = currentDailyUsed + 1;
+        const nextTotalUsed = currentTotalUsed + 1;
         transaction.set(ref, {
-          externalDownloadsUsed: nextUsed,
+          externalDownloadsUsed: nextDailyUsed,
           externalDownloadDate: dateKey,
           updatedAt: serverTimestamp(),
           ...(isGuest ? {} : { userId: auth.currentUser?.uid, date: dateKey }),
         }, { merge: true });
 
-        return nextUsed;
+        transaction.set(totalRef, {
+          externalDownloadsUsedTotal: nextTotalUsed,
+          externalDownloadTotalLimit: totalLimit,
+          externalDownloadDailyLimit: dailyLimit,
+          planKey,
+          updatedAt: serverTimestamp(),
+          ...(isGuest ? { hasUsedTrial: true } : { userId: auth.currentUser?.uid, subscriptionBundle, subscriptionExpiresAt }),
+        }, { merge: true });
+
+        return { daily: nextDailyUsed, total: nextTotalUsed };
       });
 
       reservedExternalIdsRef.current.add(entry.id);
-      setDownloadsUsedToday(usedAfterReserve);
+      setDownloadsUsedToday(reservation.daily);
+      setExternalDownloadsUsedTotal(reservation.total);
       return true;
     } catch (error: any) {
-      const isLimitReached = error?.message === 'LIMIT_REACHED';
+      const isLimitReached = error?.message === 'DAILY_LIMIT_REACHED' || error?.message === 'TOTAL_LIMIT_REACHED';
       const message = isLimitReached
         ? (isGuest
           ? 'You have already used your free trial download. Please register or upgrade to continue.'
-          : 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.')
+          : error?.message === 'TOTAL_LIMIT_REACHED'
+            ? 'You have reached the total external download allowance for this plan.'
+            : 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.')
         : 'Could not confirm your external download allowance. Please try again in a moment.';
       console.warn('[DownloadContext] External download limit check failed:', error?.code || error?.message || error);
       Alert.alert(isLimitReached ? 'Limit Reached' : 'Download Limit Check Failed', message);
@@ -370,18 +470,28 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     reservedExternalIdsRef.current.delete(id);
 
     const ref = getExternalCounterRef();
-    if (!ref) return;
+    const totalRef = getExternalTotalCounterRef();
+    if (!ref || !totalRef) return;
 
     try {
-      const nextUsed = await runTransaction(db, async (transaction) => {
-        const snap = await transaction.get(ref);
-        if (!snap.exists()) return 0;
+      const nextUsage = await runTransaction(db, async (transaction) => {
+        const [dailySnap, totalSnap] = await Promise.all([
+          transaction.get(ref),
+          transaction.get(totalRef),
+        ]);
+        if (!dailySnap.exists() && !totalSnap.exists()) return { daily: 0, total: 0 };
 
-        const data = snap.data();
+        const data = dailySnap.exists() ? dailySnap.data() : {};
+        const totalData: any = totalSnap.exists() ? totalSnap.data() : {};
         const dateKey = getDownloadDateKey();
+        const planKey = getExternalPlanKey();
         const usageDate = isGuest ? (data.externalDownloadDate || '') : dateKey;
         const currentUsed = usageDate === dateKey ? (data.externalDownloadsUsed || 0) : 0;
         const updatedUsed = Math.max(0, currentUsed - 1);
+        const currentTotalUsed = isGuest
+          ? (totalData.hasUsedTrial ? 1 : 0)
+          : (totalData.planKey === planKey ? (totalData.externalDownloadsUsedTotal || 0) : 0);
+        const updatedTotalUsed = Math.max(0, currentTotalUsed - 1);
 
         transaction.set(ref, {
           externalDownloadsUsed: updatedUsed,
@@ -389,10 +499,17 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           updatedAt: serverTimestamp(),
         }, { merge: true });
 
-        return updatedUsed;
+        transaction.set(totalRef, {
+          externalDownloadsUsedTotal: updatedTotalUsed,
+          ...(isGuest ? { hasUsedTrial: updatedTotalUsed > 0 } : { planKey }),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        return { daily: updatedUsed, total: updatedTotalUsed };
       });
 
-      setDownloadsUsedToday(nextUsed);
+      setDownloadsUsedToday(nextUsage.daily);
+      setExternalDownloadsUsedTotal(nextUsage.total);
     } catch (_) {}
   };
 

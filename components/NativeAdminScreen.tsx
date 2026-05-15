@@ -16,6 +16,7 @@ import {
   Dimensions,
   Switch,
   KeyboardAvoidingView,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -51,6 +52,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth, storage } from '../constants/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { ALL_GENRES, ALL_VJS, Movie, Series } from '../constants/movieData';
+import { Plan, PLANS } from '../constants/planData';
 import { useMovies } from '../app/context/MovieContext';
 import { Image } from 'expo-image';
 import ReflectiveText from './ReflectiveText';
@@ -75,9 +77,10 @@ export type AdminActionType =
   | 'UPDATE_USER'
   | 'UPDATE_SETTINGS'
   | 'BROADCAST'
+  | 'UPDATE_PLAN'
   | 'UPDATE_LAYOUT';
 
-type AdminSection = 'Dashboard' | 'Content' | 'Users' | 'Media' | 'Announcements' | 'Logs' | 'Settings' | 'AppLayout';
+type AdminSection = 'Dashboard' | 'Content' | 'Users' | 'Plans' | 'Media' | 'Announcements' | 'Logs' | 'Settings' | 'AppLayout';
 type ContentType = 'Movie' | 'Series';
 
 interface AuditLog {
@@ -136,6 +139,26 @@ const compactFirestoreData = (value: any): any => {
   );
 };
 
+const inferPlanDailyLimit = (plan: Plan) => {
+  const name = plan.name.toLowerCase();
+  if (plan.externalDownloadDailyLimit) return plan.externalDownloadDailyLimit;
+  if (name.includes('2 month')) return 5;
+  if (name.includes('1 month') || name.includes('month')) return 3;
+  if (name.includes('2 week')) return 2;
+  return plan.downloadLimit || 1;
+};
+
+const inferPlanTotalLimit = (plan: Plan) => {
+  const name = plan.name.toLowerCase();
+  if (plan.externalDownloadTotalLimit) return plan.externalDownloadTotalLimit;
+  if (name.includes('1 day')) return 1;
+  if (name.includes('1 week')) return 8;
+  if (name.includes('2 week')) return 16;
+  if (name.includes('1 month') || name === 'month') return 32;
+  if (name.includes('2 month')) return 60;
+  return plan.downloadLimit || 1;
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 interface NativeAdminScreenProps {
@@ -144,6 +167,8 @@ interface NativeAdminScreenProps {
 
 export default function NativeAdminScreen({ initialSection = 'Dashboard' }: NativeAdminScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth } = useWindowDimensions();
+  const isCompact = viewportWidth < 430;
   const router = useRouter();
   const { liveMovies, liveSeries, loading: moviesLoading } = useMovies();
   
@@ -155,6 +180,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
       case 'Dashboard': return { title: 'Dashboard Overview', subtitle: 'Welcome back, Admin' };
       case 'Content': return { title: 'Movies & Series', subtitle: 'Manage your complete content library' };
       case 'Users': return { title: 'User Management', subtitle: 'Manage accounts, plans, and security' };
+      case 'Plans': return { title: 'Subscription Plans', subtitle: 'Edit device and external download limits live' };
       case 'Media': return { title: 'Media Assets', subtitle: 'Manage promotional banners and imagery' };
       case 'Announcements': return { title: 'Announcements', subtitle: 'Broadcast platform-wide messages to all users' };
       case 'Logs': return { title: 'Activity Logs', subtitle: 'Audit administrative actions and system updates' };
@@ -235,6 +261,10 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
   const [isUserModalVisible, setIsUserModalVisible] = useState(false);
   const [isUserSelectMode, setIsUserSelectMode] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+  // --- Subscription Plans State ---
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [isPlansSaving, setIsPlansSaving] = useState(false);
 
   // --- Announcements State ---
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -627,6 +657,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
   useEffect(() => {
     if (activeSection === 'Dashboard') fetchStats();
     if (activeSection === 'Users') fetchUsers();
+    if (activeSection === 'Plans') fetchPlans();
     if (activeSection === 'Announcements') fetchAnnouncements();
     if (activeSection === 'Logs') fetchLogs();
     if (activeSection === 'Settings') fetchSettings();
@@ -635,6 +666,46 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
       return () => unsubscribe();
     }
   }, [activeSection]);
+
+  const fetchPlans = async () => {
+    setLoading(true);
+    try {
+      const snap = await getDocs(collection(db, 'plans'));
+      const list = snap.docs
+        .map(planDoc => ({ id: planDoc.id, ...planDoc.data() } as Plan))
+        .sort((a, b) => (((a as any).order || 0) - ((b as any).order || 0)));
+      setPlans(list.length > 0 ? list : PLANS);
+    } catch (e) {
+      setPlans(PLANS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePlanField = (id: string, key: keyof Plan, value: any) => {
+    setPlans(prev => prev.map(plan => plan.id === id ? { ...plan, [key]: value } : plan));
+  };
+
+  const savePlan = async (plan: Plan) => {
+    setIsPlansSaving(true);
+    try {
+      const cleanPlan = compactFirestoreData({
+        ...plan,
+        deviceLimit: Number(plan.deviceLimit) || 1,
+        downloadLimit: Number(inferPlanDailyLimit(plan)) || 1,
+        externalDownloadDailyLimit: Number(inferPlanDailyLimit(plan)) || 1,
+        externalDownloadTotalLimit: Number(inferPlanTotalLimit(plan)) || 1,
+        durationDays: Number(plan.durationDays) || 1,
+      });
+      await setDoc(doc(db, 'plans', plan.id), cleanPlan, { merge: true });
+      await logAdminAction('UPDATE_PLAN', `Updated subscription plan: ${plan.name}`, plan.id, plan.name);
+      Alert.alert('Saved', `${plan.name} limits now apply in the app.`);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save plan');
+    } finally {
+      setIsPlansSaving(false);
+    }
+  };
 
   const fetchStats = async () => {
     setLoading(true);
@@ -965,10 +1036,12 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
         let expiryDate = null;
         const now = Date.now();
         
-        if (plan === '1 Day') expiryDate = new Date(now + 24 * 60 * 60 * 1000);
-        else if (plan === '1 week') expiryDate = new Date(now + 7 * 24 * 60 * 60 * 1000);
-        else if (plan === '2 weeks') expiryDate = new Date(now + 14 * 24 * 60 * 60 * 1000);
-        else if (plan === '1 Month') expiryDate = new Date(now + 30 * 24 * 60 * 60 * 1000);
+        const planConfig = [...plans, ...PLANS].find(p => p.name.toLowerCase() === String(plan).toLowerCase());
+        if (planConfig?.durationDays) expiryDate = new Date(now + planConfig.durationDays * 24 * 60 * 60 * 1000);
+        else if (plan === '1 Day') expiryDate = new Date(now + 24 * 60 * 60 * 1000);
+        else if (plan === '1 week') expiryDate = new Date(now + 8 * 24 * 60 * 60 * 1000);
+        else if (plan === '2 weeks') expiryDate = new Date(now + 16 * 24 * 60 * 60 * 1000);
+        else if (plan === '1 Month') expiryDate = new Date(now + 32 * 24 * 60 * 60 * 1000);
         else if (plan === '2 months') expiryDate = new Date(now + 60 * 24 * 60 * 60 * 1000);
         else if (plan === '3 Months') expiryDate = new Date(now + 90 * 24 * 60 * 60 * 1000);
         else if (plan === 'VIP' || plan === 'Premium') expiryDate = new Date(now + 365 * 24 * 60 * 60 * 1000); // 1 Year
@@ -1380,7 +1453,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
     return (
       <View style={{ flex: 1 }}>
         <View style={{ height: 10 }} />
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, paddingHorizontal: 16 }}>
+          <View style={[styles.userActionHeader, isCompact && styles.userActionHeaderCompact]}>
             <TouchableOpacity 
               style={{ 
                 flex: 1, 
@@ -1421,16 +1494,16 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
           </View>
 
         <View style={styles.filterSection}>
-          <View style={[styles.searchBar, { flex: 1, margin: 0, height: 48, backgroundColor: '#0f172a' }]}>
+          <View style={[styles.searchBar, styles.userSearchBar, isCompact && styles.userSearchBarCompact]}>
             <Ionicons name="search" size={18} color="#64748b" />
-            <TextInput 
-              placeholder="Search by email or User ID..." 
-              placeholderTextColor="#475569" 
-              style={styles.searchInput} 
+            <TextInput
+              placeholder={isCompact ? 'Search users...' : 'Search by email or User ID...'}
+              placeholderTextColor="#475569"
+              style={styles.searchInput}
               value={userSearch}
               onChangeText={setUserSearch}
             />
-            <Text style={styles.resultsCount}>Showing {filteredUsers.length} users</Text>
+            {!isCompact ? <Text style={styles.resultsCount}>Showing {filteredUsers.length} users</Text> : null}
           </View>
         </View>
 
@@ -1453,15 +1526,15 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
             }
 
             return (
-              <TouchableOpacity 
-                style={styles.userRow} 
+              <TouchableOpacity
+                style={[styles.userRow, isCompact && styles.userRowCompact]}
                 onPress={() => { setSelectedUser(item); setIsUserModalVisible(true); }}
                 activeOpacity={0.8}
               >
                 {/* Pillar 1: User Details */}
-                <View style={styles.userPillar}>
+                <View style={[styles.userPillar, isCompact && styles.userPillarCompact]}>
                   <Text style={styles.pillarLabel}>USER DETAILS</Text>
-                  <View style={styles.userPillarMain}>
+                  <View style={[styles.userPillarMain, isCompact && styles.userPillarMainCompact]}>
                     <View style={[styles.userAvatar, { width: 36, height: 36, backgroundColor: '#1e293b' }]}>
                       <Ionicons 
                         name={
@@ -1514,7 +1587,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
                 </View>
 
                 {/* Pillar 2: Subscription */}
-                <View style={styles.userPillarMid}>
+                <View style={[styles.userPillarMid, isCompact && styles.userPillarMidCompact]}>
                   <Text style={styles.pillarLabel}>SUBSCRIPTION</Text>
                   <View style={styles.subBadge}>
                     <Text style={styles.subBadgeText}>{item.plan || 'No Plan'}</Text>
@@ -1526,7 +1599,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
                 </View>
 
                 {/* Pillar 3: Engagement */}
-                <View style={styles.userPillarEnd}>
+                <View style={[styles.userPillarEnd, isCompact && styles.userPillarEndCompact]}>
                   <Text style={styles.pillarLabel}>ACTIVITY & ENGAGEMENT</Text>
                   <View style={[styles.engagementBadge, relativeTime === 'ACTIVE' && { backgroundColor: '#10b98122' }]}>
                     <Text style={[styles.engagementText, relativeTime === 'ACTIVE' && { color: '#10b981' }]}>{relativeTime}</Text>
@@ -1809,6 +1882,54 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
       </View>
     );
   };
+
+  const renderPlans = () => (
+    <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 140 }}>
+      <View style={styles.dashboardSection}>
+        <View style={styles.sectionHeaderRow}>
+          <Ionicons name="diamond" size={18} color="#6366f1" />
+          <Text style={styles.sectionTitle}>LIVE SUBSCRIPTION LIMITS</Text>
+        </View>
+        <Text style={{ color: '#94a3b8', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
+          External downloads are checked live from Firestore. Total limit applies across the whole plan period; daily limit resets each day.
+        </Text>
+
+        {plans.map(plan => (
+          <View key={plan.id} style={[styles.contentCard, { padding: 16, marginBottom: 14 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: plan.color || '#fff', fontSize: 16, fontWeight: '900', textTransform: 'uppercase' }}>{plan.name}</Text>
+                <Text style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{plan.durationDays} days · {plan.price} {plan.currency}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.saveBtn, { paddingHorizontal: 16, paddingVertical: 10, opacity: isPlansSaving ? 0.6 : 1 }]}
+                disabled={isPlansSaving}
+                onPress={() => savePlan(plan)}
+              >
+                <Text style={styles.saveBtnText}>SAVE</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <PlanLimitInput label="Price" value={plan.price} onChangeText={(text: string) => updatePlanField(plan.id, 'price', text)} />
+              <PlanLimitInput label="Duration Days" keyboardType="numeric" value={String(plan.durationDays || '')} onChangeText={(text: string) => updatePlanField(plan.id, 'durationDays', parseInt(text, 10) || 0)} />
+              <PlanLimitInput label="Devices" keyboardType="numeric" value={String(plan.deviceLimit || '')} onChangeText={(text: string) => updatePlanField(plan.id, 'deviceLimit', parseInt(text, 10) || 0)} />
+              <PlanLimitInput label="Daily External" keyboardType="numeric" value={String(inferPlanDailyLimit(plan))} onChangeText={(text: string) => {
+                const value = parseInt(text, 10) || 0;
+                updatePlanField(plan.id, 'externalDownloadDailyLimit', value);
+                updatePlanField(plan.id, 'downloadLimit', value);
+              }} />
+              <PlanLimitInput label="Total External" keyboardType="numeric" value={String(inferPlanTotalLimit(plan))} onChangeText={(text: string) => updatePlanField(plan.id, 'externalDownloadTotalLimit', parseInt(text, 10) || 0)} />
+            </View>
+
+            <Text style={{ color: '#64748b', fontSize: 11, marginTop: 12, fontWeight: '700' }}>
+              Current rule: {inferPlanTotalLimit(plan)} total, {inferPlanDailyLimit(plan)} per day, {plan.deviceLimit || 1} device(s)
+            </Text>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
 
   const renderLogs = () => {
     const filteredLogs = logs.filter(l => {
@@ -2285,6 +2406,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
         {activeSection === 'Dashboard' && renderDashboard()}
         {activeSection === 'Content' && renderContent()}
         {activeSection === 'Users' && renderUsers()}
+        {activeSection === 'Plans' && renderPlans()}
         {activeSection === 'Media' && renderMediaAssets()}
         {activeSection === 'Announcements' && renderAnnouncements()}
         {activeSection === 'Logs' && renderLogs()}
@@ -2294,14 +2416,17 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
 
       {/* Navigation */}
       <View style={[styles.navBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <NavBtn icon="view-dashboard" label="Home" active={activeSection === 'Dashboard'} onPress={() => setActiveSection('Dashboard')} />
-        <NavBtn icon="film-strip" label="Content" active={activeSection === 'Content'} onPress={() => setActiveSection('Content')} />
-        <NavBtn icon="account-group" label="Users" active={activeSection === 'Users'} onPress={() => setActiveSection('Users')} />
-        <NavBtn icon="layers" label="Layout" active={activeSection === 'AppLayout'} onPress={() => setActiveSection('AppLayout')} />
-        <NavBtn icon="image-multiple" label="Media" active={activeSection === 'Media'} onPress={() => setActiveSection('Media')} />
-        <NavBtn icon="bullhorn" label="Alerts" active={activeSection === 'Announcements'} onPress={() => setActiveSection('Announcements')} />
-        <NavBtn icon="history" label="Logs" active={activeSection === 'Logs'} onPress={() => setActiveSection('Logs')} />
-        <NavBtn icon="cog" label="Settings" active={activeSection === 'Settings'} onPress={() => setActiveSection('Settings')} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navBarContent}>
+          <NavBtn icon="view-dashboard" label="Home" active={activeSection === 'Dashboard'} onPress={() => setActiveSection('Dashboard')} />
+          <NavBtn icon="film-strip" label="Content" active={activeSection === 'Content'} onPress={() => setActiveSection('Content')} />
+          <NavBtn icon="account-group" label="Users" active={activeSection === 'Users'} onPress={() => setActiveSection('Users')} />
+          <NavBtn icon="diamond" label="Plans" active={activeSection === 'Plans'} onPress={() => setActiveSection('Plans')} />
+          <NavBtn icon="layers" label="Layout" active={activeSection === 'AppLayout'} onPress={() => setActiveSection('AppLayout')} />
+          <NavBtn icon="image-multiple" label="Media" active={activeSection === 'Media'} onPress={() => setActiveSection('Media')} />
+          <NavBtn icon="bullhorn" label="Alerts" active={activeSection === 'Announcements'} onPress={() => setActiveSection('Announcements')} />
+          <NavBtn icon="history" label="Logs" active={activeSection === 'Logs'} onPress={() => setActiveSection('Logs')} />
+          <NavBtn icon="cog" label="Settings" active={activeSection === 'Settings'} onPress={() => setActiveSection('Settings')} />
+        </ScrollView>
       </View>
 
       {/* Media Preview Modal */}
@@ -2878,7 +3003,7 @@ export default function NativeAdminScreen({ initialSection = 'Dashboard' }: Nati
 
             <Text style={styles.label}>Quick Access Update</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
-              {['None', '1 Day', '1 week', '1 Month', '3 Months', 'Premium', 'VIP', 'Custom'].map(p => (
+              {['None', '1 Day', '1 week', '2 weeks', '1 Month', '2 months', 'Premium', 'VIP', 'Custom'].map(p => (
                 <TouchableOpacity 
                   key={p} 
                   style={[styles.planChip, { backgroundColor: selectedUser?.plan === p ? '#6366f1' : '#1e293b' }]} 
@@ -3162,6 +3287,19 @@ const NavBtn = ({ icon, label, active, onPress }: any) => (
   </TouchableOpacity>
 );
 
+const PlanLimitInput = ({ label, value, onChangeText, keyboardType = 'default' }: any) => (
+  <View style={{ minWidth: 145, flex: 1 }}>
+    <Text style={styles.inputLabel}>{label}</Text>
+    <TextInput
+      style={styles.input}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      placeholderTextColor="#64748b"
+    />
+  </View>
+);
+
 const TabBtn = ({ label, active, onPress }: any) => (
   <TouchableOpacity onPress={onPress} style={[styles.tab, active && styles.activeTab]}>
     <Text style={[styles.tabText, active && styles.activeTabText]}>{label}</Text>
@@ -3188,7 +3326,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0f' },
   main: { flex: 1 },
   navBar: { flexDirection: 'row', backgroundColor: '#0f172a', borderTopWidth: 1, borderTopColor: '#1e293b' },
-  navBtn: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  navBarContent: { minWidth: '100%' },
+  navBtn: { flex: 1, minWidth: 68, alignItems: 'center', paddingVertical: 12 },
   navText: { color: '#64748b', fontSize: 10, marginTop: 4, fontWeight: '700' },
   navTextActive: { color: '#6366f1' },
   
@@ -3248,6 +3387,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, marginLeft: 8, color: '#fff', fontSize: 13, fontWeight: '600' },
   resultsCount: { color: '#475569', fontSize: 10, fontWeight: '700', marginLeft: 8 },
   filterSection: { paddingHorizontal: 16, marginBottom: 8 },
+  userActionHeader: { flexDirection: 'row', gap: 12, marginBottom: 20, paddingHorizontal: 16 },
+  userActionHeaderCompact: { gap: 8, marginBottom: 14 },
+  userSearchBar: { flex: 1, margin: 0, height: 48, backgroundColor: '#0f172a' },
+  userSearchBarCompact: { height: 46, paddingHorizontal: 10 },
   filterRow: { flexDirection: 'row', marginBottom: 12 },
   miniChip: { backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: '#334155' },
   miniChipActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
@@ -3565,12 +3708,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     padding: 16 
   },
+  userRowCompact: {
+    flexDirection: 'column',
+    padding: 14,
+    gap: 12,
+    borderRadius: 16,
+  },
   userPillar: { flex: 1.2, gap: 4 },
   userPillarMid: { flex: 1, gap: 4, paddingHorizontal: 12, borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#1e293b' },
   userPillarEnd: { flex: 1.2, gap: 4, paddingLeft: 12 },
+  userPillarCompact: { flex: 1, width: '100%' },
+  userPillarMidCompact: {
+    flex: 1,
+    width: '100%',
+    paddingHorizontal: 0,
+    paddingTop: 12,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 1,
+    borderColor: '#1e293b',
+  },
+  userPillarEndCompact: {
+    flex: 1,
+    width: '100%',
+    paddingLeft: 0,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: '#1e293b',
+  },
   
   pillarLabel: { color: '#475569', fontSize: 9, fontWeight: '900', letterSpacing: 0.5, marginBottom: 8 },
   userPillarMain: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
+  userPillarMainCompact: { gap: 10 },
   userPillarTextGroup: { flex: 1 },
   userPillarTitle: { color: '#fff', fontSize: 13, fontWeight: '800' },
   userPillarSub: { color: '#64748b', fontSize: 10, fontWeight: '600' },

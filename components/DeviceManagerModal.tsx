@@ -10,6 +10,7 @@ interface DeviceManagerModalProps {
   currentDeviceId: string | null;
   onRemoveDevice: (id: string) => Promise<void>;
   onClose: () => void;
+  onUpgrade: () => void;
   planName: string;
   limit: number;
 }
@@ -20,9 +21,13 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
   currentDeviceId,
   onRemoveDevice,
   onClose,
+  onUpgrade,
   planName,
   limit
 }) => {
+  const isNoPlan = planName === 'None';
+  const planLabel = isNoPlan ? 'account' : `${planName} plan`;
+
   return (
     <Modal
       visible={visible}
@@ -44,7 +49,9 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
               </View>
               <Text style={styles.title}>Device Limit Reached</Text>
               <Text style={styles.subtitle}>
-                Your <Text style={styles.highlight}>{planName}</Text> plan allows up to <Text style={styles.highlight}>{limit} {limit === 1 ? 'device' : 'devices'}</Text>.
+                {isNoPlan
+                  ? 'This account is not subscribed. You can continue as guest or upgrade to unlock more access.'
+                  : <>Your <Text style={styles.highlight}>{planLabel}</Text> allows up to <Text style={styles.highlight}>{limit} {limit === 1 ? 'device' : 'devices'}</Text>.</>}
               </Text>
             </View>
 
@@ -52,7 +59,7 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
 
             <Text style={styles.sectionTitle}>Manage Registered Devices</Text>
             <Text style={styles.instruction}>
-              To use this device, you must remove an old one from your account slots.
+              To use this device with the same account, request approval from a registered device or upgrade your plan.
             </Text>
 
             <ScrollView style={styles.deviceList} contentContainerStyle={styles.listContent}>
@@ -94,10 +101,10 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
 
             <View style={styles.footer}>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Text style={styles.closeBtnText}>I'll do this later</Text>
+                <Text style={styles.closeBtnText}>I will do this later</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.8} onPress={onUpgrade}>
                 <LinearGradient
                   colors={['#6366f1', '#4f46e5'] as any}
                   style={styles.upgradeGradient}

@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayRemove, deleteField, runTransaction } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
-import { Platform, Animated, Dimensions, StyleSheet } from 'react-native';
+import { Alert, Platform, Animated, Dimensions, StyleSheet } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
 import { Plan, PLANS } from '../../constants/planData';
 
@@ -47,6 +47,8 @@ interface SubscriptionContextType {
   activeDeviceIds: string[];
   deviceId: string | null;
   removeDevice: (id: string) => Promise<void>;
+  unregisterCurrentDevice: () => Promise<void>;
+  switchToGuest: () => Promise<void>;
   deviceLimit: number;
   customExternalLimit: number;
   hasUsedGuestTrial: boolean;
@@ -103,6 +105,8 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   activeDeviceIds: [],
   deviceId: null,
   removeDevice: async () => {},
+  unregisterCurrentDevice: async () => {},
+  switchToGuest: async () => {},
   deviceLimit: 1,
   customExternalLimit: 0,
   hasUsedGuestTrial: false,
@@ -174,6 +178,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
   const [availablePlans, setAvailablePlans] = React.useState<Plan[]>([]);
   const [ticker, setTicker] = React.useState(0);
+  const handledRemovalRequestsRef = useRef<Set<string>>(new Set());
 
   // Minute-by-minute heartbeat to refresh time-based logic (isPaid, remainingDays)
   React.useEffect(() => {
@@ -206,7 +211,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else if (Platform.OS === 'ios') {
         id = await Application.getIosIdForVendorAsync();
       }
-      
+
       const model = Device.modelName || Device.designName || (Platform.OS === 'ios' ? 'iPhone' : 'Android Device');
       return { 
         id: id || 'unknown_device', 
@@ -243,22 +248,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const unsub = onSnapshot(collection(db, 'plans'), (snap) => {
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan))
         .sort((a, b) => (((a as any).order || 0) - ((b as any).order || 0)));
-      
-      if (list.length > 0) {
-        setAvailablePlans(list);
-        
-        // Update dynamic maps
-        const pLimits: Record<string, number> = { 'Premium': 10, 'VIP': 999, 'None': 0 };
-        const dLimits: Record<string, number> = { 'premium': 5, 'vip': 999, 'none': 0 };
-        
-        list.forEach(p => {
-          pLimits[p.name] = p.downloadLimit || 1;
-          dLimits[p.name.toLowerCase()] = p.deviceLimit || 1;
-        });
-        
-        dynamicPlanLimits = pLimits;
-        dynamicDeviceLimits = dLimits;
-      }
+
+      const effectivePlans = list.length > 0 ? list : PLANS;
+      setAvailablePlans(effectivePlans);
+
+      // Update dynamic maps
+      const pLimits: Record<string, number> = { 'Premium': 10, 'VIP': 999, 'None': 0 };
+      const dLimits: Record<string, number> = { 'premium': 5, 'vip': 999, 'none': 0 };
+
+      effectivePlans.forEach(p => {
+          pLimits[p.name] = p.externalDownloadDailyLimit || p.downloadLimit || 1;
+          dLimits[p.name.toLowerCase()] = p.deviceLimit ?? 1;
+      });
+
+      dynamicPlanLimits = pLimits;
+      dynamicDeviceLimits = dLimits;
     });
     return unsub;
   }, []);
@@ -292,6 +296,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             
             const extLimit = userData.customExternalLimit || userData.downloadLimit || 0;
             const devLimit = userData.customDeviceLimit || 0;
+            const expirationMs = parseSubscriptionExpiry(expiresAt);
+            const isExpired = expirationMs !== null && Date.now() > expirationMs;
+            const finalBundle = isExpired ? 'None' : bundle;
+            const finalExpires = isExpired ? null : expirationMs;
+            const hasDeviceManagedAccess = finalBundle !== 'None' || extLimit > 0;
             setCustomExternalLimit(extLimit);
             setCustomDeviceLimit(devLimit);
 
@@ -305,6 +314,46 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               const { id: currentId, name: currentName } = await getDeviceInfo();
               if (currentId === 'unknown_device') return;
 
+              if (!hasDeviceManagedAccess) {
+                setIsDeviceBlocked(false);
+                return;
+              }
+
+              const removalRequests = userData.deviceRemovalRequests || {};
+              const pendingRequest = removalRequests[currentId];
+              const requestKey = `${currentId}:${pendingRequest?.requestedAt || ''}`;
+              if (pendingRequest?.status === 'pending' && !handledRemovalRequestsRef.current.has(requestKey)) {
+                handledRemovalRequestsRef.current.add(requestKey);
+                Alert.alert(
+                  'Deactivate this device?',
+                  'Another device wants to use this account. Allow this device to be removed from the account slots?',
+                  [
+                    {
+                      text: 'No',
+                      style: 'cancel',
+                      onPress: () => updateDoc(doc(db, 'users', user.uid), {
+                        [`deviceRemovalRequests.${currentId}.status`]: 'denied',
+                        [`deviceRemovalRequests.${currentId}.respondedAt`]: new Date().toISOString(),
+                      }).catch(() => {}),
+                    },
+                    {
+                      text: 'Allow',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await updateDoc(doc(db, 'users', user.uid), {
+                          activeDeviceIds: arrayRemove(currentId),
+                          [`activeDevicesMeta.${currentId}`]: deleteField(),
+                          [`deviceRemovalRequests.${currentId}`]: deleteField(),
+                          [`kickedDevices.${currentId}`]: true,
+                        }).catch(() => {});
+                        await signOut(auth).catch(() => {});
+                        await signInAnonymously(auth).catch(() => {});
+                      },
+                    },
+                  ],
+                );
+              }
+
               // 0. Check if this device has been explicitly kicked
               const kickedDevices = userData.kickedDevices || {};
               if (kickedDevices[currentId]) {
@@ -316,7 +365,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               }
 
               const normalizedBundle = bundle.toLowerCase();
-              const baseLimit = dynamicDeviceLimits[normalizedBundle] || 1;
+              const baseLimit = dynamicDeviceLimits[normalizedBundle] ?? 1;
               const limit = devLimit > 0 ? devLimit : baseLimit;
               const isAlreadyRegistered = fetchedActiveDevices.includes(currentId);
               const userRef = doc(db, 'users', user.uid);
@@ -377,11 +426,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             runDeviceCheck();
             
-            const expirationMs = parseSubscriptionExpiry(expiresAt);
-            const isExpired = expirationMs !== null && Date.now() > expirationMs;
-            const finalBundle = isExpired ? 'None' : bundle;
-            const finalExpires = isExpired ? null : expirationMs;
-
             setSubscriptionBundle(finalBundle);
             setSubscriptionExpiresAt(finalExpires);
 
@@ -628,25 +672,49 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (auth.currentUser && !isGuest) {
       try {
         const userRef = doc(db, 'users', auth.currentUser.uid);
-        
-        // Atomically remove from ID list, delete metadata, and set kick flag
+
         await updateDoc(userRef, {
-          activeDeviceIds: arrayRemove(targetId),
-          [`activeDevicesMeta.${targetId}`]: deleteField(),
-          [`kickedDevices.${targetId}`]: true
+          [`deviceRemovalRequests.${targetId}`]: {
+            status: 'pending',
+            requestedBy: deviceId || 'unknown_device',
+            requestedAt: new Date().toISOString(),
+          },
         });
+        Alert.alert('Request sent', 'The registered device will see a popup to approve or deny deactivation.');
       } catch (err) {
-        console.error("Failed to remove device:", err);
+        console.error("Failed to request device removal:", err);
       }
     }
   };
 
+  const unregisterCurrentDevice = async () => {
+    if (auth.currentUser && !isGuest && deviceId) {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        activeDeviceIds: arrayRemove(deviceId),
+        [`activeDevicesMeta.${deviceId}`]: deleteField(),
+        [`deviceRemovalRequests.${deviceId}`]: deleteField(),
+        [`kickedDevices.${deviceId}`]: deleteField(),
+      });
+    }
+  };
+
+  const switchToGuest = async () => {
+    setIsDeviceBlocked(false);
+    await signOut(auth).catch(() => {});
+    await signInAnonymously(auth);
+  };
+
   const hasNamedPlan = subscriptionBundle !== 'None';
   const hasManualDownloadAccess = customExternalLimit > 0;
-  const hasActiveExpiry = Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
+  // We treat null expiry as "lifetime" only if there is an actual plan/access flag.
+  const hasActiveExpiry =
+    subscriptionExpiresAt === null
+      ? (hasNamedPlan || hasManualDownloadAccess)
+      : Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
   const hasPlanAccess = (hasNamedPlan || hasManualDownloadAccess) && hasActiveExpiry;
   const isPaid = hasPlanAccess;
-  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] || 1);
+  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] ?? 1);
 
   // Global Player Animated Values
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
@@ -683,6 +751,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     activeDevicesMeta,
     deviceId,
     removeDevice,
+    unregisterCurrentDevice,
+    switchToGuest,
     deviceLimit,
     customExternalLimit,
     hasUsedGuestTrial,

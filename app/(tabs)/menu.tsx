@@ -54,6 +54,7 @@ import { SettingsList } from '../../components/menu/SettingsList';
 import { ChoosePlanSection } from '../../components/menu/ChoosePlanSection';
 import { styles } from '../../components/menu/menu.styles';
 import PremiumAccessModal from '../../components/PremiumAccessModal';
+import DeviceManagerModal from '../../components/DeviceManagerModal';
 import { MoviePreviewContent, SeriesPreviewContent as SeriesPreviewModal } from './index';
 import { GridContent } from '../../components/GridComponents';
 import { sendLocalNotification, addNotificationResponseListener } from '../../lib/notifications';
@@ -63,6 +64,26 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const TOP = Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight ?? 0) + 10;
 const PAYMENT_API_BASE = 'https://www.themoviezone247.com/api/payments';
+
+const inferPlanDailyLimit = (plan: any) => {
+  const name = String(plan?.name || '').toLowerCase();
+  if (plan?.externalDownloadDailyLimit) return plan.externalDownloadDailyLimit;
+  if (name.includes('2 month')) return 5;
+  if (name.includes('1 month') || name.includes('month')) return 3;
+  if (name.includes('2 week')) return 2;
+  return plan?.downloadLimit || 1;
+};
+
+const inferPlanTotalLimit = (plan: any) => {
+  const name = String(plan?.name || '').toLowerCase();
+  if (plan?.externalDownloadTotalLimit) return plan.externalDownloadTotalLimit;
+  if (name.includes('1 day')) return 1;
+  if (name.includes('1 week')) return 8;
+  if (name.includes('2 week')) return 16;
+  if (name.includes('1 month') || name === 'month') return 32;
+  if (name.includes('2 month')) return 60;
+  return plan?.downloadLimit || 1;
+};
 
 // ─── Menu items ────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -420,6 +441,9 @@ export default function MenuScreen() {
     activeDeviceIds,
     activeDevicesMeta,
     removeDevice,
+    unregisterCurrentDevice,
+    switchToGuest,
+    deviceLimit,
     availablePlans,
     playingNow,
     setPlayingNow,
@@ -468,6 +492,13 @@ export default function MenuScreen() {
                          contextPaymentMethod?.toLowerCase().includes('admin');
 
     const bundle = subscriptionBundle.toLowerCase();
+    const activePlan = availablePlans.find(plan => plan.name.toLowerCase() === bundle);
+    const planDailyLimit = activePlan ? inferPlanDailyLimit(activePlan) : undefined;
+    const planTotalLimit = activePlan ? inferPlanTotalLimit(activePlan) : undefined;
+    const planDeviceLimit = activePlan?.deviceLimit || 1;
+    const externalSpec = planTotalLimit
+      ? `${planTotalLimit} total external downloads, ${planDailyLimit || 1}/day`
+      : `${getExternalDownloadLimit()} external downloads`;
     if (bundle.includes('premium')) {
       const daySuffix = remainingDays === 1 ? 'Day' : 'Days';
       setSubscriptionBundleDisplay(`${remainingDays} ${daySuffix} Plan`);
@@ -479,34 +510,34 @@ export default function MenuScreen() {
         'Ad-free experience', 
         'Access to all content', 
         'Unlimited in-app download', 
-        `${getExternalDownloadLimit()} external downloads`, 
-        '3 devices'
+        externalSpec,
+        `${planDeviceLimit} device${planDeviceLimit === 1 ? '' : 's'}`
       ]);
     } else {
       setSubscriptionBundleDisplay(subscriptionBundle);
       if (bundle.includes('1 week')) {
         setSubscriptionBonus(isAdminGrant ? null : '+1 day bonus');
         setSubscriptionPrice('2,500 Ugx');
-        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '1 external download', '1 device']);
+        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', externalSpec, `${planDeviceLimit} device${planDeviceLimit === 1 ? '' : 's'}`]);
       } else if (bundle.includes('2 weeks')) {
         setSubscriptionBonus(isAdminGrant ? null : '+2 days bonus');
         setSubscriptionPrice('5,000 Ugx');
-        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '2 external downloads', '1 device']);
+        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', externalSpec, `${planDeviceLimit} device${planDeviceLimit === 1 ? '' : 's'}`]);
       } else if (bundle.includes('1 month')) {
         setSubscriptionBonus(isAdminGrant ? null : '+4 day bonus');
         setSubscriptionPrice('10,000 Ugx');
-        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '3 external downloads', '2 devices']);
+        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', externalSpec, `${planDeviceLimit} device${planDeviceLimit === 1 ? '' : 's'}`]);
       } else if (bundle.includes('2 months')) {
         setSubscriptionBonus(isAdminGrant ? null : '+1 week bonus');
         setSubscriptionPrice('20,000 Ugx');
-        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', '5 external downloads', '3 devices']);
+        setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Access to all content', 'Unlimited in-app download', externalSpec, `${planDeviceLimit} device${planDeviceLimit === 1 ? '' : 's'}`]);
       } else if (bundle.includes('vip')) {
         setSubscriptionBonus('Elite Status');
         setSubscriptionPrice('Gifted');
         setSubscriptionSpecs(['FHD / HD Streaming', 'Unlimited movies and series', 'Ad-free experience', 'Priority Support', 'Access to all content', 'Unlimited in-app download', 'Unlimited external downloads', '5 devices']);
       }
     }
-  }, [subscriptionBundle, remainingDays, contextPaymentMethod]);
+  }, [subscriptionBundle, remainingDays, contextPaymentMethod, availablePlans, getExternalDownloadLimit]);
   const [renewalDate, setRenewalDate] = React.useState('Loading...');
   const [paymentMethod, setPaymentMethod] = React.useState('Administrative Grant');
 
@@ -823,7 +854,7 @@ export default function MenuScreen() {
   const handleKickDevice = async (deviceId: string) => {
     if (removeDevice) {
       await removeDevice(deviceId);
-      alert('Device has been logged out successfully.');
+      alert('Deactivation request sent to that device.');
     }
   };
 
@@ -1294,7 +1325,7 @@ export default function MenuScreen() {
     try {
       if (deviceId) {
         try {
-          await removeDevice(deviceId);
+          await unregisterCurrentDevice();
         } catch (e) {
           console.error('Failed to remove device on logout:', e);
         }
@@ -1309,7 +1340,7 @@ export default function MenuScreen() {
       console.error('Failed to logout:', e);
       Alert.alert('Logout Failed', 'Please try again.');
     }
-  }, [deviceId, removeDevice, router]);
+  }, [deviceId, unregisterCurrentDevice, router]);
 
   if (isDeviceBlocked) {
     return (
@@ -1317,18 +1348,18 @@ export default function MenuScreen() {
         <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0f0f14' }]}>
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
         </View>
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: insets.top + 80, justifyContent: 'center' }}>
-          <View style={{ borderRadius: 26, padding: 24, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)' }}>
-            <View style={{ width: 64, height: 64, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-              <Ionicons name="phone-portrait-outline" size={30} color="#f87171" />
-            </View>
-            <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', marginBottom: 10 }}>Device Limit Reached</Text>
-            <Text style={{ color: '#a8b0c2', fontSize: 15, lineHeight: 22, marginBottom: 22 }}>
-              This account has reached its device limit. Log out here, then sign in on the device you want to use or ask the admin to remove an old device.
-            </Text>
-            <LogoutButton onPress={handleLogout} />
-          </View>
-        </View>
+        <DeviceManagerModal
+          visible={isDeviceBlocked && !isGuest}
+          activeDeviceIds={activeDeviceIds}
+          currentDeviceId={deviceId}
+          onRemoveDevice={removeDevice}
+          onClose={switchToGuest}
+          onUpgrade={() => {
+            setSelectedItem(menuItems.find(m => m.id === '3') || null);
+          }}
+          planName={subscriptionBundle}
+          limit={deviceLimit}
+        />
       </View>
     );
   }

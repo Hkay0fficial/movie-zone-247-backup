@@ -2414,7 +2414,9 @@ export function SeriesPreviewContent({
     isDeviceBlocked,
     activeDeviceIds,
     removeDevice,
+    switchToGuest,
     deviceLimit,
+    deviceId,
     setIsPreview,
   } = sub;
 
@@ -7460,7 +7462,9 @@ export default function HomeScreen() {
     isDeviceBlocked,
     activeDeviceIds,
     removeDevice,
+    switchToGuest,
     deviceLimit,
+    deviceId,
     remainingDays,
     isPaid,
     isSubscribed,
@@ -8383,9 +8387,10 @@ export default function HomeScreen() {
       <DeviceManagerModal
         visible={isDeviceBlocked && !isGuest}
         activeDeviceIds={activeDeviceIds}
-        currentDeviceId={(Application as any).androidId || null}
+        currentDeviceId={deviceId || ((Application as any).androidId || null)}
         onRemoveDevice={removeDevice}
-        onClose={() => {}} // User must manage devices to move forward
+        onClose={switchToGuest}
+        onUpgrade={() => setShowPlanModal(true)}
         planName={subscriptionBundle}
         limit={deviceLimit}
       />
