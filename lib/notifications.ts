@@ -5,7 +5,8 @@ import Constants from 'expo-constants';
 // Detect if we're in Expo Go on Android where SDK 53+ crashes on expo-notifications
 const isExpoGo = Constants.appOwnership === 'expo';
 const isAndroid = Platform.OS === 'android';
-const shouldSkip = isExpoGo && isAndroid;
+const isWeb = Platform.OS === 'web';
+const shouldSkip = isWeb || (isExpoGo && isAndroid);
 
 // Gracefully handle notifications module
 let Notifications: any = null;

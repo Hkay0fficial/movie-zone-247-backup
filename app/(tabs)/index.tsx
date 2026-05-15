@@ -116,7 +116,6 @@ import { formatRelativeTime } from "../../utils/TimeUtils";
 import PremiumAccessModal from "../../components/PremiumAccessModal";
 import PlanSelectionModal from "../../components/PlanSelectionModal";
 import DeviceManagerModal from "../../components/DeviceManagerModal";
-import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 
 import { ExpiryReminderModal } from "../../components/ExpiryReminderModal";
 import OfflineState from "../../components/OfflineState";
@@ -130,7 +129,21 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
 // In Expo Go or if improperly configured on Android, Native module might be null,
 // causing "Cannot read property 'getCastState' of null" crashes.
-const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
+const getCastModule = () => {
+  if (Platform.OS === 'web') return null;
+  try {
+    return require("react-native-google-cast");
+  } catch (e) {
+    return null;
+  }
+};
+
+const CastModule = getCastModule();
+const GoogleCast = CastModule?.default ?? null;
+const CastContext = CastModule?.CastContext ?? null;
+const CastState = CastModule?.CastState ?? { CONNECTED: "CONNECTED", CONNECTING: "CONNECTING" };
+const useNativeCastState = CastModule?.useCastState;
+const CAN_CAST = !!CastModule && (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
 
 // ─── Navigation Bar Safety Guard ─────────────────────────────────────────────
 const safeSetNavigationBar = async (visibility: 'visible' | 'hidden') => {
@@ -169,16 +182,13 @@ try {
 }
 
 function useSafeCastState() {
-  return null;
-  /*
-  if (!CAN_CAST) return null;
+  if (!CAN_CAST || !useNativeCastState) return null;
   try {
-    return useCastState();
+    return useNativeCastState();
   } catch (e) {
     console.warn("Google Cast hook error:", e);
     return null;
   }
-  */
 }
 
 function ModalSystemUIRestorer() {
@@ -1331,7 +1341,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 160,
-    bottom: -2,
   },
   previewSearchBtn: {
     position: "absolute",
@@ -1550,6 +1559,53 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 10,
   },
+  downloadModalContent: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 28,
+    overflow: "hidden",
+    backgroundColor: "rgba(15, 23, 42, 0.96)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.15)",
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  downloadModalHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  downloadIconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(91, 95, 239, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(91, 95, 239, 0.3)",
+    marginBottom: 16,
+  },
+  downloadModalTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  downloadModalSub: {
+    color: "#94a3b8",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  downloadOptions: {
+    width: "100%",
+    gap: 12,
+  },
   downloadIconHeader: {
     marginBottom: 20,
   },
@@ -1602,6 +1658,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  downloadPrimarySubText: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
   downloadSecondaryBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1617,6 +1679,12 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 16,
     fontWeight: "600",
+  },
+  downloadSecondarySubText: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
   },
   downloadCancelLink: {
     marginTop: 8,
@@ -2342,7 +2410,6 @@ export function SeriesPreviewContent({
     isGuest,
     toggleFavorite,
     favorites,
-    checkDeviceLimit,
     recordTrialUsage,
     isDeviceBlocked,
     activeDeviceIds,
@@ -2835,7 +2902,7 @@ export function SeriesPreviewContent({
             if (setPlayerMode) setPlayerMode('full');
           }}
         >
-          {previewVideoUrl && playerMode === 'closed' && isFocused && navigationStack.length === 0 ? (
+          {previewVideoUrl && playerMode === 'closed' && isFocused ? (
             <Video
               source={{ uri: previewVideoUrl }}
               style={styles.previewPoster}
@@ -3012,7 +3079,7 @@ export function SeriesPreviewContent({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.previewActionCol} onPress={() => handleShare(series)}>
+            <TouchableOpacity style={styles.previewActionCol} onPress={handleShare}>
               <View style={styles.previewActionIconBg}><Ionicons name="share-social-outline" size={22} color="#fff" /></View>
               <Text style={styles.previewActionLabel}>Share</Text>
             </TouchableOpacity>
@@ -3062,7 +3129,7 @@ export function SeriesPreviewContent({
                     if (setSelectedVideoUrl) setSelectedVideoUrl(finalUrl);
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + ep.title);
                     if (setIsPreview) setIsPreview(!localUri && !ep.videoUrl);
-                    if (setPlayingNow) setPlayingNow(series);
+                    if (setPlayingNow) setPlayingNow(series as any);
                     if (setPlayerMode) setPlayerMode('full');
                   }}
                 >
@@ -3227,7 +3294,7 @@ export function SeriesPreviewContent({
                     if (setPlayerTitle) setPlayerTitle(series.title + " - " + alreadyDownloadedState.episode?.title);
                     if (setIsPreview) setIsPreview(false);
                     if (setPlayingNow) setPlayingNow(series as any);
-                    if (setPlayingEpisodeId && alreadyDownloadedState.episode) setPlayingEpisodeId(alreadyDownloadedState.episode.id);
+                    if (_safeSetEpId && alreadyDownloadedState.episode) _safeSetEpId(alreadyDownloadedState.episode.id);
                     if (setPlayerMode) setPlayerMode('full');
                   }
                 }}
@@ -3771,7 +3838,7 @@ export const MoviePreviewContent = memo(({
       }));
 
       // Client-side sort to avoid requiring a composite index
-      fetchedComments.sort((a, b) => {
+      fetchedComments.sort((a: any, b: any) => {
         const timeA = a.createdAt?.seconds || 0;
         const timeB = b.createdAt?.seconds || 0;
         return timeB - timeA;
@@ -3936,7 +4003,7 @@ export const MoviePreviewContent = memo(({
     }
     // Launch the native casting dialog ONLY if available
     if (CAN_CAST) {
-      CastContext.showCastDialog();
+      CastContext?.showCastDialog();
     } else {
       const toolTip = Platform.OS === 'ios' 
         ? "Casting requires a physical device and a development build. Simulators and Expo Go do not support native Cast SDK."
@@ -3947,7 +4014,7 @@ export const MoviePreviewContent = memo(({
 
   // Auto-Start Cast Media
   useEffect(() => {
-    if (CAN_CAST && isCasting && selectedVideoUrl && movie) {
+    if (CAN_CAST && GoogleCast && isCasting && selectedVideoUrl && movie) {
       GoogleCast.getSessionManager().getCurrentCastSession().then((session: any) => {
         if (session) {
           session.client.loadMedia({
@@ -4409,8 +4476,8 @@ export const MoviePreviewContent = memo(({
         return;
       }
       setActivePartId(nextPartItem.id);
-      try { if (_safeSetEps && movieParts.length > 0) _safeSetEps(movieParts); } catch(e) {}
-      try { if (_safeSetEpId) _safeSetEpId(nextPartItem.id); } catch(e) {}
+      try { if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts); } catch(e) {}
+      try { if (setPlayingEpisodeId) setPlayingEpisodeId(nextPartItem.id); } catch(e) {}
       // Prioritize local downloaded file for offline playback
       const localUri = episodeDownloads?.[nextPartItem.id];
       setSelectedVideoUrl?.(localUri || nextPartItem.videoUrl);
@@ -4801,7 +4868,7 @@ export const MoviePreviewContent = memo(({
                             'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
                             'Referer': 'https://themoviezone247.com/'
                           }
-                        }}
+                        } as any}
                         style={styles.previewPoster}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={isRenderReady && playerMode === 'closed' && isFocused && appState === 'active'}
@@ -4896,12 +4963,12 @@ export const MoviePreviewContent = memo(({
                              if (videoUri) {
                                if (setIsPreview) {
                                  const itemPreviewUrl = (movie as any).previewUrl;
-                                 setIsPreview(videoUri === itemPreviewUrl && !currentPlayerTitle.includes("Episode"));
+                                 setIsPreview(videoUri === itemPreviewUrl && !(currentPlayerTitle || "").includes("Episode"));
                                }
-                               try { if (_safeSetEps && movieParts.length > 0) _safeSetEps(movieParts); } catch(e) {}
-                               try { if (_safeSetEpId && activePart) _safeSetEpId(activePart.id); } catch(e) {}
+                               try { if (setPlayingEpisodes && movieParts.length > 0) setPlayingEpisodes(movieParts); } catch(e) {}
+                               try { if (setPlayingEpisodeId && activePart) setPlayingEpisodeId(activePart.id); } catch(e) {}
                                if (setSelectedVideoUrl) setSelectedVideoUrl(videoUri);
-                               if (setPlayerTitle) setPlayerTitle(titleToPlay);
+                               if (setPlayerTitle) setPlayerTitle(titleToPlay || movie.title);
                                if (setPlayingNow) setPlayingNow(movie as Movie);
                                if (setPlayerMode) setPlayerMode('full');
                              }
@@ -5983,8 +6050,8 @@ export const MoviePreviewContent = memo(({
                       onPress={() => {
                         setAlreadyDownloadedState({ visible: false });
                         if ((alreadyDownloadedState.localItem as any)?.localUri) {
-                          setSelectedVideoUrl((alreadyDownloadedState.localItem as any).localUri);
-                          setPlayerTitle(movie.title);
+                          setSelectedVideoUrl?.((alreadyDownloadedState.localItem as any).localUri);
+                          setPlayerTitle?.(movie.title);
                           setPlayerMode?.('full');
                         }
                       }}
@@ -7041,7 +7108,7 @@ const HeroBanner = memo(({
               source={{ 
                 uri: heroSource,
                 overridingExtension: isHLS ? 'm3u8' : undefined,
-              }}
+              } as any}
               style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
               shouldPlay={!paused && isFocused && appState === 'active' && playerMode === 'closed' && !isModalOpen}
@@ -7410,6 +7477,7 @@ export default function HomeScreen() {
     isNotificationVisible,
     setIsNotificationVisible
   } = sub;
+  const setPlayingEpisodeId = (sub as any).setPlayingEpisodeId as ((id: string | null) => void) | undefined;
   const [holidayTick, setHolidayTick] = useState(Date.now());
 
   const { downloadedMovies = [] } = useDownloads() || {};
@@ -7681,7 +7749,7 @@ export default function HomeScreen() {
           setSelectedVideoUrl(playItem.videoUrl);
           if (setIsPreview) setIsPreview(false);
           setPlayingNow(playItem as Movie);
-          try { if (_safeSetEpId) _safeSetEpId(null); } catch(e) {}
+          try { if (setPlayingEpisodeId) setPlayingEpisodeId(null); } catch(e) {}
           setPlayerMode('full');
           setLoadingDeepLink(false);
         } else {
@@ -7710,12 +7778,22 @@ export default function HomeScreen() {
 
   // Keep screen on during video playback
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const releaseKeepAwake = () => {
+      try {
+        deactivateKeepAwake();
+      } catch (e) {
+        // Keep-awake can throw if cleanup runs before native activation completes.
+      }
+    };
+
     if (playerMode === 'full') {
-      activateKeepAwakeAsync();
+      activateKeepAwakeAsync().catch(() => {});
     } else {
-      deactivateKeepAwake();
+      releaseKeepAwake();
     }
-    return () => { deactivateKeepAwake(); };
+    return releaseKeepAwake;
   }, [playerMode]);
 
   // Derived state to determine if the hero video should actually be muted

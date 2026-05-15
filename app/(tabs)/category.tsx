@@ -42,6 +42,7 @@ import {
   ALL_ROWS
 } from "@/constants/movieData";
 import { useDownloads } from "@/app/context/DownloadContext";
+import { resolveCDNUrl } from "@/constants/bunnyConfig";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -61,6 +62,11 @@ const SORT_OPTIONS = [
   { label: "Newest", value: "newest", icon: "time" },
   { label: "Oldest", value: "oldest", icon: "hourglass" },
 ];
+
+const getDiscoverPreviewUrl = (item: Movie | Series) => {
+  const previewUrl = (item as any).previewUrl;
+  return previewUrl ? resolveCDNUrl(previewUrl) : "";
+};
 
 
 // ─── Discover Feed Card ────────────────────────────────────────────────────────
@@ -129,7 +135,7 @@ const DiscoverCard = React.memo(({
       {isActive && item.previewUrl && isFocused && playerMode === 'closed' && !isModalOpen && (
         <View style={styles.videoWrapper}>
           <Video
-            source={{ uri: item.previewUrl }}
+            source={{ uri: getDiscoverPreviewUrl(item) }}
             style={{ width: screenWidth, height: screenWidth * (9/16) }}
             resizeMode={ResizeMode.CONTAIN}
             shouldPlay={isActive && isFocused && !isModalOpen && playerMode === 'closed'}
@@ -394,6 +400,17 @@ export default function CategoryScreen() {
       // Check for subscription/access
       const canWatch = (allMoviesFree && !isGuest) || (item as any).isFree || isPaid;
       if (!canWatch) {
+        const previewUrl = getDiscoverPreviewUrl(item);
+        if (previewUrl) {
+          setPlayerTitle(`${item.title} - Preview`);
+          setSelectedVideoUrl(previewUrl);
+          setIsPreview(true);
+          setPlayingNow(item as Movie);
+          try { if (_safeSetEps) _safeSetEps([]); } catch(e) {}
+          try { if (_safeSetEpId) _safeSetEpId(""); } catch(e) {}
+          setPlayerMode('full');
+          return;
+        }
         setShowPremiumModal(true);
         return;
       }
@@ -574,10 +591,10 @@ export default function CategoryScreen() {
           }}
           playingNow={playingNow}
           setPlayingNow={setPlayingNow}
-          setActivePartId={(id) => {
+          setActivePartId={(id: string) => {
             try { if (_safeSetEpId) _safeSetEpId(id); } catch(e) {}
           }}
-          setActiveEpisodes={(eps) => {
+          setActiveEpisodes={(eps: any[]) => {
             try { if (_safeSetEps) _safeSetEps(eps); } catch(e) {}
           }}
         />
@@ -791,9 +808,21 @@ export default function CategoryScreen() {
         visible={showPremiumModal}
         isGuest={isGuest}
         onClose={() => setShowPremiumModal(false)}
+        onLogin={() => {
+          setShowPremiumModal(false);
+          router.push("/login" as any);
+        }}
+        onSignUp={() => {
+          setShowPremiumModal(false);
+          router.push("/login?mode=signup" as any);
+        }}
         onUpgrade={() => {
           setShowPremiumModal(false);
           setShowPlanModal(true);
+        }}
+        onSocialLogin={() => {
+          setShowPremiumModal(false);
+          router.push("/login" as any);
         }}
       />
 

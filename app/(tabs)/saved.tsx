@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import GoogleCast, { CastContext, CastState, useCastState } from "react-native-google-cast";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
@@ -78,12 +77,26 @@ import {
 } from "react-native";
 
 // ─── Google Cast Safety Guard ────────────────────────────────────────────────
-const CAN_CAST = (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
+const getCastModule = () => {
+  if (Platform.OS === 'web') return null;
+  try {
+    return require("react-native-google-cast");
+  } catch (e) {
+    return null;
+  }
+};
+
+const CastModule = getCastModule();
+const GoogleCast = CastModule?.default ?? null;
+const CastContext = CastModule?.CastContext ?? null;
+const CastState = CastModule?.CastState ?? { CONNECTED: "CONNECTED", CONNECTING: "CONNECTING" };
+const useNativeCastState = CastModule?.useCastState;
+const CAN_CAST = !!CastModule && (!!NativeModules.RNGCCastContext || !!NativeModules.RNGCastContext) && Platform.OS !== 'web';
 
 function useSafeCastState() {
-  if (!CAN_CAST) return null;
+  if (!CAN_CAST || !useNativeCastState) return null;
   try {
-    return useCastState();
+    return useNativeCastState();
   } catch (e) {
     return null;
   }
@@ -393,7 +406,7 @@ export default function SeriesScreen() {
   const [isGridOpening, setIsGridOpening] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTabPress = useCallback((title: string) => {
     if (featuredTab === title) return;
@@ -1254,54 +1267,11 @@ function SeriesPreviewModal({
     (s) => s.genre === series.genre && s.id !== series.id,
   ).slice(0, 6);
 
-  // Keep the preview action scoped to the selected episode; episode downloads
-  // should not make the whole parent series look like it is downloading.
-  const activeDl = activeEpisodeId ? activeDownloads[activeEpisodeId] : undefined;
-  const seriesDownloadPct = activeDl?.progress;
-  const isThisDownloading = activeDl !== undefined;
   const seriesInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const wavePulseAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const startAnims = () => {
-      Animated.parallel([
-        Animated.loop(
-          Animated.timing(wavePulseAnim, {
-            toValue: 1,
-            duration: 3000,
-            easing: Easing.out(Easing.poly(4)),
-            useNativeDriver: true,
-          })
-        ),
-        Animated.loop(
-          Animated.timing(shimmerAnim, {
-            toValue: 2,
-            duration: 4500,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          })
-        ),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(downloadPulse, { toValue: 1.15, duration: 600, useNativeDriver: true }),
-            Animated.timing(downloadPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-            Animated.delay(100),
-          ])
-        ),
-      ]).start();
-    };
-    startAnims();
-  }, [wavePulseAnim, shimmerAnim]);
-
-  // Sync activeEpisodeId with the first episode if not set
-  useEffect(() => {
-    if (episodes.length > 0 && !activeEpisodeId) {
-      setActiveEpisodeId(episodes[0].id);
-    }
-  }, [episodes, activeEpisodeId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -1327,7 +1297,7 @@ function SeriesPreviewModal({
   const [seriesQuery, setSeriesQuery] = useState("");
   const [debouncedSeriesQuery, setDebouncedSeriesQuery] = useState("");
   const [isSearchingSeries, setIsSearchingSeries] = useState(false);
-  const seriesSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const seriesSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>("");
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
@@ -1435,6 +1405,43 @@ function SeriesPreviewModal({
     return episodes.some((ep: any) => activeDownloads[ep.id]);
   }, [episodes, activeDownloads]);
 
+  // Keep the preview action scoped to the selected episode; episode downloads
+  // should not make the whole parent series look like it is downloading.
+  const activeDl = activeEpisodeId ? activeDownloads[activeEpisodeId] : undefined;
+  const seriesDownloadPct = activeDl?.progress;
+  const isThisDownloading = activeDl !== undefined;
+
+  useEffect(() => {
+    const startAnims = () => {
+      Animated.parallel([
+        Animated.loop(
+          Animated.timing(wavePulseAnim, {
+            toValue: 1,
+            duration: 3000,
+            easing: Easing.out(Easing.poly(4)),
+            useNativeDriver: true,
+          })
+        ),
+        Animated.loop(
+          Animated.timing(shimmerAnim, {
+            toValue: 2,
+            duration: 4500,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          })
+        ),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(downloadPulse, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+            Animated.timing(downloadPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.delay(100),
+          ])
+        ),
+      ]).start();
+    };
+    startAnims();
+  }, [wavePulseAnim, shimmerAnim, downloadPulse]);
+
   const startSeriesDownloadAll = () => {
     if (!series) return;
 
@@ -1490,8 +1497,9 @@ function SeriesPreviewModal({
 
   // Intelligent fallback: Calculate total duration if missing in DB
   const computedTotalDuration = useMemo(() => {
-    if (series.duration && series.duration !== "N/A" && series.duration !== "") return series.duration;
-    if (!episodes || episodes.length === 0) return series.duration || "N/A";
+    const seriesDuration = (series as any).duration;
+    if (seriesDuration && seriesDuration !== "N/A" && seriesDuration !== "") return seriesDuration;
+    if (!episodes || episodes.length === 0) return seriesDuration || "N/A";
     
     const totalMinutes = episodes.reduce((acc, ep) => {
       const dur = ep.duration || "";
@@ -1502,11 +1510,11 @@ function SeriesPreviewModal({
       return acc + (hrsCount * 60) + minsCount;
     }, 0);
     
-    if (totalMinutes === 0) return series.duration || "N/A";
+    if (totalMinutes === 0) return seriesDuration || "N/A";
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }, [series.duration, episodes]);
+  }, [series, episodes]);
 
   const filteredSearchResults = useMemo(() => {
     if (!debouncedSeriesQuery.trim()) return [];
@@ -1580,7 +1588,7 @@ function SeriesPreviewModal({
       }));
 
       // Client-side sort to avoid requiring a composite index
-      fetchedComments.sort((a, b) => {
+      fetchedComments.sort((a: any, b: any) => {
         const timeA = a.createdAt?.seconds || 0;
         const timeB = b.createdAt?.seconds || 0;
         return timeB - timeA;
@@ -1634,7 +1642,7 @@ function SeriesPreviewModal({
     }
     // Launch the native casting dialog ONLY if available
     if (CAN_CAST) {
-      CastContext.showCastDialog();
+      CastContext?.showCastDialog();
     } else {
       const toolTip = Platform.OS === 'ios' 
         ? "Casting requires a physical device and a development build. Simulators and Expo Go do not support native Cast SDK."
@@ -1644,7 +1652,7 @@ function SeriesPreviewModal({
   };
 
   useEffect(() => {
-    if (isCasting && selectedVideoUrl && series) {
+    if (GoogleCast && isCasting && selectedVideoUrl && series) {
       GoogleCast.getSessionManager().getCurrentCastSession().then((session: any) => {
         if (session) {
           session.client.loadMedia({
@@ -1974,8 +1982,8 @@ function SeriesPreviewModal({
                 setIsPreview(!contentUrl);
                 setActivePartId(firstEp?.id || '');
                 // Register episodes list so Next/Prev work
-                try { if (_safeSetEpId) _safeSetEpId(firstEp?.id || ''); } catch(e) {}
-                try { if (_safeSetEps) _safeSetEps(episodes); } catch(e) {}
+                try { setActivePartId(firstEp?.id || ''); } catch(e) {}
+                try { setActiveEpisodes(episodes); } catch(e) {}
                 setPlayingNow(series as any);
                 setPlayerMode('full');
               }}
@@ -2565,7 +2573,7 @@ function SeriesPreviewModal({
                                 elevation: 1,
                               }}>
                                 <Text style={{ color: '#5B5FEF', fontSize: 8, fontWeight: '900' }}>
-                                  EP {ep.displayIndex}
+                                  EP {(ep as any).displayIndex}
                                 </Text>
                               </View>
                               <View style={styles.epStatusBadgeSmall}>
@@ -3675,11 +3683,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  seeAllText: {
-    color: '#5B5FEF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
   card: {
     width: CARD_W,
     backgroundColor: "rgba(255,255,255,0.05)",
@@ -4019,6 +4022,21 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.22)",
     padding: 24,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  downloadModalContent: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 28,
+    overflow: "hidden",
+    backgroundColor: "rgba(15, 23, 42, 0.96)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
+    padding: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.4,

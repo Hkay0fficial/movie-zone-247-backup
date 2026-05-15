@@ -242,7 +242,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'plans'), (snap) => {
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan))
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
+        .sort((a, b) => (((a as any).order || 0) - ((b as any).order || 0)));
       
       if (list.length > 0) {
         setAvailablePlans(list);
@@ -614,7 +614,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           title: item.title,
           poster: item.poster || (item as any).banner || '',
           type: 'seasons' in item ? 'series' : 'movie',
-          genres: item.genres || [],
+          genres: (item as any).genres || item.genre || [],
           year: item.year || '',
           timestamp: new Date().toISOString()
         });
@@ -641,8 +641,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const hasPlanAccess = subscriptionBundle !== 'None' || customExternalLimit > 0 || customDeviceLimit > 0;
-  const isPaid = hasPlanAccess && (subscriptionExpiresAt === null || subscriptionExpiresAt > Date.now());
+  const hasNamedPlan = subscriptionBundle !== 'None';
+  const hasManualDownloadAccess = customExternalLimit > 0;
+  const hasActiveExpiry = Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
+  const hasPlanAccess = (hasNamedPlan || hasManualDownloadAccess) && hasActiveExpiry;
+  const isPaid = hasPlanAccess;
   const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] || 1);
 
   // Global Player Animated Values

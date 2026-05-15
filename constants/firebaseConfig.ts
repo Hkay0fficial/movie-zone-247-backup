@@ -1,5 +1,6 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence, getAuth, Auth } from 'firebase/auth';
+import * as FirebaseAuth from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,12 +20,12 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 let authInstance: Auth;
 try {
-  authInstance = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
+  authInstance = FirebaseAuth.initializeAuth(app, {
+    persistence: (FirebaseAuth as any).getReactNativePersistence(AsyncStorage)
   });
 } catch (e: any) {
   // During Fast Refresh, fallback to getAuth
-  authInstance = getAuth(app);
+  authInstance = FirebaseAuth.getAuth(app);
 }
 
 export const auth = authInstance;
@@ -41,4 +42,3 @@ export const db = initializeFirestore(app, {
 export const storage = getStorage(app);
 
 export default app;
-

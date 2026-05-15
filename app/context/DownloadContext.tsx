@@ -83,7 +83,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const subscriptionData = useSubscription();
   const { isPaid, isSubscribed, allMoviesFree, subscriptionBundle, isGuest, recordTrialUsage } = subscriptionData;
-  const hasInternalDownloadAccess = isPaid || isSubscribed || subscriptionBundle !== 'None' || allMoviesFree;
+  const hasInternalDownloadAccess = isPaid || isSubscribed || allMoviesFree;
 
   // Refs for download engine state
   const entriesRef = useRef<Record<string, DownloadEntry>>({});

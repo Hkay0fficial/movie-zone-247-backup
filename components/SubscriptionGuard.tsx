@@ -45,7 +45,7 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
         <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
       </View>
 
-      <StatusBar barStyle="light-content" transparent />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <Animated.View 
         entering={FadeIn.duration(600)}

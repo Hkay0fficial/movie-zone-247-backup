@@ -64,6 +64,12 @@ const useCastSession: () => any = () => null;
 
 const BlurViewOptimized = Platform.OS === 'android' ? ({ style, ...props }: any) => <View style={[{ backgroundColor: 'rgba(15,15,20,0.85)' }, style]} /> : BlurView;
 
+function useOptionalKeepAwake() {
+  if (Platform.OS !== 'web') {
+    useKeepAwake();
+  }
+}
+
 // ─── Native Media Controls ───────────────────────────────────────
 
 // ─── Google Cast Safety Guard ───
@@ -219,7 +225,7 @@ export default function ModernVideoPlayer({
   }, [title, seriesVj, episodes, activeEpisodeId, nextPartName, playingNow]);
   const router = useRouter();
   const { downloadedMovies, episodeDownloads } = useDownloads();
-  useKeepAwake();
+  useOptionalKeepAwake();
   
   const scrubbingTimeout = useRef<any>(null);
   const hidingTimeoutsRef = useRef<any[]>([]);
@@ -243,7 +249,7 @@ export default function ModernVideoPlayer({
       
       if (visibility === 'hidden') {
         // Modern sticky-immersive is the standard for video apps
-        await NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+        await NavigationBar.setBehaviorAsync('sticky-immersive' as any).catch(() => {});
         await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
         
         // Android 15+ (API 35) handles this via system, but we reinforce once for older devices
@@ -525,7 +531,7 @@ export default function ModernVideoPlayer({
     if (playerMode === 'full') {
       const forceHide = async () => {
         if (Platform.OS === 'android') {
-          await NavigationBar.setBehaviorAsync('sticky-immersive').catch(() => {});
+          await NavigationBar.setBehaviorAsync('sticky-immersive' as any).catch(() => {});
           await NavigationBar.setVisibilityAsync('hidden').catch(() => {});
           await NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
           StatusBar.setHidden(true);
@@ -690,13 +696,14 @@ export default function ModernVideoPlayer({
 
   // Periodic Progress Save
   useEffect(() => {
-    if (playerMode !== 'closed' && status.isLoaded && status.isPlaying && movieId) {
+    const loadedStatus = status as AVPlaybackStatus & { isPlaying?: boolean };
+    if (playerMode !== 'closed' && loadedStatus.isLoaded && loadedStatus.isPlaying && movieId) {
       const interval = setInterval(() => {
         savePlaybackProgress(movieId, (statusRef.current as any).positionMillis || 0, episodeId);
       }, 20000); // Increased to 20s to reduce UI thread load and Firestore writes during movies
       return () => clearInterval(interval);
     }
-  }, [status.isLoaded, status.isPlaying, movieId, episodeId]);
+  }, [status, playerMode, movieId, episodeId]);
 
   // ─── Cast Sync Logic ───
   // Monitor Network for Offline Mode
@@ -996,14 +1003,14 @@ export default function ModernVideoPlayer({
             setScrubPosition(newPos);
           }
         } else if (gestureTypeRef.current === 'brightness') {
-          const { height: currentH } = Dimensions.get('window');
+          const { width: currentW } = Dimensions.get('window');
           // Swapped axis for rotation: volume/brightness were vertical (Y), now horizontal (X)
           const delta = (g.dx / (currentW * 0.5)); 
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentBrightness(newValue);
           Brightness.setBrightnessAsync(newValue);
         } else if (gestureTypeRef.current === 'volume') {
-          const { height: currentH } = Dimensions.get('window');
+          const { width: currentW } = Dimensions.get('window');
           const delta = (g.dx / (currentW * 0.5));
           const newValue = Math.max(0, Math.min(1, gestureStartValueRef.current + delta));
           setCurrentVolume(newValue);
@@ -1338,9 +1345,9 @@ export default function ModernVideoPlayer({
           // source={{ uri: videoUrl || "" }} // Removed to prevent double-loading (handled by loadAsync)
           style={styles.absFill}
           resizeMode={videoResizeMode}
-          shouldPlay={playerMode !== 'closed' && (isFocused || isPiPActive)}
+          shouldPlay={(playerMode as any) !== 'closed' && (isFocused || isPiPActive)}
           useNativeControls={false}
-          allowsPictureInPicture={true}
+          {...({ allowsPictureInPicture: true } as any)}
           allowsExternalPlaybackIOS={true}
           staysActiveInBackground={true}
           isMuted={isMuted}
@@ -1406,7 +1413,7 @@ export default function ModernVideoPlayer({
         )}
 
         {/* Simple Black Loading Indicator - only for initial load */}
-        {(!status.isLoaded) && playerMode !== 'closed' && (
+        {(!status.isLoaded) && (playerMode as any) !== 'closed' && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', zIndex: 100 }]}>
             <ActivityIndicator size="large" color="#818cf8" />
             <Text style={{ color: '#fff', marginTop: 10, fontSize: 12, fontWeight: 'bold' }}>LOADING MEDIA...</Text>
@@ -1414,7 +1421,7 @@ export default function ModernVideoPlayer({
         )}
 
         {/* Top-edge Loading Dots (Buffering) - Only shows on actual network stalls */}
-        {((isBufferingDelayed && status.isLoaded && status.isPlaying && status.isBuffering) || isBuffering) && playerMode !== 'closed' && (
+        {((isBufferingDelayed && status.isLoaded && (status as any).isPlaying && (status as any).isBuffering) || isBuffering) && (playerMode as any) !== 'closed' && (
            <BufferingDots />
         )}
 
@@ -2101,7 +2108,7 @@ export default function ModernVideoPlayer({
     );
   };
 
-  if (playerMode === 'closed') {
+  if ((playerMode as any) === 'closed') {
     return (
       <View style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }} pointerEvents="none">
         <ExpoStatusBar hidden={false} translucent style="light" />
@@ -2588,6 +2595,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  overlayTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
   },
   errorTitle: {
     color: '#fff',

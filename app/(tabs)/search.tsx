@@ -189,7 +189,7 @@ export default function SearchScreen() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isStackLoading, setIsStackLoading] = useState(false);
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 

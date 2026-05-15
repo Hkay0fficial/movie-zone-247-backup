@@ -55,7 +55,7 @@ import { ChoosePlanSection } from '../../components/menu/ChoosePlanSection';
 import { styles } from '../../components/menu/menu.styles';
 import PremiumAccessModal from '../../components/PremiumAccessModal';
 import { MoviePreviewContent, SeriesPreviewContent as SeriesPreviewModal } from './index';
-import { GridContent } from './index';
+import { GridContent } from '../../components/GridComponents';
 import { sendLocalNotification, addNotificationResponseListener } from '../../lib/notifications';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -165,6 +165,11 @@ export default function MenuScreen() {
   const [selectedSubItem, setSelectedSubItem] = React.useState<string | null>(null);
   const pollIntervalRef = React.useRef<any>(null);
   const [navigationStack, setNavigationStack] = React.useState<any[]>([]);
+  const [showPremiumModal, setShowPremiumModal] = React.useState(false);
+  const [showPlanModal, setShowPlanModal] = React.useState(false);
+  const [showBillingHistory, setShowBillingHistory] = React.useState(false);
+  const [selectedSecurityItem, setSelectedSecurityItem] = React.useState<string | null>(null);
+  const [show2FAVerifyModal, setShow2FAVerifyModal] = React.useState(false);
 
   React.useEffect(() => {
     const sub = DeviceEventEmitter.addListener("menuMovieSelected", (m: any) => {
@@ -527,7 +532,6 @@ export default function MenuScreen() {
 
   const [upcomingMembership, setUpcomingMembership] = React.useState<any>(null);
   const [billingHistory, setBillingHistory] = React.useState<any[]>([]);
-  const [showBillingHistory, setShowBillingHistory] = React.useState(false);
   const [showGuestPlanModal, setShowGuestPlanModal] = React.useState(false);
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
 
@@ -751,7 +755,6 @@ export default function MenuScreen() {
   };
 
   // Security Sub-section State
-  const [selectedSecurityItem, setSelectedSecurityItem] = React.useState<string | null>(null);
   const [is2FAEnabled, setIs2FAEnabled] = React.useState(profile.is2FAEnabled);
 
   React.useEffect(() => {
@@ -762,7 +765,6 @@ export default function MenuScreen() {
   const [confirmPass, setConfirmPass] = React.useState('');
   const [passwordError, setPasswordError] = React.useState('');
   const [is2FALoading, setIs2FALoading] = React.useState(false);
-  const [show2FAVerifyModal, setShow2FAVerifyModal] = React.useState(false);
   const [tfaVerificationCode, setTfaVerificationCode] = React.useState('');
   const [tfaSentCode, setTfaSentCode] = React.useState('');
   const [passUpdateSuccess, setPassUpdateSuccess] = React.useState(false);
@@ -1680,11 +1682,11 @@ export default function MenuScreen() {
                     }
                   }}
                   onSeeAll={(title: string, data: any[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
-                  playingNow={playingNow}
-                  setPlayingNow={setPlayingNow}
+                  playingNow={playingNow as any}
+                  setPlayingNow={setPlayingNow as any}
                   setPlayerMode={setPlayerMode}
                   setPlayerTitle={setPlayerTitle}
-                  setSelectedVideoUrl={setSelectedVideoUrl}
+                  setSelectedVideoUrl={(url) => setSelectedVideoUrl(url || "")}
                   playerMode={playerMode}
                   playerTitle={playerTitle}
                   selectedVideoUrl={selectedVideoUrl}
@@ -1710,11 +1712,11 @@ export default function MenuScreen() {
                   }
                 }}
                 onSeeAll={(title: string, data: any[]) => setNavigationStack((prev) => [...prev, { type: 'grid', title, data }])}
-                playingNow={playingNow}
-                setPlayingNow={setPlayingNow}
+                playingNow={playingNow as any}
+                setPlayingNow={setPlayingNow as any}
                 setPlayerMode={setPlayerMode}
                 setPlayerTitle={setPlayerTitle}
-                setSelectedVideoUrl={setSelectedVideoUrl}
+                setSelectedVideoUrl={(url) => setSelectedVideoUrl(url || "")}
                 playerMode={playerMode}
                 playerTitle={playerTitle}
                 selectedVideoUrl={selectedVideoUrl}

@@ -52,7 +52,6 @@ import ClockAnimation from "../../components/ClockAnimation";
 import EmptyState from "../../components/EmptyState";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { resolveCDNUrl } from "@/constants/bunnyConfig";
-import SubscriptionGuard from "../../components/SubscriptionGuard";
 
 
 // ─── Back Handler Listener Component ─────────────────────────────────────────────
@@ -923,7 +922,7 @@ function SearchOverlay({
   visible: boolean;
   coveredByDetail?: boolean;
   onClose: () => void;
-  onSelect: (m: Movie) => void;
+  onSelect: (m: Movie | Series) => void;
   vjOnly?: boolean;
   autoFocusRequested?: boolean;
 }) {
@@ -1471,8 +1470,8 @@ function SearchOverlay({
                           title="No matches found"
                           description={`We couldn't find any content matching "${query || 'your filters'}". Try adjusting your search or filters.`}
                           icon="search-outline"
-                          actionLabel="Clear Filters"
-                          onAction={() => clearFilters()}
+                          buttonText="Clear Filters"
+                          onPress={() => clearFilters()}
                         />
                       }
                     />
@@ -1505,7 +1504,7 @@ function SearchOverlay({
                                   <View style={styles.searchResultInfo}>
                                     <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
                                     <Text style={styles.searchResultMetadata}>
-                                      {("seasons" in item) ? `${item.year} · Season ${item.seasons}` : `${item.year} · ${item.vj}`}
+                                      {item.year} · {item.vj}
                                     </Text>
                                   </View>
                                 </TouchableOpacity>
@@ -1533,7 +1532,7 @@ function SearchOverlay({
                                 <View style={styles.searchResultInfo}>
                                   <Text numberOfLines={1} style={styles.searchResultTitle}>{item.title}</Text>
                                   <Text style={styles.searchResultMetadata}>
-                                    {("seasons" in item) ? `${item.year} · Season ${item.seasons}` : `${item.year} · ${item.vj}`}
+                                    {item.year} · {item.vj}
                                   </Text>
                                 </View>
                               </TouchableOpacity>
@@ -2099,6 +2098,24 @@ function CustomTabBar() {
   }, [liveMovies, liveSeries, announcements, allMoviesFree, eventMessage, activeDownloads, readIds]);
 
   const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+  const [expandedType, setExpandedType] = useState<"movies" | "series" | "vjs" | null>(null);
+  const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
+  const [reopenOnBack, setReopenOnBack] = useState(false);
+  const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
+  const [seriesCount, setSeriesCount] = useState<number | null>(null);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const TOTAL_LIVE_ITEMS = React.useMemo(() => {
+    const combined = [...liveMovies, ...liveSeries];
+    return Array.from(new Map(combined.map(item => [item.id, item])).values());
+  }, [liveMovies, liveSeries]);
+
+  // Premium Grid View State for Notifications
+  const [globalGridVisible, setGlobalGridVisible] = useState(false);
+  const [globalGridCoveredByDetail, setGlobalGridCoveredByDetail] = useState(false);
+  const [globalGridTitle, setGlobalGridTitle] = useState("");
+  const [globalGridData, setGlobalGridData] = useState<(Movie | Series)[]>([]);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("clearSeriesSearch", () => {
@@ -2242,25 +2259,6 @@ function CustomTabBar() {
       return next;
     });
   };
-  const [expandedType, setExpandedType] = useState<"movies" | "series" | "vjs" | null>(null);
-  const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
-  const [reopenOnBack, setReopenOnBack] = useState(false);
-  const [lastViewedItemId, setLastViewedItemId] = useState<string | null>(null);
-  const [seriesCount, setSeriesCount] = useState<number | null>(null);
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  const TOTAL_LIVE_ITEMS = React.useMemo(() => {
-    const combined = [...liveMovies, ...liveSeries];
-    return Array.from(new Map(combined.map(item => [item.id, item])).values());
-  }, [liveMovies, liveSeries]);
-
-  // Premium Grid View State for Notifications
-  const [globalGridVisible, setGlobalGridVisible] = useState(false);
-  const [globalGridCoveredByDetail, setGlobalGridCoveredByDetail] = useState(false);
-  const [globalGridTitle, setGlobalGridTitle] = useState("");
-  const [globalGridData, setGlobalGridData] = useState<(Movie | Series)[]>([]);
-
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("openRatingModal", () => {
       setSelectedRating(0);
@@ -3023,7 +3021,7 @@ function CustomTabBar() {
             setSearchVjOnly(false);
             setSearchAutoFocus(false);
             showPreviewOpening();
-            openMoviePreviewOnHome(movie);
+            openMoviePreviewOnHome(movie as Movie);
           }
 
         }}
@@ -3223,17 +3221,15 @@ function CustomTabBar() {
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 export default function TabLayout() {
   return (
-    <SubscriptionGuard>
-      <Tabs
-        tabBar={() => <CustomTabBar />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tabs.Screen name="index" options={{ title: "Home" }} />
-        <Tabs.Screen name="saved" options={{ title: "Series" }} />
-        <Tabs.Screen name="category" options={{ title: "Discover" }} />
-        <Tabs.Screen name="menu" options={{ title: "Profile" }} />
-      </Tabs>
-    </SubscriptionGuard>
+    <Tabs
+      tabBar={() => <CustomTabBar />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="saved" options={{ title: "Series" }} />
+      <Tabs.Screen name="category" options={{ title: "Discover" }} />
+      <Tabs.Screen name="menu" options={{ title: "Profile" }} />
+    </Tabs>
   );
 }
 
@@ -4562,49 +4558,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 6,
     justifyContent: "space-between",
-  },
-  vjBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  vjBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
-  genreBadge: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  genreBadgeText: { color: "#fff", fontSize: 8, fontWeight: "900" },
-  epBadgePremium: {
-    position: "absolute",
-    bottom: 6,
-    right: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  epBadgeTextPremium: {
-    color: "#FFC107",
-    fontSize: 7,
-    fontWeight: "900",
-    letterSpacing: 0.2,
   },
   markAllReadBtn: {
     paddingHorizontal: 12,

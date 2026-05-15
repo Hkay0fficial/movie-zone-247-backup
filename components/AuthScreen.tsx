@@ -462,7 +462,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
       // Force account picker by clearing any cached Google session first
       try {
-        const isSignedIn = await GoogleSignin.isSignedIn();
+        const isSignedIn = await (GoogleSignin as any).isSignedIn?.();
         if (isSignedIn) {
           await GoogleSignin.signOut();
         }
@@ -1053,7 +1053,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         icon="mail-outline"
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        onChangeText={(val) => {
+                        onChangeText={(val: string) => {
                           setEmailOrPhone(val);
                           setAuthError(null);
                         }}
@@ -1069,7 +1069,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                         value={password}
                         icon="lock-closed-outline"
                         secureTextEntry={!showPassword}
-                        onChangeText={(val) => {
+                        onChangeText={(val: string) => {
                           setPassword(val);
                           setAuthError(null);
                         }}

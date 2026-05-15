@@ -138,12 +138,16 @@ const compactFirestoreData = (value: any): any => {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function NativeAdminScreen() {
+interface NativeAdminScreenProps {
+  initialSection?: AdminSection;
+}
+
+export default function NativeAdminScreen({ initialSection = 'Dashboard' }: NativeAdminScreenProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { liveMovies, liveSeries, loading: moviesLoading } = useMovies();
   
-  const [activeSection, setActiveSection] = useState<AdminSection>('Dashboard');
+  const [activeSection, setActiveSection] = useState<AdminSection>(initialSection);
   const [loading, setLoading] = useState(false);
 
   const getSectionHeaderInfo = (section: string) => {
