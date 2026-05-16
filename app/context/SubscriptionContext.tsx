@@ -33,6 +33,7 @@ interface SubscriptionContextType {
   isPaid: boolean;
   paymentMethod: string;
   allMoviesFree: boolean;
+  bypassLock: boolean;
   eventMessage: string;
   holidayExpiresAt: string;
   holidayBadgeText: string;
@@ -96,6 +97,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isPaid: false,
   paymentMethod: '',
   allMoviesFree: false,
+  bypassLock: false,
   eventMessage: '',
   holidayExpiresAt: '',
   holidayBadgeText: 'Holiday',
@@ -155,6 +157,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [subscriptionBundle, setSubscriptionBundle] = useState('None');
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<number | null>(null);
   const [allMoviesFree, setAllMoviesFree] = useState(false);
+  const [bypassLock, setBypassLock] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
   const [holidayExpiresAt, setHolidayExpiresAt] = useState('');
   const [holidayBadgeText, setHolidayBadgeText] = useState('Holiday');
@@ -581,6 +584,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
           }
           setAllMoviesFree(data.allMoviesFree || false);
+          setBypassLock(data.bypassLock || false);
           setEventMessage(data.eventMessage || '');
           setHolidayExpiresAt(expiresAtStr || '');
           setHolidayBadgeText(data.holidayBadgeText || 'Holiday');
@@ -823,7 +827,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       ? (hasNamedPlan || hasManualDownloadAccess)
       : Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
   const hasPlanAccess = (hasNamedPlan || hasManualDownloadAccess) && hasActiveExpiry;
-  const isPaid = hasPlanAccess;
+  const isPaid = hasPlanAccess || bypassLock;
   const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] ?? 1);
 
   // Global Player Animated Values
@@ -844,7 +848,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isGuest,
     isPaid,
     paymentMethod,
-    allMoviesFree,
+    allMoviesFree,bypassLock,
     eventMessage,
     holidayExpiresAt,
     holidayBadgeText,
@@ -905,7 +909,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isGuest,
     isPaid,
     paymentMethod,
-    allMoviesFree,
+    allMoviesFree,bypassLock,
     eventMessage,
     holidayExpiresAt,
     holidayBadgeText,

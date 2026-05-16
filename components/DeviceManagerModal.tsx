@@ -8,13 +8,13 @@ interface DeviceManagerModalProps {
   visible: boolean;
   activeDeviceIds: string[];
   currentDeviceId: string | null;
-  onRemoveDevice: (id: string) => Promise<void>;
+  onRemoveDevice: (id: string) => Promise<void | { success: boolean; error?: string }>;
   onClose: () => void;
   onUpgrade: () => void;
   planName: string;
   limit: number;
   removalRequests?: Record<string, { status: string; requestedAt: string }>;
-  onRemoteLogout?: (id: string, pin: string) => Promise<void>;
+  onRemoteLogout?: (id: string, pin: string) => Promise<void | { success: boolean; error?: string }>;
   hasSecurityPin?: boolean;
   onSwitchAccount?: (mode?: 'login' | 'signup') => void;
   isLoggingOut?: boolean;

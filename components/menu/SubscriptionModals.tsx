@@ -539,29 +539,7 @@ export const SubscriptionModals: React.FC<SubscriptionModalsProps> = ({
                      </Text>
                    )}
  
-                   <View style={{
-                     marginTop: 24,
-                     paddingVertical: 10,
-                     paddingHorizontal: 16,
-                     backgroundColor: 'rgba(16,185,129,0.05)',
-                     borderRadius: 14,
-                     borderWidth: StyleSheet.hairlineWidth,
-                     borderColor: 'rgba(16, 185, 129, 0.22)',
-                     flexDirection: 'row',
-                     alignItems: 'center',
-                     justifyContent: 'center',
-                     gap: 10
-                   }}>
-                     <Ionicons name="shield-checkmark" size={16} color="#10b981" />
-                     <View>
-                       <Text style={{ color: '#10b981', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
-                         SECURED & AUTHORIZED BY PESAPAL
-                       </Text>
-                       <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '600' }}>
-                         OFFICIAL UGANDAN PAYMENT GATEWAY
-                       </Text>
-                     </View>
-                   </View>
+
                 </>
               )}
             </TouchableOpacity>

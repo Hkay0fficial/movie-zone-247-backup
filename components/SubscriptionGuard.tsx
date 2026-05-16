@@ -31,7 +31,7 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
   // The user said: "enforce access restrictions for 'None' or expired accounts."
   // isPaid already handles 'None' and 'expired'.
   
-  const isLocked = !isPaid && !isGuest;
+  const isLocked = !isPaid;
 
   if (!isLocked) {
     return <>{children}</>;
