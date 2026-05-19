@@ -818,8 +818,8 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const message = reason === 'TOTAL_LIMIT_REACHED'
-      ? `You have reached this plan's phone-storage download allowance. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`
-      : `You have reached today's phone-storage download limit. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`;
+      ? `You have reached this plan's external download allowance. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`
+      : `You have reached today's external download limit. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`;
 
     Alert.alert('Limit Reached', message, [
       { text: 'Not Now', style: 'cancel' },
@@ -831,7 +831,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (entry.mode !== 'external') return true;
 
     if (!isPaid && !isSubscribed && !isGuest) {
-      Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable phone-storage downloads.');
+      Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable external downloads.');
       return false;
     }
 
@@ -843,7 +843,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const planKey = getExternalPlanKey();
 
     if (!ref || !totalRef || dailyLimit <= 0 || totalLimit <= 0) {
-      Alert.alert('Limit Reached', 'Phone-storage downloads are not available on your current plan.');
+      Alert.alert('Limit Reached', 'External downloads are not available on your current plan.');
       return false;
     }
 
@@ -899,8 +899,8 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ? (isGuest
           ? 'You have already used your free trial download. Please register or upgrade to continue.'
           : error?.message === 'TOTAL_LIMIT_REACHED'
-            ? "You have reached this plan's phone-storage download allowance."
-            : "You have reached today's phone-storage download limit. Upgrade or wait until tomorrow.")
+            ? "You have reached this plan's external download allowance."
+            : "You have reached today's external download limit. Upgrade or wait until tomorrow.")
         : 'Could not confirm your download allowance. Please try again in a moment.';
       console.warn('[DownloadContext] External download limit check failed:', error?.code || error?.message || error);
       if (isLimitReached) {
@@ -1653,7 +1653,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   <View>
                     <Text style={remoteStyles.paymentTitle}>Payment Method</Text>
                     <Text style={remoteStyles.paymentSubtitle}>
-                      Pay {creditPaymentRequest?.amount.toLocaleString()} UGX for {creditPaymentRequest?.quantity} download credit{creditPaymentRequest?.quantity === 1 ? '' : 's'}
+                      Pay {(creditPaymentRequest?.amount ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} UGX for {creditPaymentRequest?.quantity} download credit{creditPaymentRequest?.quantity === 1 ? '' : 's'}
                     </Text>
                   </View>
                   <TouchableOpacity style={remoteStyles.paymentCloseButton} onPress={() => finishCreditPayment(false)}>
@@ -1706,7 +1706,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   <View style={remoteStyles.detailMethodText}>
                     <Text style={remoteStyles.detailMethodTitle}>{creditPaymentMethod?.label}</Text>
                     <Text style={remoteStyles.detailMethodSubtitle}>
-                      Paying for: {creditPaymentRequest?.quantity} credits - {creditPaymentRequest?.amount.toLocaleString()} UGX
+                      Paying for: {creditPaymentRequest?.quantity} credits - {(creditPaymentRequest?.amount ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} UGX
                     </Text>
                   </View>
                 </View>
@@ -1835,7 +1835,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     <Ionicons name="shield-checkmark" size={22} color="#111" />
                   )}
                   <Text style={remoteStyles.payButtonText}>
-                    {creditPaymentProcessing ? 'Processing...' : `PAY ${creditPaymentRequest?.amount.toLocaleString()} UGX`}
+                    {creditPaymentProcessing ? 'Processing...' : `PAY ${(creditPaymentRequest?.amount ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} UGX`}
                   </Text>
                 </TouchableOpacity>
               </>

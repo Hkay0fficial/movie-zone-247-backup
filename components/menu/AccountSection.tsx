@@ -137,6 +137,9 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 }) => {
   const user = auth.currentUser;
   const [imageError, setImageError] = React.useState(false);
+  React.useEffect(() => {
+    setImageError(false);
+  }, [profilePhoto]);
   const [deleteConfirmationText, setDeleteConfirmationText] = React.useState('');
   const [showReauthPrompt, setShowReauthPrompt] = React.useState(false);
   const [showFinalDeleteModal, setShowFinalDeleteModal] = React.useState(false);
@@ -593,21 +596,39 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
           <View style={{ width: '100%', marginBottom: 20, marginTop: 10 }}>
             <View style={{ position: 'absolute', top: 15, left: 15, right: 15, bottom: 15, backgroundColor: '#ffffff', borderRadius: 32, opacity: 0.15, shadowColor: '#ffffff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25 }} />
             <View style={[styles.settingsList, { backgroundColor: 'rgba(30, 30, 45, 0.98)', borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255, 255, 255, 0.15)', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12, overflow: 'hidden', paddingVertical: 10 }]}>
-              <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Change Password'); }}>
+               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Change Password'); }}>
                 <Text style={styles.settingsRowText}>Change Password</Text>
-                <Ionicons name="lock-closed" size={14} color="#475569" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>Update</Text>
+                  <Ionicons name="lock-closed" size={14} color="#475569" />
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Two-Factor Authentication'); }}>
                 <Text style={styles.settingsRowText}>Two-Factor Authentication</Text>
-                <Ionicons name="shield-checkmark" size={14} color="#ef4444" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: is2FAEnabled ? '#10b981' : 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: '700' }}>
+                    {is2FAEnabled ? 'ENABLED' : 'DISABLED'}
+                  </Text>
+                  <Ionicons name="shield-checkmark" size={14} color={is2FAEnabled ? '#10b981' : '#ef4444'} />
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Login Activity'); }}>
                 <Text style={styles.settingsRowText}>Login Activity</Text>
-                <Ionicons name="time" size={14} color="#475569" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: '#818cf8', fontSize: 12, fontWeight: '700' }}>
+                    {activeDevices.length > 0 ? `${activeDevices.length} ACTIVE` : 'NONE'}
+                  </Text>
+                  <Ionicons name="time" size={14} color="#475569" />
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={styles.settingsRow} onPress={() => { setSavedScrollPosition(currentScrollY); setSelectedSecurityItem('Security PIN'); }}>
                 <Text style={styles.settingsRowText}>Security PIN</Text>
-                <Ionicons name="keypad" size={14} color="#818cf8" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: securityPin ? '#10b981' : '#f59e0b', fontSize: 12, fontWeight: '700' }}>
+                    {securityPin ? 'SET' : 'NOT SET'}
+                  </Text>
+                  <Ionicons name="keypad" size={14} color={securityPin ? '#10b981' : '#818cf8'} />
+                </View>
               </TouchableOpacity>
 
             </View>

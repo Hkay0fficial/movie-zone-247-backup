@@ -114,14 +114,15 @@ const TABS: {
 const SEARCH_OPTIONS = [
   "By Movies",
   "By Series",
+  "By Mini Series",
   "By Genres",
   "By VJ's",
   "By Sections",
   "By Year",
 ];
 
-type SearchScope = "All" | "Movies" | "Series" | "VJs" | "Genres";
-const SEARCH_SCOPES: SearchScope[] = ["All", "Movies", "Series", "VJs", "Genres"];
+type SearchScope = "All" | "Movies" | "Series" | "Mini Series" | "VJs" | "Genres";
+const SEARCH_SCOPES: SearchScope[] = ["All", "Movies", "Series", "Mini Series", "VJs", "Genres"];
 
 const DISCOVERY_GENRES = [
   { name: "By VJ", color: "rgba(251,146,60,0.15)", border: "#fb923c" },
@@ -1084,6 +1085,7 @@ function SearchOverlay({
     setScope(vjOnly ? "VJs" : initialScope);
     if (initialScope === "Movies") setSelectedType("Movie");
     if (initialScope === "Series") setSelectedType("Series");
+    if (initialScope === "Mini Series") setSelectedType("Mini Series");
     if (initialScope === "All" && !vjOnly) setSelectedType(null);
   }, [visible, initialScope, vjOnly]);
 
@@ -1097,6 +1099,7 @@ function SearchOverlay({
     if (nextScope === "All") setSelectedType(null);
     if (nextScope === "Movies") setSelectedType("Movie");
     if (nextScope === "Series") setSelectedType("Series");
+    if (nextScope === "Mini Series") setSelectedType("Mini Series");
     if (nextScope === "VJs") {
       setSelectedType(null);
       setQuery("");
@@ -1269,7 +1272,8 @@ function SearchOverlay({
 
       let filtered = base;
       if (scope === "Movies") filtered = filtered.filter((m) => !("seasons" in m));
-      if (scope === "Series") filtered = filtered.filter((m) => "seasons" in m);
+      if (scope === "Series") filtered = filtered.filter((m) => "seasons" in m && !(m as any).isMiniSeries);
+      if (scope === "Mini Series") filtered = filtered.filter((m) => "seasons" in m && !!(m as any).isMiniSeries);
       if (selectedVJ) {
         const vjQ = selectedVJ.toLowerCase();
         const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
@@ -1786,6 +1790,7 @@ function SearchOverlay({
                             if (t === "by sections") setDiscoveryMode("sections");
                             else if (t === "by movies") setSelectedType("Movie");
                             else if (t === "by series") setSelectedType("Series");
+                            else if (t === "by mini series") setSelectedType("Mini Series");
                             else if (t === "by genres") toggleFilter("genre");
                             else if (t === "by vjs" || t === "by vj's") toggleFilter("vj");
                             else if (t === "by year") toggleFilter("year");

@@ -250,7 +250,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               fullName: isAnonymous ? 'Guest' : (data.fullName || currentUser.displayName || 'User'),
               username: data.username || '',
               phoneNumber: data.phoneNumber || currentUser.phoneNumber || '',
-              profilePhoto: data.profilePhoto || currentUser.photoURL || '',
+              profilePhoto: data.profilePhoto === 'removed' ? '' : (data.profilePhoto || currentUser.photoURL || ''),
               email: isAnonymous ? 'Create an account to save your data' : (data.email || currentUser.email || ''),
               isGuest: isAnonymous,
               watchHistory: data.watchHistory || {},
@@ -382,7 +382,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           fullName: data.fullName || user.displayName || 'User',
           username: data.username || '',
           phoneNumber: data.phoneNumber || '',
-          profilePhoto: data.profilePhoto || prev.profilePhoto,
+          profilePhoto: data.profilePhoto === 'removed' ? '' : (data.profilePhoto || prev.profilePhoto),
           email: data.email || user.email || '',
           watchHistory: data.watchHistory || {},
         }));

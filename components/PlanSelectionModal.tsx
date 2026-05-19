@@ -283,7 +283,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
                       </View>
 
                       <View style={styles.priceRow}>
-                        <Text style={styles.price}>{plan.price}</Text>
+                        <Text style={styles.price}>{plan.price.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</Text>
                         <Text style={styles.currency}>{plan.currency}</Text>
                       </View>
 
@@ -353,7 +353,7 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
                    <Text style={styles.summaryLabel}>PAYING FOR</Text>
                    <View style={styles.summaryRow}>
                       <Text style={styles.summaryName}>{selectedPlan?.name}</Text>
-                      <Text style={styles.summaryPrice}>{selectedPlan?.price} {selectedPlan?.currency}</Text>
+                       <Text style={styles.summaryPrice}>{(selectedPlan?.price ?? '').replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ",")} {selectedPlan?.currency}</Text>
                    </View>
                 </View>
 

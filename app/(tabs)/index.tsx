@@ -2800,7 +2800,7 @@ export function SeriesPreviewContent({
     if (mode === 'external') {
       if (!isPaid) {
         setBulkDownloadState({ visible: false, pending: [] });
-        Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
+        Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers.");
         return;
       }
       if (getRemainingDownloads() < pending.length) {
@@ -3356,7 +3356,7 @@ export function SeriesPreviewContent({
               <TouchableOpacity style={styles.downloadPrimaryBtn} onPress={() => startBulkSeriesDownload('internal')} activeOpacity={0.8}>
                 <LinearGradient colors={["#5B5FEF", "#4A4EDD"]} style={StyleSheet.absoluteFill} />
                 <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
-                <Text style={styles.downloadPrimaryBtnText}>DOWNLOAD</Text>
+                <Text style={styles.downloadPrimaryBtnText}>IN-APP DOWNLOAD</Text>
                 <View style={{ backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
                   <Text style={{ fontSize: 9, color: "#fff", fontWeight: "700" }}>{isGuest ? "TRIAL" : "UNLIMITED"}</Text>
                 </View>
@@ -3434,12 +3434,12 @@ export function SeriesPreviewContent({
                 onPress={async () => {
                   if (!isPaid) {
                      setAlreadyDownloadedState({ visible: false });
-                     Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
+                     Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                      return;
                   }
                   if (getRemainingDownloads() === 0) {
                      setAlreadyDownloadedState({ visible: false });
-                     Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
+                     Alert.alert("Limit Reached", "You have reached today's external download limit.");
                      return;
                   }
 
@@ -3459,7 +3459,7 @@ export function SeriesPreviewContent({
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Ionicons name="download" size={18} color="#818cf8" />
-                  <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone</Text>
+                  <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone (External)</Text>
                 </View>
               </TouchableOpacity>
               
@@ -3545,7 +3545,7 @@ export function SeriesPreviewContent({
                 />
                 <Ionicons name="phone-portrait-outline" size={22} color="#fff" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.downloadPrimaryBtnText}>Save in App</Text>
+                  <Text style={styles.downloadPrimaryBtnText}>In-App Download</Text>
                   <Text style={styles.downloadPrimarySubText}>{(!isPaid && allMoviesFree && !isGuest) ? "HOLIDAY SPECIAL: FREE" : "Watch offline anytime"}</Text>
                 </View>
               </TouchableOpacity>
@@ -3558,12 +3558,12 @@ export function SeriesPreviewContent({
                 onPress={() => {
                   if (!isPaid) {
                     setShowDownloadModal(false);
-                    Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
+                    Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                     return;
                   }
                   if (getRemainingDownloads() === 0) {
                      setShowDownloadModal(false);
-                     Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
+                     Alert.alert("Limit Reached", "You have reached today's external download limit.");
                      return;
                   }
                   setShowDownloadModal(false);
@@ -3575,7 +3575,7 @@ export function SeriesPreviewContent({
               >
                 <Ionicons name="download-outline" size={22} color="#94a3b8" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.downloadSecondaryBtnText}>Save to Phone</Text>
+                  <Text style={styles.downloadSecondaryBtnText}>External Download</Text>
                   <Text style={styles.downloadSecondarySubText}>Save to your device storage</Text>
                 </View>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
@@ -4163,7 +4163,7 @@ export const MoviePreviewContent = memo(({
   const handleExternalDownloadOption = async () => {
     if (!isPaid) {
       setShowDownloadModal(false);
-      Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
+      Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
       return;
     }
 
@@ -4600,7 +4600,7 @@ export const MoviePreviewContent = memo(({
     if (mode === 'external') {
       if (!isPaid) {
         setBulkDownloadState({ visible: false, pending: [] });
-        Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
+        Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers.");
         return;
       }
       if (getRemainingDownloads() < pending.length) {
@@ -6026,7 +6026,7 @@ export const MoviePreviewContent = memo(({
                     <TouchableOpacity style={styles.downloadPrimaryBtn} onPress={() => startBulkPartsDownload('internal')} activeOpacity={0.8}>
                       <LinearGradient colors={["#5B5FEF", "#4A4EDD"]} style={StyleSheet.absoluteFill} />
                       <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
-                      <Text style={styles.downloadPrimaryBtnText}>DOWNLOAD</Text>
+                      <Text style={styles.downloadPrimaryBtnText}>IN-APP DOWNLOAD</Text>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
                         <Text style={{ fontSize: 9, color: "#fff", fontWeight: "700" }}>{isGuest ? "TRIAL" : "UNLIMITED"}</Text>
                       </View>
@@ -6039,7 +6039,7 @@ export const MoviePreviewContent = memo(({
                       ]}
                       onPress={() => {
                         if (!isPaid) {
-                          Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
+                          Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers.");
                           return;
                         }
                         if (bulkDownloadState.pending.length > getRemainingDownloads()) {
@@ -6052,7 +6052,7 @@ export const MoviePreviewContent = memo(({
                       activeOpacity={0.7}
                     >
                       <Ionicons name="folder-outline" size={20} color="#94a3b8" />
-                      <Text style={styles.downloadSecondaryBtnText}>SAVE TO PHONE</Text>
+                      <Text style={styles.downloadSecondaryBtnText}>EXTERNAL DOWNLOAD</Text>
                       <View style={{ backgroundColor: bulkDownloadState.pending.length > getRemainingDownloads() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
                         <Text style={{ fontSize: 9, color: bulkDownloadState.pending.length > getRemainingDownloads() ? "#ef4444" : "#94a3b8", fontWeight: "700" }}>
                           {bulkDownloadState.pending.length > getRemainingDownloads()
@@ -6129,7 +6129,7 @@ export const MoviePreviewContent = memo(({
                         color="#fff"
                       />
                       <Text style={styles.downloadPrimaryBtnText}>
-                        DOWNLOAD
+                        IN-APP DOWNLOAD
                       </Text>
                       <View
                         style={{
@@ -6167,7 +6167,7 @@ export const MoviePreviewContent = memo(({
                         color="#94a3b8"
                       />
                       <Text style={styles.downloadSecondaryBtnText}>
-                        SAVE TO PHONE
+                        EXTERNAL DOWNLOAD
                       </Text>
                       <View
                         style={{
@@ -6266,9 +6266,9 @@ export const MoviePreviewContent = memo(({
                     </View>
                   </View>
 
-                  <Text style={[styles.downloadTitle, styles.downloadTopUpTitle]}>Download Limit Reached</Text>
+                  <Text style={[styles.downloadTitle, styles.downloadTopUpTitle]}>External Download Limit Reached</Text>
                   <Text style={[styles.downloadSub, styles.downloadTopUpSub]}>
-                    You have used your available phone-storage downloads. Add credits to save more episodes to your device.
+                    You have used your available external downloads. Add credits to save more episodes to your device.
                   </Text>
 
                   <View style={styles.downloadTopUpPanel}>
@@ -6278,12 +6278,12 @@ export const MoviePreviewContent = memo(({
                           {externalTopUpQuantity} download credit{externalTopUpQuantity === 1 ? "" : "s"}
                         </Text>
                         <Text style={styles.downloadTopUpHint}>
-                          500 UGX per episode saved to phone storage
+                          500 UGX per episode saved to external storage
                         </Text>
                       </View>
                       <View style={styles.downloadTopUpPrice}>
                         <Text style={styles.downloadTopUpPriceText}>
-                          {externalTopUpQuantity * 500} UGX
+                          {(externalTopUpQuantity * 500).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} UGX
                         </Text>
                       </View>
                     </View>
@@ -6338,7 +6338,7 @@ export const MoviePreviewContent = memo(({
                     />
                     <Ionicons name="cart" size={20} color="#fff" />
                     <Text style={styles.downloadPrimaryBtnText}>
-                      PAY {externalTopUpQuantity * 500} UGX
+                      PAY {(externalTopUpQuantity * 500).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} UGX
                     </Text>
                   </TouchableOpacity>
 
@@ -6404,12 +6404,12 @@ export const MoviePreviewContent = memo(({
                       onPress={async () => {
                         if (!isPaid) {
                            setAlreadyDownloadedState({ visible: false });
-                           Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
+                           Alert.alert("Premium Feature", "External downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                            return;
                         }
                         if (getRemainingDownloads() === 0) {
                            setAlreadyDownloadedState({ visible: false });
-                           Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
+                           Alert.alert("Limit Reached", "You have reached today's external download limit.");
                            return;
                         }
 
@@ -6437,7 +6437,7 @@ export const MoviePreviewContent = memo(({
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Ionicons name="download" size={18} color="#818cf8" />
-                        <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone</Text>
+                        <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone (External)</Text>
                       </View>
                     </TouchableOpacity>
 

@@ -168,11 +168,11 @@ export default function PremiumAccessModal({
                   <Ionicons name="sparkles" size={28} color="#5B5FEF" />
                 </View>
                 <Text style={styles.title}>
-                  {isDownloadLimitMode ? 'Download Limit Reached' : 'Go Premium Now'}
+                  {isDownloadLimitMode ? 'External Download Limit Reached' : 'Go Premium Now'}
                 </Text>
                 <Text style={styles.subtitle}>
                   {isDownloadLimitMode
-                    ? 'You can still watch and save inside the app. Add download credits when you want to save episodes directly to your phone storage.'
+                    ? 'You can still watch and save inside the app. Add download credits when you want to save episodes directly to your external storage.'
                     : 'Upgrade your account to watch this movie and many others with best quality and no ads.'}
                 </Text>
               </View>
@@ -182,8 +182,8 @@ export default function PremiumAccessModal({
                   <>
                     <BenefitItem
                       icon="phone-portrait-outline"
-                      title="Phone-Storage Limit Used"
-                      desc="Your direct-to-phone saves are used up"
+                      title="External Limit Used"
+                      desc="Your direct-to-device external saves are used up"
                       color="#5B5FEF"
                     />
                     <BenefitItem
@@ -227,7 +227,7 @@ export default function PremiumAccessModal({
                     />
                     <BenefitItem
                       icon="phone-portrait-outline"
-                      title="Phone-Storage Downloads"
+                      title="External Downloads"
                       desc="Save movies directly to your device storage"
                       color="#5B5FEF"
                     />

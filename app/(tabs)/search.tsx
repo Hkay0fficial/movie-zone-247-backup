@@ -193,6 +193,21 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [profile?.profilePhoto]);
+
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const names = name.trim().split(/\s+/);
+    if (names.length === 1) {
+      return names[0].substring(0, 2).toUpperCase();
+    }
+    return (names[0][0] + names[1][0]).toUpperCase();
+  };
+
   // ─── Stack-based Navigation ───
   const [navigationStack, setNavigationStack] = useState<(Movie | Series)[]>([]);
   const navigationStackRef = useRef<(Movie | Series)[]>([]);
@@ -363,7 +378,19 @@ export default function SearchScreen() {
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>EXPLORE CONTENT</Text>
-          <Image source={{ uri: profile.profilePhoto }} style={styles.profilePic} />
+          {!imageError && profile?.profilePhoto ? (
+            <Image 
+              source={{ uri: profile.profilePhoto }} 
+              style={styles.profilePic} 
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <View style={[styles.profilePic, { backgroundColor: '#161622', alignItems: 'center', justifyContent: 'center', borderColor: '#5B5FEF' }]}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>
+                {getInitials(profile?.fullName)}
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         <View style={{ marginBottom: 15 }}>

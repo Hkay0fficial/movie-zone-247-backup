@@ -39,6 +39,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   isHolidayMode,
 }) => {
   const [imageError, setImageError] = useState(false);
+  React.useEffect(() => {
+    setImageError(false);
+  }, [profileImageUri]);
 
   const getInitials = (name: string) => {
     if (!name) return '?';

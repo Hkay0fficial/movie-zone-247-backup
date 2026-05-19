@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Animated,
+  Image,
   Easing,
   Alert,
   DeviceEventEmitter,
@@ -605,6 +606,7 @@ export default function MenuScreen() {
   }, [contextPaymentMethod]);
   const [isManageBillingFlow, setIsManageBillingFlow] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
+  const [showPhotoOptionsModal, setShowPhotoOptionsModal] = React.useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = React.useState<any>(null);
 
   // Payment Details Modal State
@@ -1193,7 +1195,16 @@ export default function MenuScreen() {
     }
   };
 
-  const handleChangePhoto = async () => {
+  const getInitials = (name: string) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0] ? parts[0][0].toUpperCase() : '';
+  };
+
+  const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -1225,6 +1236,29 @@ export default function MenuScreen() {
     } catch (e) {
       console.error('Failed to pick profile image:', e);
       Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
+
+  const removeImage = async () => {
+    if (user) {
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          profilePhoto: 'removed'
+        });
+        Alert.alert('Success', 'Profile picture removed successfully.');
+      } catch (err) {
+        console.error("Failed to remove profile photo in Firestore:", err);
+        Alert.alert('Error', 'Failed to remove profile photo.');
+      }
+    }
+  };
+
+  const handleChangePhoto = async () => {
+    const hasPhoto = profilePhoto && profilePhoto !== 'removed';
+    if (hasPhoto) {
+      setShowPhotoOptionsModal(true);
+    } else {
+      await pickImage();
     }
   };
 
@@ -1834,11 +1868,87 @@ export default function MenuScreen() {
         currentScrollY={currentScrollY}
       />
 
+      {/* ── PROFILE PHOTO OPTIONS MODAL ── */}
+      <Modal
+        visible={showPhotoOptionsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoOptionsModal(false)}
+      >
+        <View style={styles.photoModalCentering}>
+          <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.92)" }]}
+            activeOpacity={1}
+            onPress={() => setShowPhotoOptionsModal(false)}
+          />
+          <View style={styles.photoModalGlassCard}>
+            <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={["rgba(255,255,255,0.08)", "transparent"]} style={StyleSheet.absoluteFill} />
+            
+            {/* Close Button */}
+            <TouchableOpacity 
+              style={styles.photoModalCloseBtn}
+              onPress={() => setShowPhotoOptionsModal(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={16} color="#fff" />
+            </TouchableOpacity>
 
+            {/* Avatar Preview */}
+            <View style={styles.photoModalAvatarContainer}>
+              {profilePhoto && profilePhoto !== 'removed' ? (
+                <Image source={{ uri: profilePhoto }} style={styles.photoModalAvatar} />
+              ) : (
+                <View style={[styles.photoModalAvatar, { backgroundColor: '#161622', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Text style={{ color: '#fff', fontSize: 32, fontWeight: '800' }}>{getInitials(userName)}</Text>
+                </View>
+              )}
+              <View style={styles.photoModalAvatarBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </View>
+            
+            <Text style={styles.photoModalTitle}>Profile Photo</Text>
+            <Text style={styles.photoModalSub}>
+              Customize your account avatar by picking a new photo or resetting to your initials.
+            </Text>
+            
+            <View style={styles.photoModalGrid}>
+              {/* Option 1: Upload Photo */}
+              <TouchableOpacity 
+                style={[styles.photoModalTile, styles.photoModalTileActive]} 
+                onPress={async () => {
+                  setShowPhotoOptionsModal(false);
+                  await pickImage();
+                }} 
+                activeOpacity={0.8}
+              >
+                <View style={[styles.photoModalTileIconWrap, styles.photoModalTileIconWrapActive]}>
+                  <Ionicons name="images" size={24} color="#5B5FEF" />
+                </View>
+                <Text style={styles.photoModalTileLabel}>Upload New</Text>
+                <Text style={styles.photoModalTileSubtext}>Browse library</Text>
+              </TouchableOpacity>
 
-
-
-
+              {/* Option 2: Remove Photo */}
+              <TouchableOpacity 
+                style={[styles.photoModalTile, styles.photoModalTileDestructive]} 
+                onPress={async () => {
+                  setShowPhotoOptionsModal(false);
+                  await removeImage();
+                }} 
+                activeOpacity={0.8}
+              >
+                <View style={[styles.photoModalTileIconWrap, styles.photoModalTileIconWrapDestructive]}>
+                  <Ionicons name="trash" size={24} color="#ef4444" />
+                </View>
+                <Text style={styles.photoModalTileLabel}>Remove Current</Text>
+                <Text style={styles.photoModalTileSubtext}>Reset initials</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <StatusBar barStyle="light-content" translucent />
 
