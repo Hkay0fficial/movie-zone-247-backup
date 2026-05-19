@@ -64,7 +64,10 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
 
     setIsKicking(true);
     try {
-      await onRemoteLogout(selectedDeviceId, pin);
+      const result = await onRemoteLogout(selectedDeviceId, pin);
+      if (result && typeof result === 'object' && 'success' in result && !result.success) {
+        throw new Error(result.error === 'INVALID_PIN' ? 'Incorrect Security PIN. Please try again.' : result.error || 'Security PIN verification failed.');
+      }
       setIsPinVisible(false);
       setSelectedDeviceId(null);
       setPin('');
@@ -126,6 +129,8 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
             <ScrollView style={styles.deviceList} contentContainerStyle={styles.listContent}>
               {activeDeviceIds.map((id, index) => {
                 const isCurrent = id === currentDeviceId;
+                const requestStatus = removalRequests[id]?.status;
+                const canForceKick = requestStatus === 'pending' || requestStatus === 'denied';
                 return (
                   <View key={id} style={[styles.deviceItem, isCurrent && styles.currentDevice]}>
                     <View style={styles.deviceInfo}>
@@ -144,12 +149,12 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
                     
                     {!isCurrent && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {removalRequests[id]?.status === 'pending' && (
+                        {requestStatus === 'pending' && (
                           <View style={styles.pendingBadge}>
                             <Text style={styles.pendingText}>PENDING...</Text>
                           </View>
                         )}
-                        {removalRequests[id]?.status === 'denied' && (
+                        {requestStatus === 'denied' && (
                           <View style={styles.deniedBadge}>
                             <Text style={styles.deniedText}>REFUSED</Text>
                           </View>
@@ -157,10 +162,10 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
                         <TouchableOpacity 
                           style={[
                             styles.removeBtn, 
-                            removalRequests[id]?.status === 'denied' && styles.forceBtn
+                            canForceKick && styles.forceBtn
                           ]}
                           onPress={() => {
-                            if (removalRequests[id]?.status === 'denied') {
+                            if (canForceKick) {
                               handleForceKickPress(id);
                             } else {
                               onRemoveDevice(id);
@@ -169,9 +174,9 @@ const DeviceManagerModal: React.FC<DeviceManagerModalProps> = ({
                         >
                           <Text style={[
                             styles.removeText,
-                            removalRequests[id]?.status === 'denied' && styles.forceText
+                            canForceKick && styles.forceText
                           ]}>
-                            {removalRequests[id]?.status === 'denied' ? 'FORCE KICK' : 'DEACTIVATE'}
+                            {canForceKick ? 'FORCE KICK' : 'DEACTIVATE'}
                           </Text>
                         </TouchableOpacity>
                       </View>

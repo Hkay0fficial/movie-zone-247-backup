@@ -1476,7 +1476,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
             style={styles.alertContainer}
           >
             <View style={styles.alertIconContainer}>
-              <Ionicons name="shield-alert" size={32} color="#f59e0b" />
+              <Ionicons name="shield-outline" size={32} color="#f59e0b" />
             </View>
             
             <Text style={styles.alertTitle}>Action Required</Text>

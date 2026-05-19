@@ -135,6 +135,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   securityPin,
   updateSecurityPin,
 }) => {
+  const user = auth.currentUser;
   const [imageError, setImageError] = React.useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = React.useState('');
   const [showReauthPrompt, setShowReauthPrompt] = React.useState(false);
@@ -150,7 +151,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
   const [showRecoveryMethods, setShowRecoveryMethods] = React.useState(false);
   
   // Security PIN states
-  const [pinValue, setPinValue] = React.useState(securityPin || '');
+  const [pinValue, setPinValue] = React.useState('');
+  const [unlockPinValue, setUnlockPinValue] = React.useState('');
+  const [pinUnlockError, setPinUnlockError] = React.useState('');
+  const [hasUnlockedSecurityPin, setHasUnlockedSecurityPin] = React.useState(!securityPin);
   const [isUpdatingPin, setIsUpdatingPin] = React.useState(false);
   const [pinError, setPinError] = React.useState('');
   const [pinSuccess, setPinSuccess] = React.useState(false);
@@ -165,6 +169,21 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
       return 'March 2024';
     }
   };
+
+  const displayUsername = username ? `@${username.replace(/^@/, '')}` : 'Set username';
+  const displayFirstName = firstName || 'Add first name';
+  const displayLastName = lastName || 'Add last name';
+  const displayPhone = phoneNumber || 'Link your phone';
+
+  React.useEffect(() => {
+    const hasExistingPin = !!securityPin;
+    setHasUnlockedSecurityPin(!hasExistingPin);
+    setUnlockPinValue('');
+    setPinUnlockError('');
+    setPinValue('');
+    setPinError('');
+    setPinSuccess(false);
+  }, [securityPin, selectedSecurityItem]);
 
   React.useEffect(() => {
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
@@ -375,210 +394,190 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
 
     return (
       <View style={styles.settingsContentSection}>
-        <View style={{ width: '100%', marginTop: 20, marginBottom: 20 }}>
-          <View style={{
-            position: 'absolute',
-            top: 15,
-            left: 15,
-            right: 15,
-            bottom: 15,
-            backgroundColor: '#ffffff',
-            borderRadius: 32,
-            opacity: 0.15,
-            zIndex: 0,
-            shadowColor: '#ffffff',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 25,
-          }} />
-          <View style={{
-            backgroundColor: 'rgba(30,30,45,0.98)',
-            borderRadius: 32,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: 'rgba(255,255,255,0.15)',
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.4,
-            shadowRadius: 20,
-            elevation: 12,
-            overflow: 'hidden',
-            padding: 20,
-          }}>
-            <View style={[styles.compactProfileHeader, { marginBottom: 20 }]}>
-              <TouchableOpacity style={styles.compactAvatarWrapper} activeOpacity={0.7} onPress={handleChangePhoto}>
-                {!imageError ? (
+        <View style={styles.piRedesignShell}>
+          <LinearGradient
+            colors={['rgba(116, 91, 255, 0.22)', 'rgba(12, 14, 28, 0.98)', 'rgba(22, 24, 42, 0.98)'] as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.piRedesignPanel}
+          >
+            <View style={styles.piTopBar}>
+              <View>
+                <Text style={styles.piKicker}>Movie Zone Account</Text>
+                <Text style={styles.piTitle}>Personal Info</Text>
+              </View>
+              {!isEditingProfile && (
+                <TouchableOpacity style={styles.piIconAction} onPress={startEditing} activeOpacity={0.75}>
+                  <Ionicons name="create-outline" size={19} color="#ffffff" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.piHeroCard}>
+              <TouchableOpacity style={styles.piHeroAvatarButton} activeOpacity={0.75} onPress={handleChangePhoto}>
+                {!imageError && profilePhoto ? (
                   <Image
-                    source={{ uri: profilePhoto || "" }}
-                    style={styles.compactAvatar}
+                    source={{ uri: profilePhoto }}
+                    style={styles.piHeroAvatar}
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <View style={[styles.compactAvatar, { backgroundColor: 'rgba(30, 30, 45, 0.98)', justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '900', letterSpacing: 1 }}>
-                      {getInitials(userName)}
-                    </Text>
+                  <View style={styles.piHeroAvatarFallback}>
+                    <Text style={styles.piHeroAvatarInitials}>{getInitials(userName)}</Text>
                   </View>
                 )}
-                <LinearGradient colors={['#5B5FEF', '#3d44ff'] as any} style={styles.avatarMiniBadge}>
-                  <Ionicons name="camera" size={10} color="#fff" />
-                </LinearGradient>
+                <View style={styles.piCameraBadge}>
+                  <Ionicons name="camera" size={13} color="#ffffff" />
+                </View>
               </TouchableOpacity>
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerDisplayName}>{userName}</Text>
-                <Text style={styles.headerEmail}>{userEmail}</Text>
+
+              <View style={styles.piHeroText}>
+                <Text style={styles.piHeroName} numberOfLines={2}>{userName}</Text>
+                <Text style={styles.piHeroEmail} numberOfLines={2}>{userEmail}</Text>
+                <View style={styles.piMemberChip}>
+                  <Ionicons name="calendar-clear-outline" size={13} color="#b8bcff" />
+                  <Text style={styles.piMemberChipText}>Member since {getMemberSinceDate()}</Text>
+                </View>
               </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              <View style={styles.piInfoCardGroup}>
-                <Text style={styles.piInfoGroupTitle}>Identity</Text>
-                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
-                  {[
-                    { label: 'Username', value: username ? `@${username}` : 'Set username', temp: tempUsername, set: setTempUsername, icon: 'at-outline' },
-                  ].map((field) => (
-                    <View key={field.label} style={[styles.piInfoRow, styles.piNoBorder]}>
-                      <Ionicons name={field.icon as any} size={18} color="#818cf8" style={styles.piInfoIcon} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.piInfoLabel}>{field.label}</Text>
-                        {isEditingProfile ? (
-                          <TextInput
-                            style={[
-                              styles.piInfoInput,
-                              focusedPIField === field.label && styles.piInfoInputFocused
-                            ]}
-                            value={field.temp}
-                            onChangeText={field.set}
-                            placeholder={field.label}
-                            placeholderTextColor="rgba(255,255,255,0.2)"
-                            autoCapitalize="none"
-                            onFocus={() => setFocusedPIField(field.label)}
-                            onBlur={() => setFocusedPIField(null)}
-                          />
-                        ) : (
-                          <Text style={styles.piInfoValue}>{field.value}</Text>
-                        )}
-                      </View>
-                    </View>
-                  ))}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.piRedesignScroll}>
+              <View style={styles.piSectionHeaderRow}>
+                <Text style={styles.piSectionTitle}>Identity</Text>
+              </View>
 
-                  <View style={styles.piNameGrid}>
-                    {[
-                      { label: 'First Name', value: firstName, temp: tempFirstName, set: setTempFirstName },
-                      { label: 'Last Name', value: lastName, temp: tempLastName, set: setTempLastName },
-                    ].map((field) => (
-                      <View key={field.label} style={styles.piGridItem}>
-                        <Text style={styles.piInfoLabel}>{field.label}</Text>
-                        {isEditingProfile ? (
-                          <TextInput
-                            style={[
-                              styles.piInfoInput,
-                              focusedPIField === field.label && styles.piInfoInputFocused
-                            ]}
-                            value={field.temp}
-                            onChangeText={field.set}
-                            placeholder={field.label}
-                            placeholderTextColor="rgba(255,255,255,0.2)"
-                            onFocus={() => setFocusedPIField(field.label)}
-                            onBlur={() => setFocusedPIField(null)}
-                          />
-                        ) : (
-                          <Text style={styles.piInfoValue}>{field.value}</Text>
-                        )}
-                      </View>
-                    ))}
+              <View style={styles.piTileGrid}>
+                <View style={styles.piWideTile}>
+                  <Ionicons name="at-outline" size={19} color="#9ea4ff" style={styles.piTileIcon} />
+                  <View style={styles.piTileBody}>
+                    <Text style={styles.piTileLabel}>Username</Text>
+                    {isEditingProfile ? (
+                      <TextInput
+                        style={[styles.piInfoInput, focusedPIField === 'Username' && styles.piInfoInputFocused]}
+                        value={tempUsername}
+                        onChangeText={setTempUsername}
+                        placeholder="Username"
+                        placeholderTextColor="rgba(255,255,255,0.28)"
+                        autoCapitalize="none"
+                        onFocus={() => setFocusedPIField('Username')}
+                        onBlur={() => setFocusedPIField(null)}
+                      />
+                    ) : (
+                      <Text style={styles.piTileValue}>{displayUsername}</Text>
+                    )}
                   </View>
+                </View>
+
+                <View style={styles.piHalfTile}>
+                  <Text style={styles.piTileLabel}>First name</Text>
+                  {isEditingProfile ? (
+                    <TextInput
+                      style={[styles.piInfoInput, focusedPIField === 'First Name' && styles.piInfoInputFocused]}
+                      value={tempFirstName}
+                      onChangeText={setTempFirstName}
+                      placeholder="First name"
+                      placeholderTextColor="rgba(255,255,255,0.28)"
+                      onFocus={() => setFocusedPIField('First Name')}
+                      onBlur={() => setFocusedPIField(null)}
+                    />
+                  ) : (
+                    <Text style={styles.piTileValue}>{displayFirstName}</Text>
+                  )}
+                </View>
+
+                <View style={styles.piHalfTile}>
+                  <Text style={styles.piTileLabel}>Last name</Text>
+                  {isEditingProfile ? (
+                    <TextInput
+                      style={[styles.piInfoInput, focusedPIField === 'Last Name' && styles.piInfoInputFocused]}
+                      value={tempLastName}
+                      onChangeText={setTempLastName}
+                      placeholder="Last name"
+                      placeholderTextColor="rgba(255,255,255,0.28)"
+                      onFocus={() => setFocusedPIField('Last Name')}
+                      onBlur={() => setFocusedPIField(null)}
+                    />
+                  ) : (
+                    <Text style={styles.piTileValue}>{displayLastName}</Text>
+                  )}
                 </View>
               </View>
 
-              <View style={styles.piInfoCardGroup}>
-                <Text style={styles.piInfoGroupTitle}>Contact Details</Text>
-                <View style={[styles.piInfoCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }]}>
-                  <View style={styles.piInfoRow}>
-                    <Ionicons name="mail-outline" size={18} color="#818cf8" style={styles.piInfoIcon} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.piInfoLabel}>Email Address</Text>
-                      {isEditingProfile ? (
-                        <TextInput
-                          style={[
-                            styles.piInfoInput,
-                            focusedPIField === 'Email Address' && styles.piInfoInputFocused
-                          ]}
-                          value={tempEmail}
-                          onChangeText={setTempEmail}
-                          placeholder="Email"
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          onFocus={() => setFocusedPIField('Email Address')}
-                          onBlur={() => setFocusedPIField(null)}
-                        />
-                      ) : (
-                        <Text style={styles.piInfoValue}>{userEmail}</Text>
-                      )}
-                    </View>
+              <View style={styles.piSectionHeaderRow}>
+                <Text style={styles.piSectionTitle}>Contact</Text>
+              </View>
+
+              <View style={styles.piContactStack}>
+                <View style={styles.piContactTile}>
+                  <Ionicons name="mail-outline" size={20} color="#9ea4ff" style={styles.piTileIcon} />
+                  <View style={styles.piTileBody}>
+                    <Text style={styles.piTileLabel}>Email address</Text>
+                    {isEditingProfile ? (
+                      <TextInput
+                        style={[styles.piInfoInput, focusedPIField === 'Email Address' && styles.piInfoInputFocused]}
+                        value={tempEmail}
+                        onChangeText={setTempEmail}
+                        placeholder="Email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        placeholderTextColor="rgba(255,255,255,0.28)"
+                        onFocus={() => setFocusedPIField('Email Address')}
+                        onBlur={() => setFocusedPIField(null)}
+                      />
+                    ) : (
+                      <Text style={styles.piTileValue} numberOfLines={3}>{userEmail}</Text>
+                    )}
                   </View>
-                  <View style={[styles.piInfoRow, styles.piNoBorder]}>
-                    <Ionicons name="call-outline" size={18} color="#818cf8" style={styles.piInfoIcon} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.piInfoLabel}>Phone Number</Text>
-                      {isEditingProfile ? (
-                        <TextInput
-                          style={[
-                            styles.piInfoInput,
-                            focusedPIField === 'Phone Number' && styles.piInfoInputFocused
-                          ]}
-                          value={tempPhoneNumber}
-                          onChangeText={setTempPhoneNumber}
-                          placeholder="Phone"
-                          keyboardType="phone-pad"
-                          onFocus={() => setFocusedPIField('Phone Number')}
-                          onBlur={() => setFocusedPIField(null)}
-                        />
-                      ) : (
-                        <Text style={styles.piInfoValue}>{phoneNumber || 'Link your phone'}</Text>
-                      )}
-                    </View>
+                </View>
+
+                <View style={styles.piContactTile}>
+                  <Ionicons name="call-outline" size={20} color="#9ea4ff" style={styles.piTileIcon} />
+                  <View style={styles.piTileBody}>
+                    <Text style={styles.piTileLabel}>Phone number</Text>
+                    {isEditingProfile ? (
+                      <TextInput
+                        style={[styles.piInfoInput, focusedPIField === 'Phone Number' && styles.piInfoInputFocused]}
+                        value={tempPhoneNumber}
+                        onChangeText={setTempPhoneNumber}
+                        placeholder="Phone"
+                        keyboardType="phone-pad"
+                        placeholderTextColor="rgba(255,255,255,0.28)"
+                        onFocus={() => setFocusedPIField('Phone Number')}
+                        onBlur={() => setFocusedPIField(null)}
+                      />
+                    ) : (
+                      <Text style={styles.piTileValue}>{displayPhone}</Text>
+                    )}
                   </View>
                 </View>
               </View>
 
               {!isEditingProfile ? (
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                  <View style={[styles.piMetadataPill, { flex: 1.4, marginBottom: 0, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10 }]}>
-                    <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.4)" />
-                    <Text
-                      style={styles.piMetadataText}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      Member Since: {getMemberSinceDate()}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.piMainEditBtnWrapper, { flex: 1, marginTop: 0, marginBottom: 0 }]}
-                    onPress={startEditing}
-                    activeOpacity={0.7}
+                <TouchableOpacity style={styles.piFullEditButton} onPress={startEditing} activeOpacity={0.76}>
+                  <LinearGradient
+                    colors={['#7671ff', '#4741d6'] as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.piFullEditGradient}
                   >
-                    <View style={[styles.piMainEditBtn, { height: 44, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]}>
-                      <Ionicons name="create-outline" size={16} color="#fff" />
-                      <Text style={styles.piMainEditBtnText}>Edit Profile</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
+                    <Ionicons name="create-outline" size={18} color="#ffffff" />
+                    <Text style={styles.piFullEditText}>Edit Profile</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.piEditActionsRow}>
                   <TouchableOpacity style={styles.piCancelBtn} onPress={cancelEditing}>
                     <Text style={styles.piCancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.piSaveBtnWrapper} onPress={saveProfile}>
-                    <LinearGradient colors={['#5B5FEF', '#4A4ED1'] as any} style={styles.piSaveBtn}>
+                    <LinearGradient colors={['#7671ff', '#4741d6'] as any} style={styles.piSaveBtn}>
                       <Text style={styles.piSaveBtnText}>Save Changes</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
               )}
             </ScrollView>
-          </View>
+          </LinearGradient>
         </View>
       </View>
     );
@@ -918,11 +917,59 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                 </View>
               )}
               <Text style={styles.securityTitle}>Security PIN</Text>
-              <Text style={styles.securityDesc}>Set a 4-6 digit Security PIN to authorize sensitive actions, like remotely logging out devices from your account.</Text>
+              <Text style={styles.securityDesc}>
+                {securityPin && !hasUnlockedSecurityPin
+                  ? 'Enter your current Security PIN before you can view or change this setting.'
+                  : 'Set a 4-6 digit Security PIN to authorize sensitive actions, like remotely logging out devices from your account.'}
+              </Text>
 
-              <View style={styles.detailCard}>
+              {securityPin && !hasUnlockedSecurityPin ? (
+                <View style={styles.detailCard}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Current PIN Required</Text>
+                    <View style={styles.passInputContainer}>
+                      <TextInput
+                        style={styles.passInput}
+                        value={unlockPinValue}
+                        onChangeText={(val) => {
+                          const clean = val.replace(/\D/g, '').slice(0, 6);
+                          setUnlockPinValue(clean);
+                          setPinUnlockError('');
+                        }}
+                        placeholder="Enter current PIN"
+                        placeholderTextColor="#64748b"
+                        keyboardType="numeric"
+                        secureTextEntry
+                      />
+                    </View>
+                  </View>
+
+                  {pinUnlockError ? <Text style={styles.errorText}>{pinUnlockError}</Text> : null}
+
+                  <TouchableOpacity
+                    style={[styles.requestCodeBtn, { marginTop: 24 }]}
+                    onPress={() => {
+                      if (unlockPinValue.length < 4) {
+                        setPinUnlockError('Enter your current 4-6 digit PIN.');
+                        return;
+                      }
+                      if (unlockPinValue !== securityPin) {
+                        setPinUnlockError('Incorrect Security PIN.');
+                        return;
+                      }
+                      setHasUnlockedSecurityPin(true);
+                      setUnlockPinValue('');
+                      Keyboard.dismiss();
+                    }}
+                  >
+                    <Text style={styles.requestCodeText}>Unlock Security PIN</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+              <>
+                <View style={styles.detailCard}>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{securityPin ? 'Update PIN' : 'Set PIN'}</Text>
+                  <Text style={styles.detailLabel}>{securityPin ? 'New PIN' : 'Set PIN'}</Text>
                   <View style={styles.passInputContainer}>
                     <TextInput
                       style={styles.passInput}
@@ -987,6 +1034,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                   <Text style={styles.requestCodeText}>{securityPin ? 'Update Security PIN' : 'Save Security PIN'}</Text>
                 )}
               </TouchableOpacity>
+              </>
+              )}
             </View>
           </View>
         ) : null}

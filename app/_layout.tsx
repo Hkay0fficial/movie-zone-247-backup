@@ -77,14 +77,19 @@ function ModernVideoPlayerWrapper() {
   }, [playingEpisodeId, playingEpisodes, playerTitle]);
 
   useEffect(() => {
+    if (playerMode === 'closed') {
+      setIsOffline(false);
+      return;
+    }
+
     const checkNet = async () => {
       const state = await Network.getNetworkStateAsync();
       setIsOffline(!state.isConnected);
     };
     checkNet();
-    const interval = setInterval(checkNet, 5000);
+    const interval = setInterval(checkNet, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [playerMode]);
 
   // Sync activeUrl with local source if offline
   useEffect(() => {

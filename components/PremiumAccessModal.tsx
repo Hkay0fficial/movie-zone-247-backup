@@ -168,11 +168,11 @@ export default function PremiumAccessModal({
                   <Ionicons name="sparkles" size={28} color="#5B5FEF" />
                 </View>
                 <Text style={styles.title}>
-                  {isDownloadLimitMode ? 'External Downloads Used' : 'Go Premium Now'}
+                  {isDownloadLimitMode ? 'Download Limit Reached' : 'Go Premium Now'}
                 </Text>
                 <Text style={styles.subtitle}>
                   {isDownloadLimitMode
-                    ? 'You can still watch and download inside the app. Add more external download tokens to save files directly to your phone storage.'
+                    ? 'You can still watch and save inside the app. Add download credits when you want to save episodes directly to your phone storage.'
                     : 'Upgrade your account to watch this movie and many others with best quality and no ads.'}
                 </Text>
               </View>
@@ -182,26 +182,26 @@ export default function PremiumAccessModal({
                   <>
                     <BenefitItem
                       icon="phone-portrait-outline"
-                      title="External Tokens Finished"
-                      desc="Your daily phone-storage saves are used up"
-                      color="#f59e0b"
+                      title="Phone-Storage Limit Used"
+                      desc="Your direct-to-phone saves are used up"
+                      color="#5B5FEF"
                     />
                     <BenefitItem
                       icon="cloud-download-outline"
                       title="App Downloads Still Work"
-                      desc="Save inside Movie Zone without using external tokens"
-                      color="#3b82f6"
+                      desc="Save inside Movie Zone without using credits"
+                      color="#818cf8"
                     />
                     <BenefitItem
                       icon="refresh-outline"
-                      title="Tokens Refresh"
-                      desc="Your external allowance renews on the next cycle"
-                      color="#10b981"
+                      title="Allowance Refreshes"
+                      desc="Your download allowance renews on the next cycle"
+                      color="#5B5FEF"
                     />
                     <BenefitItem
                       icon="add-circle-outline"
                       title="Need More Today?"
-                      desc="Choose a bigger plan or token capacity"
+                      desc="Choose a larger plan or add download credits"
                       color="#5B5FEF"
                     />
                   </>
@@ -217,25 +217,25 @@ export default function PremiumAccessModal({
                       icon="ban-outline"
                       title="Zero Advertisements"
                       desc="No interruptions during your cinema time"
-                      color="#ef4444"
+                      color="#818cf8"
                     />
                     <BenefitItem
                       icon="cloud-download-outline"
                       title="Offline Viewing"
                       desc="Unlimited downloads for on-the-go"
-                      color="#3b82f6"
+                      color="#5B5FEF"
                     />
                     <BenefitItem
                       icon="phone-portrait-outline"
-                      title="External Downloads"
+                      title="Phone-Storage Downloads"
                       desc="Save movies directly to your device storage"
-                      color="#f59e0b"
+                      color="#5B5FEF"
                     />
                     <BenefitItem
                       icon="gift-outline"
                       title="Huge Bonus Access"
                       desc="Get up to 1 MONTH FREE with your plan"
-                      color="#10b981"
+                      color="#818cf8"
                     />
                   </>
                 )}
@@ -255,7 +255,7 @@ export default function PremiumAccessModal({
                   style={styles.gradientBtn}
                 >
                   <Text style={styles.primaryBtnText}>
-                    {isDownloadLimitMode ? 'Get More Downloads' : 'Upgrade Now'}
+                    {isDownloadLimitMode ? 'Add Download Credits' : 'Upgrade Now'}
                   </Text>
                   <Ionicons name="chevron-forward" size={20} color="#fff" />
                 </LinearGradient>

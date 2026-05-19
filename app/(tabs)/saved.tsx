@@ -602,6 +602,24 @@ export default function SeriesScreen() {
       return () => subscription.remove();
     }, [navigationStack.length, isSearchActive, query.length, playerMode])
   );
+
+  useEffect(() => {
+    const searchOverlaySub = DeviceEventEmitter.addListener("openSearchOverlay", () => {
+      setIsPreviewOpening(false);
+      setIsGridOpening(false);
+      setIsExternalSearch(false);
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+      DeviceEventEmitter.emit("setOverlayVisible", false);
+      setNavigationStack((prev) => {
+        if (prev.length === 0) return prev;
+        DeviceEventEmitter.emit("previewClosing", { remainingDepth: 0 });
+        return [];
+      });
+    });
+
+    return () => searchOverlaySub.remove();
+  }, []);
+
   const { seriesId } = useLocalSearchParams();
 
   const [isExternalSearch, setIsExternalSearch] = useState(false);
@@ -728,7 +746,21 @@ export default function SeriesScreen() {
 
 
     const sub4 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", () => {
-      setNavigationStack([]);
+      setIsPreviewOpening(false);
+      setIsGridOpening(false);
+      setIsExternalSearch(false);
+      setQuery("");
+      setDebouncedQuery("");
+      setIsSearching(false);
+      setIsSearchActive(false);
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+      DeviceEventEmitter.emit("setOverlayVisible", false);
+      DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true, scope: "Series" });
+      setNavigationStack((prev) => {
+        if (prev.length === 0) return prev;
+        DeviceEventEmitter.emit("previewClosing", { remainingDepth: 0 });
+        return [];
+      });
     });
 
     const sub5 = DeviceEventEmitter.addListener("openSeriesPreview", (series: Series) => {
@@ -1945,7 +1977,7 @@ function SeriesPreviewModal({
                 justifyContent: "center",
                 marginLeft: "auto",
               }}
-              onPress={() => DeviceEventEmitter.emit("openSeriesLibrarySearch", series)}
+              onPress={() => DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true, scope: "Series" })}
             >
               <Ionicons name="search" size={20} color="#fff" />
             </TouchableOpacity>
@@ -3032,13 +3064,6 @@ function SeriesPreviewModal({
                       </Text>
                     </View>
                   </TouchableOpacity>
-                  {getRemainingDownloads() <= 3 && (
-                    <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onClose(); router.push("/(tabs)/menu?upgrade=true"); }}>
-                      <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
-                        {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                   <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
                     <Text style={styles.downloadCancelText}>Maybe Later</Text>
                   </TouchableOpacity>
@@ -3160,28 +3185,6 @@ function SeriesPreviewModal({
                       </Text>
                     </View>
                   </TouchableOpacity>
-
-                  {getRemainingDownloads() <= 3 && (
-                    <TouchableOpacity
-                      style={{ marginTop: 4, alignSelf: "center", padding: 8 }}
-                      onPress={() => {
-                        setShowDownloadModal(false);
-                        onClose();
-                        router.push("/(tabs)/menu?upgrade=true");
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF",
-                          fontSize: 13,
-                          fontWeight: "700",
-                          textDecorationLine: "underline",
-                        }}
-                      >
-                        {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
 
                   <TouchableOpacity
                     style={styles.downloadCancelLink}

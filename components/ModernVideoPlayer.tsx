@@ -708,6 +708,11 @@ export default function ModernVideoPlayer({
   // ─── Cast Sync Logic ───
   // Monitor Network for Offline Mode
   useEffect(() => {
+    if (playerMode === 'closed') {
+      setIsOffline(false);
+      return;
+    }
+
     const checkNetwork = async () => {
       try {
         const state = await Network.getNetworkStateAsync();
@@ -718,9 +723,9 @@ export default function ModernVideoPlayer({
     };
     
     checkNetwork();
-    const interval = setInterval(checkNetwork, 5000);
+    const interval = setInterval(checkNetwork, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [playerMode]);
 
   // Check for local version when offline
   const localMatch = useMemo(() => {
@@ -1247,8 +1252,8 @@ export default function ModernVideoPlayer({
       } else if (!isPreview) {
         // Standalone movie or last part finished - track completion
         incrementCompletion().then(count => {
-          // Trigger rating modal after 3 completed movies if they haven't rated yet
-          if (count >= 3 && !profile.hasRatedApp) {
+          // Trigger rating modal after the first completed full video if they haven't rated yet.
+          if (count >= 1 && !profile.hasRatedApp) {
             DeviceEventEmitter.emit("triggerRating");
           }
         });

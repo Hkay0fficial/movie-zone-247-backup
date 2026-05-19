@@ -77,6 +77,28 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
   const [paymentStatus, setPaymentStatus] = useState('');
   const pollIntervalRef = React.useRef<any>(null);
 
+  const formatPaymentError = (error: unknown) => {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as any).code) : '';
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+        ? error
+        : 'Please try again.';
+
+    const normalized = rawMessage.toLowerCase();
+    if (code === 'RELWORX_API_DISABLED' || normalized.includes('api disabled') || normalized.includes('not live') || normalized.includes('activation')) {
+      return 'Payments are not live yet on this account. Please finish Relworx API activation, then try again.';
+    }
+    if (code === 'RELWORX_NOT_CONFIGURED' || (normalized.includes('keys') && normalized.includes('missing'))) {
+      return 'Payment setup is incomplete on the server. Please contact support.';
+    }
+    if (normalized.includes('network request failed') || normalized.includes('failed to fetch')) {
+      return 'Could not reach the payment server. Check your internet and try again.';
+    }
+    return rawMessage;
+  };
+
   useEffect(() => {
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -122,7 +144,9 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
       const chargeData = await chargeResponse.json();
 
       if (!chargeData.success) {
-        throw new Error(chargeData.error || 'Failed to initiate payment');
+        const paymentError = new Error(chargeData.error || 'Failed to initiate payment') as Error & { code?: string };
+        paymentError.code = chargeData.code;
+        throw paymentError;
       }
 
       const { tx_ref } = chargeData;
@@ -155,16 +179,20 @@ export default function PlanSelectionModal({ visible, onClose }: PlanSelectionMo
             setPaymentStatus(`Waiting for confirmation... (${maxAttempts - attempts})`);
           }
         } catch (pollError) {
-          console.error('Polling error:', pollError);
+          if (__DEV__) {
+            console.log('Relworx verify polling issue:', pollError);
+          }
         }
       }, 3000);
 
     } catch (err: any) {
-      console.error("Error initiating Relworx payment:", err);
+      if (__DEV__) {
+        console.log('Error initiating Relworx payment:', err);
+      }
       setIsProcessing(false);
       setPaymentStatus('');
       triggerHaptic('warning');
-      alert('Payment failed: ' + (err.message || 'Please try again.'));
+      alert('Payment failed: ' + formatPaymentError(err));
     }
   };
 

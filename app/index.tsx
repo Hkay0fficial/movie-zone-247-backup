@@ -74,7 +74,7 @@ export default function Index() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       // If we have a deep link intent (movieId), shorten the splash delay
       const hasIntent = params.movieId || params.autoplay;
-      const delay = hasIntent ? 1500 : 5000;
+      const delay = hasIntent ? 0 : 5000;
 
       const timer = setTimeout(() => {
         if (showOnboarding) {
@@ -350,4 +350,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   }
 });
-

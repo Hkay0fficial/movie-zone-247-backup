@@ -98,13 +98,7 @@ export default function NotificationManager() {
       return;
     }
 
-    router.push('/(tabs)' as any);
-    if (linkedContent) {
-      DeviceEventEmitter.emit("movieSelected", linkedContent);
-      return;
-    }
-
-    router.push({
+    router.replace({
       pathname: '/(tabs)',
       params: { movieId, autoplay: autoplay ? 'true' : 'false' }
     });

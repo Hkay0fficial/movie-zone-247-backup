@@ -9,12 +9,12 @@ import {
   Dimensions,
   Platform,
   StatusBar,
-  TextInput,
   Modal,
   SafeAreaView,
   TouchableWithoutFeedback,
   Animated,
   BackHandler,
+  DeviceEventEmitter,
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -207,26 +207,14 @@ export function GridContent({
   onClose: () => void;
   onSelect: (m: Movie | Series) => void;
 }) {
-  const [gridQuery, setGridQuery] = useState("");
-  const gridInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
 
-  const filtered = data.filter((m) => {
-    const q = gridQuery.toLowerCase().trim();
-    if (!q) return true;
-    const vjName = q.startsWith("vj ") ? q : "vj " + q;
-    return (
-      m.title.toLowerCase().includes(q) ||
-      m.genre.toLowerCase().includes(q) ||
-      String(m.year).includes(q) ||
-      m.vj.toLowerCase() === vjName ||
-      m.vj.toLowerCase() === q
-    );
-  });
-
-  useEffect(() => {
-    setGridQuery("");
-  }, [data]);
+  const openGlobalSearch = () => {
+    const hasSeries = data.some((item) => "seasons" in item);
+    const hasMovies = data.some((item) => !("seasons" in item));
+    const scope = hasSeries && !hasMovies ? "Series" : hasMovies && !hasSeries ? "Movies" : "All";
+    DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true, scope });
+  };
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0f" }]}>
@@ -256,36 +244,29 @@ export function GridContent({
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          <View style={styles.searchPill}>
+          <TouchableOpacity
+            style={styles.searchPill}
+            activeOpacity={0.82}
+            onPress={openGlobalSearch}
+          >
             {Platform.OS === 'ios' ? (
               <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
             ) : (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]} />
             )}
             <Ionicons name="search" size={18} color="rgba(255,255,255,0.4)" style={{ marginLeft: 12 }} />
-            <TextInput
-              ref={gridInputRef}
-              style={styles.searchInput}
-              placeholder={title || 'Search…'}
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              value={gridQuery}
-              onChangeText={setGridQuery}
-              returnKeyType="search"
-            />
-            {gridQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setGridQuery('')} style={{ padding: 8 }}>
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
-              </TouchableOpacity>
-            )}
+            <Text style={styles.searchInput} numberOfLines={1}>
+              {title || 'Search...'}
+            </Text>
             
             <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{filtered.length}</Text>
+              <Text style={styles.countBadgeText}>{data.length}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <FlatList
-          data={filtered}
+          data={data}
           keyExtractor={(m, index) => `${m.id}-${index}`}
           numColumns={3}
           contentContainerStyle={styles.listContent}
@@ -306,9 +287,7 @@ export function GridContent({
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="film-outline" size={48} color="rgba(255,255,255,0.1)" />
-              <Text style={styles.emptyText}>
-                No results {gridQuery ? `for "${gridQuery}"` : ''}
-              </Text>
+              <Text style={styles.emptyText}>No titles in this section</Text>
             </View>
           }
         />

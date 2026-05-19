@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { collection, onSnapshot, query, orderBy, getDocs, doc, limit, setDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../../constants/firebaseConfig';
 import { 
@@ -13,6 +13,7 @@ import { useUser } from './UserContext';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sendLocalNotification } from '../../lib/notifications';
 
 const COUNTRY_MAP: Record<string, string> = {
   'KR': 'South Korea',
@@ -155,10 +156,18 @@ interface MovieContextType {
 }
 
 const MovieContext = createContext<MovieContextType | undefined>(undefined);
+const MOVIE_CONTENT_CACHE_KEY = 'movie_content_cache_v1';
+
+type CachedMovieContent = {
+  movies?: Movie[];
+  series?: Series[];
+};
 
 export function MovieProvider({ children }: { children: React.ReactNode }) {
   const [liveMovies, setLiveMovies] = useState<Movie[]>([]);
   const [liveSeries, setLiveSeries] = useState<Series[]>([]);
+  const hasHydratedCachedContent = useRef(false);
+  const hasReceivedRemoteContent = useRef(false);
   const [globalSettings, setGlobalSettings] = useState({
     allMoviesFree: false,
     eventMessage: '',
@@ -199,6 +208,41 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
   const resetFilters = () => {
     clearFilters();
   };
+
+  const hydrateFromCachedContent = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(MOVIE_CONTENT_CACHE_KEY);
+      if (!cached) return false;
+
+      const parsed: CachedMovieContent = JSON.parse(cached);
+      const cachedMovies = Array.isArray(parsed.movies) ? parsed.movies : [];
+      const cachedSeries = Array.isArray(parsed.series) ? parsed.series : [];
+      if (cachedMovies.length === 0 && cachedSeries.length === 0) return false;
+      if (hasReceivedRemoteContent.current) return false;
+
+      setLiveMovies(cachedMovies);
+      setLiveSeries(cachedSeries);
+      hasHydratedCachedContent.current = true;
+      return true;
+    } catch (error) {
+      console.warn('MovieContext: failed to restore cached movies.', error);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    hydrateFromCachedContent().then((restored) => {
+      if (!cancelled && restored) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // Listen to Firebase 'movies' collection in real-time
@@ -319,16 +363,35 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         index === self.findIndex((t) => t.id === item.id)
       );
       
-      setLiveMovies(uniqueMovies);
-      setLiveSeries(uniqueSeries);
+      const hasFetchedContent = uniqueMovies.length > 0 || uniqueSeries.length > 0;
+      if (hasFetchedContent) {
+        hasReceivedRemoteContent.current = true;
+        setLiveMovies(uniqueMovies);
+        setLiveSeries(uniqueSeries);
+        hasHydratedCachedContent.current = false;
+        AsyncStorage.setItem(
+          MOVIE_CONTENT_CACHE_KEY,
+          JSON.stringify({ movies: uniqueMovies, series: uniqueSeries })
+        ).catch(() => {});
+      } else if (!hasHydratedCachedContent.current) {
+        hydrateFromCachedContent().then((restored) => {
+          if (!restored) {
+            setLiveMovies([]);
+            setLiveSeries([]);
+          }
+        });
+      }
       setTimeout(() => {
         setLoading(false);
       }, 1500);
     }, (error: any) => {
-      if (error.code === 'permission-denied') return;
+      if (error.code === 'permission-denied') {
+        console.warn("MovieContext: movies listener permission denied.");
+        hydrateFromCachedContent().finally(() => setLoading(false));
+        return;
+      }
       console.warn("Firestore listener error (MovieContext):", error);
-      // Fallback to offline/mock data if offline
-      setLoading(false);
+      hydrateFromCachedContent().finally(() => setLoading(false));
     });
 
     return () => unsubscribe();
@@ -485,7 +548,25 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const { favorites: myFavorites, isGuest } = useSubscription();
+  const { favorites: myFavorites, isGuest, followedVjs = [] } = useSubscription() as any;
+
+  useEffect(() => {
+    if (!followedVjs.length || (!liveMovies.length && !liveSeries.length)) return;
+    const latestFollowed = [...liveMovies, ...liveSeries]
+      .filter((item: any) => followedVjs.includes(item.vj))
+      .sort((a: any, b: any) => toMillis(b.addedAt || b.createdAt || b.updatedAt) - toMillis(a.addedAt || a.createdAt || a.updatedAt))[0] as any;
+    if (!latestFollowed?.id) return;
+    const key = `vj_alert_${latestFollowed.id}`;
+    AsyncStorage.getItem(key).then((sent) => {
+      if (sent) return;
+      AsyncStorage.setItem(key, '1').catch(() => {});
+      sendLocalNotification(
+        `New from ${latestFollowed.vj}`,
+        `${latestFollowed.title} is now available.`,
+        { type: 'vj_follow', movieId: latestFollowed.id }
+      ).catch(() => {});
+    }).catch(() => {});
+  }, [followedVjs.join('|'), liveMovies.length, liveSeries.length]);
 
   // Merge live data with mock data so the beautiful UI stays populated
   const contextValue = useMemo(() => {
@@ -831,6 +912,32 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       ...newReleaseFallback,
     ].slice(0, 20);
 
+    const buildDefaultRows = () => ([
+      { title: 'New Releases',       data: newReleases       },
+      { title: 'Free Movies',        data: freeMovies        },
+      { title: 'Trending Now',       data: trending          },
+      { title: 'K-Drama',            data: kDramaMovies      }, 
+      { title: 'Most Viewed',        data: mostViewed       },
+      { title: 'Most Downloaded',    data: mostDownloaded   },
+      { title: 'Latest',             data: latest            },
+      { title: 'Continue Watching',  data: continueWatching },
+      { title: 'Favourites',         data: favourites        },
+      { title: 'My List',            data: myList           },
+      { title: 'Watch Later',        data: watchLater       },
+      { title: 'You May Also Like',  data: youMayAlsoLike },
+      { title: 'Last Watched',       data: lastWatched      },
+      { title: 'Action',             data: actionMovies     },
+      { title: 'Sci-Fi',             data: scifiMovies      },
+      { title: 'Romance',            data: romanceMovies    },
+      { title: 'Horror',             data: horrorMovies     },
+      { title: 'Drama',              data: dramaMovies      },
+      { title: 'Indian Movies',      data: indianMovies     },
+      { title: 'VJ Collection',      data: vjCollection     },
+    ]).map(row => ({
+      ...row,
+      data: row.data.filter((item, index, self) => index === self.findIndex((t) => t.id === item.id))
+    })).filter(row => row.data.length > 0);
+
     // Rebuild ALL_ROWS dynamically based on the Admin Portal's Layout Manager
     let allRows: { title: string; data: (Movie | Series)[] }[] = [];
     
@@ -914,33 +1021,15 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
         return 0;
       });
 
+      // If the remote layout is present but all configured rows filter to empty,
+      // fall back to content-driven defaults so Home never renders as a blank page.
+      if (allRows.length === 0 && allContent.length > 0) {
+        allRows = buildDefaultRows();
+      }
+
     } else {
       // Fallback Layout (Original System Layout in case of DB offline behavior)
-      allRows = [
-        { title: 'New Releases',       data: newReleases       }, // Last 30 days, movies + series
-        { title: 'Free Movies',        data: freeMovies        },
-        { title: 'Trending Now',       data: trending          },
-        { title: 'K-Drama',            data: kDramaMovies      }, 
-        { title: 'Most Viewed',        data: mostViewed       },
-        { title: 'Most Downloaded',    data: mostDownloaded   },
-        { title: 'Latest',             data: latest            }, // Full movie catalog, newest first
-        { title: 'Continue Watching',  data: continueWatching },
-        { title: 'Favourites',         data: favourites        },
-        { title: 'My List',            data: myList           },
-        { title: 'Watch Later',        data: watchLater       },
-        { title: 'You May Also Like',  data: youMayAlsoLike },
-        { title: 'Last Watched',       data: lastWatched      },
-        { title: 'Action',             data: actionMovies     },
-        { title: 'Sci-Fi',             data: scifiMovies      },
-        { title: 'Romance',            data: romanceMovies    },
-        { title: 'Horror',             data: horrorMovies     },
-        { title: 'Drama',              data: dramaMovies      },
-        { title: 'Indian Movies',      data: indianMovies     },
-        { title: 'VJ Collection',      data: vjCollection     },
-      ].map(row => ({
-        ...row,
-        data: row.data.filter((item, index, self) => index === self.findIndex((t) => t.id === item.id))
-      })).filter(row => row.data.length > 0);
+      allRows = buildDefaultRows();
     }
 
     return {

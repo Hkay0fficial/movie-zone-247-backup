@@ -18,15 +18,31 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
-import { Alert, Platform } from 'react-native';
+import * as Network from 'expo-network';
+import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Movie, Series, getStreamUrl } from '../../constants/movieData';
 import { getDownloadUrlVariants } from '../../constants/bunnyConfig';
 import { useSubscription } from './SubscriptionContext';
+import { useUser } from './UserContext';
 import * as Notifications from 'expo-notifications';
 import { downloadNotificationManager } from '@/lib/notificationHelper';
-import { addNotificationResponseListener } from '@/lib/notifications';
+import { addNotificationResponseListener, sendLocalNotification } from '@/lib/notifications';
 import { auth, db } from '../../constants/firebaseConfig';
-import { doc, updateDoc, increment, runTransaction, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, increment, runTransaction, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
+import DownloadSuccessModal, { DownloadModalType } from '@/components/DownloadSuccessModal';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+
+const PAYMENT_API_BASE = 'https://www.themoviezone247.com/api/payments';
+const EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX = 500;
+const CREDIT_PAYMENT_METHODS = [
+  { id: 'mtn', label: 'MTN Mobile Money Uganda', icon: 'phone-portrait-outline', color: '#ffcc00' },
+  { id: 'airtel', label: 'Airtel Money Uganda', icon: 'phone-portrait-outline', color: '#e11900' },
+  { id: 'card', label: 'Credit card or Debit card', icon: 'card-outline', color: '#6366f1' },
+] as const;
+
+type CreditPaymentMethod = typeof CREDIT_PAYMENT_METHODS[number];
 
 const {
   documentDirectory,
@@ -74,10 +90,12 @@ interface DownloadEntry {
   item: Movie | Series;
   isEpisode: boolean;
   type?: 'Movie' | 'Series';
+  remoteRequestId?: string;
 }
 
 interface DownloadContextType {
   activeDownloads: Record<string, DownloadEntry>;
+  remoteActiveDownloads: Record<string, DownloadEntry>;
   downloadQueue: string[];
   episodeDownloads: Record<string, string>;
   downloadedMovies: any[];
@@ -95,26 +113,141 @@ interface DownloadContextType {
   removeDownload: (id: string) => void;
   verifyLocalFile: (id: string) => Promise<string | null>;
   cancelSeriesDownloads: (seriesId: string) => void;
+  requestRemoteDownload: (item: Movie | Series, episode?: any) => void;
+  purchaseExternalDownloadCredits: (quantity: number, entry?: DownloadEntry) => Promise<boolean>;
+  smartQueueCount: number;
 }
 
 const DownloadContext = createContext<DownloadContextType | undefined>(undefined);
+const REMOTE_STATUS_ACK_STORAGE_KEY = 'remote_download_notified_statuses_v1';
+const SMART_OFFLINE_QUEUE_KEY = 'smart_offline_queue_v1';
 
 export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadEntry>>({});
+  const [remoteActiveDownloads, setRemoteActiveDownloads] = useState<Record<string, DownloadEntry>>({});
   const [downloadQueue, setDownloadQueue] = useState<string[]>([]);
   const [episodeDownloads, setEpisodeDownloads] = useState<Record<string, string>>({});
   const [episodeParentMap, setEpisodeParentMap] = useState<Record<string, string>>({});
   const [downloadedMovies, setDownloadedMovies] = useState<any[]>([]);
   const [downloadsUsedToday, setDownloadsUsedToday] = useState(0);
   const [externalDownloadsUsedTotal, setExternalDownloadsUsedTotal] = useState(0);
+  const [downloadAlert, setDownloadAlert] = useState<{
+    visible: boolean;
+    type: DownloadModalType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+  const [remoteDownloadPrompt, setRemoteDownloadPrompt] = useState<any | null>(null);
+  const [smartQueueCount, setSmartQueueCount] = useState(0);
+  const [remoteDevicePicker, setRemoteDevicePicker] = useState<{
+    item: Movie | Series;
+    episode?: any;
+    targets: string[];
+  } | null>(null);
+  const [creditPaymentRequest, setCreditPaymentRequest] = useState<{
+    quantity: number;
+    amount: number;
+    entry?: DownloadEntry;
+  } | null>(null);
+  const [creditPaymentStep, setCreditPaymentStep] = useState<'methods' | 'details'>('methods');
+  const [creditPaymentMethod, setCreditPaymentMethod] = useState<CreditPaymentMethod | null>(null);
+  const [creditPaymentPhone, setCreditPaymentPhone] = useState('');
+  const [creditCardNumber, setCreditCardNumber] = useState('');
+  const [creditCardExpiry, setCreditCardExpiry] = useState('');
+  const [creditCardCVV, setCreditCardCVV] = useState('');
+  const [creditPaymentProcessing, setCreditPaymentProcessing] = useState(false);
+  const [creditPaymentStatus, setCreditPaymentStatus] = useState('');
+  const [creditPaymentError, setCreditPaymentError] = useState('');
+  const creditPaymentResolveRef = useRef<((success: boolean) => void) | null>(null);
 
   const subscriptionData = useSubscription();
+  const { profile } = useUser();
   const { 
     isPaid, isSubscribed, allMoviesFree, subscriptionBundle, 
     subscriptionExpiresAt, isGuest, recordTrialUsage,
     planLimits 
   } = subscriptionData;
-  const hasInternalDownloadAccess = isPaid || isSubscribed || allMoviesFree;
+  const normalizedSubscriptionBundle = String(subscriptionBundle || 'None');
+  const hasNamedPlan = normalizedSubscriptionBundle.toLowerCase() !== 'none';
+  const hasFutureExpiry = Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
+  const hasDisplayedPremiumDays = Number((subscriptionData as any).remainingDays || 0) > 0;
+  const hasManualPlanAccess = Number((subscriptionData as any).customExternalLimit || 0) > 0;
+  const hasPremiumAccess = !isGuest && (
+    isPaid ||
+    isSubscribed ||
+    hasNamedPlan ||
+    hasFutureExpiry ||
+    hasDisplayedPremiumDays ||
+    hasManualPlanAccess
+  );
+  const canUseInternalDownloads = allMoviesFree || hasPremiumAccess;
+
+  const showDownloadAlert = (type: DownloadModalType, title: string, message: string) => {
+    setDownloadAlert({ visible: true, type, title, message });
+  };
+
+  const respondToRemoteDownloadRequest = async (request: any, accepted: boolean) => {
+    const user = auth.currentUser;
+    if (!user || !request?.id) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    setRemoteDownloadPrompt(null);
+
+    if (!accepted) {
+      await updateDoc(userRef, {
+        [`remoteDownloadRequests.${request.id}.status`]: 'denied',
+        [`remoteDownloadRequests.${request.id}.respondedAt`]: new Date().toISOString(),
+      }).catch(() => {});
+      return;
+    }
+
+    await updateDoc(userRef, {
+      [`remoteDownloadRequests.${request.id}.status`]: 'downloading',
+      [`remoteDownloadRequests.${request.id}.respondedAt`]: new Date().toISOString(),
+    }).catch(() => {});
+
+    if (request.episode) {
+      downloadEpisode(request.item as Series, request.episode, 'internal', request.id);
+    } else if (request.item) {
+      downloadMovie(request.item as Movie | Series, 'internal', request.id);
+    }
+  };
+
+  const hasPremiumAccessFromServer = async () => {
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) return false;
+
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (!snap.exists()) return false;
+      const data = snap.data();
+      const bundle = String(data.subscriptionBundle || 'None');
+      const expiry = (() => {
+        const value = data.subscriptionExpiresAt;
+        if (!value) return null;
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+          const parsed = Date.parse(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        if (typeof value.toMillis === 'function') return value.toMillis();
+        if (typeof value.seconds === 'number') return value.seconds * 1000;
+        return null;
+      })();
+      const hasServerPlan = bundle.toLowerCase() !== 'none';
+      const hasServerExpiry = expiry === null ? hasServerPlan : Boolean(expiry && expiry > Date.now());
+      const hasManualAccess = Number(data.customExternalLimit || data.downloadLimit || 0) > 0;
+      return (hasServerPlan && hasServerExpiry) || hasManualAccess;
+    } catch (error) {
+      console.warn('[DownloadContext] Premium fallback check failed:', error);
+      return false;
+    }
+  };
 
   // Refs for download engine state
   const entriesRef = useRef<Record<string, DownloadEntry>>({});
@@ -122,9 +255,89 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const cancelledIdsRef = useRef<Set<string>>(new Set()); 
   const completedIdsRef = useRef<Set<string>>(new Set()); 
   const reservedExternalIdsRef = useRef<Set<string>>(new Set());
+  const externalTopUpInProgressRef = useRef(false);
   const cancelledSeriesIdsRef = useRef<Set<string>>(new Set());
+  const handledRemoteDownloadRequestsRef = useRef<Set<string>>(new Set());
+  const notifiedRemoteDownloadStatusesRef = useRef<Set<string>>(new Set());
+  const remoteDownloadSessionStartedAtRef = useRef(Date.now());
   const isProcessing = useRef(false);
   const externalReservationQueueRef = useRef(Promise.resolve());
+  const smartQueueProcessingRef = useRef(false);
+
+  const rememberRemoteDownloadStatus = (statusKey: string) => {
+    const statuses = notifiedRemoteDownloadStatusesRef.current;
+    statuses.add(statusKey);
+    const recentStatuses = Array.from(statuses).slice(-250);
+    AsyncStorage.setItem(REMOTE_STATUS_ACK_STORAGE_KEY, JSON.stringify(recentStatuses)).catch(() => {});
+  };
+
+  const getRemoteDownloadStatusTime = (request: any) => {
+    const rawTime = request?.status === 'completed'
+      ? request?.completedAt
+      : request?.respondedAt || request?.completedAt || request?.requestedAt;
+    if (!rawTime) return 0;
+    const parsed = Date.parse(rawTime);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const getRemoteRequestTime = (request: any, fields: string[]) => {
+    for (const field of fields) {
+      const value = request?.[field];
+      if (!value) continue;
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const isStaleRemoteRequest = (request: any) => {
+    const now = Date.now();
+    if (request?.status === 'pending') {
+      const requestedAt = getRemoteRequestTime(request, ['requestedAt']);
+      return Boolean(requestedAt && now - requestedAt > 30 * 60 * 1000);
+    }
+    if (request?.status === 'downloading') {
+      const progress = Number(request.progress || 0);
+      const lastActivity = getRemoteRequestTime(request, ['progressUpdatedAt', 'respondedAt', 'requestedAt']);
+      return Boolean(lastActivity && progress <= 0 && now - lastActivity > 5 * 60 * 1000);
+    }
+    return false;
+  };
+
+  const updateRemoteDownloadProgress = (entry: DownloadEntry, progress: number) => {
+    if (!entry.remoteRequestId || !auth.currentUser) return;
+    updateDoc(doc(db, 'users', auth.currentUser.uid), {
+      [`remoteDownloadRequests.${entry.remoteRequestId}.progress`]: Math.max(0, Math.min(100, progress)),
+      [`remoteDownloadRequests.${entry.remoteRequestId}.progressUpdatedAt`]: new Date().toISOString(),
+    }).catch(() => {});
+  };
+
+  const saveSmartOfflineEntry = async (entry: DownloadEntry) => {
+    const saved = await AsyncStorage.getItem(SMART_OFFLINE_QUEUE_KEY).catch(() => null);
+    const queue: DownloadEntry[] = saved ? JSON.parse(saved) : [];
+    if (!queue.some((queued) => queued.id === entry.id)) queue.push(entry);
+    await AsyncStorage.setItem(SMART_OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    setSmartQueueCount(queue.length);
+  };
+
+  const drainSmartOfflineQueue = async () => {
+    if (smartQueueProcessingRef.current) return;
+    smartQueueProcessingRef.current = true;
+    try {
+      const state = await Network.getNetworkStateAsync();
+      if (state.type !== Network.NetworkStateType.WIFI) return;
+      const saved = await AsyncStorage.getItem(SMART_OFFLINE_QUEUE_KEY);
+      const queue: DownloadEntry[] = saved ? JSON.parse(saved) : [];
+      if (!queue.length) return;
+      await AsyncStorage.removeItem(SMART_OFFLINE_QUEUE_KEY);
+      setSmartQueueCount(0);
+      queue.forEach((entry) => enqueue({ ...entry, progress: 0, speedString: '', isPaused: false }));
+      sendLocalNotification('Smart Offline Queue', `${queue.length} download${queue.length === 1 ? '' : 's'} started on Wi-Fi.`, { type: 'smart_queue' }).catch(() => {});
+    } catch (_) {
+    } finally {
+      smartQueueProcessingRef.current = false;
+    }
+  };
 
   // ── MIGRATION CLEANUP ────────────────────────────────────────────────────────
   // This kills any legacy "Auto-downloads" by clearing the old context's keys
@@ -138,6 +351,33 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch (e) {}
     };
     cleanup();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(REMOTE_STATUS_ACK_STORAGE_KEY)
+      .then((saved) => {
+        if (!saved) return;
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) return;
+        parsed.forEach((statusKey) => {
+          if (typeof statusKey === 'string') {
+            notifiedRemoteDownloadStatusesRef.current.add(statusKey);
+          }
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SMART_OFFLINE_QUEUE_KEY)
+      .then((saved) => {
+        const queue = saved ? JSON.parse(saved) : [];
+        setSmartQueueCount(Array.isArray(queue) ? queue.length : 0);
+      })
+      .catch(() => {});
+    const timer = setInterval(drainSmartOfflineQueue, 60000);
+    drainSmartOfflineQueue();
+    return () => clearInterval(timer);
   }, []);
 
   // ── Persistence ─────────────────────────────────────────────────────────────
@@ -351,25 +591,27 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const getExternalDailyDownloadLimit = () => {
     if (isGuest) return (subscriptionData as any).hasUsedGuestTrial ? 0 : 1; // 1 Free Trial total
+    const topUpCredits = Number((subscriptionData as any).externalDownloadTopUpCredits || 0);
     const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
     if (normalizedBundle === 'none') return 0;
 
     const matchedPlan = getMatchedPlan();
-    if (!matchedPlan) return planLimits[subscriptionBundle] || 1;
+    if (!matchedPlan) return (planLimits[subscriptionBundle] || 1) + topUpCredits;
 
-    return inferExternalDailyLimit(matchedPlan);
+    return inferExternalDailyLimit(matchedPlan) + topUpCredits;
   };
 
   const getExternalTotalDownloadLimit = () => {
     if (isGuest) return (subscriptionData as any).hasUsedGuestTrial ? 0 : 1;
-    if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit;
+    const topUpCredits = Number((subscriptionData as any).externalDownloadTopUpCredits || 0);
+    if ((subscriptionData as any).customExternalLimit > 0) return (subscriptionData as any).customExternalLimit + topUpCredits;
     const normalizedBundle = subscriptionBundle ? subscriptionBundle.toLowerCase() : 'none';
     if (normalizedBundle === 'none') return 0;
 
     const matchedPlan = getMatchedPlan();
-    if (!matchedPlan) return (planLimits[subscriptionBundle] || 1) * 30; // Rough guess if plan doc missing
+    if (!matchedPlan) return ((planLimits[subscriptionBundle] || 1) * 30) + topUpCredits; // Rough guess if plan doc missing
 
-    return inferExternalTotalLimit(matchedPlan);
+    return inferExternalTotalLimit(matchedPlan) + topUpCredits;
   };
 
   const getExternalDownloadLimit = () => {
@@ -394,11 +636,202 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(e => console.warn('[Notif] Update failed:', e));
   };
 
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const resetCreditPaymentState = () => {
+    setCreditPaymentRequest(null);
+    setCreditPaymentStep('methods');
+    setCreditPaymentMethod(null);
+    setCreditPaymentPhone('');
+    setCreditCardNumber('');
+    setCreditCardExpiry('');
+    setCreditCardCVV('');
+    setCreditPaymentProcessing(false);
+    setCreditPaymentStatus('');
+    setCreditPaymentError('');
+  };
+
+  const finishCreditPayment = (success: boolean) => {
+    const resolve = creditPaymentResolveRef.current;
+    creditPaymentResolveRef.current = null;
+    resetCreditPaymentState();
+    resolve?.(success);
+  };
+
+  const getCreditPaymentPrefixes = () => {
+    if (creditPaymentMethod?.id === 'mtn') return ['077', '078', '076'];
+    if (creditPaymentMethod?.id === 'airtel') return ['070', '074', '075'];
+    return [];
+  };
+
+  const formatCreditCardNumber = (text: string) => text.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+
+  const formatCreditCardExpiry = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 4);
+    if (cleaned.length <= 2) return cleaned;
+    return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  };
+
+  const formatCreditPaymentError = (error: unknown) => {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as any).code) : '';
+    const rawMessage = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Please try again.';
+    const normalized = rawMessage.toLowerCase();
+
+    if (code === 'RELWORX_API_DISABLED' || normalized.includes('api disabled') || normalized.includes('not live') || normalized.includes('activation')) {
+      return 'Payments are not live yet on this account. Please finish Relworx API activation, then try again.';
+    }
+    if (code === 'RELWORX_NOT_CONFIGURED' || (normalized.includes('keys') && normalized.includes('missing'))) {
+      return 'Payment setup is incomplete on the server. Please contact support.';
+    }
+    if (normalized.includes('network request failed') || normalized.includes('failed to fetch')) {
+      return 'Could not reach the payment server. Check your internet and try again.';
+    }
+    return rawMessage;
+  };
+
+  const purchaseExternalDownloadCredits = async (quantity: number, entry?: DownloadEntry) => {
+    const user = auth.currentUser;
+    const safeQuantity = Math.max(1, Math.min(50, Math.floor(Number(quantity) || 1)));
+    const amount = EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX * safeQuantity;
+
+    if (!user || user.isAnonymous) {
+      Alert.alert('Sign In Required', 'Please sign in to buy an extra download credit.');
+      return false;
+    }
+
+    if (externalTopUpInProgressRef.current) {
+      Alert.alert('Payment In Progress', 'Please finish the current payment first.');
+      return false;
+    }
+
+    setCreditPaymentRequest({ quantity: safeQuantity, amount, entry });
+    setCreditPaymentStep('methods');
+    setCreditPaymentMethod(null);
+    setCreditPaymentPhone((profile?.phoneNumber || user?.phoneNumber || '').replace(/\D/g, '').slice(0, 10));
+    setCreditCardNumber('');
+    setCreditCardExpiry('');
+    setCreditCardCVV('');
+    setCreditPaymentStatus('');
+    setCreditPaymentError('');
+
+    return new Promise<boolean>((resolve) => {
+      creditPaymentResolveRef.current = resolve;
+    });
+  };
+
+  const submitCreditPayment = async () => {
+    const user = auth.currentUser;
+    const request = creditPaymentRequest;
+    const method = creditPaymentMethod;
+    if (!user || !request || !method) return;
+
+    const cleanPhone = creditPaymentPhone.replace(/\D/g, '');
+    const allowedPrefixes = getCreditPaymentPrefixes();
+    const isMobileMoney = method.id === 'mtn' || method.id === 'airtel';
+
+    if (isMobileMoney && (cleanPhone.length !== 10 || !allowedPrefixes.some(prefix => cleanPhone.startsWith(prefix)))) {
+      setCreditPaymentError(method.id === 'mtn' ? 'Enter a valid MTN number: 077, 078 or 076.' : 'Enter a valid Airtel number: 070, 074 or 075.');
+      return;
+    }
+
+    if (method.id === 'card') {
+      if (creditCardNumber.replace(/\D/g, '').length !== 16 || creditCardExpiry.length !== 5 || creditCardCVV.length < 3) {
+        setCreditPaymentError('Enter valid card details before continuing.');
+        return;
+      }
+    }
+
+    externalTopUpInProgressRef.current = true;
+    setCreditPaymentProcessing(true);
+    setCreditPaymentError('');
+    setCreditPaymentStatus(isMobileMoney ? 'Sending prompt to your phone...' : 'Opening secure card checkout...');
+
+    try {
+      const chargeResponse = await fetch(`${PAYMENT_API_BASE}/relworx-charge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: isMobileMoney ? cleanPhone : '',
+          amount: request.amount,
+          currency: 'UGX',
+          email: user.email || profile?.email || 'customer@themoviezone247.com',
+          uid: user.uid,
+          planName: 'Download Credit',
+          paymentType: 'external_download_token',
+          tokenQuantity: request.quantity,
+          paymentMethod: method.id,
+        }),
+      });
+
+      const chargeData = await chargeResponse.json();
+      if (!chargeData.success) {
+        throw new Error(chargeData.error || 'Failed to start token payment.');
+      }
+
+      if (chargeData.redirectUrl) {
+        await Linking.openURL(chargeData.redirectUrl);
+        setCreditPaymentStatus('Complete the secure checkout, then return to the app.');
+      } else {
+        setCreditPaymentStatus('Prompt sent. Approve it and enter your PIN.');
+      }
+
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await wait(3000);
+        setCreditPaymentStatus(`Waiting for confirmation... ${30 - attempt}`);
+        const verifyResponse = await fetch(`${PAYMENT_API_BASE}/verify?tx_ref=${chargeData.tx_ref}`);
+        const verifyData = await verifyResponse.json();
+
+        if (verifyData.success && verifyData.status === 'successful') {
+          showDownloadAlert(
+            'success',
+            'Download Credits Added',
+            `${request.quantity} download credit${request.quantity === 1 ? '' : 's'} added successfully.${request.entry ? ' Starting the download now.' : ''}`
+          );
+          if (request.entry) setTimeout(() => enqueue(request.entry!), 1500);
+          finishCreditPayment(true);
+          return true;
+        }
+
+        if (verifyData.status === 'failed') {
+          throw new Error('Payment failed or was cancelled.');
+        }
+      }
+
+      throw new Error('Payment is still pending. If you confirmed it, try the download again in a moment.');
+    } catch (error: any) {
+      console.warn('[DownloadContext] External download token purchase failed:', error?.message || error);
+      setCreditPaymentError(formatCreditPaymentError(error) || 'Could not add the extra download credit. Please try again.');
+      return false;
+    } finally {
+      externalTopUpInProgressRef.current = false;
+      setCreditPaymentProcessing(false);
+    }
+  };
+
+  const showExternalLimitPurchasePrompt = (entry: DownloadEntry, reason?: string) => {
+    if (isGuest) {
+      Alert.alert('Limit Reached', 'You have already used your free trial download. Please register or upgrade to continue.');
+      return;
+    }
+
+    const message = reason === 'TOTAL_LIMIT_REACHED'
+      ? `You have reached this plan's phone-storage download allowance. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`
+      : `You have reached today's phone-storage download limit. Buy 1 extra download credit for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX?`;
+
+    Alert.alert('Limit Reached', message, [
+      { text: 'Not Now', style: 'cancel' },
+      { text: `Buy for ${EXTERNAL_DOWNLOAD_TOKEN_PRICE_UGX} UGX`, onPress: () => purchaseExternalDownloadCredits(1, entry) },
+    ]);
+  };
+
   const reserveExternalDownloadSlotNow = async (entry: DownloadEntry) => {
     if (entry.mode !== 'external') return true;
 
     if (!isPaid && !isSubscribed && !isGuest) {
-      Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable external downloads.');
+      Alert.alert('Premium Required', 'Saving to your gallery is a premium feature. Upgrade to enable phone-storage downloads.');
       return false;
     }
 
@@ -410,7 +843,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const planKey = getExternalPlanKey();
 
     if (!ref || !totalRef || dailyLimit <= 0 || totalLimit <= 0) {
-      Alert.alert('Limit Reached', 'External downloads are not available on your current plan.');
+      Alert.alert('Limit Reached', 'Phone-storage downloads are not available on your current plan.');
       return false;
     }
 
@@ -466,11 +899,15 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ? (isGuest
           ? 'You have already used your free trial download. Please register or upgrade to continue.'
           : error?.message === 'TOTAL_LIMIT_REACHED'
-            ? 'You have reached the total external download allowance for this plan.'
-            : 'You have reached your daily limit for external downloads. Upgrade or wait until tomorrow.')
-        : 'Could not confirm your external download allowance. Please try again in a moment.';
+            ? "You have reached this plan's phone-storage download allowance."
+            : "You have reached today's phone-storage download limit. Upgrade or wait until tomorrow.")
+        : 'Could not confirm your download allowance. Please try again in a moment.';
       console.warn('[DownloadContext] External download limit check failed:', error?.code || error?.message || error);
-      Alert.alert(isLimitReached ? 'Limit Reached' : 'Download Limit Check Failed', message);
+      if (isLimitReached) {
+        showExternalLimitPurchasePrompt(entry, error?.message);
+      } else {
+        Alert.alert('Download Limit Check Failed', message);
+      }
       return false;
     }
   };
@@ -541,7 +978,14 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 1. Check existing queue/active state
     if (entriesRef.current[entry.id]) {
-      Alert.alert('In Progress', 'This item is already downloading or in your queue.');
+      showDownloadAlert('info', 'Download In Progress', 'This item is already downloading or in your queue.');
+      return false;
+    }
+
+    const networkState = await Network.getNetworkStateAsync().catch(() => null);
+    if (networkState && (!networkState.isConnected || networkState.type !== Network.NetworkStateType.WIFI)) {
+      await saveSmartOfflineEntry(entry).catch(() => {});
+      showDownloadAlert('info', 'Added to Smart Offline Queue', `"${entry.title}" will start automatically when this device is on Wi-Fi.`);
       return false;
     }
 
@@ -554,12 +998,15 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (isGuest && !allMoviesFree) {
         const remaining = getRemainingDownloads(); // Use same trial pool for simplicity
         if (remaining <= 0) {
-          Alert.alert('Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
+          showDownloadAlert('warning', 'Trial Limit', 'You have already used your free trial download. Please register or upgrade to continue.');
           return false;
         }
-      } else if (!hasInternalDownloadAccess) {
-        Alert.alert('Subscription Required', 'Offline viewing inside the app is a premium feature. Please upgrade to start downloading.');
-        return false;
+      } else if (!canUseInternalDownloads) {
+        const serverAllowsDownload = await hasPremiumAccessFromServer();
+        if (!serverAllowsDownload) {
+          showDownloadAlert('warning', 'Subscription Required', 'Offline viewing inside the app is a premium feature. Please upgrade to start downloading.');
+          return false;
+        }
       }
       // Paid users OR holiday mode users get internal downloads
     }
@@ -573,7 +1020,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return true;
   };
 
-  const downloadEpisode = (series: Series, episode: any, mode: 'internal' | 'external') => {
+  const downloadEpisode = (series: Series, episode: any, mode: 'internal' | 'external', remoteRequestId?: string) => {
     if (!episode || !episode.id || isEpisodeDownloaded(episode.id)) return;
     const url = getStreamUrl(episode) || episode.videoUrl || '';
     
@@ -585,14 +1032,14 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     if (!url) {
-      Alert.alert('Coming Soon', 'This episode is not available for download yet. Stay tuned!');
+      showDownloadAlert('info', 'Coming Soon', 'This episode is not available for download yet. Stay tuned.');
       return;
     }
 
     // Strict Validation: Prevent downloading if it's explicitly a preview link
     const isExplicitPreview = url.toLowerCase().includes('/preview/') || url.toLowerCase().includes('preview.mp4');
     if (series.previewUrl && url === series.previewUrl && isExplicitPreview) {
-      Alert.alert('Content Unavailable', 'This episode is currently only available as a preview and cannot be downloaded yet.');
+      showDownloadAlert('warning', 'Content Unavailable', 'This episode is currently only available as a preview and cannot be downloaded yet.');
       return;
     }
 
@@ -600,11 +1047,11 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: episode.id, title: episode.title || `${series.title} — Episode`,
       movieId: series.id, type: 'Series', poster: series.poster || '',
       progress: 0, speedString: '', isPaused: false,
-      mode, url, item: series, isEpisode: true,
+      mode, url, item: series, isEpisode: true, remoteRequestId,
     });
   };
 
-  const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external') => {
+  const downloadMovie = (movie: Movie | Series, mode: 'internal' | 'external', remoteRequestId?: string) => {
     if (!movie.id) return;
     const url = getStreamUrl(movie) || (movie as any).videoUrl || '';
     
@@ -614,13 +1061,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       previewUrl: (movie as any).previewUrl
     });
 
-    if (!url) { Alert.alert('Coming Soon', 'This movie is not available for download yet. Stay tuned!'); return; }
+    if (!url) { showDownloadAlert('info', 'Coming Soon', 'This movie is not available for download yet. Stay tuned.'); return; }
     
     // Validation: Only block if it's explicitly a preview URL (contains "preview")
     // If the URLs just happen to be equal (e.g. both resolve to same HLS playlist), we allow it
     const isExplicitPreview = url.toLowerCase().includes('/preview/') || url.toLowerCase().includes('preview.mp4');
     if ((movie as any).previewUrl && url === (movie as any).previewUrl && isExplicitPreview) {
-      Alert.alert('Content Unavailable', 'This content is currently only available as a preview and cannot be downloaded yet.');
+      showDownloadAlert('warning', 'Content Unavailable', 'This content is currently only available as a preview and cannot be downloaded yet.');
       return;
     }
 
@@ -628,9 +1075,167 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     enqueue({
       id: movie.id, title: movie.title, movieId: movie.id, type: 'Movie',
       poster: movie.poster || '', progress: 0, speedString: '', isPaused: false,
-      mode, url, item: movie, isEpisode: false,
+      mode, url, item: movie, isEpisode: false, remoteRequestId,
     });
   };
+
+  const getRemoteDownloadDeviceLabel = (id: string, index = 0) => {
+    const meta = (subscriptionData as any).activeDevicesMeta?.[id] || {};
+    const name = meta.name || `Device ${index + 1}`;
+    return `${name} (...${id.slice(-6).toUpperCase()})`;
+  };
+
+  const sanitizeRemoteDownloadData = (value: any) => JSON.parse(JSON.stringify(value ?? null));
+
+  const sendRemoteDownloadRequest = async (targetDeviceId: string, item: Movie | Series, episode?: any) => {
+    const user = auth.currentUser;
+    const currentDeviceId = (subscriptionData as any).deviceId;
+    if (!user || isGuest || !currentDeviceId) {
+      Alert.alert('Sign In Required', 'Remote downloads are only available for signed-in accounts.');
+      return;
+    }
+
+    const requestId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const userRef = doc(db, 'users', user.uid);
+
+    await updateDoc(userRef, {
+      [`remoteDownloadRequests.${requestId}`]: {
+        id: requestId,
+        status: 'pending',
+        progress: 0,
+        targetDeviceId,
+        requestedBy: currentDeviceId,
+        requestedAt: new Date().toISOString(),
+        mode: 'internal',
+        item: sanitizeRemoteDownloadData(item),
+        episode: sanitizeRemoteDownloadData(episode),
+        title: episode?.title || item.title,
+      },
+    });
+
+    setRemoteDevicePicker(null);
+    showDownloadAlert('success', 'Remote Download Sent', `Request sent to ${getRemoteDownloadDeviceLabel(targetDeviceId)}.`);
+  };
+
+  const requestRemoteDownload = (item: Movie | Series, episode?: any) => {
+    const currentDeviceId = (subscriptionData as any).deviceId;
+    const activeDeviceIds: string[] = (subscriptionData as any).activeDeviceIds || [];
+    const targets = activeDeviceIds.filter(id => id && id !== currentDeviceId);
+
+    if (isGuest || !auth.currentUser) {
+      showDownloadAlert('warning', 'Sign In Required', 'Remote downloads are only available for signed-in accounts.');
+      return;
+    }
+    if (targets.length === 0) {
+      showDownloadAlert('info', 'No Other Device', 'Sign in on another device with this same account to use remote download.');
+      return;
+    }
+
+    setRemoteDevicePicker({ item, episode, targets });
+  };
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    const currentDeviceId = (subscriptionData as any).deviceId;
+    if (!user || isGuest || !currentDeviceId) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(userRef, (snap) => {
+      const requests = snap.exists() ? (snap.data().remoteDownloadRequests || {}) : {};
+      const remoteActive: Record<string, DownloadEntry> = {};
+      Object.values(requests).forEach((request: any) => {
+        if (!request?.id) return;
+
+        const isMyRemoteRequest = (
+          request.requestedBy === currentDeviceId ||
+          request.targetDeviceId === currentDeviceId
+        );
+        const isStale = isStaleRemoteRequest(request);
+        if (isMyRemoteRequest && isStale) {
+          updateDoc(userRef, {
+            [`remoteDownloadRequests.${request.id}.status`]: 'canceled',
+            [`remoteDownloadRequests.${request.id}.completedAt`]: new Date().toISOString(),
+          }).catch(() => {});
+        }
+        if (isMyRemoteRequest && !isStale && ['pending', 'downloading'].includes(request.status)) {
+          const item = request.item;
+          const contentId = request.episode?.id || item?.id;
+          if (contentId && item) {
+            remoteActive[contentId] = {
+              id: contentId,
+              title: request.title || request.episode?.title || item.title || 'Remote download',
+              movieId: item.id || contentId,
+              poster: item.poster || '',
+              progress: Math.max(0, Math.min(100, Number(request.progress || 0))),
+              speedString: request.status === 'pending' ? 'Waiting for device' : 'Remote download',
+              isPaused: request.status === 'pending',
+              mode: 'internal',
+              url: request.episode?.videoUrl || item.videoUrl || '',
+              item,
+              isEpisode: Boolean(request.episode),
+              type: item.type,
+              remoteRequestId: request.id,
+            };
+          }
+        }
+
+        if (request.requestedBy === currentDeviceId && request.targetDeviceId !== currentDeviceId) {
+          const statusKey = `${request.id}:${request.status || 'unknown'}`;
+          if (!notifiedRemoteDownloadStatusesRef.current.has(statusKey)) {
+            const statusTime = getRemoteDownloadStatusTime(request);
+            if (statusTime && statusTime < remoteDownloadSessionStartedAtRef.current - 2000) {
+              rememberRemoteDownloadStatus(statusKey);
+              return;
+            }
+
+            if (request.status === 'downloading') {
+              rememberRemoteDownloadStatus(statusKey);
+              showDownloadAlert(
+                'success',
+                'Remote Download Started',
+                `${getRemoteDownloadDeviceLabel(request.targetDeviceId)} accepted and started downloading "${request.title || request.item?.title || 'this title'}".`
+              );
+            } else if (request.status === 'completed') {
+              rememberRemoteDownloadStatus(statusKey);
+              showDownloadAlert(
+                'success',
+                'Remote Download Finished',
+                `${getRemoteDownloadDeviceLabel(request.targetDeviceId)} finished downloading "${request.title || request.item?.title || 'this title'}".`
+              );
+            } else if (request.status === 'denied') {
+              rememberRemoteDownloadStatus(statusKey);
+              showDownloadAlert(
+                'warning',
+                'Remote Download Refused',
+                `${getRemoteDownloadDeviceLabel(request.targetDeviceId)} refused the download request for "${request.title || request.item?.title || 'this title'}".`
+              );
+            } else if (request.status === 'canceled' || request.status === 'failed') {
+              rememberRemoteDownloadStatus(statusKey);
+              showDownloadAlert(
+                'warning',
+                request.status === 'canceled' ? 'Remote Download Canceled' : 'Remote Download Failed',
+                `${getRemoteDownloadDeviceLabel(request.targetDeviceId)} ${request.status === 'canceled' ? 'canceled' : 'could not finish'} "${request.title || request.item?.title || 'this title'}".`
+              );
+            }
+          }
+        }
+
+        if (!request?.id || request.status !== 'pending' || request.targetDeviceId !== currentDeviceId) return;
+        const handledKey = `${request.id}:${request.requestedAt || ''}`;
+        if (handledRemoteDownloadRequestsRef.current.has(handledKey)) return;
+        handledRemoteDownloadRequestsRef.current.add(handledKey);
+
+        setRemoteDownloadPrompt(request);
+      });
+      setRemoteActiveDownloads(remoteActive);
+    }, (error: any) => {
+      if (error.code !== 'permission-denied') {
+        console.warn('[RemoteDownload] Listener error:', error);
+      }
+    });
+
+    return unsub;
+  }, [auth.currentUser?.uid, isGuest, (subscriptionData as any).deviceId]);
 
   const pauseDownload = (id: string) => {
     const resumable = resumablesRef.current[id];
@@ -665,6 +1270,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const resumable = resumablesRef.current[id];
     if (resumable) resumable.cancelAsync().catch(() => {});
     if (entry?.mode === 'external') releaseExternalDownloadSlot(id);
+    if (entry?.remoteRequestId && auth.currentUser) {
+      updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        [`remoteDownloadRequests.${entry.remoteRequestId}.status`]: 'canceled',
+        [`remoteDownloadRequests.${entry.remoteRequestId}.progress`]: 0,
+        [`remoteDownloadRequests.${entry.remoteRequestId}.completedAt`]: new Date().toISOString(),
+      }).catch(() => {});
+    }
     downloadNotificationManager.dismiss(id).catch(() => {});
     setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 500);
     delete resumablesRef.current[id];
@@ -694,6 +1306,13 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const resumable = resumablesRef.current[id];
       if (resumable) resumable.cancelAsync().catch(() => {});
       if (entry?.mode === 'external') releaseExternalDownloadSlot(id);
+      if (entry?.remoteRequestId && auth.currentUser) {
+        updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          [`remoteDownloadRequests.${entry.remoteRequestId}.status`]: 'canceled',
+          [`remoteDownloadRequests.${entry.remoteRequestId}.progress`]: 0,
+          [`remoteDownloadRequests.${entry.remoteRequestId}.completedAt`]: new Date().toISOString(),
+        }).catch(() => {});
+      }
       downloadNotificationManager.dismiss(id).catch(() => {});
       setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 500);
       setTimeout(() => downloadNotificationManager.dismiss(id).catch(() => {}), 1500);
@@ -858,6 +1477,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 entriesRef.current[id].speedString = speedString;
               }
               updateNotification(id, title, pct, speedString, false, false);
+              updateRemoteDownloadProgress(entry, pct);
               setActiveDownloads(prev => ({ 
                 ...prev, 
                 [id]: { ...(prev[id] || entriesRef.current[id]), progress: pct, speedString } 
@@ -915,7 +1535,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 entry.movieId,
                 isEpisode ? id : undefined
               ).catch(() => {});
-              Alert.alert('Permission Required', 'Please allow media access in your phone settings to save external downloads.');
+              Alert.alert('Permission Required', 'Please allow media access in your phone settings to save to phone storage.');
               return;
             }
 
@@ -936,6 +1556,12 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               downloads: increment(1)
             }).catch(e => console.warn('Failed to increment completed downloads:', e));
           }
+          if (auth.currentUser && !isGuest) {
+            updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              loyaltyPoints: increment(entry.remoteRequestId ? 15 : 10),
+              lastLoyaltyReason: entry.remoteRequestId ? 'Remote download completed' : 'Download completed',
+            }).catch(() => {});
+          }
 
           if (isEpisode) {
             if (mode === 'internal') {
@@ -955,9 +1581,23 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           
           completedIdsRef.current.add(id);
           updateNotification(id, title, 100, 'Complete', true);
+          if (entry.remoteRequestId && auth.currentUser) {
+            updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              [`remoteDownloadRequests.${entry.remoteRequestId}.status`]: 'completed',
+              [`remoteDownloadRequests.${entry.remoteRequestId}.progress`]: 100,
+              [`remoteDownloadRequests.${entry.remoteRequestId}.completedAt`]: new Date().toISOString(),
+            }).catch(e => console.warn('[RemoteDownload] Failed to mark completed:', e));
+          }
         } else if (!success && fatalError && !cancelledIdsRef.current.has(id)) {
           if (mode === 'external') await releaseExternalDownloadSlot(id);
           Alert.alert('Download Failed', `"${title}" - ${fatalError}`);
+          if (entry.remoteRequestId && auth.currentUser) {
+            updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              [`remoteDownloadRequests.${entry.remoteRequestId}.status`]: 'failed',
+              [`remoteDownloadRequests.${entry.remoteRequestId}.error`]: fatalError,
+              [`remoteDownloadRequests.${entry.remoteRequestId}.completedAt`]: new Date().toISOString(),
+            }).catch(() => {});
+          }
           downloadNotificationManager.notifyError(id, title, fatalError, entry.movieId, isEpisode ? id : undefined).catch(() => {});
         }
       } catch (err) {
@@ -975,13 +1615,294 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <DownloadContext.Provider value={{
-      activeDownloads, downloadQueue, episodeDownloads, downloadedMovies,
+      activeDownloads, remoteActiveDownloads, downloadQueue, episodeDownloads, downloadedMovies,
       downloadEpisode, downloadMovie, pauseDownload, resumeDownload,
       cancelDownload, deleteDownload, isEpisodeDownloaded, isMovieDownloaded,
       getRemainingDownloads, getExternalDownloadLimit, downloadsUsedToday,
-      removeDownload, verifyLocalFile, cancelSeriesDownloads,
+      removeDownload, verifyLocalFile, cancelSeriesDownloads, requestRemoteDownload, purchaseExternalDownloadCredits, smartQueueCount,
     }}>
       {children}
+      <Modal
+        visible={!!creditPaymentRequest}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!creditPaymentProcessing) finishCreditPayment(false);
+        }}
+      >
+        <View style={remoteStyles.paymentOverlay}>
+          <BlurView intensity={36} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => {
+              if (!creditPaymentProcessing) finishCreditPayment(false);
+            }}
+          />
+          <View style={remoteStyles.paymentCard}>
+            <LinearGradient
+              colors={['rgba(91,95,239,0.14)', 'rgba(20,20,30,0.98)'] as any}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={remoteStyles.paymentHandle} />
+
+            {creditPaymentStep === 'methods' ? (
+              <>
+                <View style={remoteStyles.paymentHeaderRow}>
+                  <View>
+                    <Text style={remoteStyles.paymentTitle}>Payment Method</Text>
+                    <Text style={remoteStyles.paymentSubtitle}>
+                      Pay {creditPaymentRequest?.amount.toLocaleString()} UGX for {creditPaymentRequest?.quantity} download credit{creditPaymentRequest?.quantity === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={remoteStyles.paymentCloseButton} onPress={() => finishCreditPayment(false)}>
+                    <Ionicons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={remoteStyles.methodList}>
+                  {CREDIT_PAYMENT_METHODS.map((method) => (
+                    <TouchableOpacity
+                      key={method.id}
+                      style={remoteStyles.methodButton}
+                      activeOpacity={0.82}
+                      onPress={() => {
+                        setCreditPaymentMethod(method);
+                        setCreditPaymentStep('details');
+                        setCreditPaymentError('');
+                      }}
+                    >
+                      <View style={[remoteStyles.methodIcon, { backgroundColor: `${method.color}20` }]}>
+                        <Ionicons name={method.icon as any} size={22} color={method.color} />
+                      </View>
+                      <Text style={remoteStyles.methodLabel}>{method.label}</Text>
+                      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.42)" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity style={remoteStyles.paymentCancelButton} onPress={() => finishCreditPayment(false)}>
+                  <Text style={remoteStyles.paymentCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={remoteStyles.backToMethods}
+                  onPress={() => {
+                    if (!creditPaymentProcessing) setCreditPaymentStep('methods');
+                  }}
+                  disabled={creditPaymentProcessing}
+                >
+                  <Ionicons name="arrow-back" size={22} color="#94a3b8" />
+                  <Text style={remoteStyles.backToMethodsText}>Back to Methods</Text>
+                </TouchableOpacity>
+
+                <View style={remoteStyles.detailMethodRow}>
+                  <View style={[remoteStyles.detailMethodIcon, { backgroundColor: `${creditPaymentMethod?.color || '#6366f1'}20` }]}>
+                    <Ionicons name={(creditPaymentMethod?.icon || 'card-outline') as any} size={28} color={creditPaymentMethod?.color || '#6366f1'} />
+                  </View>
+                  <View style={remoteStyles.detailMethodText}>
+                    <Text style={remoteStyles.detailMethodTitle}>{creditPaymentMethod?.label}</Text>
+                    <Text style={remoteStyles.detailMethodSubtitle}>
+                      Paying for: {creditPaymentRequest?.quantity} credits - {creditPaymentRequest?.amount.toLocaleString()} UGX
+                    </Text>
+                  </View>
+                </View>
+
+                {(creditPaymentMethod?.id === 'mtn' || creditPaymentMethod?.id === 'airtel') ? (
+                  <View style={remoteStyles.paymentForm}>
+                    <Text style={remoteStyles.inputLabel}>
+                      {creditPaymentMethod.id === 'mtn' ? 'MTN Mobile Money Number' : 'Airtel Money Number'}
+                    </Text>
+                    <View style={remoteStyles.prefixRow}>
+                      {getCreditPaymentPrefixes().map((prefix) => (
+                        <TouchableOpacity
+                          key={prefix}
+                          style={[
+                            remoteStyles.prefixChip,
+                            creditPaymentPhone.startsWith(prefix) && {
+                              borderColor: creditPaymentMethod.color,
+                              backgroundColor: `${creditPaymentMethod.color}25`,
+                            },
+                          ]}
+                          onPress={() => setCreditPaymentPhone(prefix)}
+                          disabled={creditPaymentProcessing}
+                        >
+                          <Text style={[
+                            remoteStyles.prefixText,
+                            creditPaymentPhone.startsWith(prefix) && { color: creditPaymentMethod.color },
+                          ]}>{prefix}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={[
+                      remoteStyles.inputWrap,
+                      creditPaymentPhone.length === 10 && getCreditPaymentPrefixes().some(prefix => creditPaymentPhone.startsWith(prefix)) && {
+                        borderColor: creditPaymentMethod.color,
+                      },
+                    ]}>
+                      <Ionicons name="phone-portrait-outline" size={22} color={creditPaymentMethod.color} />
+                      <TextInput
+                        style={remoteStyles.paymentInput}
+                        value={creditPaymentPhone}
+                        onChangeText={(text) => setCreditPaymentPhone(text.replace(/\D/g, '').slice(0, 10))}
+                        placeholder={creditPaymentMethod.id === 'mtn' ? '077XXXXXXX' : '070XXXXXXX'}
+                        placeholderTextColor="rgba(255,255,255,0.22)"
+                        keyboardType="phone-pad"
+                        maxLength={10}
+                        editable={!creditPaymentProcessing}
+                      />
+                    </View>
+                    <Text style={remoteStyles.methodHint}>
+                      You will receive a prompt on your {creditPaymentMethod.id === 'mtn' ? 'MTN' : 'Airtel'} number to approve the payment.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={remoteStyles.paymentForm}>
+                    <Text style={remoteStyles.inputLabel}>Card Number</Text>
+                    <View style={remoteStyles.inputWrap}>
+                      <Ionicons name="card-outline" size={22} color="#6366f1" />
+                      <TextInput
+                        style={remoteStyles.paymentInput}
+                        value={creditCardNumber}
+                        onChangeText={(text) => setCreditCardNumber(formatCreditCardNumber(text))}
+                        placeholder="1234 5678 9012 3456"
+                        placeholderTextColor="rgba(255,255,255,0.22)"
+                        keyboardType="number-pad"
+                        maxLength={19}
+                        editable={!creditPaymentProcessing}
+                      />
+                    </View>
+                    <View style={remoteStyles.cardFieldRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={remoteStyles.inputLabel}>Expiry</Text>
+                        <View style={remoteStyles.inputWrap}>
+                          <TextInput
+                            style={remoteStyles.paymentInput}
+                            value={creditCardExpiry}
+                            onChangeText={(text) => setCreditCardExpiry(formatCreditCardExpiry(text))}
+                            placeholder="MM/YY"
+                            placeholderTextColor="rgba(255,255,255,0.22)"
+                            keyboardType="number-pad"
+                            maxLength={5}
+                            editable={!creditPaymentProcessing}
+                          />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={remoteStyles.inputLabel}>CVV</Text>
+                        <View style={remoteStyles.inputWrap}>
+                          <TextInput
+                            style={remoteStyles.paymentInput}
+                            value={creditCardCVV}
+                            onChangeText={(text) => setCreditCardCVV(text.replace(/\D/g, '').slice(0, 4))}
+                            placeholder="123"
+                            placeholderTextColor="rgba(255,255,255,0.22)"
+                            keyboardType="number-pad"
+                            secureTextEntry
+                            editable={!creditPaymentProcessing}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={remoteStyles.methodHint}>
+                      Your bank may ask for an OTP or 3D Secure confirmation.
+                    </Text>
+                  </View>
+                )}
+
+                {!!creditPaymentError && (
+                  <View style={remoteStyles.paymentErrorBox}>
+                    <Ionicons name="alert-circle" size={15} color="#ef4444" />
+                    <Text style={remoteStyles.paymentErrorText}>{creditPaymentError}</Text>
+                  </View>
+                )}
+                {!!creditPaymentStatus && (
+                  <Text style={remoteStyles.paymentStatusText}>{creditPaymentStatus}</Text>
+                )}
+
+                <TouchableOpacity
+                  style={[remoteStyles.payButton, creditPaymentProcessing && { opacity: 0.7 }]}
+                  activeOpacity={0.86}
+                  onPress={submitCreditPayment}
+                  disabled={creditPaymentProcessing}
+                >
+                  {creditPaymentProcessing ? (
+                    <ActivityIndicator color="#111" />
+                  ) : (
+                    <Ionicons name="shield-checkmark" size={22} color="#111" />
+                  )}
+                  <Text style={remoteStyles.payButtonText}>
+                    {creditPaymentProcessing ? 'Processing...' : `PAY ${creditPaymentRequest?.amount.toLocaleString()} UGX`}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={!!remoteDevicePicker}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setRemoteDevicePicker(null)}
+      >
+        <View style={remoteStyles.overlay}>
+          <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={remoteStyles.card}>
+            <LinearGradient colors={['rgba(77,159,255,0.2)', 'rgba(18,18,28,0.98)'] as any} style={StyleSheet.absoluteFillObject} />
+            <View style={remoteStyles.iconWrap}>
+              <Ionicons name="phone-landscape-outline" size={32} color="#fff" />
+            </View>
+            <Text style={remoteStyles.title}>Remote Download</Text>
+            <Text style={remoteStyles.message}>
+              Choose where to download "{remoteDevicePicker?.episode?.title || remoteDevicePicker?.item?.title || 'this title'}".
+            </Text>
+            <ScrollView style={remoteStyles.deviceList} contentContainerStyle={remoteStyles.deviceListInner}>
+              {remoteDevicePicker?.targets.map((id, index) => (
+                <TouchableOpacity
+                  key={id}
+                  style={remoteStyles.deviceButton}
+                  activeOpacity={0.8}
+                  onPress={() => sendRemoteDownloadRequest(id, remoteDevicePicker.item, remoteDevicePicker.episode).catch((error) => {
+                    console.warn('[RemoteDownload] Failed to send request:', error);
+                    showDownloadAlert('error', 'Request Failed', 'Could not send the remote download request. Please try again.');
+                  })}
+                >
+                  <View style={remoteStyles.deviceIcon}>
+                    <Ionicons name="tablet-landscape-outline" size={18} color="#4D9FFF" />
+                  </View>
+                  <Text style={remoteStyles.deviceText}>{getRemoteDownloadDeviceLabel(id, index)}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.45)" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={remoteStyles.cancelButton} onPress={() => setRemoteDevicePicker(null)} activeOpacity={0.8}>
+              <Text style={remoteStyles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <DownloadSuccessModal
+        visible={downloadAlert.visible}
+        type={downloadAlert.type}
+        title={downloadAlert.title}
+        message={downloadAlert.message}
+        onClose={() => setDownloadAlert(prev => ({ ...prev, visible: false }))}
+      />
+      <DownloadSuccessModal
+        visible={!!remoteDownloadPrompt}
+        type="info"
+        title="Remote Download Request"
+        message={`Download "${remoteDownloadPrompt?.title || remoteDownloadPrompt?.item?.title || 'this title'}" on this device?`}
+        primaryLabel="Download"
+        secondaryLabel="No"
+        onClose={() => respondToRemoteDownloadRequest(remoteDownloadPrompt, true)}
+        onSecondary={() => respondToRemoteDownloadRequest(remoteDownloadPrompt, false)}
+      />
     </DownloadContext.Provider>
   );
 };
@@ -991,3 +1912,322 @@ export const useDownloads = () => {
   if (context === undefined) throw new Error('useDownloads must be used within a DownloadProvider');
   return context;
 };
+
+const remoteStyles = StyleSheet.create({
+  paymentOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    padding: 24,
+  },
+  paymentCard: {
+    width: '100%',
+    maxWidth: 390,
+    borderRadius: 30,
+    overflow: 'hidden',
+    padding: 20,
+    backgroundColor: 'rgba(20,20,30,0.98)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  paymentHandle: {
+    width: 46,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  paymentHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 14,
+    marginBottom: 18,
+  },
+  paymentTitle: {
+    color: '#fff',
+    fontSize: 25,
+    fontWeight: '900',
+  },
+  paymentSubtitle: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  paymentCloseButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  methodList: {
+    gap: 10,
+  },
+  methodButton: {
+    minHeight: 70,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  methodIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodLabel: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  paymentCancelButton: {
+    height: 58,
+    borderRadius: 18,
+    marginTop: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  paymentCancelText: {
+    color: '#94a3b8',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  backToMethods: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 22,
+  },
+  backToMethodsText: {
+    color: '#94a3b8',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  detailMethodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 24,
+  },
+  detailMethodIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailMethodText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailMethodTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  detailMethodSubtitle: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  paymentForm: {
+    gap: 12,
+  },
+  inputLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  prefixRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  prefixChip: {
+    minWidth: 54,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  prefixText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  inputWrap: {
+    minHeight: 62,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  paymentInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    paddingVertical: 0,
+  },
+  methodHint: {
+    color: '#64748b',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  cardFieldRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  paymentErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(239,68,68,0.22)',
+  },
+  paymentErrorText: {
+    flex: 1,
+    color: '#fecaca',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  paymentStatusText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  payButton: {
+    marginTop: 20,
+    height: 64,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  payButtonText: {
+    color: '#111',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    padding: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 28,
+    overflow: 'hidden',
+    padding: 24,
+    alignItems: 'center',
+    backgroundColor: 'rgba(18,18,28,0.98)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  iconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1d9bf0',
+    marginBottom: 16,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  message: {
+    color: 'rgba(255,255,255,0.66)',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  deviceList: {
+    width: '100%',
+    maxHeight: 220,
+  },
+  deviceListInner: {
+    gap: 10,
+  },
+  deviceButton: {
+    width: '100%',
+    minHeight: 56,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  deviceIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(77,159,255,0.14)',
+  },
+  deviceText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cancelButton: {
+    marginTop: 16,
+    width: '100%',
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  cancelText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});

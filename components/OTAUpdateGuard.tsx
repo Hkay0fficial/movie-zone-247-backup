@@ -24,18 +24,22 @@ export default function OTAUpdateGuard() {
   const { playerMode } = useSubscription();
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [snoozedUntil, setSnoozedUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const [error, setError] = useState<string | null>(null);
 
   const checkUpdates = async () => {
     if (__DEV__) return;
 
     try {
+      if (isDownloading || updateAvailable) return;
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
         setIsDownloading(true);
         const fetchResult = await Updates.fetchUpdateAsync();
         if (fetchResult.isNew) {
           setUpdateAvailable(true);
+          setSnoozedUntil(0);
         }
         setIsDownloading(false);
       }
@@ -45,23 +49,21 @@ export default function OTAUpdateGuard() {
     }
   };
 
-  // Auto-reload when safe
-  useEffect(() => {
-    if (updateAvailable && (playerMode === 'closed' || playerMode === 'mini')) {
-      Updates.reloadAsync();
-    }
-  }, [updateAvailable, playerMode]);
+  const canPrompt = updateAvailable && now >= snoozedUntil && playerMode === 'closed';
 
   useEffect(() => {
     checkUpdates();
+    const timer = setInterval(() => setNow(Date.now()), 60000);
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
+        setNow(Date.now());
         checkUpdates();
       }
     });
 
     return () => {
+      clearInterval(timer);
       subscription.remove();
     };
   }, []);
@@ -74,7 +76,7 @@ export default function OTAUpdateGuard() {
     }
   };
 
-  if (!updateAvailable) {
+  if (!canPrompt) {
     // Optional: Show a subtle indicator while downloading if desired
     return null;
   }
@@ -102,9 +104,9 @@ export default function OTAUpdateGuard() {
                </LinearGradient>
              </View>
 
-             <Text style={styles.title}>Update Ready! 🚀</Text>
+             <Text style={styles.title}>Update ready</Text>
              <Text style={styles.subtitle}>
-               A new version of THE MOVIE ZONE 24/7 is ready with latest movies, fixes and improvements.
+               A new version is ready. Restart now or keep watching and update later.
              </Text>
 
              <TouchableOpacity 
@@ -124,7 +126,7 @@ export default function OTAUpdateGuard() {
              </TouchableOpacity>
 
              <TouchableOpacity 
-                onPress={() => setUpdateAvailable(false)}
+                onPress={() => setSnoozedUntil(Date.now() + 30 * 60 * 1000)}
                 style={styles.dismissBtn}
              >
                 <Text style={styles.dismissText}>Later</Text>

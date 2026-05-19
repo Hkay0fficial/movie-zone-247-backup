@@ -120,6 +120,9 @@ const SEARCH_OPTIONS = [
   "By Year",
 ];
 
+type SearchScope = "All" | "Movies" | "Series" | "VJs" | "Genres";
+const SEARCH_SCOPES: SearchScope[] = ["All", "Movies", "Series", "VJs", "Genres"];
+
 const DISCOVERY_GENRES = [
   { name: "By VJ", color: "rgba(251,146,60,0.15)", border: "#fb923c" },
   { name: "By Year", color: "rgba(129,140,248,0.15)", border: "#818cf8" },
@@ -241,6 +244,8 @@ interface Notification {
 }
 
 const MOCK_NOTIFICATIONS: Notification[] = [];
+type NotificationFilter = "All" | "Unread" | "Movies" | "Series" | "Downloads" | "Account";
+const NOTIFICATION_FILTERS: NotificationFilter[] = ["All", "Unread", "Movies", "Series", "Downloads", "Account"];
 
 // ─── Notification Overlay ───────────────────────────────────────────────────
 function NotificationOverlay({
@@ -271,6 +276,7 @@ function NotificationOverlay({
   setGlobalGridTitle,
   setGlobalGridData,
   setGlobalGridVisible,
+  setGlobalGridCoveredByDetail,
   notifications,
   highlightedId,
   markAllRead,
@@ -304,6 +310,7 @@ function NotificationOverlay({
   setGlobalGridTitle: (title: string) => void;
   setGlobalGridData: (data: (Movie | Series)[]) => void;
   setGlobalGridVisible: (visible: boolean) => void;
+  setGlobalGridCoveredByDetail: (covered: boolean) => void;
   notifications: Notification[];
   highlightedId: string | null;
   markAllRead: () => void;
@@ -313,6 +320,7 @@ function NotificationOverlay({
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState<NotificationFilter>("All");
 
   useEffect(() => {
     if (visible && highlightedId) {
@@ -349,6 +357,14 @@ function NotificationOverlay({
     };
   };
 
+  const getNotificationFilter = (item: Notification): NotificationFilter => {
+    if (item.id.startsWith("dl_") || item.icon === "cloud-download") return "Downloads";
+    if (item.movieId || item.type === "movie" || item.moviesList?.length) return "Movies";
+    if (item.seriesList?.length || item.epRange || item.icon === "tv") return "Series";
+    if (item.type === "rating" || item.route?.includes("menu") || item.icon === "shield-checkmark") return "Account";
+    return "All";
+  };
+
   const displayNotifications = useMemo(() => {
     const unread = notifications.filter((n) => {
       if (n.id === "n2") return !isUpdateApplied;
@@ -359,8 +375,20 @@ function NotificationOverlay({
       if (n.id === "n2" || n.type === "rating") return false;
       return readIds.has(n.id);
     });
-    return [...unread, ...read];
-  }, [notifications, isUpdateApplied, isRatingPermanentlyRemoved, readIds]);
+    const ordered = [...unread, ...read];
+    if (activeFilter === "All") return ordered;
+    if (activeFilter === "Unread") return unread;
+    return ordered.filter((item) => getNotificationFilter(item) === activeFilter);
+  }, [notifications, isUpdateApplied, isRatingPermanentlyRemoved, readIds, activeFilter]);
+
+  const filterCounts = useMemo(() => {
+    return NOTIFICATION_FILTERS.reduce((acc, filter) => {
+      if (filter === "All") acc[filter] = notifications.length;
+      else if (filter === "Unread") acc[filter] = notifications.filter((n) => !readIds.has(n.id)).length;
+      else acc[filter] = notifications.filter((n) => getNotificationFilter(n) === filter).length;
+      return acc;
+    }, {} as Record<NotificationFilter, number>);
+  }, [notifications, readIds]);
 
   useEffect(() => {
     if (visible && !coveredByDetail) {
@@ -454,6 +482,35 @@ function NotificationOverlay({
                   )}
                 </View>
               </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.notificationFilterRow}
+              >
+                {NOTIFICATION_FILTERS.map((filter) => {
+                  const isActive = activeFilter === filter;
+                  return (
+                    <TouchableOpacity
+                      key={filter}
+                      onPress={() => setActiveFilter(filter)}
+                      style={[styles.notificationFilterChip, isActive && styles.notificationFilterChipActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.notificationFilterText, isActive && styles.notificationFilterTextActive]}>
+                        {filter}
+                      </Text>
+                      {filterCounts[filter] > 0 && (
+                        <View style={[styles.notificationFilterCount, isActive && styles.notificationFilterCountActive]}>
+                          <Text style={[styles.notificationFilterCountText, isActive && styles.notificationFilterCountTextActive]}>
+                            {filterCounts[filter] > 99 ? "99+" : filterCounts[filter]}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
               <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -644,6 +701,9 @@ function NotificationOverlay({
                                   const movieIds = new Set(item.moviesList?.map((m: any) => m.id) || []);
                                   const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => movieIds.has(m.id));
                                   if (gridData.length > 0) {
+                                    setReopenOnBack(true);
+                                    setCoveredByDetail(true);
+                                    setGlobalGridCoveredByDetail(false);
                                     setGlobalGridTitle(`${item.title} - Movies`);
                                     setGlobalGridData(gridData);
                                     setGlobalGridVisible(true);
@@ -666,6 +726,9 @@ function NotificationOverlay({
                                   const seriesIds = new Set(item.seriesList?.map((s: any) => s.id) || []);
                                   const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => seriesIds.has(m.id));
                                   if (gridData.length > 0) {
+                                    setReopenOnBack(true);
+                                    setCoveredByDetail(true);
+                                    setGlobalGridCoveredByDetail(false);
                                     setGlobalGridTitle(`${item.title} - Series`);
                                     setGlobalGridData(gridData);
                                     setGlobalGridVisible(true);
@@ -689,6 +752,9 @@ function NotificationOverlay({
                                         const vjName = vj.name.toLowerCase();
                                         const gridData = TOTAL_LIVE_ITEMS.filter((m: any) => m.vj?.toLowerCase() === vjName || m.vj?.toLowerCase().includes(vjName));
                                         if (gridData.length > 0) {
+                                          setReopenOnBack(true);
+                                          setCoveredByDetail(true);
+                                          setGlobalGridCoveredByDetail(false);
                                           setGlobalGridTitle(`${vj.name} - Collection`);
                                           setGlobalGridData(gridData);
                                           setGlobalGridVisible(true);
@@ -802,12 +868,22 @@ function NotificationOverlay({
   );
 }
 
-function PreviewOpeningOverlay({ visible }: { visible: boolean }) {
+function PreviewOpeningOverlay({
+  visible,
+  title = "Opening preview",
+}: {
+  visible: boolean;
+  title?: string;
+}) {
   if (!visible) return null;
 
   return (
     <View style={styles.previewOpeningOverlay} pointerEvents="auto">
       <View style={styles.previewOpeningBackdrop} />
+      <View style={styles.previewOpeningStatus}>
+        <ActivityIndicator size="small" color="#5B5FEF" />
+        <Text style={styles.previewOpeningStatusText}>{title}</Text>
+      </View>
       <View style={styles.previewOpeningHero}>
         <SkeletonLoader width="100%" height="100%" borderRadius={22} />
       </View>
@@ -918,6 +994,7 @@ function SearchOverlay({
   onSelect,
   vjOnly = false,
   autoFocusRequested = false,
+  initialScope = "All",
 }: {
   visible: boolean;
   coveredByDetail?: boolean;
@@ -925,6 +1002,7 @@ function SearchOverlay({
   onSelect: (m: Movie | Series) => void;
   vjOnly?: boolean;
   autoFocusRequested?: boolean;
+  initialScope?: SearchScope;
 }) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [query, setQuery] = useState("");
@@ -945,6 +1023,7 @@ function SearchOverlay({
   const [yearCategory, setYearCategory] = useState<"new" | "oldest">("new");
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [scope, setScope] = useState<SearchScope>(initialScope);
 
   useEffect(() => {
     if (query.length > 0) {
@@ -1000,6 +1079,34 @@ function SearchOverlay({
     }
   };
 
+  useEffect(() => {
+    if (!visible) return;
+    setScope(vjOnly ? "VJs" : initialScope);
+    if (initialScope === "Movies") setSelectedType("Movie");
+    if (initialScope === "Series") setSelectedType("Series");
+    if (initialScope === "All" && !vjOnly) setSelectedType(null);
+  }, [visible, initialScope, vjOnly]);
+
+  const setSearchScope = (nextScope: SearchScope) => {
+    setScope(nextScope);
+    setExpandedFilter(null);
+    setSelectedGenre(null);
+    setSelectedVJ(null);
+    setSelectedYear(null);
+    setSelectedSeason(null);
+    if (nextScope === "All") setSelectedType(null);
+    if (nextScope === "Movies") setSelectedType("Movie");
+    if (nextScope === "Series") setSelectedType("Series");
+    if (nextScope === "VJs") {
+      setSelectedType(null);
+      setQuery("");
+    }
+    if (nextScope === "Genres") {
+      setSelectedType(null);
+      setQuery("");
+    }
+  };
+
   const inputRef = useRef<TextInput>(null);
   const resultsRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
@@ -1032,6 +1139,10 @@ function SearchOverlay({
   }, []);
 
   const getPlaceholderText = () => {
+    if (scope === "Series") return "Search series, episodes, VJs, year";
+    if (scope === "Movies") return "Search movies, genres, VJs, year";
+    if (scope === "VJs") return "Choose or search a VJ";
+    if (scope === "Genres") return "Choose or search a genre";
     if (!selectedGenre && !selectedYear && !selectedVJ)
       return "Search movies, series, genres, VJs, year";
 
@@ -1157,6 +1268,8 @@ function SearchOverlay({
       }
 
       let filtered = base;
+      if (scope === "Movies") filtered = filtered.filter((m) => !("seasons" in m));
+      if (scope === "Series") filtered = filtered.filter((m) => "seasons" in m);
       if (selectedVJ) {
         const vjQ = selectedVJ.toLowerCase();
         const vjName = vjQ.startsWith("vj ") ? vjQ : "vj " + vjQ;
@@ -1202,6 +1315,9 @@ function SearchOverlay({
   const renderFilters = () => (
     <View style={styles.resultsHeader} />
   );
+
+  const showVjPicker = !isFiltering && (vjOnly || scope === "VJs");
+  const showGenrePicker = !isFiltering && scope === "Genres";
 
   useEffect(() => {
     if (visible && !coveredByDetail) {
@@ -1392,6 +1508,31 @@ function SearchOverlay({
             marginHorizontal: 0,
           }} />
 
+          <View style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#0a0a0f' }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={{ gap: 8 }}>
+              {SEARCH_SCOPES.map((item) => {
+                const activeScope = scope === item;
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    activeOpacity={0.8}
+                    onPress={() => setSearchScope(item)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 18,
+                      backgroundColor: activeScope ? 'rgba(91,95,239,0.85)' : 'rgba(255,255,255,0.07)',
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: activeScope ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.14)',
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: activeScope ? '900' : '700' }}>{item}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           <View style={{ flex: 1 }}>
 
                 {isFiltering ? (
@@ -1482,7 +1623,7 @@ function SearchOverlay({
                     keyboardShouldPersistTaps="always"
                     contentContainerStyle={{ paddingBottom: 160 }}
                   >
-                    {!vjOnly && (
+                    {!vjOnly && scope !== "VJs" && scope !== "Genres" && (
                       <View>
                         {youMayAlsoLike.length > 0 && (
                           <View style={styles.discoverySection}>
@@ -1567,7 +1708,30 @@ function SearchOverlay({
                       </View>
                     )}
 
-                    {vjOnly && (
+                    {showGenrePicker && (
+                      <View style={styles.discoverySection}>
+                        <View style={styles.vjGlassWell}>
+                          <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
+                          <View style={styles.trendingWrap}>
+                            {ALL_GENRES.map((genre) => (
+                              <TouchableOpacity
+                                key={genre}
+                                style={styles.discoveryChip}
+                                onPress={() => {
+                                  setSelectedGenre(genre);
+                                  setScope("All");
+                                }}
+                              >
+                                <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+                                <Text style={styles.trendingText}>{genre}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    {showVjPicker && (
                       <View style={styles.discoverySection}>
                         <View style={styles.vjGlassWell}>
                           <BlurView
@@ -1580,7 +1744,10 @@ function SearchOverlay({
                               <TouchableOpacity
                                 key={vj}
                                 style={styles.discoveryChip}
-                                onPress={() => setSelectedVJ(vj)}
+                                onPress={() => {
+                                  setSelectedVJ(vj);
+                                  setScope("All");
+                                }}
                               >
                                 <BlurView
                                   intensity={35}
@@ -1599,7 +1766,7 @@ function SearchOverlay({
               </View>
 
               {/* ── Bottom Quick Search / Sections ── */}
-              {!isFiltering && !vjOnly && (
+              {!isFiltering && !vjOnly && scope !== "VJs" && scope !== "Genres" && (
                 <KeyboardAvoidingView
                   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                   style={[
@@ -1757,6 +1924,7 @@ function CustomTabBar() {
 
   const [searchVjOnly, setSearchVjOnly] = useState(false);
   const [searchAutoFocus, setSearchAutoFocus] = useState(false);
+  const [searchScope, setSearchScope] = useState<SearchScope>("All");
   const [searchCoveredByDetail, setSearchCoveredByDetail] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notificationCoveredByDetail, setNotificationCoveredByDetail] = useState(false);
@@ -1773,7 +1941,9 @@ function CustomTabBar() {
   const [isRatingPermanentlyRemoved, setIsRatingPermanentlyRemoved] = useState(false);
   const [isDetailStackVisible, setIsDetailStackVisible] = useState(false);
   const [previewOpeningVisible, setPreviewOpeningVisible] = useState(false);
+  const [searchOpeningVisible, setSearchOpeningVisible] = useState(false);
   const previewOpeningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchOpeningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showPreviewOpening = useCallback(() => {
     if (previewOpeningTimerRef.current) {
@@ -1792,6 +1962,25 @@ function CustomTabBar() {
       previewOpeningTimerRef.current = null;
     }
     setPreviewOpeningVisible(false);
+  }, []);
+
+  const showSearchOpening = useCallback(() => {
+    if (searchOpeningTimerRef.current) {
+      clearTimeout(searchOpeningTimerRef.current);
+    }
+    setSearchOpeningVisible(true);
+    searchOpeningTimerRef.current = setTimeout(() => {
+      setSearchOpeningVisible(false);
+      searchOpeningTimerRef.current = null;
+    }, 420);
+  }, []);
+
+  const hideSearchOpening = useCallback(() => {
+    if (searchOpeningTimerRef.current) {
+      clearTimeout(searchOpeningTimerRef.current);
+      searchOpeningTimerRef.current = null;
+    }
+    setSearchOpeningVisible(false);
   }, []);
 
   const openMoviePreviewOnHome = useCallback((movie: Movie | Series) => {
@@ -1858,30 +2047,45 @@ function CustomTabBar() {
   }, [isUpdateApplied, isStateLoaded]);
 
   const shouldReopenRef = useRef(false);
+  const suppressPreviewReopenRef = useRef(false);
   useEffect(() => {
     shouldReopenRef.current = shouldReopenSearch;
   }, [shouldReopenSearch]);
 
   useEffect(() => {
+    const deferPreviewStateUpdate = (update: () => void) => {
+      requestAnimationFrame(() => {
+        update();
+      });
+    };
+
     const closingSub = DeviceEventEmitter.addListener("previewClosing", (event?: { remainingDepth?: number }) => {
-      if (shouldReopenRef.current && typeof event?.remainingDepth === "number" && event.remainingDepth === 0) {
-        setSearchCoveredByDetail(false);
-        setSearchVisible(true);
-        setShouldReopenSearch(false);
+      if (!suppressPreviewReopenRef.current && shouldReopenRef.current && typeof event?.remainingDepth === "number" && event.remainingDepth === 0) {
+        deferPreviewStateUpdate(() => {
+          setSearchCoveredByDetail(false);
+          setSearchVisible(true);
+          setShouldReopenSearch(false);
+        });
       }
       if (typeof event?.remainingDepth === "number" && event.remainingDepth === 0) {
-        setNotificationCoveredByDetail(false);
-        setGlobalGridCoveredByDetail(false);
+        deferPreviewStateUpdate(() => {
+          setNotificationCoveredByDetail(false);
+          setGlobalGridCoveredByDetail(false);
+        });
       }
     });
     const sub = DeviceEventEmitter.addListener("previewClosed", () => {
-      if (shouldReopenRef.current) {
-        setSearchCoveredByDetail(false);
-        setSearchVisible(true);
-        setShouldReopenSearch(false);
+      if (!suppressPreviewReopenRef.current && shouldReopenRef.current) {
+        deferPreviewStateUpdate(() => {
+          setSearchCoveredByDetail(false);
+          setSearchVisible(true);
+          setShouldReopenSearch(false);
+        });
       }
-      setNotificationCoveredByDetail(false);
-      setGlobalGridCoveredByDetail(false);
+      deferPreviewStateUpdate(() => {
+        setNotificationCoveredByDetail(false);
+        setGlobalGridCoveredByDetail(false);
+      });
     });
     return () => {
       closingSub.remove();
@@ -1893,7 +2097,7 @@ function CustomTabBar() {
   useEffect(() => {
     // If we were on the saved tab (Series detail) and we move back to another tab
     // and we were previously searching, re-open the search.
-    if (prevPath.current === "/(tabs)/saved" && path !== "/(tabs)/saved" && shouldReopenRef.current) {
+    if (prevPath.current === "/(tabs)/saved" && path !== "/(tabs)/saved" && shouldReopenRef.current && !suppressPreviewReopenRef.current) {
       setSearchCoveredByDetail(false);
       setSearchVisible(true);
       setShouldReopenSearch(false);
@@ -1912,6 +2116,11 @@ function CustomTabBar() {
   // Emit events when search or notification overlays are toggled to auto-mute hero video
   useEffect(() => {
     DeviceEventEmitter.emit("searchOverlayVisible", searchVisible);
+    if (searchVisible) {
+      setNotificationVisible(false);
+      setNotificationCoveredByDetail(false);
+      setReopenOnBack(false);
+    }
   }, [searchVisible]);
 
   useEffect(() => {
@@ -2121,14 +2330,34 @@ function CustomTabBar() {
     const sub = DeviceEventEmitter.addListener("clearSeriesSearch", () => {
       setInPlaceSearchQuery("");
     });
-    const sub2 = DeviceEventEmitter.addListener("openSearchOverlay", (data?: { autoFocus?: boolean }) => {
+    const sub2 = DeviceEventEmitter.addListener("openSearchOverlay", (data?: { autoFocus?: boolean; scope?: SearchScope; vjOnly?: boolean }) => {
+      suppressPreviewReopenRef.current = true;
+      Keyboard.dismiss();
+      hidePreviewOpening();
+      showSearchOpening();
+      setNotificationVisible(false);
+      setNotificationCoveredByDetail(false);
+      setGlobalGridVisible(false);
+      setGlobalGridCoveredByDetail(false);
+      setReopenOnBack(false);
+      setLastViewedItemId(null);
+      setShouldReopenSearch(false);
+      setIsDetailStackVisible(false);
       // Force a re-trigger of focus by setting to false first if already true
       setSearchAutoFocus(false);
       setSearchCoveredByDetail(false);
-      setSearchVisible(true);
-      if (data?.autoFocus) {
-        setTimeout(() => setSearchAutoFocus(true), 50);
-      }
+      setSearchVjOnly(Boolean(data?.vjOnly));
+      setSearchScope(data?.scope || (data?.vjOnly ? "VJs" : "All"));
+      requestAnimationFrame(() => {
+        setSearchVisible(true);
+        setTimeout(hideSearchOpening, 120);
+        if (data?.autoFocus) {
+          setTimeout(() => setSearchAutoFocus(true), 180);
+        }
+      });
+      setTimeout(() => {
+        suppressPreviewReopenRef.current = false;
+      }, 700);
     });
     const sub3 = DeviceEventEmitter.addListener("homeHeaderScroll", (y: number) => {
       setHomeScrollY(y);
@@ -2149,9 +2378,31 @@ function CustomTabBar() {
     });
 
     const sub5 = DeviceEventEmitter.addListener("openSeriesLibrarySearch", (series: any) => {
+      suppressPreviewReopenRef.current = true;
+      hidePreviewOpening();
+      showSearchOpening();
+      setNotificationVisible(false);
+      setNotificationCoveredByDetail(false);
+      setGlobalGridVisible(false);
+      setGlobalGridCoveredByDetail(false);
+      setReopenOnBack(false);
+      setLastViewedItemId(null);
+      setShouldReopenSearch(false);
+      setIsDetailStackVisible(false);
+      setShowInPlaceSearch(false);
+      setInPlaceSearchQuery("");
       setReturnSeries(series);
-      setShowInPlaceSearch(true);
-      DeviceEventEmitter.emit("seriesSearchQuery", "");
+      requestAnimationFrame(() => {
+        setSearchVisible(true);
+        setSearchCoveredByDetail(false);
+        setSearchVjOnly(false);
+        setSearchScope("Series");
+        setTimeout(hideSearchOpening, 120);
+        setTimeout(() => setSearchAutoFocus(true), 180);
+      });
+      setTimeout(() => {
+        suppressPreviewReopenRef.current = false;
+      }, 700);
     });
 
     const sub6 = DeviceEventEmitter.addListener("openNotifications", (data?: { highlightId: string }) => {
@@ -2186,7 +2437,7 @@ function CustomTabBar() {
       sub8.remove();
       sub9.remove();
     };
-  }, [showPreviewOpening, hidePreviewOpening]);
+  }, [showPreviewOpening, hidePreviewOpening, showSearchOpening, hideSearchOpening]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -2281,7 +2532,7 @@ function CustomTabBar() {
 
   // Auto-reopen overlay when returning home if navigate from sub-item
   useEffect(() => {
-    if (reopenOnBack && path === "/(tabs)") {
+    if (reopenOnBack && path === "/(tabs)" && !suppressPreviewReopenRef.current) {
       if (lastViewedItemId) {
         toggleCheckedItem(lastViewedItemId);
         setLastViewedItemId(null);
@@ -2293,20 +2544,28 @@ function CustomTabBar() {
   }, [path, reopenOnBack, lastViewedItemId, hidePreviewOpening]);
 
   useEffect(() => {
+    const deferPreviewStateUpdate = (update: () => void) => {
+      requestAnimationFrame(() => {
+        update();
+      });
+    };
+
     const closingSub = DeviceEventEmitter.addListener("previewClosing", () => {
-      if (reopenOnBack) {
-        showPreviewOpening();
+      if (reopenOnBack && !suppressPreviewReopenRef.current) {
+        deferPreviewStateUpdate(showPreviewOpening);
       }
     });
     const sub = DeviceEventEmitter.addListener("previewClosed", () => {
-      if (reopenOnBack) {
-        if (lastViewedItemId) {
-          toggleCheckedItem(lastViewedItemId);
-          setLastViewedItemId(null);
-        }
-        setNotificationVisible(true);
-        setReopenOnBack(false);
-        setTimeout(hidePreviewOpening, 120);
+      if (reopenOnBack && !suppressPreviewReopenRef.current) {
+        deferPreviewStateUpdate(() => {
+          if (lastViewedItemId) {
+            toggleCheckedItem(lastViewedItemId);
+            setLastViewedItemId(null);
+          }
+          setNotificationVisible(true);
+          setReopenOnBack(false);
+          setTimeout(hidePreviewOpening, 120);
+        });
       }
     });
     const sub2 = DeviceEventEmitter.addListener("openLiveReleaseGrid", () => {
@@ -2464,7 +2723,7 @@ function CustomTabBar() {
 
       if (gridData.length > 0) {
         setReopenOnBack(true);
-        setNotificationCoveredByDetail(false);
+        setNotificationCoveredByDetail(true);
         setGlobalGridCoveredByDetail(false);
         setGlobalGridTitle(item.title);
         setGlobalGridData(gridData);
@@ -2914,7 +3173,13 @@ function CustomTabBar() {
                     style={styles.allVjsPill}
                     activeOpacity={0.8}
                     onPress={() => {
+                      Keyboard.dismiss();
+                      setNotificationVisible(false);
+                      setNotificationCoveredByDetail(false);
+                      setReopenOnBack(false);
+                      setLastViewedItemId(null);
                       setSearchVjOnly(true);
+                      setSearchScope("VJs");
                       setSearchVisible(true);
                     }}
                   >
@@ -2940,19 +3205,22 @@ function CustomTabBar() {
                   <TouchableOpacity
                     style={styles.searchTriggerBtn}
                     onPress={() => {
+                      Keyboard.dismiss();
+                      setNotificationVisible(false);
+                      setNotificationCoveredByDetail(false);
+                      setReopenOnBack(false);
+                      setLastViewedItemId(null);
                       if (active("/(tabs)/saved")) {
-                        if (showInPlaceSearch) {
-                          setShowInPlaceSearch(false);
-                          setInPlaceSearchQuery("");
-                          DeviceEventEmitter.emit("seriesSearchClosed");
-                          Keyboard.dismiss();
-                        } else {
-                          setShowInPlaceSearch(true);
-                          DeviceEventEmitter.emit("resetSeriesFilters");
-                          DeviceEventEmitter.emit("seriesSearchQuery", "");
-                        }
+                        setShowInPlaceSearch(false);
+                        setInPlaceSearchQuery("");
+                        DeviceEventEmitter.emit("seriesSearchClosed");
+                        setSearchVjOnly(false);
+                        setSearchScope("Series");
+                        setSearchVisible(true);
+                        setTimeout(() => setSearchAutoFocus(true), 50);
                       } else {
                         setSearchVjOnly(false);
+                        setSearchScope("All");
                         setSearchVisible(true);
                       }
                     }}
@@ -2993,10 +3261,12 @@ function CustomTabBar() {
         visible={searchVisible}
         coveredByDetail={searchCoveredByDetail}
         autoFocusRequested={searchAutoFocus}
+        initialScope={searchScope}
         onClose={() => {
           setSearchVisible(false);
           setSearchVjOnly(false);
           setSearchAutoFocus(false);
+          setSearchScope("All");
           setSearchCoveredByDetail(false);
         }}
         onSelect={(movie) => {
@@ -3031,7 +3301,7 @@ function CustomTabBar() {
 
       <NotificationOverlay
         TOTAL_LIVE_ITEMS={TOTAL_LIVE_ITEMS}
-        visible={notificationVisible}
+        visible={notificationVisible && !searchVisible}
         coveredByDetail={notificationCoveredByDetail}
         onClose={() => {
           setNotificationVisible(false);
@@ -3064,6 +3334,7 @@ function CustomTabBar() {
         isUpdateApplied={isUpdateApplied}
         isRatingPermanentlyRemoved={isRatingPermanentlyRemoved}
         setGlobalGridVisible={setGlobalGridVisible}
+        setGlobalGridCoveredByDetail={setGlobalGridCoveredByDetail}
         setGlobalGridTitle={setGlobalGridTitle}
         setGlobalGridData={setGlobalGridData}
         notifications={notifications}
@@ -3071,7 +3342,8 @@ function CustomTabBar() {
         loading={loadingAnnouncements}
       />
 
-      <PreviewOpeningOverlay visible={previewOpeningVisible} />
+      <PreviewOpeningOverlay visible={searchOpeningVisible} title="Opening search" />
+      <PreviewOpeningOverlay visible={previewOpeningVisible} title="Opening preview" />
 
       {/* ── Holiday Event Preview Modal ── */}
       {showEventPreview && (
@@ -3379,14 +3651,64 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Clip absolute children strictly
   },
   notificationCardRead: {
-    opacity: 0.55,
-    backgroundColor: "rgba(255,255,255,0.02)",
+    opacity: 0.86,
+    backgroundColor: "rgba(255,255,255,0.035)",
     borderWidth: 0,
     marginVertical: 1,
   },
   notificationCardTitleRead: {
-    color: "rgba(255,255,255,0.45)",
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.72)",
+    fontWeight: "700",
+  },
+  notificationFilterRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  notificationFilterChip: {
+    height: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.055)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  notificationFilterChipActive: {
+    backgroundColor: "rgba(91,95,239,0.24)",
+    borderColor: "rgba(129,140,248,0.55)",
+  },
+  notificationFilterText: {
+    color: "rgba(255,255,255,0.62)",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  notificationFilterTextActive: {
+    color: "#fff",
+  },
+  notificationFilterCount: {
+    minWidth: 19,
+    height: 19,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  notificationFilterCountActive: {
+    backgroundColor: "#818cf8",
+  },
+  notificationFilterCountText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  notificationFilterCountTextActive: {
+    color: "#fff",
   },
   notificationCardLocked: {
     backgroundColor: "rgba(16, 185, 129, 0.08)",
@@ -4585,6 +4907,24 @@ const styles = StyleSheet.create({
   previewOpeningBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#05050a",
+  },
+  previewOpeningStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  previewOpeningStatusText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
   },
   previewOpeningTitleBlock: {
     marginBottom: 14,

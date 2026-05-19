@@ -12,13 +12,11 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width: W } = Dimensions.get('window');
 
 export type DownloadModalType = 'success' | 'error' | 'info' | 'warning';
 
@@ -28,6 +26,9 @@ interface DownloadModalProps {
   title: string;
   message: string;
   onClose: () => void;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 const CONFIG: Record<DownloadModalType, { icon: any; color: string; glow: string; gradient: [string, string] }> = {
@@ -63,8 +64,13 @@ export default function DownloadSuccessModal({
   title,
   message,
   onClose,
+  primaryLabel = 'OK',
+  secondaryLabel,
+  onSecondary,
 }: DownloadModalProps) {
   const cfg = CONFIG[type];
+  const { width } = useWindowDimensions();
+  const compactActions = Boolean(secondaryLabel && width < 380);
   const scaleAnim = useRef(new Animated.Value(0.7)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const iconScaleAnim = useRef(new Animated.Value(0)).current;
@@ -125,6 +131,11 @@ export default function DownloadSuccessModal({
           style={[
             styles.card,
             {
+              width: Math.min(width - 32, 420),
+              paddingHorizontal: width < 380 ? 18 : 28,
+              paddingVertical: width < 380 ? 24 : 28,
+            },
+            {
               opacity: opacityAnim,
               transform: [{ scale: scaleAnim }],
             },
@@ -151,17 +162,24 @@ export default function DownloadSuccessModal({
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: cfg.color + '22' }]} />
 
-          {/* Button */}
-          <TouchableOpacity onPress={onClose} activeOpacity={0.8}>
-            <LinearGradient
-              colors={cfg.gradient as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.button}
-            >
-              <Text style={styles.buttonText}>OK</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* Actions */}
+          <View style={[styles.actions, compactActions && styles.actionsCompact]}>
+            {secondaryLabel && onSecondary ? (
+              <TouchableOpacity onPress={onSecondary} activeOpacity={0.8} style={[styles.secondaryButton, compactActions && styles.buttonCompact]}>
+                <Text style={[styles.buttonText, styles.secondaryButtonText, compactActions && styles.buttonTextCompact]} numberOfLines={1} adjustsFontSizeToFit>{secondaryLabel}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={[styles.primaryButtonWrap, compactActions && styles.buttonCompact]}>
+              <LinearGradient
+                colors={cfg.gradient as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.button, compactActions && styles.buttonCompact]}
+              >
+                <Text style={[styles.buttonText, compactActions && styles.buttonTextCompact]} numberOfLines={1} adjustsFontSizeToFit>{primaryLabel}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -176,10 +194,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.65)',
   },
   card: {
-    width: W * 0.85,
     backgroundColor: 'rgba(18,18,28,0.97)',
     borderRadius: 24,
-    padding: 28,
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.22)',
@@ -239,17 +255,50 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: 24,
   },
-  button: {
-    paddingHorizontal: 52,
+  actions: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionsCompact: {
+    gap: 8,
+  },
+  primaryButtonWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  secondaryButton: {
+    flex: 1,
+    paddingHorizontal: 18,
     paddingVertical: 14,
     borderRadius: 50,
-    minWidth: 140,
+    minWidth: 0,
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  button: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 50,
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  buttonCompact: {
+    paddingHorizontal: 10,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1.5,
+  },
+  buttonTextCompact: {
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  secondaryButtonText: {
+    color: 'rgba(255,255,255,0.75)',
   },
 });

@@ -621,6 +621,28 @@ export default function MenuScreen() {
   const [paymentSuccess, setPaymentSuccess] = React.useState(false);
   const [savePaymentMethod, setSavePaymentMethod] = React.useState(true);
 
+  const formatPaymentError = (error: unknown) => {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as any).code) : '';
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+        ? error
+        : 'An error occurred during payment';
+
+    const normalized = rawMessage.toLowerCase();
+    if (code === 'RELWORX_API_DISABLED' || normalized.includes('api disabled') || normalized.includes('not live') || normalized.includes('activation')) {
+      return 'Payments are not live yet on this account. Please finish Relworx API activation, then try again.';
+    }
+    if (code === 'RELWORX_NOT_CONFIGURED' || (normalized.includes('keys') && normalized.includes('missing'))) {
+      return 'Payment setup is incomplete on the server. Please contact support.';
+    }
+    if (normalized.includes('network request failed') || normalized.includes('failed to fetch')) {
+      return 'Could not reach the payment server. Check your internet and try again.';
+    }
+    return rawMessage;
+  };
+
   const handleProceedPayment = async () => {
     if ((selectedPaymentMethod?.id === 'mtn' || selectedPaymentMethod?.id === 'airtel') && paymentPhone.replace(/\D/g, '').length < 10) {
       setErrorText('Please enter a valid phone number');
@@ -655,12 +677,16 @@ export default function MenuScreen() {
       try {
         chargeData = JSON.parse(responseText);
       } catch (e) {
-        console.error('Server returned non-JSON:', responseText);
+        if (__DEV__) {
+          console.log('Server returned non-JSON:', responseText);
+        }
         throw new Error('Server returned invalid response. Please try again.');
       }
 
       if (!chargeData.success) {
-        throw new Error(chargeData.error || 'Failed to initiate payment');
+        const paymentError = new Error(chargeData.error || 'Failed to initiate payment') as Error & { code?: string };
+        paymentError.code = chargeData.code;
+        throw paymentError;
       }
 
       const tx_ref = chargeData.tx_ref;
@@ -696,15 +722,19 @@ export default function MenuScreen() {
             setPaymentStatusText(`Waiting for confirmation... (${maxAttempts - attempts})`);
           }
         } catch (pollError) {
-          console.error('Polling error:', pollError);
+          if (__DEV__) {
+            console.log('Relworx verify polling issue:', pollError);
+          }
         }
       }, 3000);
 
     } catch (err: any) {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      console.error('Payment Error:', err);
+      if (__DEV__) {
+        console.log('Payment Error:', err);
+      }
       setPaymentProcessing(false);
-      setErrorText(err.message || 'An error occurred during payment');
+      setErrorText(formatPaymentError(err));
     }
   };
 
@@ -853,10 +883,9 @@ export default function MenuScreen() {
     return 1; // 1 week or 2 weeks
   };
 
-  const handleKickDevice = async (deviceId: string) => {
+  const handleKickDevice = async (deviceId: string, force: boolean = false) => {
     if (removeDevice) {
-      await removeDevice(deviceId);
-      alert('Deactivation request sent to that device.');
+      await removeDevice(deviceId, force);
     }
   };
 
@@ -1528,6 +1557,7 @@ export default function MenuScreen() {
                     activeDevices={activeDevices}
                     getDeviceLimit={getDeviceLimit}
                     handleKickDevice={handleKickDevice}
+                    deviceRemovalRequests={deviceRemovalRequests}
                     billingHistory={billingHistory}
                     upcomingMembership={upcomingMembership}
                     currentScrollY={currentScrollY}

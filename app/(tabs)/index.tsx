@@ -1019,6 +1019,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingTop: 60,
   },
+  previewSearchLoadingContainer: {
+    minHeight: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  previewSearchLoadingText: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   emptyIconGlow: {
     width: 100,
     height: 100,
@@ -1559,6 +1572,117 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 30,
     elevation: 10,
+  },
+  downloadTopUpCard: {
+    maxWidth: 320,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 20,
+    backgroundColor: "rgba(15,15,22,0.95)",
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  downloadTopUpIconHeader: {
+    marginBottom: 12,
+  },
+  downloadTopUpIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+  },
+  downloadTopUpTitle: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  downloadTopUpSub: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 18,
+    paddingHorizontal: 4,
+  },
+  downloadTopUpPanel: {
+    width: "100%",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+    padding: 14,
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  downloadTopUpSummaryRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 14,
+  },
+  downloadTopUpSummaryText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  downloadTopUpCreditTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  downloadTopUpHint: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  downloadTopUpPrice: {
+    flexShrink: 0,
+    backgroundColor: "rgba(91,95,239,0.18)",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(129,140,248,0.25)",
+  },
+  downloadTopUpPriceText: {
+    color: "#c7d2fe",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  downloadTopUpStepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+    paddingHorizontal: 34,
+  },
+  downloadTopUpStepButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  downloadTopUpQuantity: {
+    width: 52,
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 29,
+    fontWeight: "900",
+  },
+  downloadTopUpPresetRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  downloadTopUpPreset: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  downloadTopUpPayButton: {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
   },
   downloadModalContent: {
     width: "100%",
@@ -2437,14 +2561,18 @@ export function SeriesPreviewContent({
 
   const {
     activeDownloads: ctxActiveDownloads,
+    remoteActiveDownloads: ctxRemoteActiveDownloads,
     downloadedMovies: ctxDownloadedMovies,
     episodeDownloads: ctxEpisodeDownloads,
     downloadEpisode,
+    downloadMovie,
     pauseDownload,
     resumeDownload,
     deleteDownload,
     getRemainingDownloads,
     cancelSeriesDownloads,
+    requestRemoteDownload,
+    purchaseExternalDownloadCredits,
   } = useDownloads();
 
   const isPaid = sub.isPaid;
@@ -2474,7 +2602,7 @@ export function SeriesPreviewContent({
     if (!targetEp) return;
 
     // If actively downloading this episode, toggle pause/resume
-    const activeDl = ctxActiveDownloads[targetEp.id];
+    const activeDl = ctxActiveDownloads[targetEp.id] || ctxRemoteActiveDownloads[targetEp.id];
     if (activeDl) {
       activeDl.isPaused ? resumeDownload(targetEp.id) : pauseDownload(targetEp.id);
       return;
@@ -2672,17 +2800,17 @@ export function SeriesPreviewContent({
     if (mode === 'external') {
       if (!isPaid) {
         setBulkDownloadState({ visible: false, pending: [] });
-        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+        Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
         return;
       }
       if (getRemainingDownloads() < pending.length) {
         setBulkDownloadState({ visible: false, pending: [] });
-        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} external download token${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
+        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} download credit${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
         return;
       }
       const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
-        Alert.alert("Permission Required", "Please allow gallery access before starting external downloads.");
+        Alert.alert("Permission Required", "Please allow gallery access before saving to phone storage.");
         return;
       }
     }
@@ -2700,7 +2828,7 @@ export function SeriesPreviewContent({
 
   const activeEpisode = useMemo(() => episodes.find((e) => e.id === activeEpisodeId) || (episodes && episodes.length > 0 ? episodes[0] : null), [episodes, activeEpisodeId]);
 
-  const activeDl = activeEpisode?.id ? ctxActiveDownloads[activeEpisode.id] : undefined;
+  const activeDl = activeEpisode?.id ? (ctxActiveDownloads[activeEpisode.id] || ctxRemoteActiveDownloads[activeEpisode.id]) : undefined;
   
   const isDownloaded = activeEpisode?.id ? !!ctxEpisodeDownloads[activeEpisode.id] : false;
 
@@ -2858,7 +2986,7 @@ export function SeriesPreviewContent({
 
         <TouchableOpacity
           style={[styles.closeBtn, { marginLeft: 'auto' }]}
-          onPress={() => DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true })}
+          onPress={() => DeviceEventEmitter.emit("openSearchOverlay", { autoFocus: true, scope: "All" })}
         >
           <Ionicons name="search" size={20} color="#fff" />
         </TouchableOpacity>
@@ -3243,13 +3371,6 @@ export function SeriesPreviewContent({
                   </Text>
                 </View>
               </TouchableOpacity>
-              {getRemainingDownloads() <= 3 && (
-                <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onUpgrade(); }}>
-                  <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
-                    {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
-                  </Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
                 <Text style={styles.downloadCancelText}>Maybe Later</Text>
               </TouchableOpacity>
@@ -3313,12 +3434,12 @@ export function SeriesPreviewContent({
                 onPress={async () => {
                   if (!isPaid) {
                      setAlreadyDownloadedState({ visible: false });
-                     Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                     Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                      return;
                   }
                   if (getRemainingDownloads() === 0) {
                      setAlreadyDownloadedState({ visible: false });
-                     Alert.alert("Limit Reached", "You have reached your daily limit for external downloads.");
+                     Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
                      return;
                   }
 
@@ -3337,8 +3458,8 @@ export function SeriesPreviewContent({
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Ionicons name="download" size={18} color="#3b82f6" />
-                  <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>External Downloads</Text>
+                  <Ionicons name="download" size={18} color="#818cf8" />
+                  <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone</Text>
                 </View>
               </TouchableOpacity>
               
@@ -3417,7 +3538,7 @@ export function SeriesPreviewContent({
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={["#5B5FEF", "#3b82f6"]}
+                  colors={["#5B5FEF", "#818cf8"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
@@ -3437,12 +3558,12 @@ export function SeriesPreviewContent({
                 onPress={() => {
                   if (!isPaid) {
                     setShowDownloadModal(false);
-                    Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                    Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                     return;
                   }
                   if (getRemainingDownloads() === 0) {
                      setShowDownloadModal(false);
-                     Alert.alert("Limit Reached", "You have reached your daily download limit for external downloads.");
+                     Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
                      return;
                   }
                   setShowDownloadModal(false);
@@ -3454,11 +3575,28 @@ export function SeriesPreviewContent({
               >
                 <Ionicons name="download-outline" size={22} color="#94a3b8" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.downloadSecondaryBtnText}>External Download</Text>
-                  <Text style={styles.downloadSecondarySubText}>Use ADM, IDM, etc.</Text>
+                  <Text style={styles.downloadSecondaryBtnText}>Save to Phone</Text>
+                  <Text style={styles.downloadSecondarySubText}>Save to your device storage</Text>
                 </View>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
                   <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{getRemainingDownloads()} LEFT</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.downloadSecondaryBtn}
+                onPress={() => {
+                  setShowDownloadModal(false);
+                  if (selectedEpisodeForDownload) {
+                    requestRemoteDownload(series, selectedEpisodeForDownload);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="phone-landscape-outline" size={22} color="#818cf8" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.downloadSecondaryBtnText, { color: '#c7d2fe' }]}>Remote Download</Text>
+                  <Text style={styles.downloadSecondarySubText}>Send to another device</Text>
                 </View>
               </TouchableOpacity>
 
@@ -3671,6 +3809,7 @@ export const MoviePreviewContent = memo(({
 
   const {
     activeDownloads,
+    remoteActiveDownloads,
     downloadedMovies,
     episodeDownloads,
     downloadMovie,
@@ -3681,6 +3820,8 @@ export const MoviePreviewContent = memo(({
     getRemainingDownloads,
     getExternalDownloadLimit,
     cancelSeriesDownloads,
+    requestRemoteDownload,
+    purchaseExternalDownloadCredits,
   } = useDownloads();
   const isPaid = contextIsPaid;
 
@@ -3694,12 +3835,15 @@ export const MoviePreviewContent = memo(({
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedEpisodeForDownload, setSelectedEpisodeForDownload] = useState<any>(null);
+  const [showExternalTopUpCart, setShowExternalTopUpCart] = useState(false);
+  const [externalTopUpQuantity, setExternalTopUpQuantity] = useState(1);
   const scrollY = useRef(new Animated.Value(0)).current;
 
 
 
   const [seriesSubFilter, setSeriesSubFilter] = useState<string>("All");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isPreviewSearching, setIsPreviewSearching] = useState(false);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const previewInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
@@ -3945,7 +4089,7 @@ export const MoviePreviewContent = memo(({
 
     // If already downloading requested item, toggle pause/resume
     const targetId = episode?.id || movie.id;
-    const activeDl = activeDownloads[targetId];
+    const activeDl = activeDownloads[targetId] || remoteActiveDownloads[targetId];
     if (activeDl) {
       activeDl.isPaused ? resumeDownload(targetId) : pauseDownload(targetId);
       return;
@@ -3989,6 +4133,59 @@ export const MoviePreviewContent = memo(({
         downloadMovie(movie as any, 'internal');
       }
     }
+  };
+
+  const startExternalDownloadAfterCredit = async () => {
+    if (!movie) return;
+
+    const { status } = await MediaLibrary.requestPermissionsAsync(true);
+    if (status !== 'granted') {
+      setShowDownloadModal(false);
+      setShowExternalTopUpCart(false);
+      Alert.alert("Permission Denied", "Please allow gallery access to save videos as MP4 files.");
+      return;
+    }
+
+    setShowDownloadModal(false);
+    setShowExternalTopUpCart(false);
+    const targetItem = selectedEpisodeForDownload || movie;
+    if (selectedEpisodeForDownload) {
+      downloadEpisode(
+        "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
+        selectedEpisodeForDownload,
+        'external'
+      );
+    } else {
+      downloadMovie(targetItem as any, 'external');
+    }
+  };
+
+  const handleExternalDownloadOption = async () => {
+    if (!isPaid) {
+      setShowDownloadModal(false);
+      Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
+      return;
+    }
+
+    if (getRemainingDownloads() === 0) {
+      setShowDownloadModal(false);
+      setExternalTopUpQuantity(1);
+      setShowExternalTopUpCart(true);
+      return;
+    }
+
+    await startExternalDownloadAfterCredit();
+  };
+
+  const handleBuyExternalTopUp = async () => {
+    const quantity = Math.max(1, Math.min(50, externalTopUpQuantity));
+    const success = await purchaseExternalDownloadCredits(quantity);
+    if (!success) return;
+
+    setShowExternalTopUpCart(false);
+    setTimeout(() => {
+      startExternalDownloadAfterCredit();
+    }, 1500);
   };
 
   const handleShare = () => {
@@ -4103,8 +4300,14 @@ export const MoviePreviewContent = memo(({
 
   // Auto-scroll modal to top when preview search query changes
   useEffect(() => {
-    if (previewQuery.trim().length > 0) {
+    const hasQuery = previewQuery.trim().length > 0;
+    if (hasQuery) {
+      setIsPreviewSearching(true);
       modalScrollRef.current?.scrollTo({ y: 0, animated: true });
+      const timer = setTimeout(() => setIsPreviewSearching(false), 260);
+      return () => clearTimeout(timer);
+    } else {
+      setIsPreviewSearching(false);
     }
   }, [previewQuery]);
 
@@ -4397,16 +4600,16 @@ export const MoviePreviewContent = memo(({
     if (mode === 'external') {
       if (!isPaid) {
         setBulkDownloadState({ visible: false, pending: [] });
-        Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+        Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
         return;
       }
       if (getRemainingDownloads() < pending.length) {
-        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} external download token${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
+        Alert.alert("Limit Reached", `You have ${getRemainingDownloads()} download credit${getRemainingDownloads() === 1 ? "" : "s"} left, but this batch needs ${pending.length}.`);
         return;
       }
       const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
-        Alert.alert("Permission Required", "Please allow gallery access before starting external downloads.");
+        Alert.alert("Permission Required", "Please allow gallery access before saving to phone storage.");
         return;
       }
     }
@@ -4467,6 +4670,37 @@ export const MoviePreviewContent = memo(({
     }
     return playerTitle;
   }, [activePart, playerTitle, movie]);
+
+  const playRelatedDirectly = useCallback((item: Movie | Series) => {
+    const isRelatedSeries = "seasons" in item || item.type === "Series" || (item as any).isMiniSeries;
+    const episodeList = Array.isArray((item as any).episodeList) ? (item as any).episodeList : [];
+    const firstEpisode = episodeList[0];
+    const videoUri = firstEpisode?.url || firstEpisode?.videoUrl || (item as any).videoUrl || (item as any).previewUrl;
+
+    if (!videoUri) {
+      onSwitch(item);
+      return;
+    }
+
+    const canWatch = (allMoviesFree && !isGuest) || (item as any).isFree || isPaid || Boolean((item as any).previewUrl && videoUri === (item as any).previewUrl);
+    if (!canWatch) {
+      onShowPremium();
+      return;
+    }
+
+    setSelectedVideoUrl?.(videoUri);
+    setPlayerTitle?.(firstEpisode?.title ? `${item.title} - ${firstEpisode.title}` : item.title);
+    setPlayingNow?.(item as Movie);
+    setIsPreview?.(videoUri === (item as any).previewUrl && !(item as any).videoUrl);
+    if (isRelatedSeries) {
+      setPlayingEpisodes?.(episodeList);
+      if (firstEpisode?.id) setPlayingEpisodeId?.(firstEpisode.id);
+    } else {
+      setPlayingEpisodes?.([]);
+      setPlayingEpisodeId?.(null as any);
+    }
+    setPlayerMode?.('full');
+  }, [allMoviesFree, isGuest, isPaid, onShowPremium, onSwitch, setIsPreview, setPlayerMode, setPlayerTitle, setPlayingEpisodeId, setPlayingEpisodes, setPlayingNow, setSelectedVideoUrl]);
 
   const handleNextPart = () => {
     if (hasNext) {
@@ -4771,24 +5005,28 @@ export const MoviePreviewContent = memo(({
             />
             
             {/* Mute Toggle on Left, aligned with Search on Right */}
-            <TouchableOpacity
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "rgba(0,0,0,0.4)",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: "auto",
-              }}
-              onPress={() => setIsMuted(!isMuted)}
-            >
-              <Ionicons
-                name={isMuted ? "volume-mute" : "volume-high"}
-                size={18}
-                color="#fff"
-              />
-            </TouchableOpacity>
+            {previewVideoUrl ? (
+              <TouchableOpacity
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: "auto",
+                }}
+                onPress={() => setIsMuted(!isMuted)}
+              >
+                <Ionicons
+                  name={isMuted ? "volume-mute" : "volume-high"}
+                  size={18}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 40, marginRight: "auto" }} />
+            )}
 
             {!isSearchVisible && previewQuery.trim().length === 0 && (
               <TouchableOpacity
@@ -4804,6 +5042,7 @@ export const MoviePreviewContent = memo(({
                 onPress={() => {
                   DeviceEventEmitter.emit("openSearchOverlay", {
                     autoFocus: true,
+                    scope: "All",
                   });
                 }}
               >
@@ -5201,7 +5440,12 @@ export const MoviePreviewContent = memo(({
 
                     {/* DOWNLOAD */}
                     {(() => {
-                      const activeDl = movie ? (activeDownloads[movie.id] || Object.values(activeDownloads).find(d => (d as any)?.item?.id === movie.id)) : null;
+                      const activeDl = movie ? (
+                        activeDownloads[movie.id] ||
+                        remoteActiveDownloads[movie.id] ||
+                        Object.values(activeDownloads).find(d => (d as any)?.item?.id === movie.id) ||
+                        Object.values(remoteActiveDownloads).find(d => (d as any)?.item?.id === movie.id)
+                      ) : null;
                       const isDl = !!activeDl;
                       const isDownloaded = movie ? downloadedMovies.some(m => m.id === movie.id) : false;
                       
@@ -5795,12 +6039,12 @@ export const MoviePreviewContent = memo(({
                       ]}
                       onPress={() => {
                         if (!isPaid) {
-                          Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers.");
+                          Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers.");
                           return;
                         }
                         if (bulkDownloadState.pending.length > getRemainingDownloads()) {
                           setBulkDownloadState({ visible: false, pending: [] });
-                          Alert.alert("Limit Reached", `This batch needs ${bulkDownloadState.pending.length} external tokens, but you only have ${getRemainingDownloads()} left.`);
+                          Alert.alert("Limit Reached", `This batch needs ${bulkDownloadState.pending.length} download credits, but you only have ${getRemainingDownloads()} left.`);
                           return;
                         }
                         startBulkPartsDownload('external');
@@ -5808,7 +6052,7 @@ export const MoviePreviewContent = memo(({
                       activeOpacity={0.7}
                     >
                       <Ionicons name="folder-outline" size={20} color="#94a3b8" />
-                      <Text style={styles.downloadSecondaryBtnText}>EXTERNAL DOWNLOAD</Text>
+                      <Text style={styles.downloadSecondaryBtnText}>SAVE TO PHONE</Text>
                       <View style={{ backgroundColor: bulkDownloadState.pending.length > getRemainingDownloads() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 }}>
                         <Text style={{ fontSize: 9, color: bulkDownloadState.pending.length > getRemainingDownloads() ? "#ef4444" : "#94a3b8", fontWeight: "700" }}>
                           {bulkDownloadState.pending.length > getRemainingDownloads()
@@ -5817,13 +6061,6 @@ export const MoviePreviewContent = memo(({
                         </Text>
                       </View>
                     </TouchableOpacity>
-                    {getRemainingDownloads() <= 3 && (
-                      <TouchableOpacity style={{ marginTop: 4, alignSelf: "center", padding: 8 }} onPress={() => { setBulkDownloadState({ visible: false, pending: [] }); onUpgrade(); }}>
-                        <Text style={{ color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" }}>
-                          {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
                     <TouchableOpacity style={styles.downloadCancelLink} onPress={() => setBulkDownloadState({ visible: false, pending: [] })}>
                       <Text style={styles.downloadCancelText}>Maybe Later</Text>
                     </TouchableOpacity>
@@ -5919,41 +6156,9 @@ export const MoviePreviewContent = memo(({
                     <TouchableOpacity
                       style={[
                         styles.downloadSecondaryBtn,
-                        (isGuest || !isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.4 }),
+                        (isGuest || !isPaid) ? {} : (getRemainingDownloads() === 0 && { opacity: 0.85 }),
                       ]}
-                      onPress={async () => {
-                        if (!isPaid) {
-                           setShowDownloadModal(false);
-                           Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
-                           return;
-                        }
-                        if (getRemainingDownloads() === 0) {
-                           setShowDownloadModal(false);
-                           Alert.alert("Limit Reached", "You have reached your daily download limit for external downloads.");
-                           return;
-                        }
-                        
-                        // Check permissions first in the UI
-                        const { status } = await MediaLibrary.requestPermissionsAsync(true);
-                        if (status !== 'granted') {
-                          setShowDownloadModal(false);
-                          Alert.alert("Permission Denied", "Please allow gallery access to save videos as MP4 files.");
-                          return;
-                        }
-
-                        setShowDownloadModal(false);
-                        const targetTitle = selectedEpisodeForDownload?.title || movie.title;
-                        const targetItem = selectedEpisodeForDownload || movie;
-                        if (selectedEpisodeForDownload) {
-                          downloadEpisode(
-                            "seasons" in movie ? (movie as Series) : { ...movie, episodeList: [] } as any,
-                            selectedEpisodeForDownload,
-                            'external'
-                          );
-                        } else {
-                          downloadMovie(targetItem as any, 'external');
-                        }
-                      }}
+                      onPress={handleExternalDownloadOption}
                       activeOpacity={0.7}
                     >
                       <Ionicons
@@ -5962,7 +6167,7 @@ export const MoviePreviewContent = memo(({
                         color="#94a3b8"
                       />
                       <Text style={styles.downloadSecondaryBtnText}>
-                        EXTERNAL DOWNLOAD
+                        SAVE TO PHONE
                       </Text>
                       <View
                         style={{
@@ -5985,27 +6190,44 @@ export const MoviePreviewContent = memo(({
                       </View>
                     </TouchableOpacity>
 
-                  {getRemainingDownloads() <= 3 && (
                     <TouchableOpacity
-                      style={{ marginTop: 4, alignSelf: "center", padding: 8 }}
+                      style={styles.downloadSecondaryBtn}
                       onPress={() => {
                         setShowDownloadModal(false);
-                        onClose();
-                        onUpgrade();
+                        if (movie) {
+                          requestRemoteDownload(movie as any, selectedEpisodeForDownload || undefined);
+                        }
                       }}
+                      activeOpacity={0.7}
                     >
-                      <Text
+                      <Ionicons
+                        name="phone-landscape-outline"
+                        size={20}
+                        color="#818cf8"
+                      />
+                      <Text style={[styles.downloadSecondaryBtnText, { color: '#c7d2fe' }]}>
+                        REMOTE DOWNLOAD
+                      </Text>
+                      <View
                         style={{
-                          color: getRemainingDownloads() === 0 ? "#ef4444" : "#5B5FEF",
-                          fontSize: 13,
-                          fontWeight: "700",
-                          textDecorationLine: "underline",
+                          backgroundColor: "rgba(91,95,239,0.15)",
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 10,
+                          marginLeft: 4,
                         }}
                       >
-                        {getRemainingDownloads() === 0 ? "Limit reached — Upgrade for more" : "Upgrade for more daily downloads"}
-                      </Text>
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            color: "#c7d2fe",
+                            fontWeight: "700",
+                          }}
+                        >
+                          2+ DEVICES
+                        </Text>
+                      </View>
                     </TouchableOpacity>
-                  )}
 
                     <TouchableOpacity
                       style={styles.downloadCancelLink}
@@ -6014,6 +6236,118 @@ export const MoviePreviewContent = memo(({
                       <Text style={styles.downloadCancelText}>Maybe Later</Text>
                     </TouchableOpacity>
                   </View>
+                </Animated.View>
+              </View>
+            </Modal>
+
+            <Modal
+              visible={showExternalTopUpCart && playerMode !== 'full'}
+              transparent
+              animationType="fade"
+              statusBarTranslucent
+              onRequestClose={() => setShowExternalTopUpCart(false)}
+            >
+              <View style={styles.downloadModalCentering}>
+                <TouchableOpacity
+                  style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.86)" }]}
+                  activeOpacity={1}
+                  onPress={() => setShowExternalTopUpCart(false)}
+                />
+                <Animated.View style={[styles.downloadGlassCard, styles.downloadTopUpCard]}>
+                  <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+                  <LinearGradient
+                    colors={["rgba(91,95,239,0.18)", "rgba(129,140,248,0.08)", "transparent"]}
+                    style={StyleSheet.absoluteFill}
+                  />
+
+                  <View style={[styles.downloadIconHeader, styles.downloadTopUpIconHeader]}>
+                    <View style={[styles.downloadIconCircle, styles.downloadTopUpIconCircle]}>
+                      <Ionicons name="cart-outline" size={28} color="#5B5FEF" />
+                    </View>
+                  </View>
+
+                  <Text style={[styles.downloadTitle, styles.downloadTopUpTitle]}>Download Limit Reached</Text>
+                  <Text style={[styles.downloadSub, styles.downloadTopUpSub]}>
+                    You have used your available phone-storage downloads. Add credits to save more episodes to your device.
+                  </Text>
+
+                  <View style={styles.downloadTopUpPanel}>
+                    <View style={styles.downloadTopUpSummaryRow}>
+                      <View style={styles.downloadTopUpSummaryText}>
+                        <Text style={styles.downloadTopUpCreditTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78}>
+                          {externalTopUpQuantity} download credit{externalTopUpQuantity === 1 ? "" : "s"}
+                        </Text>
+                        <Text style={styles.downloadTopUpHint}>
+                          500 UGX per episode saved to phone storage
+                        </Text>
+                      </View>
+                      <View style={styles.downloadTopUpPrice}>
+                        <Text style={styles.downloadTopUpPriceText}>
+                          {externalTopUpQuantity * 500} UGX
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.downloadTopUpStepper}>
+                      <TouchableOpacity
+                        style={[styles.downloadTopUpStepButton, { backgroundColor: "rgba(255,255,255,0.1)" }]}
+                        onPress={() => setExternalTopUpQuantity(q => Math.max(1, q - 1))}
+                      >
+                        <Ionicons name="remove" size={22} color="#fff" />
+                      </TouchableOpacity>
+                      <Text style={styles.downloadTopUpQuantity}>
+                        {externalTopUpQuantity}
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.downloadTopUpStepButton, { backgroundColor: "rgba(91,95,239,0.24)" }]}
+                        onPress={() => setExternalTopUpQuantity(q => Math.min(50, q + 1))}
+                      >
+                        <Ionicons name="add" size={22} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.downloadTopUpPresetRow}>
+                      {[1, 10, 50].map((qty) => (
+                        <TouchableOpacity
+                          key={qty}
+                          style={[
+                            styles.downloadTopUpPreset,
+                            {
+                              backgroundColor: externalTopUpQuantity === qty ? "rgba(91,95,239,0.34)" : "rgba(255,255,255,0.07)",
+                              borderColor: externalTopUpQuantity === qty ? "#818cf8" : "rgba(255,255,255,0.12)",
+                            },
+                          ]}
+                          onPress={() => setExternalTopUpQuantity(qty)}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "900" }}>
+                            {qty}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.downloadPrimaryBtn, styles.downloadTopUpPayButton]}
+                    activeOpacity={0.85}
+                    onPress={handleBuyExternalTopUp}
+                  >
+                    <LinearGradient
+                      colors={["#5B5FEF", "#818cf8"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Ionicons name="cart" size={20} color="#fff" />
+                    <Text style={styles.downloadPrimaryBtnText}>
+                      PAY {externalTopUpQuantity * 500} UGX
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.downloadCancelLink}
+                    onPress={() => setShowExternalTopUpCart(false)}
+                  >
+                    <Text style={styles.downloadCancelText}>Maybe Later</Text>
+                  </TouchableOpacity>
                 </Animated.View>
               </View>
             </Modal>
@@ -6070,12 +6404,12 @@ export const MoviePreviewContent = memo(({
                       onPress={async () => {
                         if (!isPaid) {
                            setAlreadyDownloadedState({ visible: false });
-                           Alert.alert("Premium Feature", "External Downloads are reserved for Premium Subscribers. Enjoy your Free Streaming inside the app today!");
+                           Alert.alert("Premium Feature", "Phone-storage downloads are reserved for Premium Subscribers. You can still stream free content inside the app today.");
                            return;
                         }
                         if (getRemainingDownloads() === 0) {
                            setAlreadyDownloadedState({ visible: false });
-                           Alert.alert("Limit Reached", "You have reached your daily limit for external downloads.");
+                           Alert.alert("Limit Reached", "You have reached today's phone-storage download limit.");
                            return;
                         }
 
@@ -6102,8 +6436,8 @@ export const MoviePreviewContent = memo(({
                       }}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <Ionicons name="download" size={18} color="#3b82f6" />
-                        <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>External Downloads</Text>
+                        <Ionicons name="download" size={18} color="#818cf8" />
+                        <Text style={{ color: "#c7d2fe", fontSize: 16, fontWeight: "600" }}>Save to Phone</Text>
                       </View>
                     </TouchableOpacity>
 
@@ -6389,7 +6723,12 @@ export const MoviePreviewContent = memo(({
                   },
                 ]}
               >
-                  {previewSearchResults.length === 0 ? (
+                  {isPreviewSearching ? (
+                    <View style={styles.previewSearchLoadingContainer}>
+                      <ActivityIndicator size="small" color="#5B5FEF" />
+                      <Text style={styles.previewSearchLoadingText}>Searching</Text>
+                    </View>
+                  ) : previewSearchResults.length === 0 ? (
                     <View style={styles.premiumEmptyContainer}>
                       <View style={styles.emptyIconGlow}>
                         <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
@@ -6458,7 +6797,7 @@ export const MoviePreviewContent = memo(({
                       renderItem={({ item }) => (
                         <MovieCard
                           movie={item}
-                          onPress={() => onSwitch(item)}
+                          onPress={() => playRelatedDirectly(item)}
                         />
                       )}
                     />
@@ -6714,14 +7053,14 @@ export const MoviePreviewContent = memo(({
 // ─── Movie Card (used in the horizontal lists) ─────────────────────────────────
 export const MoviePreviewModal = memo((props: any) => {
   useEffect(() => {
-    if (props.movie && props.isTop !== false) {
+    if (props.movie && props.isTop !== false && props.playerMode !== 'full') {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         props.onClose();
         return true;
       });
       return () => backHandler.remove();
     }
-  }, [props.isTop, props.movie, props.onClose]);
+  }, [props.isTop, props.movie, props.onClose, props.playerMode]);
 
   if (!props.movie) return null;
 
@@ -7090,13 +7429,14 @@ const HeroBanner = memo(({
   const heroSource = (movie.heroVideoUrl ? resolveCDNUrl(movie.heroVideoUrl) : undefined) || 
                      (movie.previewUrl ? resolveCDNUrl(movie.previewUrl) : undefined) || '';
   const isHLS = Boolean(heroSource && (heroSource.includes('.m3u8') || heroSource.includes('playlist')));
+  const hasHeroVideo = movie.heroType !== 'photo' && Boolean(heroSource);
 
   return (
     <View {...panResponder.panHandlers}>
       {/* ── Video or Photo Hero ── */}
       <TouchableWithoutFeedback onPress={handleHeroPress}>
         <View style={[styles.heroVideo, { height: HERO_H }]}>
-          {movie.heroType === 'photo' || playerMode !== 'closed' || !isFocused || isModalOpen ? (
+          {!hasHeroVideo || playerMode !== 'closed' || !isFocused || isModalOpen ? (
             // Photo-only mode: custom hero image or poster fallback
             <Image
               source={{ uri: resolveCDNUrl(movie.heroPhotoUrl) || resolveCDNUrl(movie.poster) }}
@@ -7278,7 +7618,7 @@ const HeroBanner = memo(({
           {/* New Action Row - Redesigned to match Home Preview */}
           <View style={styles.heroActionRow}>
             {/* MUTE TOGGLE – hidden when hero is photo-only */}
-            {movie.heroType !== 'photo' && (
+            {hasHeroVideo && (
               <TouchableOpacity
                 style={styles.heroActionCol}
                 onPress={() => setIsMuted(!isMuted)}
@@ -7414,8 +7754,6 @@ export default function HomeScreen() {
   const { 
     allRows: liveRows, 
     allSeries: liveSeries, 
-    heroMovies: liveHeroMovies, 
-    liveMovies, 
     appUpdateConfig, 
     myList, 
     loading,
@@ -7983,6 +8321,18 @@ export default function HomeScreen() {
       openPreviewWithLoader(m);
     });
 
+    const searchOverlaySub = DeviceEventEmitter.addListener("openSearchOverlay", () => {
+      setIsPreviewOpening(false);
+      setIsGridOpening(false);
+      DeviceEventEmitter.emit("setDetailStackVisible", false);
+      DeviceEventEmitter.emit("setOverlayVisible", false);
+      setNavigationStack((prev) => {
+        if (prev.length === 0) return prev;
+        DeviceEventEmitter.emit("previewClosing", { remainingDepth: 0 });
+        return [];
+      });
+    });
+
     const sectionSub = DeviceEventEmitter.addListener(
       "sectionSelected",
       (title: string) => {
@@ -7995,6 +8345,7 @@ export default function HomeScreen() {
     return () => {
       sub.remove();
       movieSub.remove();
+      searchOverlaySub.remove();
       sectionSub.remove();
     };
   }, [liveRows, openPreviewWithLoader, openGridWithLoader]);
@@ -8006,12 +8357,11 @@ export default function HomeScreen() {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
           Alert.alert(
-            "Update Available", 
-            "A new hotfix or update is available! Downloading now...",
+            "Update available", 
+            "A new version is available. It will download silently and you can restart later from the update prompt.",
             [{ text: "OK" }]
           );
           await Updates.fetchUpdateAsync();
-          Updates.reloadAsync();
         }
       }
     } catch (e) {

@@ -2,13 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../../constants/firebaseConfig';
 import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayRemove, deleteField, runTransaction } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, deleteDoc, updateDoc, arrayRemove, deleteField, runTransaction, increment } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import { Alert, Platform, Animated, Dimensions, StyleSheet } from 'react-native';
 import { Movie, Series } from '../../constants/movieData';
 import { Plan, PLANS } from '../../constants/planData';
 import PremiumAlert from '../../components/PremiumAlert';
+import { sendLocalNotification } from '../../lib/notifications';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -55,6 +56,11 @@ interface SubscriptionContextType {
   switchToGuest: () => Promise<void>;
   deviceLimit: number;
   customExternalLimit: number;
+  externalDownloadTopUpCredits: number;
+  customRemoteDownloadLimit?: number;
+  followedVjs: string[];
+  toggleFollowVj: (vj: string) => Promise<void>;
+  loyaltyPoints: number;
   hasUsedGuestTrial: boolean;
   minAppVersion: string;
   latestVersion: string;
@@ -119,6 +125,11 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   switchToGuest: async () => {},
   deviceLimit: 1,
   customExternalLimit: 0,
+  externalDownloadTopUpCredits: 0,
+  customRemoteDownloadLimit: 0,
+  followedVjs: [],
+  toggleFollowVj: async () => {},
+  loyaltyPoints: 0,
   hasUsedGuestTrial: false,
   minAppVersion: '',
   latestVersion: '',
@@ -173,6 +184,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [updateMessage, setUpdateMessage] = useState('');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [customExternalLimit, setCustomExternalLimit] = useState(0);
+  const [externalDownloadTopUpCredits, setExternalDownloadTopUpCredits] = useState(0);
+  const [customRemoteDownloadLimit, setCustomRemoteDownloadLimit] = useState(0);
   const [customDeviceLimit, setCustomDeviceLimit] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
   const [playingNow, setPlayingNow] = useState<Movie | Series | null>(null);
@@ -183,6 +196,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [hasUsedGuestTrial, setHasUsedGuestTrial] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [favorites, setFavorites] = useState<(Movie | Series)[]>([]);
+  const [followedVjs, setFollowedVjs] = useState<string[]>([]);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [playingEpisodeId, setPlayingEpisodeId] = useState<string | null>(null);
   const [playingEpisodes, setPlayingEpisodes] = useState<any[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -279,7 +294,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan))
         .sort((a, b) => (((a as any).order || 0) - ((b as any).order || 0)));
 
-      const effectivePlans = list.length > 0 ? list : PLANS;
+      const hasCurrentPlanShape = list.some(plan => plan.id === 'day_1')
+        && list.every(plan => typeof plan.externalDownloadTotalLimit === 'number' && typeof plan.durationDays === 'number');
+      const effectivePlans = list.length > 0 && hasCurrentPlanShape ? list : PLANS;
       setAvailablePlans(effectivePlans);
 
       // Update dynamic maps
@@ -331,8 +348,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setActiveDeviceIds(fetchedActiveDevices);
             setActiveDevicesMeta(fetchedDeviceMeta);
             setDeviceRemovalRequests(userData.deviceRemovalRequests || {});
+            setFollowedVjs(Array.isArray(userData.followedVjs) ? userData.followedVjs : []);
+            setLoyaltyPoints(Number(userData.loyaltyPoints || 0));
             
             const extLimit = userData.customExternalLimit || userData.downloadLimit || 0;
+            const topUpCredits = Number(userData.externalDownloadTopUpCredits || 0);
+            const remoteLimit = userData.customRemoteDownloadLimit || userData.remoteDownloadLimit || 0;
             const devLimit = userData.customDeviceLimit || 0;
             const expirationMs = parseSubscriptionExpiry(expiresAt);
             const isExpired = expirationMs !== null && Date.now() > expirationMs;
@@ -340,6 +361,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const finalExpires = isExpired ? null : expirationMs;
             const hasDeviceManagedAccess = finalBundle !== 'None' || extLimit > 0;
             setCustomExternalLimit(extLimit);
+            setExternalDownloadTopUpCredits(topUpCredits);
+            setCustomRemoteDownloadLimit(remoteLimit);
             setCustomDeviceLimit(devLimit);
 
             // Device limit check
@@ -402,7 +425,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 await updateDoc(doc(db, 'users', user.uid), {
                   [`kickedDevices.${currentId}`]: deleteField()
                 }).catch(() => {});
+                setIsDeviceBlocked(false);
+                setSubscriptionBundle('None');
+                setSubscriptionExpiresAt(null);
+                setPaymentMethod('');
+                setCustomExternalLimit(0);
+                setExternalDownloadTopUpCredits(0);
+                setCustomRemoteDownloadLimit(0);
+                setCustomDeviceLimit(0);
+                await AsyncStorage.setItem('cached_subscription', JSON.stringify({
+                  bundle: 'None',
+                  expiresAt: null,
+                  guestStatus: true
+                })).catch(() => {});
                 await signOut(auth).catch(() => {});
+                await signInAnonymously(auth).catch(() => {});
                 return;
               }
 
@@ -482,6 +519,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setSubscriptionBundle('None');
             setSubscriptionExpiresAt(null);
             setHasUsedGuestTrial(false);
+            setCustomRemoteDownloadLimit(0);
           }
         }, (error: any) => {
           if (error.code === 'permission-denied') return;
@@ -705,10 +743,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           year: item.year || '',
           timestamp: new Date().toISOString()
         });
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          loyaltyPoints: increment(2),
+          lastLoyaltyReason: 'Added to My List',
+        }).catch(() => {});
       }
     } catch (err) {
       console.error("Error toggling favorite:", err);
     }
+  };
+
+  const toggleFollowVj = async (vj: string) => {
+    const cleanVj = String(vj || '').trim();
+    if (!cleanVj) return;
+    const exists = followedVjs.includes(cleanVj);
+    const next = exists ? followedVjs.filter(item => item !== cleanVj) : [cleanVj, ...followedVjs];
+    setFollowedVjs(next);
+    if (!auth.currentUser || isGuest) {
+      await AsyncStorage.setItem('followed_vjs', JSON.stringify(next)).catch(() => {});
+      return;
+    }
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+      followedVjs: next,
+      ...(exists ? {} : { loyaltyPoints: increment(5), lastLoyaltyReason: 'Followed a VJ' }),
+    }).catch(() => {});
   };
 
   const removeDevice = async (targetId: string, force: boolean = false) => {
@@ -821,14 +879,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const hasNamedPlan = subscriptionBundle !== 'None';
   const hasManualDownloadAccess = customExternalLimit > 0;
+  const paymentMethodKey = String(paymentMethod || '').toLowerCase();
+  const isAdminGrant = paymentMethodKey.includes('admin') || paymentMethodKey.includes('grant') || paymentMethodKey.includes('complimentary');
   // We treat null expiry as "lifetime" only if there is an actual plan/access flag.
   const hasActiveExpiry =
     subscriptionExpiresAt === null
-      ? (hasNamedPlan || hasManualDownloadAccess)
+      ? (hasNamedPlan || hasManualDownloadAccess || isAdminGrant)
       : Boolean(subscriptionExpiresAt && subscriptionExpiresAt > Date.now());
-  const hasPlanAccess = (hasNamedPlan || hasManualDownloadAccess) && hasActiveExpiry;
+  const hasPlanAccess = (hasNamedPlan || hasManualDownloadAccess || isAdminGrant) && hasActiveExpiry;
   const isPaid = hasPlanAccess || bypassLock;
-  const deviceLimit = customDeviceLimit > 0 ? customDeviceLimit : (dynamicDeviceLimits[subscriptionBundle.toLowerCase()] ?? 1);
+  const matchedPlan = availablePlans.find(plan => plan.name.toLowerCase() === subscriptionBundle.toLowerCase());
+  const deviceLimit = customDeviceLimit > 0
+    ? customDeviceLimit
+    : (matchedPlan?.deviceLimit || dynamicDeviceLimits[subscriptionBundle.toLowerCase()] || (isPaid && hasNamedPlan ? 2 : 1));
 
   // Global Player Animated Values
   const playerPos = React.useMemo(() => new Animated.ValueXY({ x: 0, y: 0 }), []);
@@ -839,6 +902,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!subscriptionExpiresAt) return 0;
     return Math.max(0, Math.ceil((subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)));
   }, [subscriptionExpiresAt, ticker]);
+
+  useEffect(() => {
+    if (!isPaid || !remainingDays || remainingDays > 3) return;
+    const key = `expiry_reminder_${subscriptionBundle}_${remainingDays}_${new Date().toDateString()}`;
+    AsyncStorage.getItem(key).then((sent) => {
+      if (sent) return;
+      AsyncStorage.setItem(key, '1').catch(() => {});
+      sendLocalNotification(
+        'Premium ending soon',
+        `${subscriptionBundle} access ends in ${remainingDays} day${remainingDays === 1 ? '' : 's'}. Download favorites or renew to keep benefits.`,
+        { type: 'subscription_expiry', remainingDays }
+      ).catch(() => {});
+    }).catch(() => {});
+  }, [isPaid, remainingDays, subscriptionBundle]);
 
 
   const contextValue = React.useMemo(() => ({
@@ -859,6 +936,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     bannerActionUrl,
     favorites,
     toggleFavorite,
+    followedVjs,
+    toggleFollowVj,
+    loyaltyPoints,
     recordTrialUsage,
     isDeviceBlocked,
     activeDeviceIds,
@@ -871,6 +951,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     switchToGuest,
     deviceLimit,
     customExternalLimit,
+    externalDownloadTopUpCredits,
+    customRemoteDownloadLimit,
     hasUsedGuestTrial,
     minAppVersion,
     latestVersion,
@@ -919,12 +1001,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     bannerButtonText,
     bannerActionUrl,
     favorites,
+    followedVjs,
+    loyaltyPoints,
     isDeviceBlocked,
     activeDeviceIds,
     activeDevicesMeta,
     deviceId,
     deviceLimit,
     customExternalLimit,
+    externalDownloadTopUpCredits,
+    customRemoteDownloadLimit,
     hasUsedGuestTrial,
     minAppVersion,
     latestVersion,

@@ -13,6 +13,7 @@ export interface Plan {
   downloadLimit: number;
   externalDownloadDailyLimit?: number;
   externalDownloadTotalLimit?: number;
+  remoteDownloadLimit?: number;
   durationDays: number;
 }
 

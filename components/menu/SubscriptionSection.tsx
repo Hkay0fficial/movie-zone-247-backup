@@ -36,7 +36,8 @@ interface SubscriptionSectionProps {
   paymentMethod: string;
   activeDevices: Device[];
   getDeviceLimit: () => number;
-  handleKickDevice: (id: string) => void;
+  handleKickDevice: (id: string, force?: boolean) => void;
+  deviceRemovalRequests?: Record<string, { status: string; requestedAt?: string; respondedAt?: string }>;
   billingHistory: BillingItem[];
   upcomingMembership?: {
     bundle: string;
@@ -72,6 +73,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
   activeDevices,
   getDeviceLimit,
   handleKickDevice,
+  deviceRemovalRequests = {},
   billingHistory,
   upcomingMembership,
   currentScrollY,
@@ -344,24 +346,44 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
               <View style={{ marginTop: 12 }}>
                 <Text style={styles.detailLabel}>Active Devices ({activeDevices.length}/{getDeviceLimit()})</Text>
                 <View style={{ gap: 8 }}>
-                  {activeDevices.map((device) => (
-                    <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.05)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: device.current ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons name={device.device.includes('iPhone') || device.device.includes('Phone') ? "phone-portrait-outline" : "desktop-outline"} size={14} color={device.current ? '#10b981' : 'rgba(255,255,255,0.4)'} />
+                  {activeDevices.map((device) => {
+                    const removalRequest = deviceRemovalRequests[device.id];
+                    const isPendingRemoval = removalRequest?.status === 'pending';
+                    const isDeniedRemoval = removalRequest?.status === 'denied';
+
+                    return (
+                      <View key={device.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: isDeniedRemoval ? 'rgba(239,68,68,0.25)' : isPendingRemoval ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.05)' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: device.current ? 'rgba(16,185,129,0.1)' : isDeniedRemoval ? 'rgba(239,68,68,0.1)' : isPendingRemoval ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons name={device.device.includes('iPhone') || device.device.includes('Phone') ? "phone-portrait-outline" : "desktop-outline"} size={14} color={device.current ? '#10b981' : isDeniedRemoval ? '#ef4444' : isPendingRemoval ? '#f59e0b' : 'rgba(255,255,255,0.4)'} />
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>{device.device}</Text>
+                            <Text style={{ color: '#64748b', fontSize: 10 }} numberOfLines={1}>{device.location} • {device.time}</Text>
+                            {isPendingRemoval && (
+                              <Text style={{ color: '#f59e0b', fontSize: 9, fontWeight: '900', marginTop: 3, letterSpacing: 0.7 }}>PENDING APPROVAL</Text>
+                            )}
+                            {isDeniedRemoval && (
+                              <Text style={{ color: '#ef4444', fontSize: 9, fontWeight: '900', marginTop: 3, letterSpacing: 0.7 }}>REQUEST REFUSED</Text>
+                            )}
+                          </View>
                         </View>
-                        <View>
-                          <Text style={{ color: '#f1f5f9', fontSize: 12, fontWeight: '700' }}>{device.device}</Text>
-                          <Text style={{ color: '#64748b', fontSize: 10 }}>{device.location} • {device.time}</Text>
-                        </View>
+                        {!device.current && (
+                          <TouchableOpacity
+                            onPress={() => handleKickDevice(device.id, isDeniedRemoval)}
+                            disabled={isPendingRemoval}
+                            style={{ paddingVertical: 6, paddingHorizontal: isDeniedRemoval ? 10 : 4, borderRadius: 10, backgroundColor: isDeniedRemoval ? 'rgba(239,68,68,0.12)' : 'transparent', opacity: isPendingRemoval ? 0.45 : 1 }}
+                          >
+                            {isDeniedRemoval ? (
+                              <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '900' }}>FORCE</Text>
+                            ) : (
+                              <Ionicons name={isPendingRemoval ? "hourglass-outline" : "log-out-outline"} size={16} color={isPendingRemoval ? '#f59e0b' : '#ef4444'} />
+                            )}
+                          </TouchableOpacity>
+                        )}
                       </View>
-                      {!device.current && (
-                        <TouchableOpacity onPress={() => handleKickDevice(device.id)} style={{ padding: 4 }}>
-                          <Ionicons name="log-out-outline" size={16} color="#ef4444" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </View>
 
