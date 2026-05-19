@@ -207,6 +207,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
   const [availablePlans, setAvailablePlans] = React.useState<Plan[]>([]);
   const [ticker, setTicker] = React.useState(0);
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const handledRemovalRequestsRef = useRef<Set<string>>(new Set());
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean;
@@ -319,12 +320,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error("SubscriptionContext: Plans listener error:", error);
     });
     return unsub;
-  }, []);
+  }, [currentUserUid]);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | undefined;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUserUid(user ? user.uid : null);
       if (unsubUserDoc) {
         unsubUserDoc();
         unsubUserDoc = undefined;
@@ -648,7 +650,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       unsub();
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [currentUserUid]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'appVersion'), (snap) => {
@@ -669,7 +671,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error("SubscriptionContext: Version settings listener error:", error);
     });
     return unsub;
-  }, []);
+  }, [currentUserUid]);
 
   useEffect(() => {
     if (userTimerRef.current) {

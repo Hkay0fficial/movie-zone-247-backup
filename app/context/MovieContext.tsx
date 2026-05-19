@@ -164,6 +164,7 @@ type CachedMovieContent = {
 };
 
 export function MovieProvider({ children }: { children: React.ReactNode }) {
+  const { user, profile } = useUser();
   const [liveMovies, setLiveMovies] = useState<Movie[]>([]);
   const [liveSeries, setLiveSeries] = useState<Series[]>([]);
   const hasHydratedCachedContent = useRef(false);
@@ -395,7 +396,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid, user?.isAnonymous]);
 
   useEffect(() => {
     // Listen to App Version Settings
@@ -422,7 +423,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       console.error("AppVersion snapshot error:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid, user?.isAnonymous]);
 
   useEffect(() => {
     // Listen to Global Settings
@@ -435,7 +436,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       console.error("Global settings snapshot error:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid, user?.isAnonymous]);
 
   useEffect(() => {
     // Listen to Mobile Layout Manager
@@ -448,7 +449,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       console.error("App layout snapshot error:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid, user?.isAnonymous]);
 
   useEffect(() => {
     // Listen to Announcements
@@ -467,9 +468,7 @@ export function MovieProvider({ children }: { children: React.ReactNode }) {
       setLoadingAnnouncements(false);
     });
     return () => unsubscribe();
-  }, []);
-
-  const { user, profile } = useUser();
+  }, [user?.uid, user?.isAnonymous]);
 
   // 1. Load initial read state from AsyncStorage (fast)
   useEffect(() => {
